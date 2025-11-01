@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆胶囊 - 录音</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="theme_memory_1.css">
+    <style>
+        .wave-container {
+            background: linear-gradient(90deg, 
+                var(--chart-2) 0%, 
+                var(--secondary) 50%, 
+                var(--chart-2) 100%);
+            background-size: 200% 100%;
+            animation: wave 1.5s linear infinite;
+        }
+        @keyframes wave {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+    </style>
+</head>
+<body class="bg-[var(--background)] p-4">
+    <!-- 录音主界面 -->
+    <div class="max-w-md mx-auto">
+        <div class="text-center mb-8">
+            <div class="text-4xl mb-4">🎤</div>
+            <h1 class="text-xl font-bold text-[var(--foreground)]">录音中...</h1>
+            <div class="text-[var(--muted-foreground)]">00:45</div>
+        </div>
+
+        <!-- 动态波形图 -->
+        <div class="wave-container h-24 rounded-lg mb-8"></div>
+
+        <!-- 控制按钮 -->
+        <div class="flex justify-center gap-4">
+            <button class="px-6 py-3 rounded-full bg-[var(--destructive)] text-[var(--destructive-foreground)]">
+                取消
+            </button>
+            <button class="px-6 py-3 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center gap-2">
+                <span class="text-xl">●</span>
+                保存
+            </button>
+        </div>
+    </div>
+</body>
+</html>

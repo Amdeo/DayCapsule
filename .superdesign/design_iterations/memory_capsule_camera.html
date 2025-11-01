@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆胶囊 - 拍照</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="theme_memory_1.css">
+    <style>
+        .camera-control {
+            backdrop-filter: blur(10px);
+            background: rgba(var(--background-rgb), 0.8);
+        }
+        .shutter-button {
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
+            transition: all 0.2s ease;
+        }
+        .shutter-button:active {
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)]">
+    <!-- 顶部控制栏 -->
+    <div class="fixed top-0 left-0 right-0 p-4 flex justify-between items-center camera-control">
+        <button class="p-2 rounded-full hover:bg-[var(--muted)]">
+            ↶
+        </button>
+        <div class="flex gap-4">
+            <button class="p-2 rounded-full hover:bg-[var(--muted)]">⚡</button>
+            <button class="p-2 rounded-full hover:bg-[var(--muted)]">⏻</button>
+        </div>
+    </div>
+
+    <!-- 相机预览区域 -->
+    <div class="camera-preview w-full aspect-[4/3] bg-[var(--muted)] flex items-center justify-center">
+        <div class="text-6xl text-[var(--muted-foreground)]">📷</div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div class="fixed bottom-0 left-0 right-0 p-6 camera-control">
+        <div class="flex justify-center items-center gap-6">
+            <button class="shutter-button w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center">
+                <div class="w-14 h-14 rounded-full bg-white"></div>
+            </button>
+        </div>
+
+        <!-- 相册预览 -->
+        <div class="mt-6 grid grid-cols-6 gap-2">
+            <div class="aspect-square bg-[var(--muted)] rounded-lg"></div>
+            <div class="aspect-square bg-[var(--muted)] rounded-lg"></div>
+            <div class="aspect-square bg-[var(--muted)] rounded-lg"></div>
+            <div class="aspect-square bg-[var(--muted)] rounded-lg"></div>
+        </div>
+    </div>
+</body>
+</html>
