@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- 共用头部 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆胶囊 - 输入界面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.0.0/dist/flowbite.min.js"></script>
+    <link rel="stylesheet" href="theme_memory_1.css">
+    <style>
+        .camera-preview {
+            aspect-ratio: 4/3;
+            background: var(--muted);
+        }
+        .wave-animation {
+            animation: wave 1.2s infinite linear;
+        }
+        @keyframes wave {
+            0% { background-position-x: 0%; }
+            100% { background-position-x: 200%; }
+        }
+    </style>
+</head>
+<body class="bg-[var(--background)] font-sans">
+
+    <!-- 输入选择浮层 -->
+    <div class="fixed inset-0 bg-black/50 flex items-end">
+        <div class="w-full bg-[var(--popover)] rounded-t-2xl p-6 pt-4">
+            <h2 class="text-xl font-bold text-[var(--popover-foreground)] mb-6">添加新记忆</h2>
+            
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90">
+                    <span class="text-3xl mb-2">📷</span>
+                    <span>拍照</span>
+                </button>
+                <button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)] hover:opacity-90">
+                    <span class="text-3xl mb-2">🎤</span>
+                    <span>录音</span>
+                </button>
+                <button class="aspect-square flex flex-col items-center justify-center rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">
+                    <span class="text-3xl mb-2">📝</span>
+                    <span>文字</span>
+                </button>
+            </div>
+
+            <button class="w-full py-3 rounded-lg bg-[var(--card)] text-[var(--card-foreground)] hover:bg-[var(--muted)]">
+                取消
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
