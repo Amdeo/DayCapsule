@@ -42,8 +42,8 @@ The project includes Model Context Protocol (MCP) tools for enhanced development
 | **Understand code** | `serena` | Find components, search patterns |
 | **Get docs** | `context7` | React hooks, library APIs |
 | **Mobile testing** | `mobile-mcp` | Screenshot, tap, swipe |
-| **Research** | `open-websearch` | Latest practices, solutions |
-| **Analyze image** | `zai-mcp-server` | UI issues, error screenshots |
+| **Research** | `MiniMax` | Web search, latest practices |
+| **Analyze image** | `MiniMax` | UI issues, error screenshots |
 | **Complex problem** | `sequential-thinking` | Architecture decisions |
 
 **Quick reference**: [MCP Tools Guide](agent_docs/00-mcp-tools.md)

@@ -5,7 +5,7 @@
 | Server | Tool | Purpose |
 |--------|------|---------|
 | sequential-thinking | `sequentialthinking` | Deep thinking and analysis |
-| zai-mcp-server | `analyze_image`, `diagnose_error_screenshot` | Image/error analysis |
+| MiniMax | `web_search`, `understand_image` | Web search and image analysis |
 | context7 | `resolve-library-id`, `get-library-docs` | Get library docs |
 | serena | `find_symbol`, `search_for_pattern` | Code search |
 | open-websearch | `web_search`, `fetchGithubReadme` | Web research |
@@ -14,9 +14,10 @@
 ## Usage Principles
 
 1. **Think First**: Use `sequentialthinking` for complex tasks
-2. **Image Analysis**: Use `zai-mcp-server` for uploaded images
-3. **Code Search**: Prefer `serena` symbol-level search
-4. **Web Search**: Use `open-websearch` or `web-search-prime`
+2. **Image Analysis**: Use `MiniMax.understand_image` or `zai-mcp-server`
+3. **Web Search**: Use `MiniMax.web_search` or `open-websearch`
+4. **Code Search**: Prefer `serena` symbol-level search
+5. **Documentation**: Use `context7` for library docs
 
 ## Common Scenarios
 
@@ -76,7 +77,12 @@ mcp__sequential-thinking__sequentialthinking({
 
 ### Web Research
 ```bash
-# Search latest practices
+# MiniMax search (with current date context)
+mcp__MiniMax__web_search({
+  "query": "React Native performance optimization 2025"
+})
+
+# Open websearch
 mcp__open-websearch__search({
   "query": "React Native performance optimization 2025",
   "engines": ["duckduckgo"]
@@ -85,7 +91,13 @@ mcp__open-websearch__search({
 
 ### Image Analysis
 ```bash
-# Analyze screenshots
+# MiniMax image understanding
+mcp__MiniMax__understand_image({
+  "image_source": "screenshot.png",
+  "prompt": "What UI issues do you see?"
+})
+
+# zai-mcp-server alternative
 mcp__zai-mcp-server__analyze_image({
   "image_source": "screenshot.png",
   "prompt": "What UI issues do you see?"
@@ -97,5 +109,6 @@ mcp__zai-mcp-server__analyze_image({
 **Code Understanding**: `serena` → `get_symbols_overview` → `find_symbol`
 **Documentation**: `context7` → `resolve_library_id` → `get_library_docs`
 **Mobile Testing**: `mobile-mcp` → `list_available_devices` → `take_screenshot`
-**Research**: `open-websearch` → `web_search`
-**Analysis**: `sequential-thinking` → `sequentialthinking`
+**Research**: `MiniMax.web_search` or `open-websearch.web_search`
+**Image Analysis**: `MiniMax.understand_image` or `zai-mcp-server.analyze_image`
+**Deep Analysis**: `sequential-thinking` → `sequentialthinking`

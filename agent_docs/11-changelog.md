@@ -20,6 +20,18 @@
 - Streamlined format with tables and concise examples
 - Enhanced quick reference section
 
+### 2025-12-12 18:35
+- **Added MiniMax MCP Support**: Integrated MiniMax MCP tools for enhanced capabilities
+- Added to Core Tools table in agent_docs/00-mcp-tools.md
+- MiniMax features:
+  - web_search: Web search with current date context
+  - understand_image: Image analysis and understanding
+- Updated Usage Principles to prioritize MiniMax for web search and image analysis
+- Added comprehensive examples for both MiniMax functions
+- Updated Quick Reference with MiniMax shortcuts
+- Updated CLAUDE.md MCP tools table to reflect MiniMax capabilities
+- Provides alternative to open-websearch and zai-mcp-server for common tasks
+
 ### 2025-12-12 16:45
 - **Major refactor**: Split CLAUDE.md into modular documentation in `agent_docs/`
 - Created 11 specialized documentation modules:
