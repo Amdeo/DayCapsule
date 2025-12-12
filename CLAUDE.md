@@ -31,12 +31,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database**: SQLite + FTS5
 - **All commands run in `app/` directory**
 
+## MCP Tools
+
+The project includes Model Context Protocol (MCP) tools for enhanced development capabilities:
+
+| Tool | Purpose | Use Cases |
+|------|---------|-----------|
+| **[MCP Tools Guide](agent_docs/00-mcp-tools.md)** | Complete MCP tools reference | Documentation lookup, code analysis, mobile testing, web search |
+
 ## Documentation Modules
 
 For detailed information, refer to the modular documentation in the `agent_docs/` directory:
 
 | Document | Description |
 |----------|-------------|
+| [00-mcp-tools.md](agent_docs/00-mcp-tools.md) | MCP tools usage guide and best practices |
 | [01-architecture.md](agent_docs/01-architecture.md) | Architecture overview, tech stack, patterns |
 | [02-module-index.md](agent_docs/02-module-index.md) | Module structure and visual diagrams |
 | [03-setup-build.md](agent_docs/03-setup-build.md) | Environment setup and build commands |
@@ -65,3 +74,4 @@ npm run ios  # or android
 - **Performance**: All core operations < 2s, memory < 150MB
 - **Testing**: 70% coverage minimum, run `npm test`
 - **Security**: AES-256-GCM encryption, offline-first
+- **MCP Tools**: Use for documentation, code analysis, and testing

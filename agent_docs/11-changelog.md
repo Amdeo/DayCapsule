@@ -1,5 +1,17 @@
 # Changelog
 
+### 2025-12-12 18:05
+- **Added MCP Tools Guide**: Created comprehensive documentation for Model Context Protocol tools
+- New document: `agent_docs/00-mcp-tools.md`
+- Covers 5 MCP tool categories:
+  - Context7: Library documentation and code examples
+  - Serena: Semantic coding agent for code analysis
+  - Spec Workflow: Specification management tools
+  - Mobile Device Control: iOS/Android device automation
+  - Web Search: Internet research capabilities
+- Updated CLAUDE.md to include MCP tools section
+- Added best practices and usage patterns for each tool
+
 ### 2025-12-12 16:45
 - **Major refactor**: Split CLAUDE.md into modular documentation in `agent_docs/`
 - Created 11 specialized documentation modules:
