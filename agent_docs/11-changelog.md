@@ -3,14 +3,22 @@
 ### 2025-12-12 18:05
 - **Added MCP Tools Guide**: Created comprehensive documentation for Model Context Protocol tools
 - New document: `agent_docs/00-mcp-tools.md`
-- Covers 5 MCP tool categories:
+- Covers 6 MCP tool categories:
+  - Sequential-thinking: Deep thinking and analysis
+  - zai-mcp-server: Image/error analysis
   - Context7: Library documentation and code examples
   - Serena: Semantic coding agent for code analysis
-  - Spec Workflow: Specification management tools
-  - Mobile Device Control: iOS/Android device automation
-  - Web Search: Internet research capabilities
+  - open-websearch: Internet research capabilities
+  - mobile-mcp: iOS/Android device automation
 - Updated CLAUDE.md to include MCP tools section
-- Added best practices and usage patterns for each tool
+- Added quick reference and common scenarios
+
+### 2025-12-12 18:20
+- **Refined MCP Tools Guide**: Simplified documentation for better readability
+- Reduced from 164 lines to 101 lines
+- Added sequential-thinking tool
+- Streamlined format with tables and concise examples
+- Enhanced quick reference section
 
 ### 2025-12-12 16:45
 - **Major refactor**: Split CLAUDE.md into modular documentation in `agent_docs/`
