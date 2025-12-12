@@ -126,7 +126,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
             <View style={styles.tagsContainer}>
               {entry.tags.slice(0, 3).map(tag => (
                 <Chip key={tag} mode="flat" compact style={styles.tag}>
-                  {tag}
+                  <Text>{tag}</Text>
                 </Chip>
               ))}
               {entry.tags.length > 3 && (

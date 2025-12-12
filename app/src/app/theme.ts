@@ -29,6 +29,13 @@ export const lightTheme = {
     onSurface: '#1C1B1F',
     onSurfaceVariant: '#49454F',
   },
+  fonts: {
+    ...MD3LightTheme.fonts,
+    // 配置Material Design Icons字体
+    config: {
+      fontFamily: 'MaterialCommunityIcons',
+    },
+  },
 };
 
 export const darkTheme = {
@@ -58,6 +65,13 @@ export const darkTheme = {
     onBackground: '#E6E1E5',
     onSurface: '#E6E1E5',
     onSurfaceVariant: '#CAC4D0',
+  },
+  fonts: {
+    ...MD3DarkTheme.fonts,
+    // 配置Material Design Icons字体
+    config: {
+      fontFamily: 'MaterialCommunityIcons',
+    },
   },
 };
 

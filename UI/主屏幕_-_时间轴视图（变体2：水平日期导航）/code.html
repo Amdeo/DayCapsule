@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>记忆胶囊 - 时间轴视图</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#F2B6A0",
+            "background-light": "#FAF8F5",
+            "background-dark": "#1d1a18",
+            "surface-light": "#FFFFFF",
+            "surface-dark": "#2c2825",
+            "text-primary-light": "#4A4A4A",
+            "text-primary-dark": "#e0dcd8",
+            "text-secondary-light": "#9B9B9B",
+            "text-secondary-dark": "#a19c96",
+            "accent-blue": "#a0c4f2",
+            "accent-green": "#a0f2b6",
+            "accent-purple": "#c4a0f2",
+          },
+          fontFamily: {
+            "display": ["Manrope", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "0.75rem",
+            "xl": "1rem",
+            "full": "9999px"
+          },
+          boxShadow: {
+            'soft': '0 4px 12px 0 rgba(0, 0, 0, 0.05)',
+            'soft-dark': '0 4px 12px 0 rgba(0, 0, 0, 0.15)',
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      font-size: 24px;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden text-text-primary-light dark:text-text-primary-dark">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4 pb-2 justify-between">
+<h2 class="text-xl font-bold tracking-tight">记忆胶囊</h2>
+<button class="flex items-center justify-center rounded-full h-10 w-10 text-text-primary-light dark:text-text-primary-dark">
+<span class="material-symbols-outlined">search</span>
+</button>
+</div>
+</div>
+<!-- Horizontal Date Selector -->
+<div class="px-4 py-3">
+<div class="flex gap-3 overflow-x-auto hide-scrollbar">
+<div class="flex h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-full bg-primary px-5 text-white">
+<p class="text-sm font-semibold leading-normal">今天</p>
+</div>
+<div class="flex h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark px-5 shadow-soft dark:shadow-soft-dark">
+<p class="text-sm font-medium leading-normal">昨天</p>
+</div>
+<div class="flex h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark px-5 shadow-soft dark:shadow-soft-dark">
+<p class="text-sm font-medium leading-normal">本周</p>
+</div>
+<div class="flex h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark px-5 shadow-soft dark:shadow-soft-dark">
+<p class="text-sm font-medium leading-normal">本月</p>
+</div>
+<div class="flex h-10 shrink-0 cursor-pointer items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark px-5 shadow-soft dark:shadow-soft-dark">
+<p class="text-sm font-medium leading-normal">全部</p>
+</div>
+</div>
+</div>
+<!-- Vertical Memory Card List -->
+<div class="flex flex-col gap-4 p-4 pb-32">
+<!-- Card 1 -->
+<div class="flex gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-4 shadow-soft dark:shadow-soft-dark">
+<div class="w-1.5 shrink-0 rounded-full bg-accent-blue"></div>
+<div class="flex flex-1 flex-col gap-2">
+<p class="text-base font-bold leading-tight">周末的公园漫步</p>
+<p class="text-sm font-normal leading-normal text-text-secondary-light dark:text-text-secondary-dark">阳光正好，微风不燥，在湖边看到了几只可爱的小鸭子，一切都那么惬意。</p>
+<div class="flex items-center gap-2 pt-2">
+<span class="material-symbols-outlined !text-base text-text-secondary-light dark:text-text-secondary-dark">schedule</span>
+<p class="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">今天 14:30</p>
+</div>
+</div>
+<div class="w-20 h-20 bg-center bg-no-repeat bg-cover rounded-lg shrink-0" data-alt="ducks swimming in a park lake" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDY0NKTDMMxu7ZcVEEINApT7jG2oYYubmQ2BIEFz9sjVloLDtoIroPutdWrwPAJvzhRMP2VS93TbGvznW2CchOgbLzldszGd-W_YF3589L4q8PHk8m7_x44TC0zsN4prHFBdQNoPNHm0NlfqsIYSNFuIHF1EmaqUHHGJrjS03OlxK8Z8KTi6wHuha-mwRIGquYuyRfCyq6uynoLxBOLOOZJUQM2402lWhhlacbPXXil7h6-NFCC9G7Kkoi1qrDjFAtHU5WWFUkhDQ0");'></div>
+</div>
+<!-- Card 2 -->
+<div class="flex gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-4 shadow-soft dark:shadow-soft-dark">
+<div class="w-1.5 shrink-0 rounded-full bg-accent-green"></div>
+<div class="flex flex-1 flex-col gap-2">
+<p class="text-base font-bold leading-tight">一次偶然的咖啡馆邂逅</p>
+<p class="text-sm font-normal leading-normal text-text-secondary-light dark:text-text-secondary-dark">那家街角的咖啡馆，有着最好闻的肉桂香气，还有一只会打呼噜的猫。</p>
+<div class="flex items-center gap-2 pt-2">
+<span class="material-symbols-outlined !text-base text-text-secondary-light dark:text-text-secondary-dark">schedule</span>
+<p class="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">今天 10:15</p>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="flex gap-4 rounded-xl bg-surface-light dark:bg-surface-dark p-4 shadow-soft dark:shadow-soft-dark">
+<div class="w-1.5 shrink-0 rounded-full bg-accent-purple"></div>
+<div class="flex flex-1 flex-col gap-2">
+<p class="text-base font-bold leading-tight">读完了一本好书</p>
+<p class="text-sm font-normal leading-normal text-text-secondary-light dark:text-text-secondary-dark">书中的故事让人回味无穷，仿佛亲身经历了一遍。结尾的转折太惊喜了！</p>
+<div class="flex items-center gap-2 pt-2">
+<span class="material-symbols-outlined !text-base text-text-secondary-light dark:text-text-secondary-dark">schedule</span>
+<p class="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">今天 08:00</p>
+</div>
+</div>
+<div class="w-20 h-20 bg-center bg-no-repeat bg-cover rounded-lg shrink-0" data-alt="an open book with a cup of tea" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC2IWarzo_Blu4dTfkyWpeiyE55jZnB173HPtufKMH1UkOnGGANvcBHTRYDXQEDQ0QEk5NOHDmODluJpEAdxrPW23tRjaFSQMAJyJNLAh9P4qwiStwf3LtfxdoyojMjfbDg_vCoNO_TiAMwNUqV7ShvUb0kjqfzrQXC-2PqGnMbEuqatWc3hc2P_K7jJ82VytHYU7KeDcRX074kSueTXwYOPDU9k1XyUzYb3lAEQb-ay3C5sXKYtOrcSocyIVNixfb49SQk0j06dAE");'></div>
+</div>
+</div>
+<!-- Core Action Button Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-10 p-4">
+<div class="mx-auto flex max-w-sm items-center justify-around rounded-full bg-surface-light/80 dark:bg-surface-dark/80 p-2 shadow-lg backdrop-blur-md ring-1 ring-black/5 dark:ring-white/10">
+<button class="flex h-12 w-12 items-center justify-center rounded-full text-text-secondary-light dark:text-text-secondary-dark">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+<button class="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-md">
+<span class="material-symbols-outlined !text-3xl">add</span>
+</button>
+<button class="flex h-12 w-12 items-center justify-center rounded-full text-text-secondary-light dark:text-text-secondary-dark">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

@@ -3,7 +3,17 @@
  * 封装语音录制和播放功能
  */
 
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+// 临时mock实现 - react-native-audio-recorder-player与React Native 0.74不兼容
+const AudioRecorderPlayer = {
+  startRecorder: async () => 'mock-recording-path',
+  stopRecorder: async () => 'mock-recording-path',
+  startPlayer: async () => {},
+  stopPlayer: async () => {},
+  pausePlayer: async () => {},
+  resumePlayer: async () => {},
+  addPlayBackListener: () => {},
+  removePlayBackListener: () => {},
+};
 import {Platform} from 'react-native';
 import {permissionsService} from '@services/permissions';
 import {logger} from '@services/telemetry/logger';

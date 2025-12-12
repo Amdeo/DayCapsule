@@ -12,6 +12,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -20,6 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
+      errorInfo: null,
     };
   }
 
@@ -27,6 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
+      errorInfo: null,
     };
   }
 
@@ -36,6 +39,11 @@ export class ErrorBoundary extends Component<Props, State> {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
+    });
+
+    // 保存错误信息到 state
+    this.setState({
+      errorInfo,
     });
 
     // 调用自定义错误处理
@@ -48,6 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
+      errorInfo: null,
     });
   };
 
@@ -72,6 +81,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <Text variant="bodySmall" style={styles.errorText}>
                 {this.state.error.message}
               </Text>
+              {this.state.errorInfo && (
+                <Text variant="bodySmall" style={styles.errorText}>
+                  {this.state.errorInfo.componentStack}
+                </Text>
+              )}
             </View>
           )}
           <Button mode="contained" onPress={this.handleReset} style={styles.button}>

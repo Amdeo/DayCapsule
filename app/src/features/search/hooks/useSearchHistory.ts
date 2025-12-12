@@ -1,8 +1,8 @@
 import {useEffect, useCallback, useState} from 'react';
 import {useDispatch, useSelector} from 'react-redux';
 import {
-  addToSearchHistory,
-  clearSearchHistory,
+  addRecentSearch,
+  clearRecentSearches,
   removeFromSearchHistory,
   setHotTags,
 } from '@store/slices/searchSlice';
@@ -41,7 +41,7 @@ export const useSearchHistory = (): UseSearchHistoryReturn => {
   const addSearch = useCallback(
     (query: string) => {
       if (query.trim()) {
-        dispatch(addToSearchHistory(query));
+        dispatch(addRecentSearch(query));
         logger.info('Search added to history', {query});
       }
     },
@@ -59,7 +59,7 @@ export const useSearchHistory = (): UseSearchHistoryReturn => {
 
   // 清除历史
   const clearHistory = useCallback(() => {
-    dispatch(clearSearchHistory());
+    dispatch(clearRecentSearches());
     logger.info('Search history cleared');
   }, [dispatch]);
 

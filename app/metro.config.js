@@ -17,8 +17,24 @@ const config = {
       '@hooks': './src/hooks',
       '@utils': './src/utils',
       '@app': './src/app',
+      lodash: 'lodash-es',
     },
     platforms: ['ios', 'android', 'native'],
+    resolverMainFields: ['react-native', 'browser', 'main'],
+    sourceExts: ['js', 'jsx', 'ts', 'tsx', 'json'],
+    resolveRequest: (context, moduleName, platform) => {
+      // Redirect all lodash imports to lodash-es
+      if (moduleName === 'lodash' || moduleName.startsWith('lodash/')) {
+        const lodashEsModule = moduleName.replace(/^lodash\/?/, 'lodash-es/');
+        try {
+          return context.resolve(lodashEsModule, platform);
+        } catch (error) {
+          // Fallback to original request if lodash-es version doesn't exist
+          return context.resolveRequest(context, moduleName, platform);
+        }
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
   transformer: {
     getTransformOptions: async () => ({

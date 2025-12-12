@@ -1,4 +1,4 @@
-import {database} from './database';
+import {databaseService} from './database';
 import {logger} from '@services/telemetry/logger';
 
 export interface SearchOptions {
@@ -75,7 +75,7 @@ class SearchService {
       sql += ` ORDER BY rank DESC LIMIT ? OFFSET ?`;
       params.push(pageSize, offset);
 
-      const results = await database.executeSql(sql, params);
+      const results = await databaseService.getDatabase()?.executeSql(sql, params) || [];
       let searchResults: SearchResult[] = [];
 
       for (const row of results.rows.raw()) {
@@ -128,7 +128,7 @@ class SearchService {
       `;
       const params = tags.map(tag => `%"${tag}"%`);
 
-      const results = await database.executeSql(sql, params);
+      const results = await databaseService.getDatabase()?.executeSql(sql, params) || [];
       return results.rows.raw().map(row => ({
         id: row.id,
         content: row.content,
@@ -151,7 +151,7 @@ class SearchService {
         SELECT * FROM entries
         WHERE mood IN (${moods.map(() => '?').join(',')})
       `;
-      const results = await database.executeSql(sql, moods);
+      const results = await databaseService.db.executeSql(sql, moods);
       return results.rows.raw().map(row => ({
         id: row.id,
         content: row.content,
@@ -205,7 +205,7 @@ class SearchService {
         WHERE createdAt BETWEEN ? AND ?
         ORDER BY createdAt DESC
       `;
-      const results = await database.executeSql(sql, [start, end]);
+      const results = await databaseService.db.executeSql(sql, [start, end]);
       return results.rows.raw().map(row => ({
         id: row.id,
         content: row.content,
@@ -224,7 +224,7 @@ class SearchService {
   async filterByLocation(location: string): Promise<SearchResult[]> {
     try {
       const sql = `SELECT * FROM entries WHERE location LIKE ?`;
-      const results = await database.executeSql(sql, [`%${location}%`]);
+      const results = await databaseService.db.executeSql(sql, [`%${location}%`]);
       return results.rows.raw().map(row => ({
         id: row.id,
         content: row.content,
@@ -256,7 +256,7 @@ class SearchService {
           )
         ) <= ?
       `;
-      const results = await database.executeSql(sql, [
+      const results = await databaseService.db.executeSql(sql, [
         config.latitude,
         config.longitude,
         config.latitude,
@@ -284,7 +284,7 @@ class SearchService {
         SELECT * FROM entries
         WHERE type IN (${types.map(() => '?').join(',')})
       `;
-      const results = await database.executeSql(sql, types);
+      const results = await databaseService.db.executeSql(sql, types);
       return results.rows.raw().map(row => ({
         id: row.id,
         content: row.content,
@@ -329,7 +329,7 @@ class SearchService {
   async getAvailableTags(): Promise<string[]> {
     try {
       const sql = `SELECT DISTINCT tags FROM entries`;
-      const results = await database.executeSql(sql, []);
+      const results = await databaseService.db.executeSql(sql, []);
       const tags: Set<string> = new Set();
       results.rows.raw().forEach(row => {
         const parsedTags = JSON.parse(row.tags || '[]');
@@ -345,7 +345,7 @@ class SearchService {
   async getAvailableMoods(): Promise<string[]> {
     try {
       const sql = `SELECT DISTINCT mood FROM entries WHERE mood IS NOT NULL`;
-      const results = await database.executeSql(sql, []);
+      const results = await databaseService.db.executeSql(sql, []);
       return results.rows.raw().map(row => row.mood);
     } catch (error) {
       logger.error('Get available moods failed', {error});
@@ -356,7 +356,7 @@ class SearchService {
   async getAvailableLocations(): Promise<string[]> {
     try {
       const sql = `SELECT DISTINCT location FROM entries WHERE location IS NOT NULL`;
-      const results = await database.executeSql(sql, []);
+      const results = await databaseService.db.executeSql(sql, []);
       return results.rows.raw().map(row => row.location);
     } catch (error) {
       logger.error('Get available locations failed', {error});
@@ -397,7 +397,7 @@ class SearchService {
   async getTypeStats(): Promise<{[key: string]: number}> {
     try {
       const sql = `SELECT type, COUNT(*) as count FROM entries GROUP BY type`;
-      const results = await database.executeSql(sql, []);
+      const results = await databaseService.db.executeSql(sql, []);
       const stats: {[key: string]: number} = {};
       results.rows.raw().forEach(row => {
         stats[row.type] = row.count;
@@ -433,7 +433,7 @@ class SearchService {
 
   async clearSearchIndex(): Promise<void> {
     try {
-      await database.executeSql(`DELETE FROM entries_fts`, []);
+      await databaseService.db.executeSql(`DELETE FROM entries_fts`, []);
       logger.info('Search index cleared');
     } catch (error) {
       logger.error('Clear search index failed', {error});

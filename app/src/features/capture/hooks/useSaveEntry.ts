@@ -67,7 +67,7 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
             const photoUri = params.photos[i];
 
             // 保存照片到文件系统
-            const savedPath = await fileSystemService.saveMedia(photoUri, 'photo');
+            const savedPath = await fileSystemService.savePhoto(photoUri);
             if (savedPath) {
               mediaAttachments.push({
                 path: savedPath,
@@ -90,7 +90,7 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
           type: params.type,
           content: encryptedContent,
           contentPlaintext: params.content, // 用于搜索索引
-          tags: params.tags.join(','),
+          tags: params.tags,
           mood: params.mood,
           latitude: params.location?.latitude,
           longitude: params.location?.longitude,
@@ -102,7 +102,10 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
         };
 
         // 保存到数据库
-        const entryId = await databaseService.insertEntry(entryData);
+        const entryId = await databaseService.insertEntry({
+          ...entryData,
+          timestamp: Date.now(), // Add timestamp here
+        });
         if (!entryId) {
           throw new Error('Failed to save entry to database');
         }
@@ -114,9 +117,8 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
           for (const attachment of mediaAttachments) {
             await databaseService.insertMediaAttachment({
               entryId,
-              mediaPath: attachment.path,
-              mediaType: attachment.type,
-              createdAt: Date.now(),
+              filePath: attachment.path,
+              fileType: attachment.type,
             });
           }
         }
@@ -130,8 +132,8 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
             let tagId = await databaseService.getTagId(tag);
             if (!tagId) {
               tagId = await databaseService.insertTag({
+                id: `tag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 name: tag,
-                createdAt: Date.now(),
               });
             }
 
@@ -148,8 +150,8 @@ export const useSaveEntry = (): UseSaveEntryReturn => {
         setProgress(95);
 
         performanceMonitor.endMeasure('save_entry');
-        const duration = performanceMonitor.getMeasure('save_entry');
-        logger.info(`Entry saved successfully in ${duration}ms: ${entryId}`);
+        const metric = performanceMonitor.getMeasure('save_entry');
+        logger.info(`Entry saved successfully in ${metric?.duration}ms: ${entryId}`);
 
         setProgress(100);
         setIsLoading(false);

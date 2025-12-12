@@ -1,6 +1,6 @@
 import React from 'react';
 import {render, fireEvent} from '@testing-library/react-native';
-import {TagInput} from '../TagInput';
+import TagInput from '../TagInput';
 
 describe('TagInput Component', () => {
   const mockOnTagsChange = jest.fn();

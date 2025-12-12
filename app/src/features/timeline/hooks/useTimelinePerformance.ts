@@ -34,10 +34,10 @@ export const useTimelinePerformance = (): UseTimelinePerformanceReturn => {
 
   const endViewLoad = useCallback(() => {
     performanceMonitor.endMeasure('timeline_view_load');
-    const duration = performanceMonitor.getMeasure('timeline_view_load');
-    metricsRef.current.viewLoadTime = duration;
+    const metric = performanceMonitor.getMeasure('timeline_view_load');
+    metricsRef.current.viewLoadTime = metric?.duration || 0;
 
-    logger.info('Timeline view load completed', {duration});
+    logger.info('Timeline view load completed', {duration: metric?.duration});
   }, []);
 
   const startRender = useCallback(() => {
@@ -46,10 +46,10 @@ export const useTimelinePerformance = (): UseTimelinePerformanceReturn => {
 
   const endRender = useCallback(() => {
     performanceMonitor.endMeasure('timeline_render');
-    const duration = performanceMonitor.getMeasure('timeline_render');
-    metricsRef.current.renderTime = duration;
+    const metric = performanceMonitor.getMeasure('timeline_render');
+    metricsRef.current.renderTime = metric?.duration || 0;
 
-    logger.info('Timeline render completed', {duration});
+    logger.info('Timeline render completed', {duration: metric?.duration});
   }, []);
 
   const recordScrollFPS = useCallback((fps: number) => {

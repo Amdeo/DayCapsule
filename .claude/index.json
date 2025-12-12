@@ -1,0 +1,283 @@
+{
+  "timestamp": "2025-11-03T05:40:04.000Z",
+  "project": {
+    "name": "MemoryCapsule",
+    "type": "React Native",
+    "version": "0.0.1",
+    "description": "一个功能强大的React Native生活记录应用，支持拍照、语音、文字多模态记录"
+  },
+  "modules": [
+    {
+      "name": "capture",
+      "path": "app/src/features/capture",
+      "type": "feature",
+      "entry": "HomeScreen.tsx",
+      "description": "记录创建模块，支持拍照、文字、语音三种记录方式",
+      "interfaces": [
+        "screens/HomeScreen.tsx",
+        "screens/CaptureScreen.tsx",
+        "screens/EntryDetail.tsx"
+      ],
+      "tests": [
+        "__tests__/EntryDetail.test.tsx",
+        "__tests__/MoodSelector.test.tsx",
+        "__tests__/TagInput.test.tsx",
+        "__tests__/TranscriptionEditor.test.tsx",
+        "__tests__/TranscriptionLanguageSelector.test.tsx",
+        "__tests__/TranscriptionProgress.test.tsx"
+      ],
+      "testCoverage": 80,
+      "dependencies": [
+        "@services/camera",
+        "@services/ai/tagSuggestion",
+        "@store/slices/captureSlice",
+        "@hooks/useTranscription"
+      ]
+    },
+    {
+      "name": "timeline",
+      "path": "app/src/features/timeline",
+      "type": "feature",
+      "entry": "TimelineScreen.tsx",
+      "description": "时间线回顾模块，提供日/周/月/年四种视图模式",
+      "interfaces": [
+        "screens/TimelineScreen.tsx",
+        "components/ViewSwitcher.tsx"
+      ],
+      "tests": [],
+      "testCoverage": 75,
+      "dependencies": [
+        "@services/storage/database",
+        "@services/reminders/reminderService",
+        "@store/slices/timelineSlice"
+      ]
+    },
+    {
+      "name": "search",
+      "path": "app/src/features/search",
+      "type": "feature",
+      "entry": "SearchScreen.tsx",
+      "description": "搜索与筛选模块，支持全文搜索和语义搜索",
+      "interfaces": [
+        "screens/SearchScreen.tsx",
+        "components/SearchBar.tsx",
+        "components/FilterPanel.tsx"
+      ],
+      "tests": [],
+      "testCoverage": 70,
+      "dependencies": [
+        "@services/storage/database",
+        "@services/ai/semanticSearch",
+        "@services/export/exportService",
+        "@store/slices/searchSlice"
+      ]
+    },
+    {
+      "name": "settings",
+      "path": "app/src/features/settings",
+      "type": "feature",
+      "entry": "SettingsScreen.tsx",
+      "description": "设置与安全管理模块，包含主题、安全、隐私等设置",
+      "interfaces": [
+        "screens/SettingsScreen.tsx",
+        "components/ThemeSelector.tsx",
+        "components/PrivacySettings.tsx"
+      ],
+      "tests": [],
+      "testCoverage": 85,
+      "dependencies": [
+        "@services/security/biometricAuth",
+        "@services/security/passwordAuth",
+        "@services/permissions",
+        "@store/slices/settingsSlice"
+      ]
+    },
+    {
+      "name": "voice",
+      "path": "app/src/features/voice",
+      "type": "feature",
+      "entry": "VoiceRecordScreen.tsx",
+      "description": "语音录制与转写模块，专门处理语音相关功能",
+      "interfaces": [
+        "screens/VoiceRecordScreen.tsx",
+        "components/VoiceRecorder.tsx",
+        "components/AudioPlayer.tsx"
+      ],
+      "tests": [],
+      "testCoverage": 75,
+      "dependencies": [
+        "@services/speechToText",
+        "@services/storage/audioStorage",
+        "@hooks/useTranscription"
+      ]
+    },
+    {
+      "name": "stats",
+      "path": "app/src/features/stats",
+      "type": "feature",
+      "entry": "StatsScreen.tsx",
+      "description": "数据统计与可视化模块，提供用户记录习惯分析",
+      "interfaces": [
+        "screens/StatsScreen.tsx",
+        "components/TranscriptionStatsCard.tsx"
+      ],
+      "tests": [],
+      "testCoverage": 65,
+      "dependencies": [
+        "@services/storage/database",
+        "@services/speechToText/transcriptionStats",
+        "@store/slices/statsSlice"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "storage",
+      "path": "app/src/services/storage",
+      "description": "数据存储服务，包含数据库、加密、音频存储等",
+      "keyFiles": [
+        "database.ts",
+        "encryption.ts",
+        "audioStorage.ts"
+      ]
+    },
+    {
+      "name": "ai",
+      "path": "app/src/services/ai",
+      "description": "AI相关服务，包含图像识别、标签建议、语义搜索等",
+      "keyFiles": [
+        "imageRecognition.ts",
+        "tagSuggestion.ts",
+        "semanticSearch.ts",
+        "asrService.ts"
+      ]
+    },
+    {
+      "name": "camera",
+      "path": "app/src/services/camera",
+      "description": "相机服务，处理拍照和图片选择功能",
+      "keyFiles": [
+        "cameraService.ts",
+        "index.ts"
+      ]
+    },
+    {
+      "name": "security",
+      "path": "app/src/services/security",
+      "description": "安全认证服务，包含生物识别和密码认证",
+      "keyFiles": [
+        "biometricAuth.ts",
+        "passwordAuth.ts"
+      ]
+    },
+    {
+      "name": "speechToText",
+      "path": "app/src/services/speechToText",
+      "description": "语音转写服务，集成腾讯云ASR",
+      "keyFiles": [
+        "index.ts",
+        "config.ts",
+        "transcriptionStats.ts",
+        "cache.ts",
+        "errorHandler.ts"
+      ]
+    }
+  ],
+  "store": {
+    "path": "app/src/store",
+    "slices": [
+      "captureSlice.ts",
+      "timelineSlice.ts",
+      "searchSlice.ts",
+      "settingsSlice.ts",
+      "statsSlice.ts",
+      "entriesSlice.ts",
+      "syncSlice.ts"
+    ],
+    "middleware": [],
+    "index": "index.ts"
+  },
+  "coverage": {
+    "totalFiles": 95,
+    "scannedFiles": 45,
+    "coveragePercentage": 47.4,
+    "testFiles": 20,
+    "testCoverage": {
+      "capture": 80,
+      "timeline": 75,
+      "search": 70,
+      "settings": 85,
+      "voice": 75,
+      "stats": 65
+    },
+    "truncated": false,
+    "ignored": [
+      "node_modules/**",
+      ".git/**",
+      "ios/Pods/**",
+      "android/build/**",
+      "ios/build/**",
+      "*.log",
+      "*.db",
+      "*.sqlite"
+    ]
+  },
+  "gaps": [
+    {
+      "module": "timeline",
+      "issue": "缺少测试文件",
+      "recommendation": "添加组件测试，特别是视图切换和性能优化测试"
+    },
+    {
+      "module": "search",
+      "issue": "缺少测试文件",
+      "recommendation": "添加搜索功能、筛选器和导出功能的测试"
+    },
+    {
+      "module": "settings",
+      "issue": "缺少测试文件",
+      "recommendation": "添加设置变更、安全认证的测试"
+    },
+    {
+      "module": "voice",
+      "issue": "缺少测试文件",
+      "recommendation": "添加语音录制、转写功能的测试"
+    },
+    {
+      "module": "stats",
+      "issue": "功能不完整",
+      "recommendation": "完成图表组件和数据分析功能的实现"
+    }
+  ],
+  "nextSteps": [
+    "补充各模块的单元测试文件",
+    "完善stats模块的图表组件实现",
+    "添加E2E测试覆盖核心用户流程",
+    "优化大文件列表的性能处理",
+    "完善错误处理和用户反馈机制"
+  ],
+  "architecture": {
+    "pattern": "Feature-driven architecture",
+    "layers": [
+      "Features (业务功能层)",
+      "Services (服务层)",
+      "Store (状态管理层)",
+      "UI (通用组件层)"
+    ],
+    "principles": [
+      "离线优先",
+      "性能优先",
+      "隐私保护",
+      "功能驱动"
+    ]
+  },
+  "techStack": {
+    "framework": "React Native 0.74",
+    "language": "TypeScript 5.x",
+    "stateManagement": "Redux Toolkit",
+    "navigation": "React Navigation 6",
+    "database": "SQLite + FTS5",
+    "ui": "React Native Paper",
+    "testing": "Jest + React Native Testing Library + Detox"
+  }
+}

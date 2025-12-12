@@ -20,26 +20,43 @@
     "pod": "cd ios && bundle install && bundle exec pod install && cd .."
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "^4.6.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^11.4.1",
+    "@react-navigation/bottom-tabs": "^6.5.11",
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/stack": "^6.3.29",
+    "@reduxjs/toolkit": "^2.9.2",
+    "expo-crypto": "^15.0.8",
+    "lodash-es": "^4.17.21",
     "react": "18.2.0",
-    "react-native": "0.74.0",
+    "react-native": "^0.74.0",
     "react-native-fs": "^2.20.0",
     "react-native-geolocation-service": "^5.3.1",
+    "react-native-gesture-handler": "~2.16.0",
     "react-native-image-picker": "^8.2.1",
     "react-native-image-resizer": "^1.4.5",
+    "react-native-keyboard-controller": "^1.20.1",
     "react-native-keychain": "^10.0.0",
+    "react-native-paper": "^5.14.5",
+    "react-native-permissions": "^5.4.4",
+    "react-native-push-notification": "^8.1.1",
+    "react-native-reanimated": "3.12.0",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^3.29.0",
     "react-native-sqlite-storage": "^6.0.1",
-    "react-native-vision-camera": "^4.7.2"
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-vision-camera": "^4.7.2",
+    "react-redux": "^9.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@babel/preset-env": "^7.20.0",
     "@babel/runtime": "^7.20.0",
-    "@react-native/babel-preset": "0.74.81",
-    "@react-native/eslint-config": "0.74.81",
-    "@react-native/metro-config": "0.74.81",
-    "@react-native/typescript-config": "0.74.81",
+    "@react-native/babel-preset": "^0.74.0",
+    "@react-native/eslint-config": "^0.74.0",
+    "@react-native/metro-config": "^0.74.0",
+    "@react-native/typescript-config": "^0.74.0",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
@@ -61,5 +78,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "lodash": "npm:lodash-es@^4.17.21"
   }
 }

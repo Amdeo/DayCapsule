@@ -210,14 +210,11 @@ export const TranscriptionEditor: React.FC<TranscriptionEditorProps> = ({
 
         <Dialog.Actions style={styles.actions}>
           {onDelete && (
-            <Button
-              mode="text"
+            <Button mode="text"
               onPress={handleDelete}
               disabled={isLoading}
               testID={`${testID}-delete-button`}
-              textColor={theme.colors.error}>
-              删除
-            </Button>
+              textColor={theme.colors.error}>删除</Button>
           )}
           {enableSearch && (
             <Button
@@ -225,25 +222,19 @@ export const TranscriptionEditor: React.FC<TranscriptionEditorProps> = ({
               onPress={() => setShowSearch(!showSearch)}
               disabled={isLoading}
               testID={`${testID}-search-button`}>
-              {showSearch ? '隐藏搜索' : '搜索'}
+              <Text>{showSearch ? '隐藏搜索' : '搜索'}</Text>
             </Button>
           )}
           <View style={styles.spacer} />
-          <Button
-            mode="text"
+          <Button mode="text"
             onPress={handleCancel}
             disabled={isLoading}
-            testID={`${testID}-cancel-button`}>
-            取消
-          </Button>
-          <Button
-            mode="contained"
+            testID={`${testID}-cancel-button`}><Text>取消</Text></Button>
+          <Button mode="contained"
             onPress={handleSave}
             disabled={!hasChanges || isLoading || isOverLimit}
             loading={isLoading}
-            testID={`${testID}-save-button`}>
-            保存
-          </Button>
+            testID={`${testID}-save-button`}><Text>保存</Text></Button>
         </Dialog.Actions>
       </Dialog>
     </Portal>

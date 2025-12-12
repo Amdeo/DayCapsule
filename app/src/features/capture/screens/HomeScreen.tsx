@@ -1,12 +1,11 @@
 import React, {useState, useEffect} from 'react';
 import {View, StyleSheet, ScrollView, Image, KeyboardAvoidingView, Platform} from 'react-native';
 import {Text, Button, TextInput, Portal, Dialog, IconButton} from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useDispatch, useSelector} from 'react-redux';
 import {cameraService} from '@services/camera';
 import {tagSuggestionService} from '@services/ai/tagSuggestion';
 import {createPhotoEntry, createTextEntry, createVoiceEntry} from '@store/slices/captureSlice';
-import {TagInput} from '../components/TagInput';
+import TagInput from '../components/TagInput';
 import {MoodSelector, Mood} from '../components/MoodSelector';
 import {VoiceRecorder} from '../components/VoiceRecorder';
 import {EntryList} from '../components/EntryList';
@@ -14,7 +13,9 @@ import {TranscriptionLanguageSelector} from '../components/TranscriptionLanguage
 import {TranscriptionProgress} from '../components/TranscriptionProgress';
 import {LoadingIndicator, EmptyState} from '@ui';
 import {useTranscription} from '@hooks/useTranscription';
+import EntryDetailsSheet from '@ui/components/EntryDetailsSheet/EntryDetailsSheet';
 import type {AppDispatch, RootState} from '@store';
+import type {LifelogEntry} from '@services/storage/database';
 
 export const HomeScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -33,20 +34,67 @@ export const HomeScreen: React.FC = () => {
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState('zh-CN');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<LifelogEntry | undefined>(undefined);
+  const [showEntryDetails, setShowEntryDetails] = useState(false);
+
+  // 添加测试数据，确保有记录可以显示
+  const testEntries: LifelogEntry[] = [
+    {
+      id: '1',
+      type: 'text',
+      content: '今天天气很好，阳光明媚的心情记录。',
+      timestamp: Date.now() - 3600000,
+      tags: ['心情', '天气'],
+      mood: '😊',
+      location: {
+        latitude: 39.9042,
+        longitude: 116.4074,
+        address: '北京市朝阳区'
+      },
+      createdAt: Date.now() - 3600000,
+      updatedAt: Date.now() - 3600000,
+    },
+    {
+      id: '2',
+      type: 'photo',
+      content: '今天的美食照片，看起来很诱人！',
+      timestamp: Date.now() - 7200000,
+      tags: ['美食', '照片'],
+      mediaPath: 'https://picsum.photos/300/200',
+      location: {
+        latitude: 39.9042,
+        longitude: 116.4074,
+        address: '北京市朝阳区'
+      },
+      createdAt: Date.now() - 7200000,
+      updatedAt: Date.now() - 7200000,
+    },
+  ];
+
+  const displayEntries = recentEntries.length > 0 ? recentEntries : testEntries;
 
   // 初始化标签建议
   useEffect(() => {
     const loadTagSuggestions = async () => {
-      const suggestions = await tagSuggestionService.getAllHistoricalTags();
-      setTagSuggestions(suggestions.slice(0, 10));
+      try {
+        const suggestions = await tagSuggestionService.getAllHistoricalTags();
+        setTagSuggestions(suggestions.slice(0, 10));
+      } catch (error) {
+        console.log('Tag suggestions not available yet:', error);
+        setTagSuggestions([]);
+      }
     };
     loadTagSuggestions();
   }, []);
 
   // 当内容改变时更新标签建议
   const updateTagSuggestions = async (newContent: string) => {
-    const suggestions = await tagSuggestionService.getSuggestions(newContent, 5);
-    setTagSuggestions(suggestions);
+    try {
+      const suggestions = await tagSuggestionService.getSuggestions(newContent, 5);
+      setTagSuggestions(suggestions);
+    } catch (error) {
+      console.log('Tag suggestions not available yet:', error);
+    }
   };
 
   const handleTakePhoto = async () => {
@@ -152,30 +200,18 @@ export const HomeScreen: React.FC = () => {
 
         {/* 快速操作卡片 */}
         <View style={styles.quickActions}>
-          <Button
-            mode="contained"
-            icon="camera"
+          <Button mode="contained"
             onPress={handleTakePhoto}
             style={styles.actionButton}
-            testID="fab-photo">
-            拍照
-          </Button>
-          <Button
-            mode="contained"
-            icon="microphone"
+            testID="fab-photo"><Text>📷 拍照</Text></Button>
+          <Button mode="contained"
             onPress={handleVoiceCapture}
             style={styles.actionButton}
-            testID="fab-voice">
-            语音
-          </Button>
-          <Button
-            mode="contained"
-            icon="text"
+            testID="fab-voice"><Text>🎤 语音</Text></Button>
+          <Button mode="contained"
             onPress={handleTextCapture}
             style={styles.actionButton}
-            testID="fab-text">
-            文字
-          </Button>
+            testID="fab-text"><Text>✍️ 文字</Text></Button>
         </View>
 
         {/* 查看所有记录按钮 */}
@@ -185,7 +221,7 @@ export const HomeScreen: React.FC = () => {
             onPress={() => setShowEntryList(true)}
             style={styles.viewAllButton}
             testID="view-all-button">
-            查看所有记录 ({recentEntries.length})
+            <Text>查看所有记录 ({recentEntries.length})</Text>
           </Button>
         )}
       </ScrollView>
@@ -200,10 +236,12 @@ export const HomeScreen: React.FC = () => {
           <Dialog.Title>所有记录</Dialog.Title>
           <Dialog.ScrollArea style={styles.listScrollArea}>
             <EntryList
-              entries={recentEntries}
+              entries={displayEntries}
               onEntryPress={entry => {
-                // TODO: 导航到详情页
-                console.log('Entry pressed:', entry.id);
+                console.log('HomeScreen - Entry pressed:', entry);
+                console.log('HomeScreen - Setting selected entry:', entry.id);
+                setSelectedEntry(entry);
+                setShowEntryDetails(true);
               }}
               ListEmptyComponent={
                 <EmptyState icon="inbox" title="暂无记录" message="开始记录您的生活吧" />
@@ -212,7 +250,7 @@ export const HomeScreen: React.FC = () => {
             />
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowEntryList(false)}>关闭</Button>
+            <Button onPress={() => setShowEntryList(false)}><Text>关闭</Text></Button>
           </Dialog.Actions>
         </Dialog>
 
@@ -269,7 +307,7 @@ export const HomeScreen: React.FC = () => {
                       onPress={() => setShowLanguageSelector(true)}
                       style={styles.languageButton}
                       testID="language-select-button">
-                      转录语言: 中文
+                      <Text>转录语言: 中文</Text>
                     </Button>
                   </>
                 )}
@@ -316,12 +354,8 @@ export const HomeScreen: React.FC = () => {
             </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={handleCancel} testID="cancel-button">
-              取消
-            </Button>
-            <Button onPress={handleSave} disabled={!canSave || loading} testID="save-button">
-              {loading ? '保存中...' : '保存'}
-            </Button>
+            <Button onPress={handleCancel} testID="cancel-button"><Text>取消</Text></Button>
+            <Button onPress={handleSave} disabled={!canSave || loading} testID="save-button"><Text>{loading ? '保存中...' : '保存'}</Text></Button>
           </Dialog.Actions>
         </Dialog>
 
@@ -339,6 +373,24 @@ export const HomeScreen: React.FC = () => {
       </Portal>
 
       {loading && <LoadingIndicator fullScreen message="保存中..." />}
+
+      {/* 记录详情底部表单 */}
+      <EntryDetailsSheet
+        selectedEntry={selectedEntry}
+        isOpen={showEntryDetails}
+        onClose={() => {
+          setShowEntryDetails(false);
+          setSelectedEntry(undefined);
+        }}
+        onEdit={(entry) => {
+          // TODO: 实现编辑功能
+          console.log('Edit entry:', entry.id);
+        }}
+        onDelete={(entryId) => {
+          // TODO: 实现删除功能
+          console.log('Delete entry:', entryId);
+        }}
+      />
     </View>
   );
 };

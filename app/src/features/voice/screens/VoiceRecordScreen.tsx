@@ -8,8 +8,8 @@ import {performanceMonitor} from '@services/telemetry/performance';
 import {RecordButton} from '../components/RecordButton';
 import {WaveformVisualizer} from '../components/WaveformVisualizer';
 import {TranscriptionProgress} from '../components/TranscriptionProgress';
-import {TranscriptEditor} from '../components/TranscriptEditor';
-import {AudioPlayer} from '../components/AudioPlayer';
+import TranscriptEditor from '../components/TranscriptEditor';
+import AudioPlayer from '../components/AudioPlayer';
 
 interface VoiceRecordScreenProps {
   onSave?: (data: VoiceRecordData) => void;
@@ -284,29 +284,20 @@ export const VoiceRecordScreen: React.FC<VoiceRecordScreenProps> = ({
         <View style={styles.buttonContainer}>
           {audioPath && !isTranscribing ? (
             <>
-              <Button
-                mode="outlined"
+              <Button mode="outlined"
                 onPress={handleCancel}
                 style={styles.button}
-                testID="cancel_button">
-                取消
-              </Button>
-              <Button
-                mode="contained"
+                testID="cancel_button"><Text>取消</Text></Button>
+              <Button mode="contained"
                 onPress={handleSave}
                 style={styles.button}
-                testID="save_button">
-                保存
-              </Button>
+                testID="save_button"><Text>保存</Text></Button>
             </>
           ) : (
-            <Button
-              mode="outlined"
+            <Button mode="outlined"
               onPress={handleCancel}
               style={styles.button}
-              testID="cancel_button">
-              取消
-            </Button>
+              testID="cancel_button"><Text>取消</Text></Button>
           )}
         </View>
       </View>

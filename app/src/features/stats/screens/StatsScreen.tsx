@@ -43,9 +43,7 @@ export const StatsScreen: React.FC = () => {
           <Text variant="bodyMedium" style={{color: theme.colors.error, marginBottom: 16}}>
             加载失败: {error}
           </Text>
-          <Button mode="contained" onPress={handleDismissError}>
-            关闭
-          </Button>
+          <Button mode="contained" onPress={handleDismissError}><Text>关闭</Text></Button>
         </View>
       )}
 
@@ -54,9 +52,7 @@ export const StatsScreen: React.FC = () => {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Text variant="headlineSmall">转录统计分析</Text>
-            <Button mode="outlined" onPress={handleRefresh} compact>
-              刷新
-            </Button>
+            <Button mode="outlined" onPress={handleRefresh} compact><Text>刷新</Text></Button>
           </View>
 
           {transcriptionStats.totalTranscribedEntries === 0 ? (
@@ -75,9 +71,7 @@ export const StatsScreen: React.FC = () => {
       {!loading && !error && !transcriptionStats && (
         <View style={styles.centerContainer}>
           <EmptyState icon="chart-box" title="暂无统计信息" message="加载统计信息失败，请重试" />
-          <Button mode="contained" onPress={handleRefresh} style={styles.retryButton}>
-            重试
-          </Button>
+          <Button mode="contained" onPress={handleRefresh} style={styles.retryButton}><Text>重试</Text></Button>
         </View>
       )}
     </View>

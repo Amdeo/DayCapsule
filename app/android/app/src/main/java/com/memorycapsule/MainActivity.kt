@@ -4,6 +4,7 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.oblador.vectoricons.VectorIconsPackage
 
 class MainActivity : ReactActivity() {
 
@@ -19,4 +20,11 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  /**
+   * Let React Native Vector Icons initialize properly
+   */
+  override fun onCreate(savedInstanceState: android.os.Bundle?) {
+    super.onCreate(savedInstanceState)
+  }
 }

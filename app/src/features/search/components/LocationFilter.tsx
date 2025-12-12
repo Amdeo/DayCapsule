@@ -64,31 +64,32 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
       />
 
       {/* 地点列表 */}
-      <FlatList
-        data={filteredLocations}
-        keyExtractor={item => item}
-        renderItem={({item}) => (
-          <TouchableOpacity
-            style={[
-              styles.location,
-              selectedLocation === item && styles.locationSelected,
-            ]}
-            onPress={() => handleToggleLocation(item)}
-          >
-            <Text style={styles.locationIcon}>📍</Text>
-            <Text
+      <View style={{maxHeight: 300}}>
+        <FlatList
+          data={filteredLocations}
+          keyExtractor={item => item}
+          renderItem={({item}) => (
+            <TouchableOpacity
               style={[
-                styles.locationText,
-                selectedLocation === item && styles.locationTextSelected,
+                styles.location,
+                selectedLocation === item && styles.locationSelected,
               ]}
+              onPress={() => handleToggleLocation(item)}
             >
-              {item}
-            </Text>
-          </TouchableOpacity>
-        )}
-        scrollEnabled={false}
-        maxHeight={300}
-      />
+              <Text style={styles.locationIcon}>📍</Text>
+              <Text
+                style={[
+                  styles.locationText,
+                  selectedLocation === item && styles.locationTextSelected,
+                ]}
+              >
+                {item}
+              </Text>
+            </TouchableOpacity>
+          )}
+          scrollEnabled={true}
+        />
+      </View>
 
       {filteredLocations.length === 0 && (
         <Text style={styles.emptyText}>

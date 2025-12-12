@@ -18,6 +18,8 @@ describe('Reminders Integration Tests', () => {
       const entryId = await databaseService.insertEntry({
         type: 'text',
         content: '一年前的记录',
+        timestamp: oneYearAgo.getTime(),
+        tags: [],
         createdAt: oneYearAgo.getTime(),
         updatedAt: oneYearAgo.getTime(),
       });
@@ -38,6 +40,8 @@ describe('Reminders Integration Tests', () => {
       await databaseService.insertEntry({
         type: 'text',
         content: '一年前的今天',
+        timestamp: oneYearAgo.getTime(),
+        tags: [],
         createdAt: oneYearAgo.getTime(),
         updatedAt: oneYearAgo.getTime(),
       });
@@ -48,6 +52,8 @@ describe('Reminders Integration Tests', () => {
       await databaseService.insertEntry({
         type: 'text',
         content: '一年前的明天',
+        timestamp: differentDay.getTime(),
+        tags: [],
         createdAt: differentDay.getTime(),
         updatedAt: differentDay.getTime(),
       });
@@ -64,6 +70,8 @@ describe('Reminders Integration Tests', () => {
       await databaseService.insertEntry({
         type: 'text',
         content: '两年前的记录',
+        timestamp: twoYearsAgo.getTime(),
+        tags: [],
         createdAt: twoYearsAgo.getTime(),
         updatedAt: twoYearsAgo.getTime(),
       });
@@ -82,6 +90,8 @@ describe('Reminders Integration Tests', () => {
         await databaseService.insertEntry({
           type: 'text',
           content: `${i} 年前的记录`,
+          timestamp: pastDate.getTime(),
+          tags: [],
           createdAt: pastDate.getTime(),
           updatedAt: pastDate.getTime(),
         });

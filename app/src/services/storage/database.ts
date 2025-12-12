@@ -28,8 +28,22 @@ export interface LifelogEntry {
     temperature: number;
     condition: string;
   };
+  mood?: string; // Add mood property
   createdAt: number;
   updatedAt: number;
+}
+
+export interface EntryFilter {
+  query?: string;
+  type?: 'photo' | 'text' | 'voice';
+  startDate?: number;
+  endDate?: number;
+  tags?: string[];
+  mood?: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: 'timestamp' | 'createdAt' | 'updatedAt';
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 class DatabaseService {
@@ -52,6 +66,13 @@ class DatabaseService {
       console.error('Failed to initialize database:', error);
       throw error;
     }
+  }
+
+  /**
+   * 获取数据库实例（用于特殊查询）
+   */
+  getDatabase(): SQLiteDatabase | null {
+    return this.db;
   }
 
   private async createTables(): Promise<void> {
@@ -96,6 +117,25 @@ class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_type ON lifelog_entries(type)
     `);
 
+    // 创建 tags 表
+    await this.db.executeSql(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE
+      )
+    `);
+
+    // 创建 entry_tags 关联表
+    await this.db.executeSql(`
+      CREATE TABLE IF NOT EXISTS entry_tags (
+        entry_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        PRIMARY KEY (entry_id, tag_id),
+        FOREIGN KEY (entry_id) REFERENCES lifelog_entries(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      )
+    `);
+
     // 创建 FTS5 全文搜索表
     await this.db.executeSql(`
       CREATE VIRTUAL TABLE IF NOT EXISTS lifelog_fts USING fts5(
@@ -104,6 +144,19 @@ class DatabaseService {
         transcription,
         tags,
         location_address
+      )
+    `);
+
+    // 创建 media_attachments 表
+    await this.db.executeSql(`
+      CREATE TABLE IF NOT EXISTS media_attachments (
+        id TEXT PRIMARY KEY,
+        entry_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_type TEXT NOT NULL,
+        thumbnail_path TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (entry_id) REFERENCES lifelog_entries(id) ON DELETE CASCADE
       )
     `);
 
@@ -127,9 +180,9 @@ class DatabaseService {
         location_latitude, location_longitude, location_address,
         tags, media_path, thumbnail_path,
         voice_duration, transcription, transcription_language, transcription_confidence,
-        weather_temperature, weather_condition,
+        weather_temperature, weather_condition, mood,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         entry.type,
@@ -147,6 +200,7 @@ class DatabaseService {
         entry.transcriptionConfidence || null,
         entry.weather?.temperature || null,
         entry.weather?.condition || null,
+        entry.mood || null,
         now,
         now,
       ],
@@ -167,6 +221,177 @@ class DatabaseService {
 
     return id;
   }
+
+
+  async insertMediaAttachment(attachment: {
+    entryId: string;
+    filePath: string;
+    fileType: string;
+    thumbnailPath?: string;
+  }): Promise<string> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    const id = `media_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    await this.db.executeSql(
+      `INSERT INTO media_attachments (id, entry_id, file_path, file_type, thumbnail_path, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        attachment.entryId,
+        attachment.filePath,
+        attachment.fileType,
+        attachment.thumbnailPath || null,
+        now,
+      ],
+    );
+    return id;
+  }
+
+  async queryEntries(filter: EntryFilter = {}): Promise<LifelogEntry[]> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    let query = 'SELECT * FROM lifelog_entries';
+    const params: (string | number)[] = [];
+    const conditions: string[] = [];
+
+    if (filter.type) {
+      conditions.push('type = ?');
+      params.push(filter.type);
+    }
+    if (filter.startDate) {
+      conditions.push('timestamp >= ?');
+      params.push(filter.startDate);
+    }
+    if (filter.endDate) {
+      conditions.push('timestamp <= ?');
+      params.push(filter.endDate);
+    }
+    if (filter.mood) {
+      conditions.push('mood = ?');
+      params.push(filter.mood);
+    }
+
+    if (filter.query) {
+      // For full-text search, we join with FTS table
+      query = `SELECT e.* FROM lifelog_entries e INNER JOIN lifelog_fts f ON e.id = f.id`;
+      conditions.push('f.content MATCH ? OR f.transcription MATCH ? OR f.tags MATCH ? OR f.location_address MATCH ?');
+      params.push(`*${filter.query}*`, `*${filter.query}*`, `*${filter.query}*`, `*${filter.query}*`);
+    }
+
+    if (filter.tags && filter.tags.length > 0) {
+      const tagConditions = filter.tags.map(tag => `tags LIKE ?`);
+      conditions.push(`(${tagConditions.join(' OR ')})`);
+      filter.tags.forEach(tag => params.push(`%${tag}%`));
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    const sortBy = filter.sortBy || 'timestamp';
+    const sortOrder = filter.sortOrder || 'DESC';
+    query += ` ORDER BY ${sortBy} ${sortOrder}`;
+
+    if (filter.limit) {
+      query += ' LIMIT ?';
+      params.push(filter.limit);
+    }
+    if (filter.offset) {
+      query += ' OFFSET ?';
+      params.push(filter.offset);
+    }
+
+    const [results] = await this.db.executeSql(query, params);
+    return this.parseEntries(results.rows);
+  }
+
+  async countEntries(filter: EntryFilter = {}): Promise<number> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    let query = 'SELECT COUNT(e.id) AS count FROM lifelog_entries e';
+    const params: (string | number)[] = [];
+    const conditions: string[] = [];
+
+    if (filter.type) {
+      conditions.push('type = ?');
+      params.push(filter.type);
+    }
+    if (filter.startDate) {
+      conditions.push('timestamp >= ?');
+      params.push(filter.startDate);
+    }
+    if (filter.endDate) {
+      conditions.push('timestamp <= ?');
+      params.push(filter.endDate);
+    }
+    if (filter.mood) {
+      conditions.push('mood = ?');
+      params.push(filter.mood);
+    }
+
+    if (filter.query) {
+      query = `SELECT COUNT(e.id) AS count FROM lifelog_entries e INNER JOIN lifelog_fts f ON e.id = f.id`;
+      conditions.push('f.content MATCH ? OR f.transcription MATCH ? OR f.tags MATCH ? OR f.location_address MATCH ?');
+      params.push(`*${filter.query}*`, `*${filter.query}*`, `*${filter.query}*`, `*${filter.query}*`);
+    }
+
+    if (filter.tags && filter.tags.length > 0) {
+      const tagConditions = filter.tags.map(tag => `tags LIKE ?`);
+      conditions.push(`(${tagConditions.join(' OR ')})`);
+      filter.tags.forEach(tag => params.push(`%${tag}%`));
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    const [results] = await this.db.executeSql(query, params);
+    return results.rows.item(0).count;
+  }
+
+  async getTagId(tagName: string): Promise<string | undefined> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    const [results] = await this.db.executeSql(
+      'SELECT id FROM tags WHERE name = ?',
+      [tagName],
+    );
+    if (results.rows.length > 0) {
+      return results.rows.item(0).id;
+    }
+    return undefined;
+  }
+
+  async insertTag(tag: {id: string; name: string}): Promise<string> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    await this.db.executeSql('INSERT INTO tags (id, name) VALUES (?, ?)', [
+      tag.id,
+      tag.name,
+    ]);
+    return tag.id;
+  }
+
+  async insertEntryTag(entryTag: {entryId: string; tagId: string}): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    await this.db.executeSql('INSERT INTO entry_tags (entry_id, tag_id) VALUES (?, ?)', [
+      entryTag.entryId,
+      entryTag.tagId,
+    ]);
+  }
+
+
+
 
   async getEntries(limit: number = 50, offset: number = 0): Promise<LifelogEntry[]> {
     if (!this.db) {
@@ -219,8 +444,22 @@ class DatabaseService {
     }
 
     await this.db.executeSql('DELETE FROM lifelog_entries WHERE id = ?', [id]);
-    await this.db.executeSql('DELETE FROM lifelog_fts WHERE id = ?', [id]);
   }
+
+  async getEntry(id: string): Promise<LifelogEntry | null> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    const [results] = await this.db.executeSql(
+      'SELECT * FROM lifelog_entries WHERE id = ?',
+      [id],
+    );
+    if (results.rows.length > 0) {
+      return this.parseEntries(results.rows).pop() || null;
+    }
+    return null;
+  }
+
 
   async updateEntry(entry: LifelogEntry): Promise<void> {
     if (!this.db) {
@@ -316,6 +555,15 @@ class DatabaseService {
       this.db = null;
       console.log('Database closed');
     }
+  }
+
+  async clearTestData(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    await this.db.executeSql('DELETE FROM lifelog_entries');
+    await this.db.executeSql('DELETE FROM lifelog_fts');
+    // Assuming other test data related tables are also cleared here if needed
   }
 }
 

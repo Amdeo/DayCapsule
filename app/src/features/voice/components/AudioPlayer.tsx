@@ -1,296 +1,151 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {View, StyleSheet, Slider} from 'react-native';
-import {Button, Text, IconButton} from 'react-native-paper';
-import {NativeModules} from 'react-native';
-
-const {AudioPlayerModule} = NativeModules;
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { IconButton, useTheme, ProgressBar, Button } from 'react-native-paper'; // Imported Button
+import { MD3Theme } from 'react-native-paper/lib/typescript/types';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { logger } from '../../../../services/telemetry/logger';
 
 interface AudioPlayerProps {
   audioPath: string;
-  isPlaying: boolean;
-  onPlayingChange: (isPlaying: boolean) => void;
   testID?: string;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({
-  audioPath,
-  isPlaying,
-  onPlayingChange,
-  testID,
-}) => {
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
+const audioRecorderPlayer = new AudioRecorderPlayer();
+
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioPath, testID }) => {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [trackDuration, setTrackDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const updateInterval = useRef<NodeJS.Timeout>();
 
-  // 初始化播放器
+  const playerInterval = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    const initPlayer = async () => {
-      try {
-        setIsLoading(true);
-        const audioInfo = await AudioPlayerModule.prepare({
-          path: audioPath,
-        });
-        setDuration(audioInfo.duration);
-        setCurrentTime(0);
-      } catch (err) {
-        setError('无法加载音频文件');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initPlayer();
-
     return () => {
-      if (updateInterval.current) {
-        clearInterval(updateInterval.current);
+      // Cleanup on unmount
+      if (playerInterval.current) {
+        clearInterval(playerInterval.current);
       }
+      audioRecorderPlayer.stopPlayer();
+      audioRecorderPlayer.removePlayBackListener();
     };
-  }, [audioPath]);
+  }, []);
 
-  // 更新播放进度
-  useEffect(() => {
-    if (isPlaying) {
-      updateInterval.current = setInterval(async () => {
-        try {
-          const currentPos = await AudioPlayerModule.getCurrentPosition();
-          setCurrentTime(currentPos);
-
-          // 检查是否播放完成
-          if (currentPos >= duration) {
-            await handleStop();
+  const onStartPlay = async () => {
+    if (!audioPath) {
+      setError("没有找到音频文件");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      logger.info('Starting audio playback', { audioPath });
+      const msg = await audioRecorderPlayer.startPlayer(audioPath);
+      audioRecorderPlayer.setVolume(1.0); // TODO: Adjust volume
+      
+      setIsPlaying(true);
+      setIsLoading(false);
+      
+      playerInterval.current = setInterval(() => {
+        audioRecorderPlayer.addPlayBackListener((e: any) => {
+          setCurrentPosition(e.currentPosition);
+          setTrackDuration(e.duration);
+          if (e.currentPosition === e.duration) {
+            // End of playback
+            onStopPlay();
           }
-        } catch (err) {
-          // 忽略错误
-        }
-      }, 100);
-    } else {
-      if (updateInterval.current) {
-        clearInterval(updateInterval.current);
-      }
-    }
+        });
+      }, 100); // Update every 100ms
 
-    return () => {
-      if (updateInterval.current) {
-        clearInterval(updateInterval.current);
-      }
-    };
-  }, [isPlaying, duration]);
-
-  const handlePlay = async () => {
-    try {
-      setError(null);
-      await AudioPlayerModule.play();
-      onPlayingChange(true);
-    } catch (err) {
-      setError('播放失败');
+      logger.info('Audio playback started', { msg });
+    } catch (e: any) {
+      logger.error('Failed to start audio playback', { error: e.message, audioPath });
+      setError("播放失败: " + e.message);
+      setIsLoading(false);
     }
   };
 
-  const handlePause = async () => {
+  const onStopPlay = async () => {
     try {
-      await AudioPlayerModule.pause();
-      onPlayingChange(false);
-    } catch (err) {
-      setError('暂停失败');
+      logger.info('Stopping audio playback', { audioPath });
+      await audioRecorderPlayer.stopPlayer();
+      audioRecorderPlayer.removePlayBackListener();
+      setIsPlaying(false);
+      setCurrentPosition(0);
+      setTrackDuration(0);
+      logger.info('Audio playback stopped');
+    } catch (e: any) {
+      logger.error('Failed to stop audio playback', { error: e.message, audioPath });
+      setError("停止播放失败: " + e.message);
     }
   };
 
-  const handleStop = async () => {
-    try {
-      await AudioPlayerModule.stop();
-      setCurrentTime(0);
-      onPlayingChange(false);
-    } catch (err) {
-      setError('停止失败');
-    }
-  };
-
-  const handleSeek = async (value: number) => {
-    try {
-      await AudioPlayerModule.seek(value);
-      setCurrentTime(value);
-    } catch (err) {
-      setError('跳转失败');
-    }
-  };
-
-  const formatTime = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const formatTime = (ms: number) => {
+    const sec = Math.floor(ms / 1000);
+    const min = Math.floor(sec / 60);
+    const remainingSec = sec % 60;
+    return `${min}:${remainingSec < 10 ? '0' : ''}${remainingSec}`;
   };
 
   return (
-    <View style={styles.container} testID={testID || 'audio_player'}>
-      {/* 标题 */}
-      <Text style={styles.title}>音频回放</Text>
-
-      {/* 错误提示 */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* 加载状态 */}
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>加载中...</Text>
-        </View>
-      )}
-
-      {/* 播放控制 */}
-      <View style={styles.controlsContainer}>
-        {isPlaying ? (
-          <>
-            <IconButton
-              icon="pause"
-              size={32}
-              onPress={handlePause}
-              testID="pause_button"
-            />
-            <Text style={styles.controlLabel}>暂停</Text>
-          </>
-        ) : (
-          <>
-            <IconButton
-              icon="play"
-              size={32}
-              onPress={handlePlay}
-              testID="play_button"
-            />
-            <Text style={styles.controlLabel}>播放</Text>
-          </>
-        )}
-
+    <View style={styles.container} testID={testID}>
+      {error && <Text style={styles.errorText}>错误: {error}</Text>}
+      <View style={styles.controls}>
         <IconButton
-          icon="stop"
-          size={32}
-          onPress={handleStop}
-          testID="stop_button"
+          icon={isPlaying ? "pause-circle" : "play-circle"}
+          size={40}
+          color={theme.colors.primary}
+          onPress={isPlaying ? onStopPlay : onStartPlay}
+          disabled={isLoading || !audioPath}
         />
-        <Text style={styles.controlLabel}>停止</Text>
-      </View>
-
-      {/* 进度条 */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={duration}
-          value={currentTime}
-          onValueChange={handleSeek}
-          disabled={isLoading}
-        />
-        <Text style={styles.timeText}>{formatTime(duration)}</Text>
-      </View>
-
-      {/* 播放速度控制 */}
-      <View style={styles.speedContainer}>
-        <Text style={styles.speedLabel}>播放速度</Text>
-        <View style={styles.speedButtons}>
-          {[0.75, 1, 1.25, 1.5].map(speed => (
-            <Button
-              key={speed}
-              mode="outlined"
-              compact
-              onPress={async () => {
-                try {
-                  await AudioPlayerModule.setPlaybackRate(speed);
-                } catch (err) {
-                  setError('设置播放速度失败');
-                }
-              }}
-              style={styles.speedButton}>
-              {speed}x
-            </Button>
-          ))}
+        <View style={styles.progressContainer}>
+          <ProgressBar progress={trackDuration > 0 ? currentPosition / trackDuration : 0} color={theme.colors.primary} style={styles.progressBar} />
+          <View style={styles.timeContainer}>
+            <Text style={styles.timeText}>{formatTime(currentPosition)}</Text>
+            <Text style={styles.timeText}>{formatTime(trackDuration)}</Text>
+          </View>
         </View>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: MD3Theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#f5f5f5',
+    padding: 10,
+    backgroundColor: theme.colors.surfaceVariant,
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    marginVertical: 10,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#333',
-  },
-  errorContainer: {
-    backgroundColor: '#ffebee',
-    padding: 8,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  errorText: {
-    color: '#c62828',
-    fontSize: 12,
-  },
-  loadingContainer: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  controlsContainer: {
+  controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  controlLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginRight: 16,
   },
   progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  slider: {
     flex: 1,
-    height: 4,
+    marginLeft: 10,
+  },
+  progressBar: {
+    height: 5,
+    borderRadius: 5,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
   },
   timeText: {
     fontSize: 12,
-    color: '#666',
-    minWidth: 40,
+    color: theme.colors.onSurfaceVariant,
   },
-  speedContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  speedLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  speedButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  speedButton: {
-    flex: 1,
-  },
+  errorText: {
+    color: theme.colors.error,
+    marginBottom: 5,
+  }
 });
 
+export default AudioPlayer;

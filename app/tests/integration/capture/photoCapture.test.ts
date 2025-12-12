@@ -161,9 +161,11 @@ describe('Photo Capture Integration Tests', () => {
         content: testContent,
         timestamp: Date.now(),
         mediaPath: '/tmp/photo.jpg',
-        location_latitude: testLocation.latitude,
-        location_longitude: testLocation.longitude,
-        location_address: testLocation.address,
+        location: {
+          latitude: testLocation.latitude,
+          longitude: testLocation.longitude,
+          address: testLocation.address,
+        },
         tags: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -172,9 +174,9 @@ describe('Photo Capture Integration Tests', () => {
       const entryId = await databaseService.insertEntry(mockPhotoData);
       const savedEntry = await databaseService.getEntry(entryId);
 
-      expect(savedEntry?.location_latitude).toBe(testLocation.latitude);
-      expect(savedEntry?.location_longitude).toBe(testLocation.longitude);
-      expect(savedEntry?.location_address).toBe(testLocation.address);
+      expect(savedEntry?.location?.latitude).toBe(testLocation.latitude);
+      expect(savedEntry?.location?.longitude).toBe(testLocation.longitude);
+      expect(savedEntry?.location?.address).toBe(testLocation.address);
     });
 
     it('应该在 2 秒内完成拍照保存流程', async () => {

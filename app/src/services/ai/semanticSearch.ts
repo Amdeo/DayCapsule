@@ -1,5 +1,5 @@
 import {logger} from '@services/telemetry/logger';
-import {database} from '@services/storage/database';
+import {databaseService} from '@services/storage/database';
 
 export interface SemanticSearchResult {
   id: string;
@@ -55,8 +55,7 @@ class SemanticSearchService {
       const queryVector = await this.generateEmbedding(query);
 
       // 获取所有记录
-      const sql = `SELECT id, content, type, tags, createdAt FROM entries`;
-      const results = await database.executeSql(sql, []);
+      const entries = await databaseService.queryEntries({sortBy: 'createdAt', sortOrder: 'ASC'});
 
       const similarities: Array<{
         id: string;
@@ -68,16 +67,16 @@ class SemanticSearchService {
       }> = [];
 
       // 计算相似度
-      for (const row of results.rows.raw()) {
-        const contentVector = await this.generateEmbedding(row.content);
+      for (const entry of entries) {
+        const contentVector = await this.generateEmbedding(entry.content);
         const similarity = this.cosineSimilarity(queryVector, contentVector);
 
         similarities.push({
-          id: row.id,
-          content: row.content,
-          type: row.type,
-          tags: JSON.parse(row.tags || '[]'),
-          createdAt: row.createdAt,
+          id: entry.id,
+          content: entry.content,
+          type: entry.type,
+          tags: entry.tags,
+          createdAt: entry.createdAt,
           similarity,
         });
       }
@@ -158,14 +157,13 @@ class SemanticSearchService {
   async findSimilarEntries(entryId: string, topK: number = 5): Promise<SemanticSearchResult[]> {
     try {
       // 获取目标记录
-      const sql = `SELECT content FROM entries WHERE id = ?`;
-      const results = await database.executeSql(sql, [entryId]);
+      const targetEntry = await databaseService.getEntry(entryId);
 
-      if (results.rows.length === 0) {
+      if (!targetEntry) {
         return [];
       }
 
-      const targetContent = results.rows.item(0).content;
+      const targetContent = targetEntry.content;
 
       // 语义搜索
       const similarEntries = await this.semanticSearch(targetContent, topK + 1);
@@ -183,10 +181,7 @@ class SemanticSearchService {
    */
   async clusterSimilarEntries(threshold: number = 0.7): Promise<Array<string[]>> {
     try {
-      const sql = `SELECT id, content FROM entries`;
-      const results = await database.executeSql(sql, []);
-
-      const entries = results.rows.raw();
+      const entries = await databaseService.queryEntries();
       const clusters: Array<string[]> = [];
       const visited = new Set<string>();
 
@@ -231,14 +226,13 @@ class SemanticSearchService {
    */
   async generateSemanticTags(entryId: string): Promise<string[]> {
     try {
-      const sql = `SELECT content FROM entries WHERE id = ?`;
-      const results = await database.executeSql(sql, [entryId]);
+      const entry = await databaseService.getEntry(entryId);
 
-      if (results.rows.length === 0) {
+      if (!entry) {
         return [];
       }
 
-      const content = results.rows.item(0).content;
+      const content = entry.content;
       const tokens = this.tokenize(content);
 
       // 提取关键词作为语义标签
@@ -256,22 +250,15 @@ class SemanticSearchService {
    */
   private async fullTextSearch(query: string, topK: number): Promise<SemanticSearchResult[]> {
     try {
-      const sql = `
-        SELECT id, content, type, tags, createdAt, rank as similarity
-        FROM entries_fts
-        WHERE entries_fts MATCH ?
-        ORDER BY rank DESC
-        LIMIT ?
-      `;
-      const results = await database.executeSql(sql, [query, topK]);
+      const entries = await databaseService.queryEntries({query, limit: topK});
 
-      return results.rows.raw().map(row => ({
-        id: row.id,
-        content: row.content,
-        type: row.type,
-        similarity: Math.abs(row.similarity) / 100, // 归一化
-        tags: JSON.parse(row.tags || '[]'),
-        createdAt: row.createdAt,
+      return entries.map(entry => ({
+        id: entry.id,
+        content: entry.content,
+        type: entry.type,
+        similarity: 1, // Full text search provides no explicit similarity, set to 1 for simplicity
+        tags: entry.tags || [],
+        createdAt: entry.createdAt,
       }));
     } catch (error) {
       logger.error('Full text search failed', {error});

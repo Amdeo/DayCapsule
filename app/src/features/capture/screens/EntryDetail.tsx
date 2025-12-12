@@ -15,7 +15,7 @@ import {useDispatch} from 'react-redux';
 import type {LifelogEntry} from '@services/storage/database';
 import {databaseService} from '@services/storage/database';
 import {fileSystemService} from '@services/storage/fileSystem';
-import {TagInput} from '../components/TagInput';
+import TagInput from '../components/TagInput';
 import {MoodSelector, Mood} from '../components/MoodSelector';
 import {TranscriptionEditor} from '../components/TranscriptionEditor';
 import {TranscriptionProgress} from '../components/TranscriptionProgress';
@@ -218,7 +218,7 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
               disabled={isTranscribing}
               style={styles.retranscribeButton}
               testID="retranscribe-button">
-              重新转录
+              <Text>重新转录</Text>
             </Button>
           </>
         )}
@@ -249,7 +249,7 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
                     onPress={() => setShowTranscriptionEditor(true)}
                     compact
                     testID="edit-transcription-button">
-                    编辑
+                    <Text>编辑</Text>
                   </Button>
                 )}
               </View>
@@ -276,7 +276,7 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
             <View style={styles.tagsContainer}>
               {entry.tags.map(tag => (
                 <Chip key={tag} mode="flat" style={styles.tag}>
-                  {tag}
+                  <Text>{tag}</Text>
                 </Chip>
               ))}
             </View>
@@ -340,18 +340,14 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
       <View style={[styles.footer, {borderTopColor: theme.colors.outlineVariant}]}>
         {isEditing ? (
           <>
-            <Button mode="outlined" onPress={() => setIsEditing(false)} style={styles.button}>
-              取消
-            </Button>
+            <Button mode="outlined" onPress={() => setIsEditing(false)} style={styles.button}><Text>取消</Text></Button>
             <Button
               mode="contained"
               onPress={handleSave}
               loading={isSaving}
               disabled={isSaving}
               style={styles.button}
-              testID="save-button">
-              保存
-            </Button>
+              testID="save-button"><Text>保存</Text></Button>
           </>
         ) : (
           <>
@@ -360,18 +356,14 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
               icon="pencil"
               onPress={() => setIsEditing(true)}
               style={styles.button}
-              testID="edit-button">
-              编辑
-            </Button>
+              testID="edit-button"><Text>编辑</Text></Button>
             <Button
               mode="contained"
               icon="delete"
               buttonColor={theme.colors.error}
               onPress={() => setShowDeleteDialog(true)}
               style={styles.button}
-              testID="delete-button">
-              删除
-            </Button>
+              testID="delete-button"><Text>删除</Text></Button>
           </>
         )}
       </View>
@@ -387,13 +379,12 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({entry, onClose, onUpdat
             <Text>确定要删除这条记录吗？此操作无法撤销。</Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowDeleteDialog(false)}>取消</Button>
+            <Button onPress={() => setShowDeleteDialog(false)}><Text>取消</Text></Button>
             <Button
+              mode="text"
               textColor={theme.colors.error}
               onPress={handleDelete}
-              testID="confirm-delete-button">
-              删除
-            </Button>
+              testID="confirm-delete-button"><Text>删除</Text></Button>
           </Dialog.Actions>
         </Dialog>
 

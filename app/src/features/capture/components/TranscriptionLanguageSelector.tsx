@@ -79,16 +79,11 @@ export const TranscriptionLanguageSelector: React.FC<TranscriptionLanguageSelect
       </Dialog.ScrollArea>
 
       <Dialog.Actions style={styles.actions}>
-        <Button mode="text" onPress={handleCancel} testID={`${testID}-cancel-button`}>
-          取消
-        </Button>
-        <Button
-          mode="contained"
+        <Button mode="text" onPress={handleCancel} testID={`${testID}-cancel-button`}><Text>取消</Text></Button>
+        <Button mode="contained"
           onPress={handleConfirm}
           testID={`${testID}-confirm-button`}
-          disabled={tempLanguage === selectedLanguage}>
-          确认
-        </Button>
+          disabled={tempLanguage === selectedLanguage}><Text>确认</Text></Button>
       </Dialog.Actions>
     </Dialog>
   );

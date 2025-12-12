@@ -56,6 +56,8 @@ class Timeline10kPerformanceTest {
       await databaseService.insertEntry({
         type: i % 3 === 0 ? 'photo' : i % 3 === 1 ? 'text' : 'voice',
         content: `Test entry ${i}`,
+        timestamp: entryDate.getTime(), // Add timestamp
+        tags: ['performance'], // Add tags
         createdAt: entryDate.getTime(),
         updatedAt: entryDate.getTime(),
       });
@@ -66,8 +68,8 @@ class Timeline10kPerformanceTest {
     }
 
     performanceMonitor.endMeasure('data_generation');
-    const duration = performanceMonitor.getMeasure('data_generation');
-    logger.info('Data generation completed', {duration});
+    const metric = performanceMonitor.getMeasure('data_generation');
+    logger.info('Data generation completed', {duration: metric?.duration});
   }
 
   private async testDayViewPerformance(): Promise<void> {
@@ -78,7 +80,8 @@ class Timeline10kPerformanceTest {
     const entries = await entryQueries.getEntriesByDay(today);
 
     performanceMonitor.endMeasure('day_view_10k');
-    const duration = performanceMonitor.getMeasure('day_view_10k');
+    const metric = performanceMonitor.getMeasure('day_view_10k');
+    const duration = metric?.duration || 0;
 
     const result: PerformanceResult = {
       operation: 'Day View',
@@ -103,7 +106,8 @@ class Timeline10kPerformanceTest {
     const entries = await entryQueries.getEntriesByWeek(weekStart);
 
     performanceMonitor.endMeasure('week_view_10k');
-    const duration = performanceMonitor.getMeasure('week_view_10k');
+    const metric = performanceMonitor.getMeasure('week_view_10k');
+    const duration = metric?.duration || 0;
 
     const result: PerformanceResult = {
       operation: 'Week View',
@@ -125,7 +129,8 @@ class Timeline10kPerformanceTest {
     const entries = await entryQueries.getEntriesByMonth(today);
 
     performanceMonitor.endMeasure('month_view_10k');
-    const duration = performanceMonitor.getMeasure('month_view_10k');
+    const metric = performanceMonitor.getMeasure('month_view_10k');
+    const duration = metric?.duration || 0;
 
     const result: PerformanceResult = {
       operation: 'Month View',
@@ -147,7 +152,8 @@ class Timeline10kPerformanceTest {
     const entries = await entryQueries.getEntriesByYear(today);
 
     performanceMonitor.endMeasure('year_view_10k');
-    const duration = performanceMonitor.getMeasure('year_view_10k');
+    const metric = performanceMonitor.getMeasure('year_view_10k');
+    const duration = metric?.duration || 0;
 
     const result: PerformanceResult = {
       operation: 'Year View',
@@ -186,7 +192,8 @@ class Timeline10kPerformanceTest {
       }
 
       performanceMonitor.endMeasure(`switch_${fromView}_to_${toView}`);
-      const duration = performanceMonitor.getMeasure(`switch_${fromView}_to_${toView}`);
+      const metric = performanceMonitor.getMeasure(`switch_${fromView}_to_${toView}`);
+      const duration = metric?.duration || 0;
 
       const result: PerformanceResult = {
         operation: `Switch ${fromView} to ${toView}`,
@@ -217,7 +224,8 @@ class Timeline10kPerformanceTest {
     }
 
     performanceMonitor.endMeasure('scrolling_performance');
-    const duration = performanceMonitor.getMeasure('scrolling_performance');
+    const metric = performanceMonitor.getMeasure('scrolling_performance');
+    const duration = metric?.duration || 0;
 
     const result: PerformanceResult = {
       operation: 'Scrolling (100 iterations)',

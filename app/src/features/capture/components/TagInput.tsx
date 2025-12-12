@@ -1,161 +1,89 @@
-import React, {useState} from 'react';
-import {View, StyleSheet, ScrollView} from 'react-native';
-import {TextInput, Chip, Text, useTheme} from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Chip, TextInput, useTheme } from 'react-native-paper';
+import { MD3Theme } from 'react-native-paper/lib/typescript/types';
 
 interface TagInputProps {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   suggestions?: string[];
-  placeholder?: string;
   maxTags?: number;
+  placeholder?: string;
+  testID?: string; // Add testID prop
 }
 
-export const TagInput: React.FC<TagInputProps> = ({
+const TagInput: React.FC<TagInputProps> = ({
   tags,
   onTagsChange,
   suggestions = [],
+  maxTags,
   placeholder = '添加标签...',
-  maxTags = 10,
+  testID
 }) => {
   const theme = useTheme();
-  const [inputValue, setInputValue] = useState('');
+  const styles = getStyles(theme);
+  const [text, setText] = useState('');
 
-  const handleAddTag = (tag: string) => {
-    const trimmedTag = tag.trim();
-    if (!trimmedTag) {
-      return;
+  const handleAddTag = () => {
+    const trimmed = text.trim();
+    if (trimmed.length > 0 && !tags.includes(trimmed) && (!maxTags || tags.length < maxTags)) {
+      onTagsChange([...tags, trimmed]);
+      setText('');
     }
-
-    if (tags.length >= maxTags) {
-      return;
-    }
-
-    if (!tags.includes(trimmedTag)) {
-      onTagsChange([...tags, trimmedTag]);
-    }
-
-    setInputValue('');
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
     onTagsChange(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleSubmitEditing = () => {
-    if (inputValue.trim()) {
-      handleAddTag(inputValue);
-    }
-  };
-
-  const filteredSuggestions = suggestions.filter(
-    suggestion =>
-      !tags.includes(suggestion) && suggestion.toLowerCase().includes(inputValue.toLowerCase()),
-  );
-
   return (
-    <View style={styles.container} testID="tag-input-container">
+    <View style={styles.container}>
+      <View style={styles.chipContainer}>
+        {tags.map(tag => (
+          <Chip
+            key={tag}
+            onClose={() => handleRemoveTag(tag)}
+            style={styles.chip}
+            textStyle={styles.chipText}
+          >
+            <Text>{tag}</Text>
+          </Chip>
+        ))}
+      </View>
       <TextInput
-        mode="outlined"
-        label="标签"
+        testID={testID} // Apply testID
+        value={text}
+        onChangeText={setText}
+        onSubmitEditing={handleAddTag}
         placeholder={placeholder}
-        value={inputValue}
-        onChangeText={setInputValue}
-        onSubmitEditing={handleSubmitEditing}
-        returnKeyType="done"
+        mode="outlined"
         style={styles.input}
-        testID="tag-input"
-        right={
-          <TextInput.Affix
-            text={`${tags.length}/${maxTags}`}
-            textStyle={{color: theme.colors.onSurfaceVariant}}
-          />
-        }
+        right={<TextInput.Icon icon="plus" onPress={handleAddTag} testID={`${testID}-add-button`} />} // Add testID
       />
-
-      {/* 已添加的标签 */}
-      {tags.length > 0 && (
-        <View style={styles.tagsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {tags.map(tag => (
-              <Chip
-                key={tag}
-                mode="flat"
-                onClose={() => handleRemoveTag(tag)}
-                style={styles.tag}
-                textStyle={styles.tagText}
-                testID={`tag-delete-${tag}`}>
-                {tag}
-              </Chip>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 标签建议 */}
-      {filteredSuggestions.length > 0 && inputValue.length > 0 && (
-        <View style={styles.suggestionsContainer} testID="tag-suggestions">
-          <Text
-            variant="labelSmall"
-            style={[styles.suggestionsLabel, {color: theme.colors.onSurfaceVariant}]}>
-            建议标签
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filteredSuggestions.slice(0, 5).map(suggestion => (
-              <Chip
-                key={suggestion}
-                mode="outlined"
-                onPress={() => handleAddTag(suggestion)}
-                style={styles.suggestionChip}
-                testID={`tag-suggestion-${suggestion}`}>
-                {suggestion}
-              </Chip>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 添加标签按钮 */}
-      {inputValue.trim().length > 0 && (
-        <Chip
-          mode="outlined"
-          onPress={() => handleAddTag(inputValue)}
-          style={styles.addButton}
-          testID="tag-add-button">
-          添加标签
-        </Chip>
-      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: MD3Theme) => StyleSheet.create({
   container: {
     marginVertical: 8,
   },
-  input: {
-    backgroundColor: 'transparent',
-  },
-  tagsContainer: {
-    marginTop: 8,
-  },
-  tag: {
-    marginRight: 8,
-  },
-  tagText: {
-    fontSize: 14,
-  },
-  suggestionsContainer: {
-    marginTop: 12,
-  },
-  suggestionsLabel: {
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginBottom: 8,
-    marginLeft: 4,
   },
-  suggestionChip: {
+  chip: {
     marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: theme.colors.secondaryContainer,
   },
-  addButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
+  chipText: {
+    color: theme.colors.onSecondaryContainer,
+  },
+  input: {
+    backgroundColor: theme.colors.surface,
   },
 });
+
+export default TagInput;

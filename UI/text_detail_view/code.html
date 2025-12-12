@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>记忆详情</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#D99A7C",
+              "background-light": "#FAF7F2",
+              "background-dark": "#221910",
+              "text-primary-light": "#3D3A36",
+              "text-primary-dark": "#FAF7F2",
+              "text-secondary-light": "#A9A5A1",
+              "text-secondary-dark": "#A9A5A1",
+              "icon-background-light": "#F2EBE5",
+              "icon-background-dark": "#3D3A36"
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-primary-light dark:text-text-primary-dark">
+<div class="relative flex h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<div class="flex w-12 items-center justify-start">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 text-text-primary-light dark:text-text-primary-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+</div>
+<div class="flex size-12 shrink-0 items-center justify-center text-text-primary-light dark:text-text-primary-dark">
+<span class="material-symbols-outlined text-2xl">description</span>
+</div>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 text-text-primary-light dark:text-text-primary-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col flex-1 px-4 py-3 overflow-y-auto">
+<label class="flex flex-col flex-1">
+<textarea class="form-input flex w-full min-w-0 flex-1 resize-none overflow-y-auto rounded-lg text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-0 border-none bg-transparent placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark p-4 text-base font-normal leading-relaxed tracking-wide" placeholder="在此处写下您的记忆...">今天会议要点：
+• 项目时间线调整
+• 新功能优先级
+• 团队资源分配
+这次讨论持续了相当长的时间，我们最终确定了一个感觉更切合实际的修订后时间表。这虽然有点挫折，但现在对时间线坦诚相待，总比以后错过最后期限要好。现在我们有了一条清晰的前进道路，即使这条路更长，我也感到松了一口气。团队似乎也都很支持，这是最重要的部分。我们需要保持这种势头和沟通，以确保我们能按计划进行。这段文字写得长一些，是为了展示文本区域的可滚动性。用户能够写下详尽的想法而不受界面限制，这一点很重要。一个好的记忆应用应该感觉像一个私密的、无限的日记本。</textarea>
+</label>
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center">2023年10月5日 09:45</p>
+</div>
+<div class="sticky bottom-0 z-10 bg-background-light dark:bg-background-dark pt-2 pb-4">
+<div class="@container">
+<div class="gap-2 px-4 grid-cols-[repeat(auto-fit,minmax(80px,_1fr))] grid">
+<div class="flex flex-col items-center gap-2 py-2.5 text-center cursor-pointer group">
+<div class="rounded-full bg-icon-background-light dark:bg-icon-background-dark p-3 group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-xl text-primary">favorite</span>
+</div>
+<p class="text-primary text-sm font-medium leading-normal">收藏</p>
+</div>
+<div class="flex flex-col items-center gap-2 py-2.5 text-center cursor-pointer group">
+<div class="rounded-full bg-icon-background-light dark:bg-icon-background-dark p-3 group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-xl text-text-primary-light dark:text-text-primary-dark">ios_share</span>
+</div>
+<p class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">分享</p>
+</div>
+<div class="flex flex-col items-center gap-2 py-2.5 text-center cursor-pointer group">
+<div class="rounded-full bg-icon-background-light dark:bg-icon-background-dark p-3 group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-xl text-text-primary-light dark:text-text-primary-dark">edit</span>
+</div>
+<p class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">编辑</p>
+</div>
+<div class="flex flex-col items-center gap-2 py-2.5 text-center cursor-pointer group">
+<div class="rounded-full bg-icon-background-light dark:bg-icon-background-dark p-3 group-hover:bg-red-500/20 transition-colors">
+<span class="material-symbols-outlined text-xl text-text-primary-light dark:text-text-primary-dark group-hover:text-red-500">delete</span>
+</div>
+<p class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal group-hover:text-red-500">删除</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

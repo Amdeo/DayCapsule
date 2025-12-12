@@ -1,6 +1,5 @@
 import React, {useState, useEffect} from 'react';
 import {View, StyleSheet, Dimensions} from 'react-native';
-import {Canvas, Path, Skia} from '@shopify/react-native-skia';
 
 interface WaveformVisualizerProps {
   isRecording: boolean;
@@ -14,9 +13,6 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   testID,
 }) => {
   const [waveformData, setWaveformData] = useState<number[]>([]);
-  const screenWidth = Dimensions.get('window').width;
-  const canvasWidth = screenWidth - 32; // 两侧各 16px 边距
-  const canvasHeight = 120;
 
   // 生成随机波形数据
   useEffect(() => {
@@ -44,72 +40,9 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
 
-  // 绘制波形
-  const drawWaveform = () => {
-    if (waveformData.length === 0) {
-      return null;
-    }
-
-    const path = Skia.Path.Make();
-    const pointSpacing = canvasWidth / Math.max(waveformData.length - 1, 1);
-    const centerY = canvasHeight / 2;
-
-    // 移动到起点
-    path.moveTo(0, centerY);
-
-    // 绘制波形曲线
-    waveformData.forEach((value, index) => {
-      const x = index * pointSpacing;
-      const y = centerY - (value - 0.5) * canvasHeight;
-      path.lineTo(x, y);
-    });
-
-    // 绘制返回路径（填充波形）
-    path.lineTo(canvasWidth, centerY);
-    path.lineTo(0, centerY);
-    path.close();
-
-    return path;
-  };
-
-  const waveformPath = drawWaveform();
-
   return (
     <View style={styles.container} testID={testID || 'waveform_visualizer'}>
-      <Canvas style={styles.canvas}>
-        {/* 背景 */}
-        <View style={styles.background} />
-
-        {/* 中心线 */}
-        <Path
-          path={Skia.Path.Make().moveTo(0, canvasHeight / 2).lineTo(canvasWidth, canvasHeight / 2)}
-          color="#e0e0e0"
-          style="stroke"
-          strokeWidth={1}
-        />
-
-        {/* 波形 */}
-        {waveformPath && (
-          <Path
-            path={waveformPath}
-            color="#2196f3"
-            style="fill"
-            opacity={0.3}
-          />
-        )}
-
-        {/* 波形边界 */}
-        {waveformPath && (
-          <Path
-            path={waveformPath}
-            color="#2196f3"
-            style="stroke"
-            strokeWidth={2}
-          />
-        )}
-      </Canvas>
-
-      {/* 频率条（备选方案） */}
+      {/* 频率条可视化 */}
       <View style={styles.frequencyBars}>
         {Array.from({length: 20}).map((_, index) => {
           const height = waveformData[index % waveformData.length] || 0.3;

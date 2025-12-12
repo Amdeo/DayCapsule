@@ -1,28 +1,31 @@
 import React, {useCallback} from 'react';
 import {View, StyleSheet, FlatList, Text, TouchableOpacity, ActivityIndicator} from 'react-native';
-import {useDispatch} from 'react-redux';
-import {selectResult} from '@store/slices/searchSlice';
+import {selectResults} from '@store/slices/searchSlice';
+import {useAppSelector} from '@store/hooks';
+import {useTheme} from 'react-native-paper';
+import {MD3Theme} from 'react-native-paper/lib/typescript/types';
+import {LifelogEntry} from '@services/storage/database';
 
-interface SearchResultsProps {
-  results: any[];
-  isLoading: boolean;
+interface SearchResultEntry extends LifelogEntry {
+  relevance?: number;
+  highlightedContent?: string;
 }
 
-export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}) => {
-  const dispatch = useDispatch();
+interface SearchResultsProps {
+  onEntryPress: (entry: LifelogEntry) => void;
+}
 
-  // 处理结果点击
-  const handleResultPress = useCallback(
-    (result: any) => {
-      dispatch(selectResult(result));
-    },
-    [dispatch],
-  );
+export const SearchResults: React.FC<SearchResultsProps> = ({onEntryPress}) => {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
+  const results = useAppSelector(selectResults);
+  const isLoading = useAppSelector(state => state.search.loading);
 
   // 高亮匹配的文本
-  const renderHighlightedText = (text: string, highlighted?: string) => {
+  const renderHighlightedText = useCallback((text: string, highlighted?: string) => {
     if (!highlighted) {
-      return text;
+      return <Text style={styles.normalText}>{text}</Text>;
     }
 
     const parts = text.split(/<mark>|<\/mark>/);
@@ -34,13 +37,41 @@ export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}
         {part}
       </Text>
     ));
-  };
+  }, [styles.highlightedText, styles.normalText]);
+
+  // 获取类型颜色
+  const getTypeColor = useCallback((type: LifelogEntry['type']): string => {
+    switch (type) {
+      case 'photo':
+        return '#FF9500'; // Orange
+      case 'text':
+        return '#007AFF'; // Blue
+      case 'voice':
+        return '#34C759'; // Green
+      default:
+        return '#999';
+    }
+  }, []);
+
+  // 获取类型标签
+  const getTypeLabel = useCallback((type: LifelogEntry['type']): string => {
+    switch (type) {
+      case 'photo':
+        return '📷 照片';
+      case 'text':
+        return '📝 文字';
+      case 'voice':
+        return '🎙️ 语音';
+      default:
+        return '📌 其他';
+    }
+  }, []);
 
   // 渲染结果项
-  const renderResultItem = ({item, index}: {item: any; index: number}) => (
+  const renderResultItem = useCallback(({item, index}: {item: SearchResultEntry; index: number}) => (
     <TouchableOpacity
       style={styles.resultItem}
-      onPress={() => handleResultPress(item)}
+      onPress={() => onEntryPress(item)}
       testID={`result_item_${index}`}
     >
       {/* 类型标签 */}
@@ -48,7 +79,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}
         <View style={[styles.typeTag, {backgroundColor: getTypeColor(item.type)}]}>
           <Text style={styles.typeTagText}>{getTypeLabel(item.type)}</Text>
         </View>
-        <Text style={styles.relevance}>相关度: {(item.relevance * 100).toFixed(0)}%</Text>
+        {item.relevance && (
+          <Text style={styles.relevance}>相关度: {(item.relevance * 100).toFixed(0)}%</Text>
+        )}
       </View>
 
       {/* 内容 */}
@@ -63,7 +96,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}
         {item.mood && (
           <Text style={styles.metadataText}>💭 {item.mood}</Text>
         )}
-        {item.location && (
+        {item.location && typeof item.location === 'string' && (
           <Text style={styles.metadataText}>📍 {item.location}</Text>
         )}
         <Text style={styles.metadataText}>
@@ -87,12 +120,12 @@ export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}
         </View>
       )}
     </TouchableOpacity>
-  );
+  ), [onEntryPress, renderHighlightedText, getTypeColor, getTypeLabel, styles]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>搜索中...</Text>
       </View>
     );
@@ -113,38 +146,10 @@ export const SearchResults: React.FC<SearchResultsProps> = ({results, isLoading}
   );
 };
 
-// 获取类型颜色
-const getTypeColor = (type: string): string => {
-  switch (type) {
-    case 'photo':
-      return '#FF9500';
-    case 'text':
-      return '#007AFF';
-    case 'voice':
-      return '#34C759';
-    default:
-      return '#999';
-  }
-};
-
-// 获取类型标签
-const getTypeLabel = (type: string): string => {
-  switch (type) {
-    case 'photo':
-      return '📷 照片';
-    case 'text':
-      return '📝 文字';
-    case 'voice':
-      return '🎙️ 语音';
-    default:
-      return '📌 其他';
-  }
-};
-
-const styles = StyleSheet.create({
+const getStyles = (currentTheme: MD3Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: currentTheme.colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -154,18 +159,18 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: currentTheme.colors.onBackground,
   },
   resultCount: {
     fontSize: 12,
-    color: '#999',
+    color: currentTheme.colors.onBackground,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   resultItem: {
-    backgroundColor: '#fff',
+    backgroundColor: currentTheme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: currentTheme.colors.outline,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -187,23 +192,23 @@ const styles = StyleSheet.create({
   },
   relevance: {
     fontSize: 11,
-    color: '#999',
+    color: currentTheme.colors.onSurfaceVariant,
   },
   content: {
     marginBottom: 8,
   },
   contentText: {
     fontSize: 13,
-    color: '#333',
+    color: currentTheme.colors.onSurface,
     lineHeight: 18,
   },
   normalText: {
-    color: '#333',
+    color: currentTheme.colors.onSurface,
   },
   highlightedText: {
-    color: '#FF9500',
+    color: currentTheme.colors.primary,
     fontWeight: '600',
-    backgroundColor: '#FFF3E0',
+    backgroundColor: currentTheme.colors.primaryContainer,
   },
   metadata: {
     flexDirection: 'row',
@@ -212,7 +217,7 @@ const styles = StyleSheet.create({
   },
   metadataText: {
     fontSize: 11,
-    color: '#999',
+    color: currentTheme.colors.onSurfaceVariant,
     marginRight: 12,
     marginBottom: 4,
   },
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tag: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: currentTheme.colors.surfaceVariant,
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -230,7 +235,6 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 11,
-    color: '#666',
+    color: currentTheme.colors.onSurfaceVariant,
   },
 });
-

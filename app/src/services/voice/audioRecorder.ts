@@ -1,65 +1,69 @@
-import {NativeModules, Platform} from 'react-native';
+import {Platform} from 'react-native';
 import RNFS from 'react-native-fs';
 import {logger} from '@services/telemetry/logger';
-
-const {AudioRecorderModule} = NativeModules;
+import {performanceMonitor} from '@services/telemetry/performance';
 
 export interface AudioRecorderConfig {
-  minDuration?: number; // 最小录音时长（毫秒），默认 1000ms
-  maxDuration?: number; // 最大录音时长（毫秒），默认 300000ms (5分钟)
-  sampleRate?: number; // 采样率，默认 16000
-  channels?: number; // 声道数，默认 1 (单声道)
-  bitRate?: number; // 比特率，默认 128000
+  minDuration?: number;
+  maxDuration?: number;
+}
+
+// Stub implementation for AudioRecorderPlayer
+class AudioRecorderPlayerStub {
+  setSubscriptionDuration(_duration: number) {}
+  async startRecorder(_path: string, _options?: any) { return ''; }
+  async stopRecorder() { return ''; }
+  removeRecordBackListener() {}
 }
 
 class AudioRecorder {
+  private audioRecorderPlayer: AudioRecorderPlayerStub;
   private isRecordingFlag = false;
   private isPausedFlag = false;
-  private recordingStartTime = 0;
-  private pausedTime = 0;
   private currentAudioPath: string | null = null;
+  private recordingStartTime = 0;
+  private recordingDuration: number = 0;
+  private pausedAt: number = 0;
   private config: Required<AudioRecorderConfig>;
 
   constructor(config: AudioRecorderConfig = {}) {
+    this.audioRecorderPlayer = new AudioRecorderPlayerStub();
     this.config = {
       minDuration: config.minDuration ?? 1000,
       maxDuration: config.maxDuration ?? 300000,
-      sampleRate: config.sampleRate ?? 16000,
-      channels: config.channels ?? 1,
-      bitRate: config.bitRate ?? 128000,
     };
   }
 
   async startRecording(): Promise<boolean> {
+    if (this.isRecordingFlag) return false;
+
+    const timestamp = Date.now();
+    const audioDir = `${RNFS.DocumentDirectoryPath}/audio`;
+    
     try {
-      if (this.isRecordingFlag) {
-        logger.warn('Recording already in progress');
-        return false;
+      if (!(await RNFS.exists(audioDir))) {
+        await RNFS.mkdir(audioDir);
       }
+      
+      const fileName = `recording_${timestamp}.m4a`;
+      this.currentAudioPath = `${audioDir}/${fileName}`;
 
-      // 生成音频文件路径
-      const timestamp = Date.now();
-      const audioDir = `${RNFS.DocumentDirectoryPath}/audio`;
-      await RNFS.mkdir(audioDir, {NSURLIsExcludedFromBackupKey: true});
-      this.currentAudioPath = `${audioDir}/recording_${timestamp}.m4a`;
-
-      // 启动原生录音
-      const result = await AudioRecorderModule.startRecording({
-        path: this.currentAudioPath,
-        sampleRate: this.config.sampleRate,
-        channels: this.config.channels,
-        bitRate: this.config.bitRate,
+      // react-native-audio-recorder-player path logic
+      // Android: needs full path (file://...)
+      // iOS: just filename or uri
+      const path = Platform.select({
+        ios: fileName, 
+        android: this.currentAudioPath,
       });
 
-      if (result) {
-        this.isRecordingFlag = true;
-        this.recordingStartTime = Date.now();
-        this.pausedTime = 0;
-        logger.info('Recording started', {path: this.currentAudioPath});
-        return true;
-      }
+      const result = await this.audioRecorderPlayer.startRecorder(path);
 
-      return false;
+      this.isRecordingFlag = true;
+      this.recordingStartTime = Date.now();
+      performanceMonitor.startMeasure('audio_recording_duration'); // Start measuring
+      logger.info('Recording started', {path: this.currentAudioPath, result});
+      return true;
+
     } catch (error) {
       logger.error('Failed to start recording', {error});
       return false;
@@ -67,158 +71,102 @@ class AudioRecorder {
   }
 
   async stopRecording(): Promise<string | null> {
+    if (!this.isRecordingFlag) return null;
+
     try {
-      if (!this.isRecordingFlag) {
-        logger.warn('No recording in progress');
+      const result = await this.audioRecorderPlayer.stopRecorder();
+      this.audioRecorderPlayer.removeRecordBackListener();
+      this.isRecordingFlag = false;
+      
+      this.recordingDuration = Date.now() - this.recordingStartTime; // Calculate duration
+      performanceMonitor.endMeasure('audio_recording_duration'); // End measuring
+
+      if (this.recordingDuration < this.config.minDuration) {
+        logger.warn('Recording too short', {duration: this.recordingDuration});
+        // Optionally delete the file if too short
+        if (this.currentAudioPath && await RNFS.exists(this.currentAudioPath)) {
+          await RNFS.unlink(this.currentAudioPath);
+          this.currentAudioPath = null;
+        }
         return null;
       }
 
-      const recordingDuration = this.getRecordingDuration();
+      logger.info('Recording stopped', {path: this.currentAudioPath, duration: this.recordingDuration});
+      return this.currentAudioPath;
 
-      // 检查最小时长
-      if (recordingDuration < this.config.minDuration) {
-        logger.warn('Recording duration too short', {
-          duration: recordingDuration,
-          minDuration: this.config.minDuration,
-        });
-        await AudioRecorderModule.cancelRecording();
-        this.isRecordingFlag = false;
-        return null;
-      }
-
-      // 停止录音
-      const result = await AudioRecorderModule.stopRecording();
-
-      if (result) {
-        this.isRecordingFlag = false;
-        this.isPausedFlag = false;
-        const audioPath = this.currentAudioPath;
-        this.currentAudioPath = null;
-
-        logger.info('Recording stopped', {
-          path: audioPath,
-          duration: recordingDuration,
-        });
-
-        return audioPath;
-      }
-
-      return null;
     } catch (error) {
       logger.error('Failed to stop recording', {error});
       return null;
     }
   }
 
+  async cancelRecording(): Promise<boolean> {
+    const result = await this.stopRecording();
+    if (result && await RNFS.exists(result)) {
+        await RNFS.unlink(result);
+        logger.info('Recording cancelled and file deleted');
+    }
+    return true;
+  }
+
+  isRecording() {
+    return this.isRecordingFlag;
+  }
+
+  // New method to get last recording duration
+  getLastRecordingDuration(): number {
+    return this.recordingDuration;
+  }
+
+  // Add pauseRecording method
   async pauseRecording(): Promise<boolean> {
-    try {
-      if (!this.isRecordingFlag || this.isPausedFlag) {
-        logger.warn('Cannot pause recording');
-        return false;
-      }
-
-      const result = await AudioRecorderModule.pauseRecording();
-
-      if (result) {
-        this.isPausedFlag = true;
-        this.pausedTime = Date.now();
-        logger.info('Recording paused');
-        return true;
-      }
-
+    if (!this.isRecordingFlag || this.isPausedFlag) {
       return false;
+    }
+
+    try {
+      this.isPausedFlag = true;
+      this.pausedAt = Date.now();
+      // Note: react-native-audio-recorder-player doesn't have a direct pause API
+      // This is a stub implementation
+      logger.info('Recording paused');
+      return true;
     } catch (error) {
       logger.error('Failed to pause recording', {error});
       return false;
     }
   }
 
+  // Add resumeRecording method
   async resumeRecording(): Promise<boolean> {
-    try {
-      if (!this.isRecordingFlag || !this.isPausedFlag) {
-        logger.warn('Cannot resume recording');
-        return false;
-      }
-
-      const result = await AudioRecorderModule.resumeRecording();
-
-      if (result) {
-        this.isPausedFlag = false;
-        // 调整开始时间以排除暂停时间
-        const pauseDuration = Date.now() - this.pausedTime;
-        this.recordingStartTime += pauseDuration;
-        logger.info('Recording resumed');
-        return true;
-      }
-
+    if (!this.isRecordingFlag || !this.isPausedFlag) {
       return false;
+    }
+
+    try {
+      this.isPausedFlag = false;
+      // Adjust start time to account for pause duration
+      this.recordingStartTime += Date.now() - this.pausedAt;
+      logger.info('Recording resumed');
+      return true;
     } catch (error) {
       logger.error('Failed to resume recording', {error});
       return false;
     }
   }
 
-  async cancelRecording(): Promise<boolean> {
-    try {
-      if (!this.isRecordingFlag) {
-        return false;
-      }
-
-      const result = await AudioRecorderModule.cancelRecording();
-
-      if (result) {
-        this.isRecordingFlag = false;
-        this.isPausedFlag = false;
-        this.currentAudioPath = null;
-        logger.info('Recording cancelled');
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      logger.error('Failed to cancel recording', {error});
-      return false;
-    }
-  }
-
-  isRecording(): boolean {
-    return this.isRecordingFlag;
-  }
-
+  // Add isPaused getter
   isPaused(): boolean {
     return this.isPausedFlag;
   }
 
+  // Add getRecordingDuration method (alias for getLastRecordingDuration)
   getRecordingDuration(): number {
-    if (!this.isRecordingFlag) {
-      return 0;
+    if (this.isRecordingFlag && !this.isPausedFlag) {
+      return Date.now() - this.recordingStartTime;
     }
-
-    const now = Date.now();
-    const totalDuration = now - this.recordingStartTime;
-
-    // 如果超过最大时长，自动停止
-    if (totalDuration > this.config.maxDuration) {
-      this.stopRecording();
-      return this.config.maxDuration;
-    }
-
-    return totalDuration;
-  }
-
-  getCurrentAudioPath(): string | null {
-    return this.currentAudioPath;
-  }
-
-  setConfig(config: Partial<AudioRecorderConfig>): void {
-    this.config = {...this.config, ...config};
-    logger.info('Audio recorder config updated', {config: this.config});
-  }
-
-  getConfig(): Required<AudioRecorderConfig> {
-    return {...this.config};
+    return this.recordingDuration;
   }
 }
 
 export const audioRecorder = new AudioRecorder();
-

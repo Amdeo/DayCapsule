@@ -83,7 +83,7 @@ export const EntryList: React.FC<EntryListProps> = ({
               <View style={styles.tagsContainer}>
                 {item.tags.slice(0, 3).map(tag => (
                   <Chip key={tag} mode="flat" compact style={styles.tag}>
-                    {tag}
+                    <Text>{tag}</Text>
                   </Chip>
                 ))}
                 {item.tags.length > 3 && (

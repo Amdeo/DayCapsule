@@ -32,11 +32,11 @@ export const useSearchPerformance = (): UseSearchPerformanceReturn => {
 
   const endSearch = useCallback((resultCount: number) => {
     performanceMonitor.endMeasure('search_query');
-    const duration = performanceMonitor.getMeasure('search_query');
-    metricsRef.current.queryTime = duration;
+    const metric = performanceMonitor.getMeasure('search_query');
+    metricsRef.current.queryTime = metric?.duration || 0;
     metricsRef.current.resultCount = resultCount;
 
-    logger.info('Search query completed', {duration, resultCount});
+    logger.info('Search query completed', {duration: metric?.duration, resultCount});
   }, []);
 
   const startRender = useCallback(() => {
@@ -45,10 +45,10 @@ export const useSearchPerformance = (): UseSearchPerformanceReturn => {
 
   const endRender = useCallback(() => {
     performanceMonitor.endMeasure('search_render');
-    const duration = performanceMonitor.getMeasure('search_render');
-    metricsRef.current.renderTime = duration;
+    const metric = performanceMonitor.getMeasure('search_render');
+    metricsRef.current.renderTime = metric?.duration || 0;
 
-    logger.info('Search render completed', {duration});
+    logger.info('Search render completed', {duration: metric?.duration});
   }, []);
 
   const getMetrics = useCallback((): SearchPerformanceMetrics | null => {

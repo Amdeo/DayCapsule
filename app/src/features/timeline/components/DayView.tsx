@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, StyleSheet, ScrollView, Text, SectionList} from 'react-native';
-import {EntryCard} from './EntryCard';
+import EntryCard from './EntryCard';
 
 interface DayViewEntry {
   hour: number;
@@ -11,9 +11,10 @@ interface DayViewEntry {
 interface DayViewProps {
   data: DayViewEntry[];
   currentDate: Date;
+  onEntryPress?: (entry: any) => void;
 }
 
-export const DayView: React.FC<DayViewProps> = ({data, currentDate}) => {
+export const DayView: React.FC<DayViewProps> = ({data, currentDate, onEntryPress}) => {
   // 格式化小时显示
   const formatHour = (hour: number): string => {
     return `${hour.toString().padStart(2, '0')}:00`;
@@ -40,7 +41,7 @@ export const DayView: React.FC<DayViewProps> = ({data, currentDate}) => {
 
   // 渲染记录卡片
   const renderItem = ({item}: {item: any}) => (
-    <EntryCard entry={item} testID="entry_card" />
+    <EntryCard entry={item} onPress={onEntryPress || (() => {})} testID="entry_card" />
   );
 
   // 如果没有数据，显示空状态

@@ -1,48 +1,69 @@
 import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {useTheme} from 'react-native-paper';
+import {View, Text, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// 占位屏幕组件（稍后实现）
-import {HomeScreen} from '@features/capture/screens/HomeScreen';
-import {TimelineScreen} from '@features/timeline/screens/TimelineScreen';
-import {SearchScreen} from '@features/search/screens/SearchScreen';
-import {SettingsScreen} from '@features/settings/screens/SettingsScreen';
+// 导入主页面
+import {HomeScreen} from '../features/capture/screens/HomeScreen';
 
-export type RootTabParamList = {
-  Home: undefined;
-  Timeline: undefined;
-  Search: undefined;
-  Settings: undefined;
-};
-
+// 创建Tab导航器
 const Tab = createBottomTabNavigator();
 
-export const AppNavigator: React.FC = () => {
-  const theme = useTheme();
+// 简单的测试屏幕组件
+const TimelineScreen: React.FC = () => (
+  <View style={styles.testScreen}>
+    <Text style={styles.testText}>时间线</Text>
+  </View>
+);
 
+const SearchScreen: React.FC = () => (
+  <View style={styles.testScreen}>
+    <Text style={styles.testText}>搜索</Text>
+  </View>
+);
+
+const SettingsScreen: React.FC = () => (
+  <View style={styles.testScreen}>
+    <Text style={styles.testText}>设置</Text>
+  </View>
+);
+
+export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+          tabBarActiveTintColor: '#2196F3',
+          tabBarInactiveTintColor: '#666666',
           tabBarStyle: {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: '#ffffff',
+            borderTopWidth: 1,
+            borderTopColor: '#e0e0e0',
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 60,
           },
           headerStyle: {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: '#ffffff',
           },
-          headerTintColor: theme.colors.onSurface,
+          headerTintColor: '#000000',
+          tabBarIconStyle: {
+            marginBottom: -4,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            marginTop: 4,
+          },
         }}>
         <Tab.Screen
           name="Home"
           component={HomeScreen}
           options={{
-            title: '快记',
-            tabBarIcon: ({color, size}: {color: string; size: number}) => (
-              <Icon name="camera-plus" size={size} color={color} />
+            title: '首页',
+            headerShown: false,
+            tabBarIcon: ({color, size}) => (
+              <Text style={{fontSize: 20, color, marginBottom: 4}}>🏠</Text>
             ),
           }}
         />
@@ -51,8 +72,8 @@ export const AppNavigator: React.FC = () => {
           component={TimelineScreen}
           options={{
             title: '时间线',
-            tabBarIcon: ({color, size}: {color: string; size: number}) => (
-              <Icon name="timeline-clock" size={size} color={color} />
+            tabBarIcon: ({color, size}) => (
+              <Text style={{fontSize: 20, color, marginBottom: 4}}>📅</Text>
             ),
           }}
         />
@@ -61,8 +82,8 @@ export const AppNavigator: React.FC = () => {
           component={SearchScreen}
           options={{
             title: '搜索',
-            tabBarIcon: ({color, size}: {color: string; size: number}) => (
-              <Icon name="magnify" size={size} color={color} />
+            tabBarIcon: ({color, size}) => (
+              <Text style={{fontSize: 20, color, marginBottom: 4}}>🔍</Text>
             ),
           }}
         />
@@ -71,8 +92,8 @@ export const AppNavigator: React.FC = () => {
           component={SettingsScreen}
           options={{
             title: '设置',
-            tabBarIcon: ({color, size}: {color: string; size: number}) => (
-              <Icon name="cog" size={size} color={color} />
+            tabBarIcon: ({color, size}) => (
+              <Text style={{fontSize: 20, color, marginBottom: 4}}>⚙️</Text>
             ),
           }}
         />
@@ -80,3 +101,17 @@ export const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  testScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  testText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+});

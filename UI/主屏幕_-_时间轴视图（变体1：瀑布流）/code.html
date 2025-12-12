@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="zh"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>记忆胶囊 - 时间轴变体1</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .masonry-grid {
+            column-count: 2;
+            column-gap: 0.75rem; /* Equivalent to gap-3 */
+        }
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 0.75rem; /* Equivalent to gap-3 */
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#F9A826", /* Warm Orange */
+              "background-light": "#FFFCF5", /* Soft Off-white */
+              "background-dark": "#1C1B1A", /* Darker Warm Gray for dark mode */
+              "text-light": "#4A453D", /* Dark Gray */
+              "text-dark": "#EAE8E4",
+              "surface-light": "#FFFFFF",
+              "surface-dark": "#2A2826",
+              "border-light": "#F3EFE7",
+              "border-dark": "#3C3A38"
+            },
+            fontFamily: {
+              "display": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "1.5rem", "xl": "2rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
+<div class="relative flex min-h-screen w-full flex-col">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-10 flex items-center justify-between bg-background-light/80 px-4 py-3 backdrop-blur-sm dark:bg-background-dark/80">
+<h1 class="text-xl font-bold tracking-tight text-text-light dark:text-text-dark">记忆胶囊</h1>
+<button class="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-text-light dark:text-text-dark">
+<span class="material-symbols-outlined text-2xl">search</span>
+</button>
+</header>
+<!-- Main Content with Masonry Layout -->
+<main class="flex-1 px-4 pt-4 pb-28">
+<div class="masonry-grid">
+<!-- Date Tag -->
+<div class="masonry-item">
+<div class="inline-block rounded-full bg-primary/20 px-4 py-1.5 dark:bg-primary/30">
+<p class="text-xs font-medium text-primary dark:text-yellow-300">今天</p>
+</div>
+</div>
+<!-- Memory Card 1 -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-pink-300"></div>
+<div class="flex flex-col p-3">
+<p class="text-sm font-semibold leading-relaxed">午后的阳光正好，在咖啡馆窗边读完了期待已久的书。</p>
+</div>
+</div>
+<!-- Memory Card 2 (Image) -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-blue-300"></div>
+<div class="flex flex-1 flex-col">
+<img class="h-auto w-full object-cover" data-alt="A person's hands on a laptop at a beachside desk with the ocean in the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy_WhVqXa47-2jsupLmod2o5_rVQnYI_ybB-1IYJLjItkx71AkOSLMSqM3jeSwMBVGuYckSI3fUUaLEXm3YVmniwylfnXCJ87p7hiHJgrRpFyBLPGX8DeOHoJpbNyAaha676PUNc7QXClNe4mO9O6aOimsBx6h_JFqzK7_NrqVSt-vJ6lyk1IQ1DdpWWCt_jzeh6sebT-S-rsW9qy69sNi33VV75W40tURHDQ450nRRSiV66MB_FJIca01-gYioS2ogXnFkfEFGtM"/>
+<p class="p-3 pt-2 text-sm font-semibold leading-relaxed">海边的惬意工作时光</p>
+</div>
+</div>
+<!-- Memory Card 3 (Image) -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-teal-300"></div>
+<div class="flex flex-1 flex-col">
+<img class="h-auto w-full object-cover" data-alt="Close-up of lines of code on a computer screen." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHONxB-tCiDkROw9CQ2-w7_ZWgJm6K1IYyy9TK7GbTbBCVyYa6XHHf5JdCqK-p3xJJj-VQYNThbfBOr_03Q-08dGzFIa1FWwG9Zgsb5ON6uvLZTbRH3sn1LVhe3EvqtcCHsP4V1Ik1uOIUZA3vjajbAFTipY3HaxVzXpmb7w5r1WAOdCxFtZW3SH_70vfrj2xnRkWVVwGBs-BWBrwuHJCPzcLlXDHoADT1ROd4OWewot6YmnbrXo9oqpm5bhtODv9RwO8GJgBZlnw"/>
+</div>
+</div>
+<!-- Memory Card 4 -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-purple-300"></div>
+<div class="flex flex-col p-3">
+<p class="text-sm font-semibold leading-relaxed">终于完成了那个困扰我一周的bug，成就感满满！</p>
+</div>
+</div>
+<!-- Date Tag -->
+<div class="masonry-item pt-2">
+<div class="inline-block rounded-full bg-primary/20 px-4 py-1.5 dark:bg-primary/30">
+<p class="text-xs font-medium text-primary dark:text-yellow-300">昨天</p>
+</div>
+</div>
+<!-- Memory Card 5 (Image) -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-orange-300"></div>
+<div class="flex flex-1 flex-col">
+<img class="h-auto w-full object-cover" data-alt="An elegant restaurant interior with set tables and warm lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCGzuO4Ii6tVoOsVtt4VeKKwe5KG9ukdQdRzjqKFDlv2uKTLD4Ad-zEXp4EYGpcdiJngiCPnSAKN1yeGE67pICbrbLJMpn5-yZqcDQ-qbGR19UCSs3S5OcValF-ZAbApnOFxI2vvRxMvB3_Q13eXTyE8HjEWfPChkTWjXmVgF0znUyFCNeenObu4v4-_K3u_qCOwsOfE4U-7vHvjPX-1WyvjL94BdnV-dPVSYMgzPc0z7EjsRdZxoRtxtUxOsiwLPYkYxURtlCvfA"/>
+<p class="p-3 pt-2 text-sm font-semibold leading-relaxed">和朋友们在新开的餐厅聚餐，聊了很多往事。</p>
+</div>
+</div>
+<!-- Memory Card 6 -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-green-300"></div>
+<div class="flex flex-col p-3">
+<p class="text-sm font-semibold leading-relaxed">公园散步时，偶遇一只非常亲人的小猫。</p>
+</div>
+</div>
+<!-- Date Tag -->
+<div class="masonry-item pt-2">
+<div class="inline-block rounded-full bg-primary/20 px-4 py-1.5 dark:bg-primary/30">
+<p class="text-xs font-medium text-primary dark:text-yellow-300">2023年10月</p>
+</div>
+</div>
+<!-- Memory Card 7 (Image) -->
+<div class="masonry-item flex overflow-hidden rounded-lg bg-surface-light shadow-sm dark:bg-surface-dark">
+<div class="w-1.5 shrink-0 bg-yellow-300"></div>
+<div class="flex flex-1 flex-col">
+<img class="h-auto w-full object-cover" data-alt="A group of friends laughing around a bonfire at night." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4DyQ-c0GUK1HrnIZicC2Qfv0DNqYcnCH-FjBEM4v0yRctIVucsH5F62emOPgHoFgumzQk45L8OmdrH6GQaO_-hXjUDH-4QvdJ1JKDHWQkGjc5rmy-7XoXEZ4mg_ua3UeVEM9VnP2VH58oPfI2kNlsxTOBC3m8-5kZdUeLUYdyaRvCv_XyQ4qkLo2HTCRtjDgm4gU5Lbxt56fGOVQZebovJUkzxkCbL4t0dDhqPIhMhREvHEK6uFWxxRTCtBdm6EFeGxkPdZgwtbw"/>
+<p class="p-3 pt-2 text-sm font-semibold leading-relaxed">秋日露营，围着篝火弹吉他唱歌，是向往的生活。</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar with Core Action Button -->
+<footer class="fixed bottom-0 left-0 right-0 z-10 w-full bg-background-light/80 backdrop-blur-sm dark:bg-background-dark/80">
+<div class="relative mx-auto flex h-20 max-w-md items-center justify-around px-4">
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-text-light/70 dark:text-text-dark/70" href="#">
+<span class="material-symbols-outlined">timeline</span>
+<span class="text-xs font-medium">时间轴</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-text-light/70 dark:text-text-dark/70" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="text-xs font-medium">日历</span>
+</a>
+<!-- Floating Action Button -->
+<div class="absolute -top-8">
+<button class="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40">
+<span class="material-symbols-outlined text-4xl">add</span>
+</button>
+</div>
+<div class="w-16"></div> <!-- Spacer for FAB -->
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-text-light/70 dark:text-text-dark/70" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="text-xs font-medium">统计</span>
+</a>
+<a class="flex flex-col items-center justify-center gap-1 p-2 text-text-light/70 dark:text-text-dark/70" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-xs font-medium">设置</span>
+</a>
+</div>
+</footer>
+</div>
+</body></html>

@@ -28,6 +28,56 @@ class PerformanceMonitor {
   private maxMetricsPerName = 1000;
 
   /**
+   * 开始计时 (兼容性 API)
+   */
+  startMeasure(name: string): void {
+    // Store the start time keyed by name for simple usage
+    // If multiple overlap, this simple version overwrites the previous one (limitation accepted for this fix)
+    this.timers.set(name, performance.now());
+  }
+
+  /**
+   * 结束计时 (兼容性 API)
+   */
+  endMeasure(name: string, metadata?: Record<string, any>): void {
+    const startTime = this.timers.get(name);
+    if (!startTime) {
+      // logger.warn('Performance timer not found for measure', {name});
+      return;
+    }
+
+    const duration = performance.now() - startTime;
+    this.timers.delete(name);
+    this.record(name, duration, metadata);
+  }
+
+  /**
+   * 获取最近一次测量结果 (兼容性 API)
+   */
+  getMeasure(name: string): PerformanceMetric | undefined {
+    const metrics = this.metrics.get(name);
+    if (!metrics || metrics.length === 0) {
+      return undefined;
+    }
+    // Return the most recent metric
+    return metrics[metrics.length - 1];
+  }
+
+  /**
+   * 添加自定义指标
+   */
+  addMetric(name: string, value: number, metadata?: Record<string, any>): void {
+    this.record(name, value, metadata);
+  }
+
+  /**
+   * 记录指标 (别名 record)
+   */
+  recordMetric(name: string, value: number, metadata?: Record<string, any>): void {
+    this.record(name, value, metadata);
+  }
+
+  /**
    * 开始计时
    */
   start(name: string): string {

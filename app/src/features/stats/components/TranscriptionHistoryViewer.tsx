@@ -106,11 +106,11 @@ export const TranscriptionHistoryViewer: React.FC<TranscriptionHistoryViewerProp
                     size="small"
                     icon="check-circle"
                     style={{backgroundColor: theme.colors.primary}}>
-                    当前
+                    <Text>当前</Text>
                   </Chip>
                 )}
                 <Chip size="small" icon="percent">
-                  {(item.confidence * 100).toFixed(0)}%
+                  <Text>{(item.confidence * 100).toFixed(0)}%</Text>
                 </Chip>
               </View>
             </View>

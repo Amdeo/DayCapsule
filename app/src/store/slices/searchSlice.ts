@@ -19,6 +19,7 @@ export interface SearchState {
   loading: boolean;
   error: string | null;
   recentSearches: string[];
+  hotTags: string[]; // Added hotTags
 }
 
 const initialState: SearchState = {
@@ -28,7 +29,9 @@ const initialState: SearchState = {
   loading: false,
   error: null,
   recentSearches: [],
+  hotTags: [], // Initialize hotTags
 };
+
 
 /**
  * 执行搜索
@@ -121,6 +124,14 @@ const searchSlice = createSlice({
     clearError: state => {
       state.error = null;
     },
+    removeFromSearchHistory: (state, action: PayloadAction<string>) => {
+      state.recentSearches = state.recentSearches.filter(
+        search => search !== action.payload,
+      );
+    },
+    setHotTags: (state, action: PayloadAction<string[]>) => {
+      state.hotTags = action.payload;
+    },
   },
   extraReducers: builder => {
     builder
@@ -154,6 +165,16 @@ export const {
   clearRecentSearches,
   clearResults,
   clearError,
+  removeFromSearchHistory,
+  setHotTags,
 } = searchSlice.actions;
+
+export const selectResults = (state: {search: SearchState}) => state.search.results;
+export const selectSearchQuery = (state: {search: SearchState}) => state.search.query;
+export const selectSearchFilters = (state: {search: SearchState}) => state.search.filters;
+export const selectSearchLoading = (state: {search: SearchState}) => state.search.loading;
+export const selectSearchError = (state: {search: SearchState}) => state.search.error;
+export const selectRecentSearches = (state: {search: SearchState}) => state.search.recentSearches;
+export const selectHotTags = (state: {search: SearchState}) => state.search.hotTags;
 
 export default searchSlice.reducer;
