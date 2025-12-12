@@ -33,11 +33,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## MCP Tools
 
-The project includes Model Context Protocol (MCP) tools for enhanced development capabilities:
+The project includes Model Context Protocol (MCP) tools for enhanced development capabilities.
 
-| Tool | Purpose | Use Cases |
-|------|---------|-----------|
-| **[MCP Tools Guide](agent_docs/00-mcp-tools.md)** | Complete MCP tools reference | Documentation lookup, code analysis, mobile testing, web search |
+### When to Use
+
+| Task | Tool | Example |
+|------|------|---------|
+| **Understand code** | `serena` | Find components, search patterns |
+| **Get docs** | `context7` | React hooks, library APIs |
+| **Mobile testing** | `mobile-mcp` | Screenshot, tap, swipe |
+| **Research** | `open-websearch` | Latest practices, solutions |
+| **Analyze image** | `zai-mcp-server` | UI issues, error screenshots |
+| **Complex problem** | `sequential-thinking` | Architecture decisions |
+
+**Quick reference**: [MCP Tools Guide](agent_docs/00-mcp-tools.md)
 
 ## Documentation Modules
 
@@ -74,4 +83,3 @@ npm run ios  # or android
 - **Performance**: All core operations < 2s, memory < 150MB
 - **Testing**: 70% coverage minimum, run `npm test`
 - **Security**: AES-256-GCM encryption, offline-first
-- **MCP Tools**: Use for documentation, code analysis, and testing
