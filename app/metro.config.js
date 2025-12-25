@@ -2,7 +2,9 @@
  * Metro configuration
  * https://facebook.github.io/metro/docs/configuration
  */
-module.exports = {
+const { getDefaultConfig } = require('@react-native/metro-config');
+
+const config = {
   resolver: {
     alias: {
       '@app': './src',
@@ -14,5 +16,8 @@ module.exports = {
       '@config': './src/config',
       '@types': './src/types',
     },
+    sourceExts: ['js', 'jsx', 'json', 'ts', 'tsx'],
   },
 };
+
+module.exports = config;
