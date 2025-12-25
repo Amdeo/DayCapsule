@@ -1,180 +1,134 @@
-import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
-import type {PayloadAction} from '@reduxjs/toolkit';
-import {databaseService, LifelogEntry} from '@services/storage/database';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { SearchState, SearchResult } from '@types/index';
+import databaseOperations from '@services/storage/databaseService';
 
-export interface SearchFilters {
-  type?: 'photo' | 'text' | 'voice';
-  tags?: string[];
-  dateRange?: {
-    start: number;
-    end: number;
-  };
-  hasLocation?: boolean;
-}
-
-export interface SearchState {
-  query: string;
-  filters: SearchFilters;
-  results: LifelogEntry[];
-  loading: boolean;
-  error: string | null;
-  recentSearches: string[];
-  hotTags: string[]; // Added hotTags
-}
-
-const initialState: SearchState = {
-  query: '',
-  filters: {},
-  results: [],
-  loading: false,
-  error: null,
-  recentSearches: [],
-  hotTags: [], // Initialize hotTags
-};
-
-
-/**
- * 执行搜索
- */
+// Async thunks
 export const performSearch = createAsyncThunk(
   'search/performSearch',
-  async ({query, filters}: {query: string; filters?: SearchFilters}, {rejectWithValue}) => {
-    try {
-      let results: LifelogEntry[];
-
-      if (query.trim()) {
-        // 使用 FTS5 全文搜索
-        results = await databaseService.searchEntries(query);
-      } else {
-        // 无查询词时，获取所有记录
-        results = await databaseService.getEntries(100, 0);
-      }
-
-      // 应用过滤器
-      if (filters) {
-        results = applyFilters(results, filters);
-      }
-
-      return {results, query};
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+  async ({ query, limit = 50 }: { query: string; limit?: number }) => {
+    const results = await databaseOperations.searchEntries(query, limit);
+    return { query, results };
+  }
 );
 
-/**
- * 应用过滤器
- */
-function applyFilters(entries: LifelogEntry[], filters: SearchFilters): LifelogEntry[] {
-  let filtered = [...entries];
-
-  // 按类型过滤
-  if (filters.type) {
-    filtered = filtered.filter(entry => entry.type === filters.type);
+export const clearSearchHistory = createAsyncThunk(
+  'search/clearSearchHistory',
+  async () => {
+    // In a real app, this might clear from persistent storage
+    return [];
   }
+);
 
-  // 按标签过滤
-  if (filters.tags && filters.tags.length > 0) {
-    filtered = filtered.filter(entry => filters.tags!.some(tag => entry.tags.includes(tag)));
-  }
+// Initial state
+const initialState: SearchState = {
+  query: '',
+  results: [],
+  filters: {},
+  history: [],
+  loading: false,
+};
 
-  // 按日期范围过滤
-  if (filters.dateRange) {
-    filtered = filtered.filter(
-      entry =>
-        entry.timestamp >= filters.dateRange!.start && entry.timestamp <= filters.dateRange!.end,
-    );
-  }
+// Helper functions
+const addToSearchHistory = (history: string[], query: string): string[] => {
+  if (!query.trim()) return history;
+  
+  const filtered = history.filter(item => item !== query);
+  return [query, ...filtered].slice(0, 10); // Keep only last 10 searches
+};
 
-  // 按位置过滤
-  if (filters.hasLocation !== undefined) {
-    filtered = filtered.filter(entry => (filters.hasLocation ? !!entry.location : !entry.location));
-  }
+const removeFromSearchHistory = (history: string[], queryToRemove: string): string[] => {
+  return history.filter(item => item !== queryToRemove);
+};
 
-  return filtered;
-}
-
+// Slice
 const searchSlice = createSlice({
   name: 'search',
   initialState,
   reducers: {
-    setQuery: (state, action) => {
+    setQuery: (state, action: PayloadAction<string>) => {
       state.query = action.payload;
     },
-    setFilters: (state, action) => {
+    
+    clearQuery: (state) => {
+      state.query = '';
+    },
+    
+    setResults: (state, action: PayloadAction<SearchResult[]>) => {
+      state.results = action.payload;
+    },
+    
+    clearResults: (state) => {
+      state.results = [];
+    },
+    
+    setFilters: (state, action: PayloadAction<any>) => {
       state.filters = action.payload;
     },
-    clearFilters: state => {
+    
+    clearFilters: (state) => {
       state.filters = {};
     },
-    addRecentSearch: (state, action) => {
-      const query = action.payload.trim();
-      if (query && !state.recentSearches.includes(query)) {
-        state.recentSearches = [query, ...state.recentSearches].slice(0, 10);
-      }
+    
+    addToHistory: (state, action: PayloadAction<string>) => {
+      state.history = addToSearchHistory(state.history, action.payload);
     },
-    clearRecentSearches: state => {
-      state.recentSearches = [];
+    
+    removeFromHistory: (state, action: PayloadAction<string>) => {
+      state.history = removeFromSearchHistory(state.history, action.payload);
     },
-    clearResults: state => {
-      state.results = [];
-      state.query = '';
-      state.error = null;
+    
+    clearHistory: (state) => {
+      state.history = [];
     },
-    clearError: state => {
-      state.error = null;
-    },
-    removeFromSearchHistory: (state, action: PayloadAction<string>) => {
-      state.recentSearches = state.recentSearches.filter(
-        search => search !== action.payload,
-      );
-    },
-    setHotTags: (state, action: PayloadAction<string[]>) => {
-      state.hotTags = action.payload;
+    
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
     },
   },
-  extraReducers: builder => {
+  
+  extraReducers: (builder) => {
     builder
-      .addCase(performSearch.pending, state => {
+      .addCase(performSearch.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(performSearch.fulfilled, (state, action) => {
         state.loading = false;
+        state.query = action.payload.query;
         state.results = action.payload.results;
-        if (action.payload.query.trim()) {
-          // 添加到最近搜索
-          const query = action.payload.query.trim();
-          if (!state.recentSearches.includes(query)) {
-            state.recentSearches = [query, ...state.recentSearches].slice(0, 10);
-          }
-        }
+        
+        // Add to history
+        state.history = addToSearchHistory(state.history, action.payload.query);
       })
       .addCase(performSearch.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        console.error('Search failed:', action.error);
+      })
+      .addCase(clearSearchHistory.fulfilled, (state) => {
+        state.history = [];
       });
   },
 });
 
 export const {
   setQuery,
+  clearQuery,
+  setResults,
+  clearResults,
   setFilters,
   clearFilters,
-  addRecentSearch,
-  clearRecentSearches,
-  clearResults,
-  clearError,
-  removeFromSearchHistory,
-  setHotTags,
+  addToHistory,
+  removeFromHistory,
+  clearHistory,
+  setLoading,
 } = searchSlice.actions;
 
-export const selectResults = (state: {search: SearchState}) => state.search.results;
-export const selectSearchQuery = (state: {search: SearchState}) => state.search.query;
-export const selectSearchFilters = (state: {search: SearchState}) => state.search.filters;
-export const selectSearchLoading = (state: {search: SearchState}) => state.search.loading;
-export const selectSearchError = (state: {search: SearchState}) => state.search.error;
-export const selectRecentSearches = (state: {search: SearchState}) => state.search.recentSearches;
-export const selectHotTags = (state: {search: SearchState}) => state.search.hotTags;
-
 export default searchSlice.reducer;
+
+// Selectors
+export const selectSearchQuery = (state: any) => state.search.query;
+export const selectSearchResults = (state: any) => state.search.results;
+export const selectSearchFilters = (state: any) => state.search.filters;
+export const selectSearchHistory = (state: any) => state.search.history;
+export const selectSearchLoading = (state: any) => state.search.loading;
+export const selectHasSearchResults = (state: any) => state.search.results.length > 0;
+export const selectSearchResultsCount = (state: any) => state.search.results.length;

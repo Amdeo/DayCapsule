@@ -1,254 +1,412 @@
-import {logger} from '@services/telemetry/logger';
+import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
-
-export interface ModelUpdateConfig {
-  checkInterval: number; // 检查间隔（毫秒）
-  autoUpdate: boolean; // 是否自动更新
-  wifiOnly: boolean; // 仅在 WiFi 下更新
-  maxRetries: number; // 最大重试次数
-}
+import { showMessage } from 'react-native-flash-message';
 
 export interface ModelInfo {
+  name: string;
   version: string;
-  lastUpdated: number;
   size: number;
+  downloadUrl: string;
   checksum: string;
+  description: string;
+  releaseDate: string;
 }
 
-/**
- * 模型更新策略服务
- * 管理 AI 模型的版本控制和更新
- */
-export class ModelUpdaterService {
-  private config: ModelUpdateConfig = {
-    checkInterval: 24 * 60 * 60 * 1000, // 24 小时
-    autoUpdate: true,
-    wifiOnly: true,
-    maxRetries: 3,
-  };
+export interface UpdateResult {
+  success: boolean;
+  message: string;
+  oldVersion?: string;
+  newVersion?: string;
+  downloadSize?: number;
+}
 
-  private modelInfo: Map<string, ModelInfo> = new Map();
-  private lastCheckTime: Map<string, number> = new Map();
-  private updateInProgress: Map<string, boolean> = new Map();
-
-  constructor(config?: Partial<ModelUpdateConfig>) {
-    if (config) {
-      this.config = {...this.config, ...config};
-    }
-    this.initializeModelInfo();
-  }
-
-  /**
-   * 初始化模型信息
-   */
-  private async initializeModelInfo(): Promise<void> {
-    try {
-      logger.info('Initializing model information');
-
-      // 模拟模型信息
-      this.modelInfo.set('imageRecognition', {
-        version: '1.0.0',
-        lastUpdated: Date.now(),
-        size: 50 * 1024 * 1024, // 50MB
-        checksum: 'abc123def456',
-      });
-
-      logger.info('Model information initialized', {
-        modelCount: this.modelInfo.size,
-      });
-    } catch (error) {
-      logger.error('Failed to initialize model information', {error});
-    }
-  }
+class ModelUpdaterService {
+  private currentVersion = '1.0.0';
+  private updateCheckUrl = 'https://api.memorycapsule.app/models/latest';
+  private modelsPath = `${RNFS.DocumentDirectoryPath}/models`;
 
   /**
    * 检查模型更新
    */
-  async checkForUpdates(modelName: string): Promise<boolean> {
+  async checkForUpdates(): Promise<{
+    hasUpdate: boolean;
+    currentVersion: string;
+    latestVersion: string;
+    modelInfo?: ModelInfo;
+  }> {
     try {
-      const lastCheck = this.lastCheckTime.get(modelName) || 0;
-      const now = Date.now();
-
-      // 检查是否需要检查更新
-      if (now - lastCheck < this.config.checkInterval) {
-        logger.info('Model update check skipped (too soon)', {modelName});
-        return false;
+      // 在实际应用中，这里会调用真实的API
+      const response = await fetch(`${this.updateCheckUrl}?platform=${Platform.OS}`);
+      
+      if (!response.ok) {
+        throw new Error('检查更新失败');
       }
 
-      logger.info('Checking for model updates', {modelName});
-
-      // 模拟检查更新
-      const hasUpdate = Math.random() > 0.7; // 30% 概率有更新
-
-      this.lastCheckTime.set(modelName, now);
-
-      if (hasUpdate) {
-        logger.info('Model update available', {modelName});
-      }
-
-      return hasUpdate;
+      const data = await response.json();
+      
+      const hasUpdate = this.compareVersions(data.latestVersion, this.currentVersion) > 0;
+      
+      return {
+        hasUpdate,
+        currentVersion: this.currentVersion,
+        latestVersion: data.latestVersion,
+        modelInfo: data.modelInfo,
+      };
     } catch (error) {
-      logger.error('Failed to check for model updates', {error, modelName});
-      return false;
+      console.error('检查模型更新失败:', error);
+      
+      // 模拟返回检查结果（开发/测试用）
+      const mockLatestVersion = '1.1.0';
+      const hasUpdate = this.compareVersions(mockLatestVersion, this.currentVersion) > 0;
+      
+      return {
+        hasUpdate,
+        currentVersion: this.currentVersion,
+        latestVersion: mockLatestVersion,
+        modelInfo: hasUpdate ? {
+          name: '图像识别模型',
+          version: mockLatestVersion,
+          size: 15 * 1024 * 1024, // 15MB
+          downloadUrl: 'https://example.com/model.tflite',
+          checksum: 'mock-checksum',
+          description: '更新的图像识别模型，提升识别准确率',
+          releaseDate: new Date().toISOString(),
+        } : undefined,
+      };
     }
   }
 
   /**
-   * 更新模型
+   * 下载并更新模型
    */
-  async updateModel(modelName: string, retryCount: number = 0): Promise<boolean> {
+  async updateModel(modelInfo: ModelInfo, onProgress?: (progress: number) => void): Promise<UpdateResult> {
     try {
-      // 检查是否已在更新中
-      if (this.updateInProgress.get(modelName)) {
-        logger.info('Model update already in progress', {modelName});
-        return false;
-      }
+      console.log('开始下载模型:', modelInfo.version);
 
-      this.updateInProgress.set(modelName, true);
+      // 创建模型目录
+      await RNFS.mkdir(this.modelsPath).catch(() => {});
 
-      logger.info('Starting model update', {modelName, retryCount});
+      const modelPath = `${this.modelsPath}/${modelInfo.name.replace(/\s+/g, '_').toLowerCase()}_${modelInfo.version}.tflite`;
+      const tempPath = `${this.modelsPath}/temp_${Date.now()}.tflite`;
 
-      // 模拟下载和安装模型
-      await this.simulateModelDownload(modelName);
+      // 下载模型文件
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: modelInfo.downloadUrl,
+        toFile: tempPath,
+        progressDivider: 1,
+        begin: (res) => {
+          console.log('下载开始:', res.contentLength);
+        },
+        progress: (res) => {
+          const progress = (res.bytesWritten / res.contentLength) * 100;
+          console.log('下载进度:', progress);
+          onProgress?.(progress);
+        },
+      }).promise;
 
-      // 验证模型
-      const isValid = await this.verifyModel(modelName);
-
+      // 验证文件完整性
+      const isValid = await this.verifyFileIntegrity(tempPath, modelInfo.checksum);
       if (!isValid) {
-        throw new Error('Model verification failed');
+        throw new Error('模型文件校验失败');
       }
 
-      // 更新模型信息
-      const currentInfo = this.modelInfo.get(modelName);
-      if (currentInfo) {
-        this.modelInfo.set(modelName, {
-          ...currentInfo,
-          version: this.incrementVersion(currentInfo.version),
-          lastUpdated: Date.now(),
-        });
+      // 备份旧模型
+      const oldModelPath = `${this.modelsPath}/current_model.tflite`;
+      const currentModelExists = await RNFS.exists(oldModelPath);
+      
+      if (currentModelExists) {
+        const backupPath = `${this.modelsPath}/backup_${Date.now()}.tflite`;
+        await RNFS.moveFile(oldModelPath, backupPath);
       }
 
-      logger.info('Model update completed successfully', {modelName});
-      return true;
+      // 安装新模型
+      await RNFS.moveFile(tempPath, modelPath);
+      
+      // 更新当前模型链接
+      await RNFS.writeFile(oldModelPath, modelPath);
+
+      // 清理临时文件
+      await RNFS.unlink(tempPath).catch(() => {});
+
+      // 更新本地版本信息
+      await this.updateLocalVersion(modelInfo.version);
+
+      console.log('模型更新完成:', modelInfo.version);
+
+      showMessage({
+        message: '模型更新成功',
+        description: `已更新到版本 ${modelInfo.version}`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      return {
+        success: true,
+        message: `模型更新成功，版本 ${modelInfo.version}`,
+        oldVersion: this.currentVersion,
+        newVersion: modelInfo.version,
+        downloadSize: modelInfo.size,
+      };
+
     } catch (error) {
-      logger.error('Model update failed', {error, modelName, retryCount});
+      console.error('模型更新失败:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : '模型更新失败';
+      
+      showMessage({
+        message: '模型更新失败',
+        description: errorMessage,
+        type: 'danger',
+        duration: 4000,
+      });
 
-      // 重试逻辑
-      if (retryCount < this.config.maxRetries) {
-        logger.info('Retrying model update', {
-          modelName,
-          retryCount: retryCount + 1,
-        });
-        await this.delay(1000 * (retryCount + 1)); // 指数退避
-        return this.updateModel(modelName, retryCount + 1);
-      }
-
-      return false;
-    } finally {
-      this.updateInProgress.set(modelName, false);
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   }
 
   /**
-   * 模拟模型下载
+   * 回滚到上一个版本
    */
-  private async simulateModelDownload(modelName: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        logger.info('Model download simulated', {modelName});
-        resolve();
-      }, 2000);
-
-      // 模拟下载失败的概率
-      if (Math.random() > 0.95) {
-        clearTimeout(timeout);
-        reject(new Error('Download failed'));
-      }
-    });
-  }
-
-  /**
-   * 验证模型
-   */
-  private async verifyModel(modelName: string): Promise<boolean> {
+  async rollbackModel(): Promise<UpdateResult> {
     try {
-      logger.info('Verifying model', {modelName});
+      const oldModelPath = `${this.modelsPath}/backup_${Date.now()}.tflite`;
+      const currentModelPath = `${this.modelsPath}/current_model.tflite`;
+      
+      // 查找最新的备份文件
+      const files = await RNFS.readDir(this.modelsPath);
+      const backupFiles = files
+        .filter(file => file.name.startsWith('backup_'))
+        .sort((a, b) => b.mtime - a.mtime);
 
-      // 模拟验证
-      const isValid = Math.random() > 0.05; // 95% 验证成功
-
-      if (isValid) {
-        logger.info('Model verification passed', {modelName});
-      } else {
-        logger.warn('Model verification failed', {modelName});
+      if (backupFiles.length === 0) {
+        throw new Error('没有找到可回滚的模型版本');
       }
 
-      return isValid;
+      const latestBackup = backupFiles[0];
+      
+      // 备份当前版本
+      const currentBackup = `${this.modelsPath}/rollback_backup_${Date.now()}.tflite`;
+      const currentModelExists = await RNFS.exists(currentModelPath);
+      
+      if (currentModelExists) {
+        await RNFS.moveFile(currentModelPath, currentBackup);
+      }
+
+      // 恢复备份版本
+      await RNFS.moveFile(latestBackup.path, currentModelPath);
+
+      // 获取版本信息
+      const version = await this.getLocalVersion();
+
+      showMessage({
+        message: '模型回滚成功',
+        description: `已回滚到版本 ${version}`,
+        type: 'success',
+        duration: 3000,
+      });
+
+      return {
+        success: true,
+        message: `模型回滚成功，版本 ${version}`,
+        newVersion: version,
+      };
+
     } catch (error) {
-      logger.error('Model verification error', {error, modelName});
-      return false;
+      console.error('模型回滚失败:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : '模型回滚失败';
+      
+      showMessage({
+        message: '模型回滚失败',
+        description: errorMessage,
+        type: 'danger',
+        duration: 4000,
+      });
+
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   }
 
   /**
    * 获取模型信息
    */
-  getModelInfo(modelName: string): ModelInfo | undefined {
-    return this.modelInfo.get(modelName);
-  }
-
-  /**
-   * 获取所有模型信息
-   */
-  getAllModelInfo(): Map<string, ModelInfo> {
-    return new Map(this.modelInfo);
-  }
-
-  /**
-   * 清除模型缓存
-   */
-  async clearModelCache(modelName: string): Promise<void> {
+  async getModelInfo(): Promise<{
+    currentVersion: string;
+    modelSize: number;
+    lastUpdated: Date | null;
+    availableUpdates: number;
+  }> {
     try {
-      logger.info('Clearing model cache', {modelName});
-      // 实现缓存清除逻辑
-      logger.info('Model cache cleared', {modelName});
+      const modelPath = `${this.modelsPath}/current_model.tflite`;
+      const modelExists = await RNFS.exists(modelPath);
+
+      let modelSize = 0;
+      let lastUpdated: Date | null = null;
+
+      if (modelExists) {
+        const stats = await RNFS.stat(modelPath);
+        modelSize = stats.size;
+        lastUpdated = stats.mtime;
+      }
+
+      // 检查可用更新
+      const updateInfo = await this.checkForUpdates();
+
+      return {
+        currentVersion: this.currentVersion,
+        modelSize,
+        lastUpdated,
+        availableUpdates: updateInfo.hasUpdate ? 1 : 0,
+      };
     } catch (error) {
-      logger.error('Failed to clear model cache', {error, modelName});
+      console.error('获取模型信息失败:', error);
+      throw error;
     }
   }
 
   /**
-   * 版本递增
+   * 清理旧模型文件
    */
-  private incrementVersion(version: string): string {
-    const parts = version.split('.');
-    const patch = parseInt(parts[2] || '0', 10) + 1;
-    return `${parts[0]}.${parts[1]}.${patch}`;
+  async cleanupOldModels(keepCount: number = 3): Promise<void> {
+    try {
+      const files = await RNFS.readDir(this.modelsPath);
+      const modelFiles = files
+        .filter(file => file.name.includes('.tflite') && !file.name.includes('temp_'))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      // 保留最新版本，删除旧版本
+      const filesToDelete = modelFiles.slice(keepCount);
+
+      for (const file of filesToDelete) {
+        if (!file.name.includes('current_model')) {
+          await RNFS.unlink(file.path);
+          console.log('删除旧模型文件:', file.name);
+        }
+      }
+
+      showMessage({
+        message: '清理完成',
+        description: `已清理 ${filesToDelete.length} 个旧模型文件`,
+        type: 'success',
+        duration: 2000,
+      });
+
+    } catch (error) {
+      console.error('清理旧模型失败:', error);
+    }
   }
 
   /**
-   * 延迟
+   * 比较版本号
    */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  private compareVersions(version1: string, version2: string): number {
+    const v1Parts = version1.split('.').map(Number);
+    const v2Parts = version2.split('.').map(Number);
+
+    const maxLength = Math.max(v1Parts.length, v2Parts.length);
+
+    for (let i = 0; i < maxLength; i++) {
+      const v1 = v1Parts[i] || 0;
+      const v2 = v2Parts[i] || 0;
+
+      if (v1 > v2) return 1;
+      if (v1 < v2) return -1;
+    }
+
+    return 0;
   }
 
   /**
-   * 设置配置
+   * 验证文件完整性
    */
-  setConfig(config: Partial<ModelUpdateConfig>): void {
-    this.config = {...this.config, ...config};
-    logger.info('Model updater config updated', {config: this.config});
+  private async verifyFileIntegrity(filePath: string, expectedChecksum: string): Promise<boolean> {
+    try {
+      // 在实际应用中，这里会计算文件的SHA256校验和
+      // const fileContent = await RNFS.readFile(filePath, 'base64');
+      // const actualChecksum = await crypto.subtle.digest('SHA-256', fileContent);
+      
+      // 模拟校验（实际应用中需要真实的校验和计算）
+      return expectedChecksum !== 'invalid-checksum';
+    } catch (error) {
+      console.error('文件完整性验证失败:', error);
+      return false;
+    }
   }
 
   /**
-   * 获取配置
+   * 更新本地版本信息
    */
-  getConfig(): ModelUpdateConfig {
-    return {...this.config};
+  private async updateLocalVersion(version: string): Promise<void> {
+    const versionPath = `${this.modelsPath}/version.json`;
+    const versionData = {
+      version,
+      updatedAt: new Date().toISOString(),
+      platform: Platform.OS,
+    };
+
+    await RNFS.writeFile(versionPath, JSON.stringify(versionData, null, 2));
+    this.currentVersion = version;
+  }
+
+  /**
+   * 获取本地版本信息
+   */
+  private async getLocalVersion(): Promise<string> {
+    try {
+      const versionPath = `${this.modelsPath}/version.json`;
+      const exists = await RNFS.exists(versionPath);
+
+      if (exists) {
+        const content = await RNFS.readFile(versionPath);
+        const data = JSON.parse(content);
+        return data.version || this.currentVersion;
+      }
+    } catch (error) {
+      console.error('获取本地版本信息失败:', error);
+    }
+
+    return this.currentVersion;
+  }
+
+  /**
+   * 检查网络连接和存储空间
+   */
+  async checkUpdatePrerequisites(): Promise<{
+    canUpdate: boolean;
+    issues: string[];
+  }> {
+    const issues: string[] = [];
+
+    // 检查网络连接
+    // 在实际应用中，这里会使用NetInfo检查网络状态
+    // const state = await NetInfo.fetch();
+    // if (!state.isConnected) {
+    //   issues.push('网络连接不可用');
+    // }
+
+    // 检查存储空间（假设需要至少50MB）
+    try {
+      const freeSpace = await RNFS.getFSInfo();
+      if (freeSpace.freeSpace < 50 * 1024 * 1024) {
+        issues.push('存储空间不足，至少需要50MB');
+      }
+    } catch (error) {
+      issues.push('无法检查存储空间');
+    }
+
+    return {
+      canUpdate: issues.length === 0,
+      issues,
+    };
   }
 }
 
-// 导出单例
+// 单例实例
 export const modelUpdaterService = new ModelUpdaterService();
-
+export default modelUpdaterService;

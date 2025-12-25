@@ -1,176 +1,51 @@
-import {launchCamera, launchImageLibrary, ImagePickerResponse} from 'react-native-image-picker';
-import {Platform} from 'react-native';
-import {logger} from '@services/telemetry/logger';
+import { Platform, Alert } from 'react-native';
+import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import RNFS from 'react-native-fs';
+import { ImageResize } from 'react-native-image-resizer';
+import { v4 as uuidv4 } from 'uuid';
 
-export interface PhotoResult {
+export interface CameraOptions {
+  mediaType: 'photo' | 'video' | 'mixed';
+  quality: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  includeBase64?: boolean;
+  saveToPhotos?: boolean;
+  durationLimit?: number; // 视频录制时长限制
+}
+
+export interface CameraResult {
   uri: string;
-  width: number;
-  height: number;
-  size: number;
-  type: string;
   fileName: string;
+  fileSize: number;
+  type: string;
+  width?: number;
+  height?: number;
+  base64?: string;
+  duration?: number; // 视频时长
 }
 
-export interface CameraServiceError {
-  code: string;
-  message: string;
-}
-
-/**
- * 相机服务
- * 封装拍照和相册选择逻辑
- */
 class CameraService {
-  private static instance: CameraService;
+  private readonly CAMERA_PERMISSION = Platform.select({
+    ios: PERMISSIONS.IOS.CAMERA,
+    android: PERMISSIONS.ANDROID.CAMERA,
+  });
 
-  private constructor() {}
-
-  static getInstance(): CameraService {
-    if (!CameraService.instance) {
-      CameraService.instance = new CameraService();
-    }
-    return CameraService.instance;
-  }
-
-  /**
-   * 打开相机拍照
-   */
-  async takePhoto(): Promise<PhotoResult | null> {
-    return new Promise((resolve, reject) => {
-      launchCamera(
-        {
-          mediaType: 'photo',
-          cameraType: 'back',
-          quality: 0.8,
-          maxWidth: 1920,
-          maxHeight: 1920,
-          includeBase64: false,
-          saveToPhotos: true,
-        },
-        (response: ImagePickerResponse) => {
-          if (response.didCancel) {
-            logger.info('Camera cancelled by user');
-            resolve(null);
-          } else if (response.errorCode) {
-            const error: CameraServiceError = {
-              code: response.errorCode,
-              message: response.errorMessage || 'Unknown camera error',
-            };
-            logger.error(`Camera error: ${error.code} - ${error.message}`);
-            reject(error);
-          } else if (response.assets && response.assets.length > 0) {
-            const asset = response.assets[0];
-            const result: PhotoResult = {
-              uri: asset.uri || '',
-              width: asset.width || 0,
-              height: asset.height || 0,
-              size: asset.fileSize || 0,
-              type: asset.type || 'image/jpeg',
-              fileName: asset.fileName || `photo_${Date.now()}.jpg`,
-            };
-            logger.info(`Photo taken: ${result.fileName}`);
-            resolve(result);
-          }
-        },
-      );
-    });
-  }
-
-  /**
-   * 从相册选择照片
-   */
-  async pickPhotoFromGallery(): Promise<PhotoResult | null> {
-    return new Promise((resolve, reject) => {
-      launchImageLibrary(
-        {
-          mediaType: 'photo',
-          quality: 0.8,
-          maxWidth: 1920,
-          maxHeight: 1920,
-          includeBase64: false,
-          selectionLimit: 1,
-        },
-        (response: ImagePickerResponse) => {
-          if (response.didCancel) {
-            logger.info('Gallery selection cancelled by user');
-            resolve(null);
-          } else if (response.errorCode) {
-            const error: CameraServiceError = {
-              code: response.errorCode,
-              message: response.errorMessage || 'Unknown gallery error',
-            };
-            logger.error(`Gallery error: ${error.code} - ${error.message}`);
-            reject(error);
-          } else if (response.assets && response.assets.length > 0) {
-            const asset = response.assets[0];
-            const result: PhotoResult = {
-              uri: asset.uri || '',
-              width: asset.width || 0,
-              height: asset.height || 0,
-              size: asset.fileSize || 0,
-              type: asset.type || 'image/jpeg',
-              fileName: asset.fileName || `photo_${Date.now()}.jpg`,
-            };
-            logger.info(`Photo selected from gallery: ${result.fileName}`);
-            resolve(result);
-          }
-        },
-      );
-    });
-  }
-
-  /**
-   * 从相册选择多张照片（最多 9 张）
-   */
-  async pickMultiplePhotos(maxCount: number = 9): Promise<PhotoResult[] | null> {
-    return new Promise((resolve, reject) => {
-      launchImageLibrary(
-        {
-          mediaType: 'photo',
-          quality: 0.8,
-          maxWidth: 1920,
-          maxHeight: 1920,
-          includeBase64: false,
-          selectionLimit: maxCount,
-        },
-        (response: ImagePickerResponse) => {
-          if (response.didCancel) {
-            logger.info('Multiple photo selection cancelled by user');
-            resolve(null);
-          } else if (response.errorCode) {
-            const error: CameraServiceError = {
-              code: response.errorCode,
-              message: response.errorMessage || 'Unknown gallery error',
-            };
-            logger.error(`Gallery error: ${error.code} - ${error.message}`);
-            reject(error);
-          } else if (response.assets && response.assets.length > 0) {
-            const results: PhotoResult[] = response.assets.map(asset => ({
-              uri: asset.uri || '',
-              width: asset.width || 0,
-              height: asset.height || 0,
-              size: asset.fileSize || 0,
-              type: asset.type || 'image/jpeg',
-              fileName: asset.fileName || `photo_${Date.now()}.jpg`,
-            }));
-            logger.info(`${results.length} photos selected from gallery`);
-            resolve(results);
-          }
-        },
-      );
-    });
-  }
+  private readonly PHOTO_LIBRARY_PERMISSION = Platform.select({
+    ios: PERMISSIONS.IOS.PHOTO_LIBRARY,
+    android: PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
+  });
 
   /**
    * 检查相机权限
    */
   async checkCameraPermission(): Promise<boolean> {
     try {
-      // 权限检查由 permissionService 处理
-      // 这里只是返回 true，实际权限检查在调用前进行
-      return true;
+      const permission = await request(this.CAMERA_PERMISSION!);
+      return permission === RESULTS.GRANTED;
     } catch (error) {
-      logger.error(`Camera permission check failed: ${error}`);
+      console.error('检查相机权限失败:', error);
       return false;
     }
   }
@@ -178,66 +53,403 @@ class CameraService {
   /**
    * 检查相册权限
    */
-  async checkGalleryPermission(): Promise<boolean> {
+  async checkPhotoLibraryPermission(): Promise<boolean> {
     try {
-      // 权限检查由 permissionService 处理
-      return true;
+      const permission = await request(this.PHOTO_LIBRARY_PERMISSION!);
+      return permission === RESULTS.GRANTED;
     } catch (error) {
-      logger.error(`Gallery permission check failed: ${error}`);
+      console.error('检查相册权限失败:', error);
       return false;
     }
   }
 
   /**
-   * 获取照片的 EXIF 数据（如果可用）
+   * 请求所有必要的权限
    */
-  async getPhotoMetadata(photoUri: string): Promise<Record<string, any> | null> {
+  async requestPermissions(): Promise<{
+    camera: boolean;
+    photoLibrary: boolean;
+  }> {
+    const [cameraPermission, photoLibraryPermission] = await Promise.all([
+      this.checkCameraPermission(),
+      this.checkPhotoLibraryPermission(),
+    ]);
+
+    return {
+      camera: cameraPermission,
+      photoLibrary: photoLibraryPermission,
+    };
+  }
+
+  /**
+   * 拍摄照片
+   */
+  async takePhoto(options?: Partial<CameraOptions>): Promise<CameraResult> {
+    // 检查权限
+    const hasPermission = await this.checkCameraPermission();
+    if (!hasPermission) {
+      throw new Error('没有相机权限');
+    }
+
+    const defaultOptions: CameraOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      saveToPhotos: false,
+    };
+
+    const cameraOptions = { ...defaultOptions, ...options };
+
+    return new Promise((resolve, reject) => {
+      launchCamera(cameraOptions, (response: ImagePickerResponse) => {
+        if (response.didCancel) {
+          reject(new Error('用户取消了拍摄'));
+          return;
+        }
+
+        if (response.errorCode) {
+          reject(new Error(response.errorMessage || '拍摄失败'));
+          return;
+        }
+
+        if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0];
+          const result: CameraResult = {
+            uri: asset.uri!,
+            fileName: asset.fileName || `photo_${Date.now()}.jpg`,
+            fileSize: asset.fileSize || 0,
+            type: asset.type || 'image/jpeg',
+            width: asset.width,
+            height: asset.height,
+            base64: asset.base64,
+          };
+
+          resolve(result);
+        } else {
+          reject(new Error('没有获取到图像数据'));
+        }
+      });
+    });
+  }
+
+  /**
+   * 从相册选择照片
+   */
+  async selectFromGallery(options?: Partial<CameraOptions>): Promise<CameraResult> {
+    // 检查权限
+    const hasPermission = await this.checkPhotoLibraryPermission();
+    if (!hasPermission) {
+      throw new Error('没有相册访问权限');
+    }
+
+    const defaultOptions: CameraOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      saveToPhotos: false,
+    };
+
+    const galleryOptions = { ...defaultOptions, ...options };
+
+    return new Promise((resolve, reject) => {
+      launchImageLibrary(galleryOptions, (response: ImagePickerResponse) => {
+        if (response.didCancel) {
+          reject(new Error('用户取消了选择'));
+          return;
+        }
+
+        if (response.errorCode) {
+          reject(new Error(response.errorMessage || '选择失败'));
+          return;
+        }
+
+        if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0];
+          const result: CameraResult = {
+            uri: asset.uri!,
+            fileName: asset.fileName || `gallery_${Date.now()}.jpg`,
+            fileSize: asset.fileSize || 0,
+            type: asset.type || 'image/jpeg',
+            width: asset.width,
+            height: asset.height,
+            base64: asset.base64,
+          };
+
+          resolve(result);
+        } else {
+          reject(new Error('没有获取到图像数据'));
+        }
+      });
+    });
+  }
+
+  /**
+   * 批量选择照片
+   */
+  async selectMultiplePhotos(maxCount: number = 9): Promise<CameraResult[]> {
+    const hasPermission = await this.checkPhotoLibraryPermission();
+    if (!hasPermission) {
+      throw new Error('没有相册访问权限');
+    }
+
+    const options: CameraOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1920,
+      maxHeight: 1080,
+    };
+
+    return new Promise((resolve, reject) => {
+      launchImageLibrary(
+        {
+          ...options,
+          selectionLimit: maxCount,
+        },
+        (response: ImagePickerResponse) => {
+          if (response.didCancel) {
+            reject(new Error('用户取消了选择'));
+            return;
+          }
+
+          if (response.errorCode) {
+            reject(new Error(response.errorMessage || '选择失败'));
+            return;
+          }
+
+          if (response.assets && response.assets.length > 0) {
+            const results: CameraResult[] = response.assets.map(asset => ({
+              uri: asset.uri!,
+              fileName: asset.fileName || `gallery_${Date.now()}.jpg`,
+              fileSize: asset.fileSize || 0,
+              type: asset.type || 'image/jpeg',
+              width: asset.width,
+              height: asset.height,
+              base64: asset.base64,
+            }));
+
+            resolve(results);
+          } else {
+            reject(new Error('没有获取到图像数据'));
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 录制视频
+   */
+  async recordVideo(options?: Partial<CameraOptions>): Promise<CameraResult> {
+    const hasPermission = await this.checkCameraPermission();
+    if (!hasPermission) {
+      throw new Error('没有相机权限');
+    }
+
+    const defaultOptions: CameraOptions = {
+      mediaType: 'video',
+      quality: 0.8,
+      durationLimit: 60, // 最多录制60秒
+    };
+
+    const videoOptions = { ...defaultOptions, ...options };
+
+    return new Promise((resolve, reject) => {
+      launchCamera(videoOptions, (response: ImagePickerResponse) => {
+        if (response.didCancel) {
+          reject(new Error('用户取消了录制'));
+          return;
+        }
+
+        if (response.errorCode) {
+          reject(new Error(response.errorMessage || '录制失败'));
+          return;
+        }
+
+        if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0];
+          const result: CameraResult = {
+            uri: asset.uri!,
+            fileName: asset.fileName || `video_${Date.now()}.mp4`,
+            fileSize: asset.fileSize || 0,
+            type: asset.type || 'video/mp4',
+            width: asset.width,
+            height: asset.height,
+            duration: asset.duration,
+          };
+
+          resolve(result);
+        } else {
+          reject(new Error('没有获取到视频数据'));
+        }
+      });
+    });
+  }
+
+  /**
+   * 压缩图像
+   */
+  async compressImage(
+    uri: string,
+    quality: number = 0.8,
+    maxWidth?: number,
+    maxHeight?: number
+  ): Promise<string> {
     try {
-      // 这是一个占位符，实际 EXIF 提取需要额外的库
-      logger.info(`Getting metadata for photo: ${photoUri}`);
-      return null;
+      const compressedUri = await ImageResize.createResizedImage(
+        uri,
+        maxWidth || 1920,
+        maxHeight || 1080,
+        'JPEG',
+        quality * 100,
+        0,
+        undefined,
+        false,
+        { mode: 'contain', onlyScaleDown: false },
+        80
+      );
+
+      return compressedUri.uri;
     } catch (error) {
-      logger.error(`Failed to get photo metadata: ${error}`);
-      return null;
+      console.error('图像压缩失败:', error);
+      return uri; // 返回原始图像
     }
   }
 
   /**
-   * 验证照片是否有效
+   * 生成缩略图
    */
-  validatePhoto(photo: PhotoResult): boolean {
-    if (!photo.uri) {
-      logger.warn('Photo URI is empty');
-      return false;
-    }
+  async generateThumbnail(uri: string, size: number = 200): Promise<string> {
+    try {
+      const thumbnailUri = await ImageResize.createResizedImage(
+        uri,
+        size,
+        size,
+        'JPEG',
+        70, // 较低质量用于缩略图
+        0,
+        undefined,
+        false,
+        { mode: 'cover', onlyScaleDown: false }
+      );
 
-    if (photo.size === 0) {
-      logger.warn('Photo size is 0');
-      return false;
+      return thumbnailUri.uri;
+    } catch (error) {
+      console.error('缩略图生成失败:', error);
+      throw error;
     }
-
-    if (photo.width === 0 || photo.height === 0) {
-      logger.warn('Photo dimensions are invalid');
-      return false;
-    }
-
-    return true;
   }
 
   /**
-   * 获取照片的文件大小（MB）
+   * 保存图像到应用目录
    */
-  getPhotoSizeInMB(photo: PhotoResult): number {
-    return photo.size / (1024 * 1024);
+  async saveImageToAppDirectory(imageUri: string, fileName?: string): Promise<string> {
+    try {
+      const appDirectory = `${RNFS.DocumentDirectoryPath}/images`;
+      
+      // 确保目录存在
+      await RNFS.mkdir(appDirectory).catch(() => {});
+
+      const finalFileName = fileName || `${uuidv4()}.jpg`;
+      const destinationPath = `${appDirectory}/${finalFileName}`;
+
+      // 复制文件
+      await RNFS.copyFile(imageUri, destinationPath);
+
+      return destinationPath;
+    } catch (error) {
+      console.error('保存图像失败:', error);
+      throw error;
+    }
   }
 
   /**
-   * 检查照片是否超过大小限制
+   * 获取图像信息
    */
-  isPhotoSizeExceeded(photo: PhotoResult, maxSizeMB: number = 10): boolean {
-    return this.getPhotoSizeInMB(photo) > maxSizeMB;
+  async getImageInfo(uri: string): Promise<{
+    size: number;
+    exists: boolean;
+    isDirectory: boolean;
+  }> {
+    try {
+      const stats = await RNFS.stat(uri);
+      return {
+        size: stats.size,
+        exists: true,
+        isDirectory: stats.isDirectory(),
+      };
+    } catch (error) {
+      return {
+        size: 0,
+        exists: false,
+        isDirectory: false,
+      };
+    }
+  }
+
+  /**
+   * 删除图像文件
+   */
+  async deleteImage(uri: string): Promise<void> {
+    try {
+      await RNFS.unlink(uri);
+    } catch (error) {
+      console.error('删除图像失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查相机是否可用
+   */
+  isCameraAvailable(): boolean {
+    return Platform.OS === 'android' || Platform.OS === 'ios';
+  }
+
+  /**
+   * 获取支持的媒体类型
+   */
+  getSupportedMediaTypes(): string[] {
+    return ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'];
+  }
+
+  /**
+   * 显示权限请求对话框
+   */
+  showPermissionAlert(permissionType: 'camera' | 'gallery'): void {
+    const messages = {
+      camera: {
+        title: '需要相机权限',
+        message: '应用需要访问相机来拍摄照片和录制视频。',
+        button: '去设置',
+      },
+      gallery: {
+        title: '需要相册权限',
+        message: '应用需要访问相册来选择照片。',
+        button: '去设置',
+      },
+    };
+
+    const config = messages[permissionType];
+
+    Alert.alert(
+      config.title,
+      config.message,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: config.button,
+          onPress: () => {
+            // 在实际应用中，这里会打开系统设置
+            // Linking.openSettings();
+          },
+        },
+      ]
+    );
   }
 }
 
-export const cameraService = CameraService.getInstance();
-
+// 单例实例
+export const cameraService = new CameraService();
+export default cameraService;

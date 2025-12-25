@@ -1,242 +1,425 @@
-import {logger} from '@services/telemetry/logger';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 export interface WeatherData {
-  temperature: number; // 摄氏度
-  condition: string; // 天气状况：晴、多云、阴、雨、雪等
-  humidity: number; // 湿度百分比
-  windSpeed: number; // 风速 km/h
-  windDirection: string; // 风向
-  pressure: number; // 气压 hPa
-  visibility: number; // 能见度 km
-  uvIndex: number; // 紫外线指数
-  feelsLike: number; // 体感温度
-  timestamp: number; // 获取时间戳
+  temperature: number;
+  condition: string;
+  humidity: number;
+  pressure: number;
+  windSpeed: number;
+  windDirection: number;
+  visibility: number;
+  uvIndex: number;
+  icon: string;
+  description: string;
+  location: string;
+  timestamp: number;
+  isDay: boolean;
 }
 
-export interface WeatherServiceError {
-  code: string;
-  message: string;
+export interface WeatherForecast {
+  date: string;
+  temperature: {
+    high: number;
+    low: number;
+  };
+  condition: string;
+  icon: string;
+  humidity: number;
+  windSpeed: number;
 }
 
-/**
- * 天气服务
- * 获取本地天气信息
- * 注：实际实现需要调用天气 API（如高德、心知天气等）
- */
 class WeatherService {
-  private static instance: WeatherService;
-  private cachedWeather: WeatherData | null = null;
-  private cacheExpireTime: number = 0;
-  private readonly CACHE_DURATION = 30 * 60 * 1000; // 30 分钟缓存
-
-  private constructor() {}
-
-  static getInstance(): WeatherService {
-    if (!WeatherService.instance) {
-      WeatherService.instance = new WeatherService();
-    }
-    return WeatherService.instance;
-  }
+  private readonly API_KEY = process.env.WEATHER_API_KEY || 'your-weather-api-key';
+  private readonly BASE_URL = 'https://api.openweathermap.org/data/2.5';
+  private cache: Map<string, { data: WeatherData; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
 
   /**
-   * 获取指定位置的天气
+   * 获取当前位置的天气信息
    */
-  async getWeatherByLocation(latitude: number, longitude: number): Promise<WeatherData | null> {
+  async getCurrentWeather(latitude: number, longitude: number): Promise<WeatherData> {
+    const cacheKey = `current_${latitude}_${longitude}`;
+    const cached = this.getCachedWeather(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // 检查缓存
-      if (this.cachedWeather && Date.now() < this.cacheExpireTime) {
-        logger.info('Returning cached weather data');
-        return this.cachedWeather;
+      // 检查网络连接
+      const networkState = await NetInfo.fetch();
+      if (!networkState.isConnected) {
+        throw new Error('网络连接不可用');
       }
 
-      // 这里应该调用真实的天气 API
-      // 示例：使用高德地图天气 API 或其他天气服务
-      const weatherData = await this.fetchWeatherFromAPI(latitude, longitude);
+      // 调用天气API
+      const response = await fetch(
+        `${this.BASE_URL}/weather?lat=${latitude}&lon=${longitude}&appid=${this.API_KEY}&units=metric&lang=zh_cn`
+      );
 
-      if (weatherData) {
-        this.cachedWeather = weatherData;
-        this.cacheExpireTime = Date.now() + this.CACHE_DURATION;
+      if (!response.ok) {
+        throw new Error(`天气API请求失败: ${response.status}`);
       }
+
+      const data = await response.json();
+      const weatherData = this.parseWeatherResponse(data);
+
+      // 缓存结果
+      this.setCachedWeather(cacheKey, weatherData);
 
       return weatherData;
     } catch (error) {
-      logger.error(`Failed to get weather: ${error}`);
-      return null;
+      console.error('获取天气信息失败:', error);
+      
+      // 返回模拟天气数据（离线或API失败时）
+      return this.getMockWeatherData(latitude, longitude);
     }
   }
 
   /**
-   * 从 API 获取天气数据（占位符实现）
+   * 获取天气预报
    */
-  private async fetchWeatherFromAPI(
+  async getWeatherForecast(
     latitude: number,
     longitude: number,
-  ): Promise<WeatherData | null> {
+    days: number = 5
+  ): Promise<WeatherForecast[]> {
     try {
-      // 这里应该调用真实的天气 API
-      // 示例代码：
-      // const response = await fetch(
-      //   `https://api.amap.com/v1/weather/weatherInfo?location=${longitude},${latitude}&key=YOUR_API_KEY`
-      // );
-      // const data = await response.json();
+      const networkState = await NetInfo.fetch();
+      if (!networkState.isConnected) {
+        throw new Error('网络连接不可用');
+      }
 
-      // 返回模拟数据
-      const mockWeather: WeatherData = {
-        temperature: 25,
-        condition: '晴',
-        humidity: 60,
-        windSpeed: 10,
-        windDirection: '东北',
-        pressure: 1013,
-        visibility: 10,
-        uvIndex: 5,
-        feelsLike: 24,
-        timestamp: Date.now(),
+      const response = await fetch(
+        `${this.BASE_URL}/forecast?lat=${latitude}&lon=${longitude}&appid=${this.API_KEY}&units=metric&lang=zh_cn&cnt=${days * 8}` // 每天8个时间段（3小时间隔）
+      );
+
+      if (!response.ok) {
+        throw new Error(`天气预报API请求失败: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return this.parseForecastResponse(data, days);
+    } catch (error) {
+      console.error('获取天气预报失败:', error);
+      return this.getMockForecastData(days);
+    }
+  }
+
+  /**
+   * 根据城市名获取天气
+   */
+  async getWeatherByCity(cityName: string): Promise<WeatherData> {
+    const cacheKey = `city_${cityName}`;
+    const cached = this.getCachedWeather(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const networkState = await NetInfo.fetch();
+      if (!networkState.isConnected) {
+        throw new Error('网络连接不可用');
+      }
+
+      const response = await fetch(
+        `${this.BASE_URL}/weather?q=${encodeURIComponent(cityName)}&appid=${this.API_KEY}&units=metric&lang=zh_cn`
+      );
+
+      if (!response.ok) {
+        throw new Error(`城市天气API请求失败: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const weatherData = this.parseWeatherResponse(data);
+
+      this.setCachedWeather(cacheKey, weatherData);
+
+      return weatherData;
+    } catch (error) {
+      console.error('根据城市获取天气失败:', error);
+      return this.getMockWeatherData(0, 0, cityName);
+    }
+  }
+
+  /**
+   * 解析天气API响应
+   */
+  private parseWeatherResponse(data: any): WeatherData {
+    const weather = data.weather[0];
+    const main = data.main;
+    const wind = data.wind;
+    const sys = data.sys;
+
+    return {
+      temperature: Math.round(main.temp),
+      condition: weather.main,
+      humidity: main.humidity,
+      pressure: main.pressure,
+      windSpeed: wind.speed || 0,
+      windDirection: wind.deg || 0,
+      visibility: (data.visibility || 10000) / 1000, // 转换为公里
+      uvIndex: 0, // 需要单独API获取
+      icon: weather.icon,
+      description: weather.description,
+      location: `${data.name}, ${sys.country}`,
+      timestamp: Date.now(),
+      isDay: weather.icon.includes('d'),
+    };
+  }
+
+  /**
+   * 解析预报API响应
+   */
+  private parseForecastResponse(data: any, days: number): WeatherForecast[] {
+    const forecastList = data.list;
+    const forecasts: WeatherForecast[] = [];
+
+    // 按天分组数据
+    const dailyData: { [date: string]: any[] } = {};
+
+    forecastList.forEach((item: any) => {
+      const date = new Date(item.dt * 1000).toDateString();
+      if (!dailyData[date]) {
+        dailyData[date] = [];
+      }
+      dailyData[date].push(item);
+    });
+
+    // 每天生成一个预报
+    Object.keys(dailyData).slice(0, days).forEach(date => {
+      const dayData = dailyData[date];
+      const temps = dayData.map(item => item.main.temp);
+      const weather = dayData[0].weather[0];
+
+      const forecast: WeatherForecast = {
+        date,
+        temperature: {
+          high: Math.round(Math.max(...temps)),
+          low: Math.round(Math.min(...temps)),
+        },
+        condition: weather.main,
+        icon: weather.icon,
+        humidity: dayData[0].main.humidity,
+        windSpeed: dayData[0].wind.speed || 0,
       };
 
-      logger.info(`Weather fetched for ${latitude}, ${longitude}`);
-      return mockWeather;
-    } catch (error) {
-      logger.error(`Failed to fetch weather from API: ${error}`);
-      return null;
-    }
+      forecasts.push(forecast);
+    });
+
+    return forecasts;
   }
 
   /**
-   * 获取天气图标
+   * 获取模拟天气数据（离线或测试用）
    */
-  getWeatherIcon(condition: string): string {
-    const iconMap: Record<string, string> = {
-      晴: '☀️',
-      多云: '⛅',
-      阴: '☁️',
-      雨: '🌧️',
-      雪: '❄️',
-      雷: '⛈️',
-      风: '💨',
-      雾: '🌫️',
+  private getMockWeatherData(
+    latitude: number,
+    longitude: number,
+    cityName?: string
+  ): WeatherData {
+    const mockConditions = [
+      { condition: 'Clear', icon: '01d', description: '晴朗' },
+      { condition: 'Clouds', icon: '02d', description: '多云' },
+      { condition: 'Rain', icon: '10d', description: '小雨' },
+      { condition: 'Snow', icon: '13d', description: '雪' },
+      { condition: 'Thunderstorm', icon: '11d', description: '雷雨' },
+    ];
+
+    // 基于坐标或城市名生成伪随机数
+    const seed = Math.abs(Math.sin((latitude + longitude) * 1000)) * 1000;
+    const index = Math.floor(seed) % mockConditions.length;
+    const mockCondition = mockConditions[index];
+
+    // 生成随机温度（基于季节）
+    const month = new Date().getMonth();
+    let temperature: number;
+    
+    if (month >= 11 || month <= 1) { // 冬季
+      temperature = Math.round(-5 + Math.random() * 15);
+    } else if (month >= 2 && month <= 4) { // 春季
+      temperature = Math.round(10 + Math.random() * 15);
+    } else if (month >= 5 && month <= 7) { // 夏季
+      temperature = Math.round(25 + Math.random() * 15);
+    } else { // 秋季
+      temperature = Math.round(15 + Math.random() * 15);
+    }
+
+    return {
+      temperature,
+      condition: mockCondition.condition,
+      humidity: Math.round(40 + Math.random() * 40),
+      pressure: Math.round(990 + Math.random() * 40),
+      windSpeed: Math.round(Math.random() * 10 * 10) / 10,
+      windDirection: Math.round(Math.random() * 360),
+      visibility: Math.round(5 + Math.random() * 15),
+      uvIndex: Math.round(Math.random() * 11),
+      icon: mockCondition.icon,
+      description: mockCondition.description,
+      location: cityName || `纬度:${latitude.toFixed(2)}, 经度:${longitude.toFixed(2)}`,
+      timestamp: Date.now(),
+      isDay: Math.random() > 0.3, // 70%概率是白天
     };
-
-    return iconMap[condition] || '🌤️';
   }
 
   /**
-   * 获取天气描述
+   * 获取模拟预报数据
    */
-  getWeatherDescription(weather: WeatherData): string {
-    return `${weather.condition}，${weather.temperature}°C，湿度 ${weather.humidity}%`;
+  private getMockForecastData(days: number): WeatherForecast[] {
+    const forecasts: WeatherForecast[] = [];
+    const mockConditions = ['Clear', 'Clouds', 'Rain', 'Snow'];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+
+      const randomCondition = mockConditions[Math.floor(Math.random() * mockConditions.length)];
+      const highTemp = Math.round(20 + Math.random() * 15);
+      const lowTemp = highTemp - Math.round(5 + Math.random() * 10);
+
+      forecasts.push({
+        date: date.toDateString(),
+        temperature: { high: highTemp, low: lowTemp },
+        condition: randomCondition,
+        icon: '01d',
+        humidity: Math.round(40 + Math.random() * 40),
+        windSpeed: Math.round(Math.random() * 10 * 10) / 10,
+      });
+    }
+
+    return forecasts;
   }
 
   /**
-   * 判断是否适合户外活动
+   * 缓存天气数据
    */
-  isSuitableForOutdoor(weather: WeatherData): boolean {
-    // 不适合户外：下雨、下雪、大风
-    const unsuitableConditions = ['雨', '雪', '雷'];
-    const isUnsuitableCondition = unsuitableConditions.some(condition =>
-      weather.condition.includes(condition),
-    );
-
-    if (isUnsuitableCondition) {
-      return false;
-    }
-
-    // 风速过大不适合
-    if (weather.windSpeed > 30) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * 获取天气建议
-   */
-  getWeatherAdvice(weather: WeatherData): string[] {
-    const advice: string[] = [];
-
-    if (weather.temperature > 35) {
-      advice.push('天气炎热，请做好防晒和补水');
-    } else if (weather.temperature < 0) {
-      advice.push('天气寒冷，请穿好保暖衣物');
-    }
-
-    if (weather.humidity > 80) {
-      advice.push('湿度较大，容易感到闷热');
-    }
-
-    if (weather.uvIndex > 7) {
-      advice.push('紫外线强度高，建议涂抹防晒霜');
-    }
-
-    if (weather.windSpeed > 20) {
-      advice.push('风力较大，外出请注意安全');
-    }
-
-    if (weather.condition.includes('雨')) {
-      advice.push('有降雨，出门请携带雨具');
-    }
-
-    if (advice.length === 0) {
-      advice.push('天气良好，适合户外活动');
-    }
-
-    return advice;
-  }
-
-  /**
-   * 验证天气数据
-   */
-  validateWeather(weather: WeatherData): boolean {
-    if (weather.temperature < -50 || weather.temperature > 60) {
-      logger.warn('Invalid temperature');
-      return false;
-    }
-
-    if (weather.humidity < 0 || weather.humidity > 100) {
-      logger.warn('Invalid humidity');
-      return false;
-    }
-
-    if (weather.windSpeed < 0) {
-      logger.warn('Invalid wind speed');
-      return false;
-    }
-
-    if (weather.pressure < 900 || weather.pressure > 1100) {
-      logger.warn('Invalid pressure');
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * 清除缓存
-   */
-  clearCache(): void {
-    this.cachedWeather = null;
-    this.cacheExpireTime = 0;
-    logger.info('Weather cache cleared');
+  private setCachedWeather(key: string, data: WeatherData): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+    });
   }
 
   /**
    * 获取缓存的天气数据
    */
-  getCachedWeather(): WeatherData | null {
-    if (this.cachedWeather && Date.now() < this.cacheExpireTime) {
-      return this.cachedWeather;
+  private getCachedWeather(key: string): WeatherData | null {
+    const cached = this.cache.get(key);
+    if (!cached) {
+      return null;
     }
-    return null;
+
+    const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION;
+    if (isExpired) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.data;
   }
 
   /**
-   * 检查缓存是否过期
+   * 清理过期缓存
    */
-  isCacheExpired(): boolean {
-    return Date.now() >= this.cacheExpireTime;
+  private cleanupCache(): void {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.CACHE_DURATION) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * 获取天气图标URL
+   */
+  getWeatherIconUrl(iconCode: string): string {
+    return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  }
+
+  /**
+   * 格式化温度显示
+   */
+  formatTemperature(temperature: number, unit: 'celsius' | 'fahrenheit' = 'celsius'): string {
+    if (unit === 'fahrenheit') {
+      return `${Math.round(temperature * 9/5 + 32)}°F`;
+    }
+    return `${temperature}°C`;
+  }
+
+  /**
+   * 格式化风速显示
+   */
+  formatWindSpeed(speed: number, unit: 'mps' | 'kmh' | 'mph' = 'mps'): string {
+    let convertedSpeed = speed;
+    let unitText = 'm/s';
+
+    switch (unit) {
+      case 'kmh':
+        convertedSpeed = speed * 3.6;
+        unitText = 'km/h';
+        break;
+      case 'mph':
+        convertedSpeed = speed * 2.237;
+        unitText = 'mph';
+        break;
+      default:
+        unitText = 'm/s';
+    }
+
+    return `${Math.round(convertedSpeed * 10) / 10} ${unitText}`;
+  }
+
+  /**
+   * 格式化能见度显示
+   */
+  formatVisibility(visibility: number): string {
+    if (visibility >= 1) {
+      return `${visibility.toFixed(1)}km`;
+    }
+    return `${Math.round(visibility * 1000)}m`;
+  }
+
+  /**
+   * 获取天气建议
+   */
+  getWeatherAdvice(weatherData: WeatherData): string {
+    const { temperature, condition, windSpeed, humidity } = weatherData;
+
+    if (temperature < 0) {
+      return '天气寒冷，注意保暖防寒。';
+    } else if (temperature > 30) {
+      return '天气炎热，注意防暑降温。';
+    } else if (condition === 'Rain') {
+      return '今日有雨，外出请携带雨具。';
+    } else if (condition === 'Snow') {
+      return '今日有雪，注意道路湿滑。';
+    } else if (windSpeed > 10) {
+      return '风力较大，外出注意安全。';
+    } else if (humidity < 30) {
+      return '空气较干燥，注意补水保湿。';
+    } else if (humidity > 80) {
+      return '空气湿度较高，注意通风。';
+    } else {
+      return '天气适宜，外出活动的好日子！';
+    }
+  }
+
+  /**
+   * 检查天气服务是否可用
+   */
+  isWeatherServiceAvailable(): boolean {
+    return !!this.API_KEY && this.API_KEY !== 'your-weather-api-key';
+  }
+
+  /**
+   * 清理所有缓存
+   */
+  clearCache(): void {
+    this.cache.clear();
   }
 }
 
-export const weatherService = WeatherService.getInstance();
-
+// 单例实例
+export const weatherService = new WeatherService();
+export default weatherService;

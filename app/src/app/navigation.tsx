@@ -1,117 +1,101 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {View, Text, StyleSheet} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { useSelector } from 'react-redux';
+import { theme } from './theme';
+import { selectIsLocked } from '@store/slices/appSlice';
 
-// 导入主页面
-import {HomeScreen} from '../features/capture/screens/HomeScreen';
+// Placeholder for screens - these will be implemented later
+const TimelineScreen = () => null;
+const SearchScreen = () => null;
+const SettingsScreen = () => null;
+const LockScreen = () => null;
 
-// 创建Tab导航器
-const Tab = createBottomTabNavigator();
-
-// 简单的测试屏幕组件
-const TimelineScreen: React.FC = () => (
-  <View style={styles.testScreen}>
-    <Text style={styles.testText}>时间线</Text>
-  </View>
-);
-
-const SearchScreen: React.FC = () => (
-  <View style={styles.testScreen}>
-    <Text style={styles.testText}>搜索</Text>
-  </View>
-);
-
-const SettingsScreen: React.FC = () => (
-  <View style={styles.testScreen}>
-    <Text style={styles.testText}>设置</Text>
-  </View>
-);
+const Stack = createStackNavigator();
 
 export const AppNavigator: React.FC = () => {
+  const isLocked = useSelector(selectIsLocked);
+
   return (
-    <NavigationContainer>
-      <Tab.Navigator
+    <NavigationContainer theme={{
+      dark: theme.dark,
+      colors: {
+        primary: theme.colors.primary,
+        background: theme.colors.background,
+        card: theme.colors.surface,
+        text: theme.colors.onSurface,
+        border: theme.colors.outline,
+        notification: theme.colors.error,
+      },
+    }}>
+      <Stack.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#2196F3',
-          tabBarInactiveTintColor: '#666666',
-          tabBarStyle: {
-            backgroundColor: '#ffffff',
-            borderTopWidth: 1,
-            borderTopColor: '#e0e0e0',
-            paddingBottom: 8,
-            paddingTop: 8,
-            height: 60,
-          },
           headerStyle: {
-            backgroundColor: '#ffffff',
+            backgroundColor: theme.colors.surface,
           },
-          headerTintColor: '#000000',
-          tabBarIconStyle: {
-            marginBottom: -4,
+          headerTintColor: theme.colors.onSurface,
+          headerTitleStyle: {
+            fontWeight: '600',
           },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            marginTop: 4,
+          cardStyle: {
+            backgroundColor: theme.colors.background,
           },
-        }}>
-        <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{
-            title: '首页',
-            headerShown: false,
-            tabBarIcon: ({color, size}) => (
-              <Text style={{fontSize: 20, color, marginBottom: 4}}>🏠</Text>
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Timeline"
-          component={TimelineScreen}
-          options={{
-            title: '时间线',
-            tabBarIcon: ({color, size}) => (
-              <Text style={{fontSize: 20, color, marginBottom: 4}}>📅</Text>
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Search"
-          component={SearchScreen}
-          options={{
-            title: '搜索',
-            tabBarIcon: ({color, size}) => (
-              <Text style={{fontSize: 20, color, marginBottom: 4}}>🔍</Text>
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            title: '设置',
-            tabBarIcon: ({color, size}) => (
-              <Text style={{fontSize: 20, color, marginBottom: 4}}>⚙️</Text>
-            ),
-          }}
-        />
-      </Tab.Navigator>
+        }}
+      >
+        {isLocked ? (
+          <Stack.Screen 
+            name="Lock" 
+            component={LockScreen}
+            options={{
+              headerShown: false,
+              cardStyle: { backgroundColor: theme.colors.background },
+            }}
+          />
+        ) : (
+          <>
+            <Stack.Screen 
+              name="Timeline" 
+              component={TimelineScreen}
+              options={{
+                headerShown: false, // Timeline screen will have custom header
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen 
+              name="Search" 
+              component={SearchScreen}
+              options={{
+                headerShown: false, // Search will be an overlay
+                cardStyle: { backgroundColor: 'transparent' },
+                cardOverlayEnabled: true,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen}
+              options={{
+                title: '设置',
+                headerBackTitleVisible: false,
+              }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
-const styles = StyleSheet.create({
-  testScreen: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-  },
-  testText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-});
+// Navigation types
+export type RootStackParamList = {
+  Timeline: undefined;
+  Search: undefined;
+  Settings: undefined;
+  Lock: undefined;
+};
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}

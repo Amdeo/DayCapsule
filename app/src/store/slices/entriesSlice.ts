@@ -1,216 +1,231 @@
-import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
-import type {PayloadAction} from '@reduxjs/toolkit';
-import {LifelogEntry, databaseService} from '@services/storage/database';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { LifeLogEntry, EntriesState } from '@types/index';
+import databaseOperations from '@services/storage/databaseService';
 
-export interface EntriesState {
-  items: LifelogEntry[];
-  loading: boolean;
-  error: string | null;
-  currentEntry: LifelogEntry | null;
-  syncStatus: {
-    [entryId: string]: 'draft' | 'pending' | 'synced' | 'failed';
-  };
-  syncRetryCount: {
-    [entryId: string]: number;
-  };
-}
-
-const initialState: EntriesState = {
-  items: [],
-  loading: false,
-  error: null,
-  currentEntry: null,
-  syncStatus: {},
-  syncRetryCount: {},
-};
-
-/**
- * 异步 thunk：加载所有记录
- */
-export const loadEntries = createAsyncThunk(
-  'entries/loadEntries',
-  async ({limit = 50, offset = 0}: {limit?: number; offset?: number}, {rejectWithValue}) => {
-    try {
-      const entries = await databaseService.getEntries(limit, offset);
-      return entries;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+// Async thunks
+export const fetchEntries = createAsyncThunk(
+  'entries/fetchEntries',
+  async ({ page = 0, limit = 20 }: { page?: number; limit?: number }) => {
+    const entries = await databaseOperations.getEntries(page, limit);
+    return entries;
+  }
 );
 
-/**
- * 异步 thunk：创建新记录
- */
 export const createEntry = createAsyncThunk(
   'entries/createEntry',
-  async (entry: Omit<LifelogEntry, 'id'>, {rejectWithValue}) => {
-    try {
-      const id = await databaseService.insertEntry(entry);
-      return {id, ...entry};
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+  async (entryData: Partial<LifeLogEntry>) => {
+    const entry = await databaseOperations.createEntry(entryData);
+    return entry;
+  }
 );
 
-/**
- * 异步 thunk：更新记录
- */
 export const updateEntry = createAsyncThunk(
   'entries/updateEntry',
-  async (entry: LifelogEntry, {rejectWithValue}) => {
-    try {
-      await databaseService.updateEntry(entry);
-      return entry;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+  async ({ id, updates }: { id: string; updates: Partial<LifeLogEntry> }) => {
+    const entry = await databaseOperations.updateEntry(id, updates);
+    return entry;
+  }
 );
 
-/**
- * 异步 thunk：删除记录
- */
 export const deleteEntry = createAsyncThunk(
   'entries/deleteEntry',
-  async (entryId: string, {rejectWithValue}) => {
-    try {
-      await databaseService.deleteEntry(entryId);
-      return entryId;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+  async (id: string) => {
+    await databaseOperations.deleteEntry(id);
+    return id;
+  }
 );
 
-/**
- * 异步 thunk：搜索记录
- */
+export const fetchEntriesByDateRange = createAsyncThunk(
+  'entries/fetchEntriesByDateRange',
+  async ({ 
+    startDate, 
+    endDate, 
+    view 
+  }: { 
+    startDate: Date; 
+    endDate: Date; 
+    view?: any;
+  }) => {
+    const entries = await databaseOperations.getEntriesByDateRange(startDate, endDate, view);
+    return entries;
+  }
+);
+
 export const searchEntries = createAsyncThunk(
   'entries/searchEntries',
-  async (query: string, {rejectWithValue}) => {
-    try {
-      const entries = await databaseService.searchEntries(query);
-      return entries;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
+  async ({ query, limit = 50 }: { query: string; limit?: number }) => {
+    const results = await databaseOperations.searchEntries(query, limit);
+    return results;
+  }
 );
 
+// Initial state
+const initialState: EntriesState = {
+  entries: [],
+  loading: false,
+  error: undefined,
+};
+
+// Slice
 const entriesSlice = createSlice({
   name: 'entries',
   initialState,
   reducers: {
-    setCurrentEntry: (state, action) => {
-      state.currentEntry = action.payload;
+    clearError: (state) => {
+      state.error = undefined;
     },
-    setSyncStatus: (state, action) => {
-      state.syncStatus[action.payload.entryId] = action.payload.status;
+    clearEntries: (state) => {
+      state.entries = [];
     },
-    incrementSyncRetry: (state, action) => {
-      const entryId = action.payload;
-      state.syncRetryCount[entryId] = (state.syncRetryCount[entryId] || 0) + 1;
+    updateEntryInList: (state, action: PayloadAction<LifeLogEntry>) => {
+      const index = state.entries.findIndex(entry => entry.id === action.payload.id);
+      if (index !== -1) {
+        state.entries[index] = action.payload;
+      }
     },
-    resetSyncRetry: (state, action) => {
-      const entryId = action.payload;
-      state.syncRetryCount[entryId] = 0;
+    removeEntryFromList: (state, action: PayloadAction<string>) => {
+      state.entries = state.entries.filter(entry => entry.id !== action.payload);
     },
-    clearError: state => {
-      state.error = null;
+    addEntryToList: (state, action: PayloadAction<LifeLogEntry>) => {
+      state.entries.unshift(action.payload);
     },
   },
-  extraReducers: builder => {
-    // loadEntries
+  extraReducers: (builder) => {
+    // Fetch entries
     builder
-      .addCase(loadEntries.pending, state => {
+      .addCase(fetchEntries.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = undefined;
       })
-      .addCase(loadEntries.fulfilled, (state, action) => {
+      .addCase(fetchEntries.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        // For page 0, replace entries; for other pages, append
+        if (action.meta.arg.page === 0) {
+          state.entries = action.payload;
+        } else {
+          state.entries.push(...action.payload);
+        }
       })
-      .addCase(loadEntries.rejected, (state, action) => {
+      .addCase(fetchEntries.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message;
       });
 
-    // createEntry
+    // Create entry
     builder
-      .addCase(createEntry.pending, state => {
+      .addCase(createEntry.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = undefined;
       })
       .addCase(createEntry.fulfilled, (state, action) => {
         state.loading = false;
-        const newEntry = action.payload as LifelogEntry;
-        state.items.unshift(newEntry);
-        state.syncStatus[newEntry.id] = 'draft';
-        state.syncRetryCount[newEntry.id] = 0;
+        state.entries.unshift(action.payload);
       })
       .addCase(createEntry.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message;
       });
 
-    // updateEntry
+    // Update entry
     builder
-      .addCase(updateEntry.pending, state => {
+      .addCase(updateEntry.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = undefined;
       })
       .addCase(updateEntry.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedEntry = action.payload;
-        const index = state.items.findIndex(item => item.id === updatedEntry.id);
+        const index = state.entries.findIndex(entry => entry.id === action.payload.id);
         if (index !== -1) {
-          state.items[index] = updatedEntry;
+          state.entries[index] = action.payload;
         }
       })
       .addCase(updateEntry.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message;
       });
 
-    // deleteEntry
+    // Delete entry
     builder
-      .addCase(deleteEntry.pending, state => {
+      .addCase(deleteEntry.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = undefined;
       })
       .addCase(deleteEntry.fulfilled, (state, action) => {
         state.loading = false;
-        const entryId = action.payload;
-        state.items = state.items.filter(item => item.id !== entryId);
-        delete state.syncStatus[entryId];
-        delete state.syncRetryCount[entryId];
+        state.entries = state.entries.filter(entry => entry.id !== action.payload);
       })
       .addCase(deleteEntry.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message;
       });
 
-    // searchEntries
+    // Fetch entries by date range
     builder
-      .addCase(searchEntries.pending, state => {
+      .addCase(fetchEntriesByDateRange.pending, (state) => {
         state.loading = true;
-        state.error = null;
+        state.error = undefined;
+      })
+      .addCase(fetchEntriesByDateRange.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entries = action.payload;
+      })
+      .addCase(fetchEntriesByDateRange.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      });
+
+    // Search entries
+    builder
+      .addCase(searchEntries.pending, (state) => {
+        state.loading = true;
+        state.error = undefined;
       })
       .addCase(searchEntries.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        // Update entries with search results
+        state.entries = action.payload.map(result => result.entry);
       })
       .addCase(searchEntries.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message;
       });
   },
 });
 
-export const {setCurrentEntry, setSyncStatus, incrementSyncRetry, resetSyncRetry, clearError} =
-  entriesSlice.actions;
+export const {
+  clearError,
+  clearEntries,
+  updateEntryInList,
+  removeEntryFromList,
+  addEntryToList,
+} = entriesSlice.actions;
 
 export default entriesSlice.reducer;
 
+// Selectors
+export const selectEntries = (state: any) => state.entries.entries;
+export const selectEntriesLoading = (state: any) => state.entries.loading;
+export const selectEntriesError = (state: any) => state.entries.error;
+
+export const selectEntryById = (id: string) => (state: any) =>
+  state.entries.entries.find((entry: LifeLogEntry) => entry.id === id);
+
+export const selectEntriesByType = (type: string) => (state: any) =>
+  state.entries.entries.filter((entry: LifeLogEntry) => entry.type === type);
+
+export const selectEntriesByDateRange = (startDate: Date, endDate: Date) => (state: any) =>
+  state.entries.entries.filter((entry: LifeLogEntry) => {
+    const entryDate = new Date(entry.createdAt);
+    return entryDate >= startDate && entryDate <= endDate;
+  });
+
+export const selectRecentEntries = (limit: number = 10) => (state: any) =>
+  state.entries.entries.slice(0, limit);
+
+export const selectEntriesByMood = (mood: string) => (state: any) =>
+  state.entries.entries.filter((entry: LifeLogEntry) => entry.mood === mood);
+
+export const selectEntriesWithTags = (tags: string[]) => (state: any) =>
+  state.entries.entries.filter((entry: LifeLogEntry) =>
+    tags.some(tag => entry.tags.includes(tag))
+  );

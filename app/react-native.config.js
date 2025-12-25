@@ -1,9 +1,12 @@
+const path = require('path');
+
 module.exports = {
   project: {
-    ios: {},
-    android: {},
+    ios: {
+      unstable_reactLegacyComponentNames: [],
+    },
   },
-  assets: [
-    'node_modules/react-native-vector-icons/Fonts',
-  ],
+  resolver: {
+    platforms: ['ios', 'android', 'native'],
+  },
 };

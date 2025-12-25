@@ -1,267 +1,399 @@
 import React from 'react';
 import {
   View,
-  StyleSheet,
-  TouchableOpacity,
   Text,
-  ActivityIndicator,
-  FlatList,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import {AITag} from '../hooks/useAITags';
+import { useTheme, Chip } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { AITag } from '@services/ai/imageRecognition';
+import { useAITags } from '../hooks/useAITags';
 
 interface AITagSuggestionsProps {
-  tags: AITag[];
-  isLoading: boolean;
-  error?: string | null;
-  onTagToggle: (tagName: string) => void;
-  onSelectAll?: () => void;
-  onDeselectAll?: () => void;
-  testID?: string;
+  imageUri?: string;
+  entryId?: string;
+  visible: boolean;
+  onClose: () => void;
+  onTagApplied?: (tagName: string) => void;
 }
 
+const { width: screenWidth } = Dimensions.get('window');
+
 export const AITagSuggestions: React.FC<AITagSuggestionsProps> = ({
-  tags,
-  isLoading,
-  error,
-  onTagToggle,
-  onSelectAll,
-  onDeselectAll,
-  testID,
+  imageUri,
+  entryId,
+  visible,
+  onClose,
+  onTagApplied,
 }) => {
-  if (isLoading) {
-    return (
-      <View style={styles.container} testID={testID}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#007AFF" />
-          <Text style={styles.loadingText}>正在分析图像...</Text>
-        </View>
-      </View>
-    );
-  }
+  const theme = useTheme();
+  const {
+    isAnalyzing,
+    suggestions,
+    error,
+    analyzeImage,
+    clearSuggestions,
+    applyTag,
+    applyAllTags,
+    dismissTag,
+  } = useAITags();
 
-  if (error) {
-    return (
-      <View style={styles.container} testID={testID}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>❌ {error}</Text>
-        </View>
-      </View>
-    );
-  }
+  // 动画值
+  const slideAnim = React.useRef(new Animated.Value(screenWidth)).current;
+  const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
-  if (tags.length === 0) {
-    return null;
-  }
+  React.useEffect(() => {
+    if (visible) {
+      // 显示动画
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
 
-  const selectedCount = tags.filter(tag => tag.isSelected).length;
+      // 自动分析图像（如果提供了图像和记录ID）
+      if (imageUri && entryId) {
+        analyzeImage(imageUri, entryId);
+      }
+    } else {
+      // 隐藏动画
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: screenWidth,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, slideAnim, opacityAnim, imageUri, entryId, analyzeImage]);
+
+  const handleClose = () => {
+    clearSuggestions();
+    onClose();
+  };
+
+  const handleApplyTag = (tagName: string) => {
+    if (entryId) {
+      applyTag(tagName, entryId);
+      onTagApplied?.(tagName);
+    }
+  };
+
+  const handleApplyAll = () => {
+    if (entryId) {
+      applyAllTags(entryId);
+      onClose();
+    }
+  };
+
+  if (!visible) return null;
 
   return (
-    <View style={styles.container} testID={testID}>
-      {/* 标题和操作按钮 */}
-      <View style={styles.header}>
-        <Text style={styles.title}>🤖 AI 标签建议</Text>
-        <View style={styles.actions}>
-          {selectedCount > 0 && selectedCount < tags.length && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onSelectAll}
-              testID="select_all_button"
-            >
-              <Text style={styles.actionButtonText}>全选</Text>
-            </TouchableOpacity>
-          )}
-          {selectedCount > 0 && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onDeselectAll}
-              testID="deselect_all_button"
-            >
-              <Text style={styles.actionButtonText}>取消</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* 标签列表 */}
-      <FlatList
-        data={tags}
-        keyExtractor={item => item.name}
-        renderItem={({item}) => (
-          <TouchableOpacity
-            style={[
-              styles.tagItem,
-              item.isSelected && styles.tagItemSelected,
-            ]}
-            onPress={() => onTagToggle(item.name)}
-            testID={`ai_tag_${item.name}`}
-          >
-            <View style={styles.tagContent}>
-              <Text
-                style={[
-                  styles.tagName,
-                  item.isSelected && styles.tagNameSelected,
-                ]}
-              >
-                {item.name}
-              </Text>
-              <View style={styles.confidenceContainer}>
-                <View
-                  style={[
-                    styles.confidenceBar,
-                    {width: `${item.confidence * 100}%`},
-                  ]}
-                />
-              </View>
-            </View>
-            <Text style={styles.confidenceText}>
-              {(item.confidence * 100).toFixed(0)}%
-            </Text>
-            <View
-              style={[
-                styles.checkbox,
-                item.isSelected && styles.checkboxSelected,
-              ]}
-            >
-              {item.isSelected && (
-                <Text style={styles.checkmark}>✓</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
-        scrollEnabled={false}
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          backgroundColor: `rgba(0, 0, 0, ${opacityAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 0.5],
+          })}`,
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={handleClose}
       />
 
-      {/* 统计信息 */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          已选择 {selectedCount}/{tags.length} 个标签
-        </Text>
-      </View>
-    </View>
+      <Animated.View
+        style={[
+          styles.sheet,
+          {
+            backgroundColor: theme.colors.surface,
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
+      >
+        {/* 头部 */}
+        <View style={[styles.header, { borderBottomColor: theme.colors.outline }]}>
+          <View style={styles.dragIndicator} />
+          <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+            AI 标签建议
+          </Text>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Icon name="close" size={24} color={theme.colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 内容 */}
+        <View style={styles.content}>
+          {isAnalyzing && (
+            <View style={styles.loadingContainer}>
+              <Icon name="auto-awesome" size={32} color={theme.colors.primary} />
+              <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+                AI 正在分析图像...
+              </Text>
+            </View>
+          )}
+
+          {error && (
+            <View style={styles.errorContainer}>
+              <Icon name="error-outline" size={32} color={theme.colors.error} />
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                {error}
+              </Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => imageUri && entryId && analyzeImage(imageUri, entryId)}
+              >
+                <Text style={[styles.retryText, { color: theme.colors.onPrimary }]}>
+                  重试
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {suggestions.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              <View style={styles.suggestionsHeader}>
+                <Text style={[styles.suggestionsTitle, { color: theme.colors.onSurface }]}>
+                  建议标签 ({suggestions.length})
+                </Text>
+                <TouchableOpacity onPress={handleApplyAll} style={styles.applyAllButton}>
+                  <Text style={[styles.applyAllText, { color: theme.colors.primary }]}>
+                    全部应用
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.tagsScrollView}
+                contentContainerStyle={styles.tagsContent}
+              >
+                {suggestions.map((tag, index) => (
+                  <View key={`${tag.name}-${index}`} style={styles.tagContainer}>
+                    <Chip
+                      mode="outlined"
+                      selected={false}
+                      onPress={() => handleApplyTag(tag.name)}
+                      onClose={() => dismissTag(tag.name)}
+                      style={[
+                        styles.tagChip,
+                        {
+                          borderColor: theme.colors.primary,
+                          backgroundColor: theme.colors.primaryContainer,
+                        },
+                      ]}
+                      textStyle={{ color: theme.colors.primary }}
+                    >
+                      {tag.name} ({Math.round(tag.confidence * 100)}%)
+                    </Chip>
+                  </View>
+                ))}
+              </ScrollView>
+
+              <Text style={[styles.helperText, { color: theme.colors.onSurfaceVariant }]}>
+                点击标签进行应用，点击 × 忽略建议
+              </Text>
+            </View>
+          )}
+
+          {suggestions.length === 0 && !isAnalyzing && !error && (
+            <View style={styles.emptyContainer}>
+              <Icon name="lightbulb-outline" size={48} color={theme.colors.onSurfaceVariant} />
+              <Text style={[styles.emptyTitle, { color: theme.colors.onSurface }]}>
+                暂无标签建议
+              </Text>
+              <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                拍摄或选择一张图像，AI 将自动生成标签建议
+              </Text>
+              {imageUri && entryId && (
+                <TouchableOpacity
+                  style={[styles.analyzeButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={() => analyzeImage(imageUri, entryId)}
+                >
+                  <Icon name="auto-awesome" size={20} color={theme.colors.onPrimary} />
+                  <Text style={[styles.analyzeText, { color: theme.colors.onPrimary }]}>
+                    开始分析
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      </Animated.View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 12,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
   },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#666',
-  },
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#FF3B30',
+  sheet: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '85%',
+    height: '100%',
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  dragIndicator: {
+    width: 32,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CCC',
+    marginRight: 16,
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  actions: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: 8,
-  },
-  actionButtonText: {
-    fontSize: 11,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  tagItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  tagItemSelected: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#007AFF',
-  },
-  tagContent: {
     flex: 1,
-    marginRight: 8,
+    fontSize: 18,
+    fontWeight: '600',
   },
-  tagName: {
-    fontSize: 13,
-    color: '#333',
-    fontWeight: '500',
-    marginBottom: 4,
+  closeButton: {
+    padding: 4,
   },
-  tagNameSelected: {
-    color: '#007AFF',
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  confidenceContainer: {
-    height: 4,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  confidenceBar: {
-    height: '100%',
-    backgroundColor: '#007AFF',
-  },
-  confidenceText: {
-    fontSize: 11,
-    color: '#999',
-    marginRight: 8,
-    minWidth: 35,
-    textAlign: 'right',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+  loadingContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  checkboxSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  footer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  footerText: {
-    fontSize: 11,
-    color: '#999',
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
     textAlign: 'center',
   },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  errorText: {
+    marginTop: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  retryText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  suggestionsContainer: {
+    flex: 1,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  suggestionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  applyAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  applyAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tagsScrollView: {
+    maxHeight: 100,
+  },
+  tagsContent: {
+    paddingVertical: 8,
+  },
+  tagContainer: {
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagChip: {
+    height: 36,
+  },
+  helperText: {
+    marginTop: 16,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  analyzeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  analyzeText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
-

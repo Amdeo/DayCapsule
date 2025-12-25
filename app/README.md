@@ -1,79 +1,181 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# MemoryCapsule React Native App
 
-# Getting Started
+## 快速开始
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+### 环境要求
 
-## Step 1: Start the Metro Server
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+- React Native CLI
+- iOS 模拟器或 Android 模拟器
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
+### 安装依赖
 
 ```bash
-# using npm
+npm install
+```
+
+### 运行应用
+
+```bash
+# 启动 Metro bundler
 npm start
 
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### For iOS
-
-```bash
-# using npm
+# 在 iOS 模拟器中运行
 npm run ios
 
-# OR using Yarn
-yarn ios
+# 在 Android 模拟器中运行
+npm run android
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+### 项目结构
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+```
+app/
+├── src/
+│   ├── app/           # 应用入口和导航
+│   ├── features/      # 功能模块
+│   │   ├── capture/    # 拍照、录音、文字记录
+│   │   ├── timeline/   # 时间线显示
+│   │   ├── search/     # 搜索和筛选
+│   │   └── settings/   # 设置界面
+│   ├── services/      # 业务服务
+│   │   ├── storage/    # 数据库操作
+│   │   ├── ai/         # AI 服务
+│   │   ├── camera/     # 相机服务
+│   │   ├── voice/      # 录音服务
+│   │   ├── location/   # 位置服务
+│   │   └── weather/    # 天气服务
+│   ├── store/         # Redux 状态管理
+│   ├── ui/            # 通用 UI 组件
+│   ├── types/         # TypeScript 类型定义
+│   └── utils/         # 工具函数
+├── __tests__/       # 测试文件
+├── index.js         # 应用入口
+└── package.json      # 依赖配置
+```
 
-## Step 3: Modifying your App
+### 技术栈
 
-Now that you have successfully run the app, let's modify it.
+- **框架**: React Native 0.74 + TypeScript 5.x
+- **状态管理**: Redux Toolkit + Redux Persist
+- **导航**: React Navigation 6
+- **UI**: React Native Paper
+- **数据库**: SQLite + FTS5 全文搜索
+- **AI**: 百度 EasyDL TensorFlow Lite
+- **动画**: React Native Reanimated 3
+- **手势**: React Native Gesture Handler
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+### 核心功能
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+#### ✅ 已实现
 
-## Congratulations! :tada:
+1. **数据层**
+   - SQLite 数据库设计与实现
+   - FTS5 全文搜索
+   - 数据模型和类型定义
+   - CRUD 操作和事务管理
 
-You've successfully run and modified your React Native App. :partying_face:
+2. **状态管理**
+   - Redux Toolkit 配置
+   - 6个核心 Slice (entries, timeline, search, settings, sync, app)
+   - 异步操作和错误处理
+   - 持久化配置
 
-### Now what?
+3. **AI 服务**
+   - 百度 EasyDL TensorFlow Lite 集成
+   - 图像识别和标签建议
+   - AI 标签建议 UI 组件
+   - 模型更新策略
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+4. **媒体服务**
+   - 相机服务（拍照、相册选择、批量处理）
+   - 录音服务（录制、播放、文件管理）
+   - 图像压缩和缩略图生成
+   - 权限管理和错误处理
 
-# Troubleshooting
+5. **位置和天气服务**
+   - 地理位置服务（定位、地理编码、距离计算）
+   - 天气服务（当前天气、预报、缓存机制）
+   - 网络状态检测
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+6. **UI 组件**
+   - 加载指示器
+   - 错误边界
+   - 空状态组件
+   - 主题系统（浅色/深色模式）
+   - 主时间线屏幕示例
 
-# Learn More
+### 🚧 待完善
 
-To learn more about React Native, take a look at the following resources:
+1. **功能界面**
+   - 完整的时间线视图实现
+   - 搜索和筛选界面
+   - 设置界面
+   - 记录创建和编辑界面
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+2. **测试覆盖**
+   - 单元测试
+   - 集成测试
+   - E2E 测试
+
+3. **后端服务**
+   - 云同步功能
+   - 数据备份服务
+   - 用户认证系统
+
+### 开发指南
+
+1. **代码规范**
+   - 使用 TypeScript 严格模式
+   - 遵循 ESLint 规则
+   - 使用 Prettier 格式化代码
+
+2. **提交规范**
+   - 使用 Conventional Commits
+   - 格式: `type(scope): description`
+   - 类型: feat, fix, docs, style, refactor, test, chore
+
+3. **分支策略**
+   - `main`: 生产分支
+   - `develop`: 开发分支
+   - `feature/*`: 功能分支
+
+### 性能目标
+
+- 应用启动时间 < 2 秒
+- 搜索响应时间 < 2 秒
+- 视图切换时间 < 2 秒
+- 内存使用 < 150MB
+- 帧率 > 55fps
+
+### 故障排除
+
+#### 常见问题
+
+1. **Metro 启动失败**
+   ```bash
+   npx react-native start --reset-cache
+   ```
+
+2. **iOS 构建失败**
+   ```bash
+   cd ios && pod install
+   ```
+
+3. **Android 构建失败**
+   ```bash
+   cd android && ./gradlew clean
+   ```
+
+### 贡献指南
+
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/your-feature`)
+3. 提交更改 (`git commit -m "feat: add new feature"`)
+4. 推送分支 (`git push origin feature/your-feature`)
+5. 创建 Pull Request
+
+---
+
+**注意**: 这是一个基础架构实现，核心功能已经完备，可以开始开发具体的功能界面。

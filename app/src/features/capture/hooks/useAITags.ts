@@ -1,150 +1,256 @@
-import {useState, useCallback, useRef} from 'react';
-import {imageRecognitionService} from '@services/ai/imageRecognition';
-import {logger} from '@services/telemetry/logger';
+import { useState, useCallback } from 'react';
+import { useDispatch } from 'react-redux';
+import { showMessage } from 'react-native-flash-message';
+import imageRecognitionService, { ImageRecognitionResult, AITag } from '@services/ai/imageRecognition';
+import { updateEntry } from '@store/slices/entriesSlice';
 
-export interface AITag {
-  name: string;
-  confidence: number;
-  isSelected: boolean;
-}
-
-export interface UseAITagsReturn {
-  suggestedTags: AITag[];
-  isLoading: boolean;
+interface UseAITagsReturn {
+  isAnalyzing: boolean;
+  suggestions: AITag[];
   error: string | null;
-  generateTags: (imagePath: string) => Promise<void>;
-  toggleTag: (tagName: string) => void;
-  selectAllTags: () => void;
-  deselectAllTags: () => void;
-  getSelectedTags: () => string[];
+  analyzeImage: (imageUri: string, entryId: string) => Promise<void>;
   clearSuggestions: () => void;
+  applyTag: (tagName: string, entryId: string) => void;
+  applyAllTags: (entryId: string) => void;
+  dismissTag: (tagName: string) => void;
 }
 
 export const useAITags = (): UseAITagsReturn => {
-  const [suggestedTags, setSuggestedTags] = useState<AITag[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [suggestions, setSuggestions] = useState<AITag[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
-   * 生成 AI 标签建议
+   * 分析图像并生成标签建议
    */
-  const generateTags = useCallback(async (imagePath: string) => {
+  const analyzeImage = useCallback(async (imageUri: string, entryId: string) => {
+    if (!imageUri || !entryId) {
+      setError('图像路径和记录ID不能为空');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setSuggestions([]);
+
     try {
-      setIsLoading(true);
-      setError(null);
-
-      // 创建新的 AbortController
-      abortControllerRef.current = new AbortController();
-
-      logger.info('Generating AI tags', {imagePath});
-
-      // 获取标签建议
-      const tags = await imageRecognitionService.getTagSuggestions(imagePath, 5);
-
-      // 检查是否被取消
-      if (abortControllerRef.current?.signal.aborted) {
-        logger.info('AI tag generation cancelled');
-        return;
+      // 检查服务是否可用
+      if (!imageRecognitionService.isAvailable()) {
+        await imageRecognitionService.initialize();
       }
 
-      // 获取完整的识别结果以获取置信度
-      const result = await imageRecognitionService.recognizeImage(imagePath, {
-        maxTags: 5,
-        minConfidence: 0.6,
+      // 识别图像
+      const result: ImageRecognitionResult = await imageRecognitionService.recognizeImage(imageUri);
+      
+      // 过滤低置信度的标签
+      const filteredSuggestions = result.labels.filter(
+        tag => tag.confidence >= 0.6 // 只显示置信度 >= 60% 的标签
+      );
+
+      setSuggestions(filteredSuggestions);
+
+      if (filteredSuggestions.length === 0) {
+        setError('未能识别出有意义的标签');
+      } else {
+        showMessage({
+          message: 'AI标签建议已生成',
+          description: `识别出 ${filteredSuggestions.length} 个标签建议`,
+          type: 'success',
+          duration: 2000,
+        });
+      }
+
+      console.log('AI标签分析完成:', {
+        processingTime: result.processingTime,
+        suggestionsCount: filteredSuggestions.length,
+        topSuggestion: filteredSuggestions[0]?.name,
       });
 
-      // 转换为 AITag 格式
-      const aiTags: AITag[] = result.tags.map(tag => ({
-        name: tag.name,
-        confidence: tag.confidence,
-        isSelected: true, // 默认选中
-      }));
-
-      setSuggestedTags(aiTags);
-
-      logger.info('AI tags generated successfully', {
-        imagePath,
-        tagCount: aiTags.length,
-      });
     } catch (err) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        const errorMessage = err.message || '生成标签失败';
-        setError(errorMessage);
-        logger.error('Failed to generate AI tags', {error: err, imagePath});
-      }
+      const errorMessage = err instanceof Error ? err.message : '图像分析失败';
+      setError(errorMessage);
+      showMessage({
+        message: 'AI标签分析失败',
+        description: errorMessage,
+        type: 'danger',
+        duration: 3000,
+      });
+      console.error('AI标签分析错误:', err);
     } finally {
-      setIsLoading(false);
+      setIsAnalyzing(false);
     }
   }, []);
 
   /**
-   * 切换标签选择
-   */
-  const toggleTag = useCallback((tagName: string) => {
-    setSuggestedTags(prevTags =>
-      prevTags.map(tag =>
-        tag.name === tagName ? {...tag, isSelected: !tag.isSelected} : tag,
-      ),
-    );
-    logger.info('AI tag toggled', {tagName});
-  }, []);
-
-  /**
-   * 全选所有标签
-   */
-  const selectAllTags = useCallback(() => {
-    setSuggestedTags(prevTags =>
-      prevTags.map(tag => ({...tag, isSelected: true})),
-    );
-    logger.info('All AI tags selected');
-  }, []);
-
-  /**
-   * 取消选择所有标签
-   */
-  const deselectAllTags = useCallback(() => {
-    setSuggestedTags(prevTags =>
-      prevTags.map(tag => ({...tag, isSelected: false})),
-    );
-    logger.info('All AI tags deselected');
-  }, []);
-
-  /**
-   * 获取已选择的标签
-   */
-  const getSelectedTags = useCallback((): string[] => {
-    return suggestedTags
-      .filter(tag => tag.isSelected)
-      .map(tag => tag.name);
-  }, [suggestedTags]);
-
-  /**
-   * 清除建议
+   * 清除所有建议
    */
   const clearSuggestions = useCallback(() => {
-    setSuggestedTags([]);
+    setSuggestions([]);
     setError(null);
-    logger.info('AI tag suggestions cleared');
   }, []);
 
-  // 清理
-  const cleanup = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+  /**
+   * 应用单个标签到记录
+   */
+  const applyTag = useCallback((tagName: string, entryId: string) => {
+    if (!tagName || !entryId) return;
+
+    try {
+      // 在实际应用中，这里会更新记录的标签
+      dispatch(updateEntry({
+        id: entryId,
+        updates: {
+          aiTags: [...(suggestions.find(s => s.name === tagName) ? [tagName] : [])]
+        }
+      }));
+
+      // 从建议列表中移除已应用的标签
+      setSuggestions(prev => prev.filter(tag => tag.name !== tagName));
+
+      showMessage({
+        message: '标签已应用',
+        description: `已添加标签 "${tagName}"`,
+        type: 'success',
+        duration: 1500,
+      });
+    } catch (err) {
+      showMessage({
+        message: '应用标签失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        type: 'danger',
+        duration: 3000,
+      });
     }
+  }, [dispatch, suggestions]);
+
+  /**
+   * 应用所有标签到记录
+   */
+  const applyAllTags = useCallback((entryId: string) => {
+    if (!entryId || suggestions.length === 0) return;
+
+    try {
+      const tagNames = suggestions.map(tag => tag.name);
+      
+      dispatch(updateEntry({
+        id: entryId,
+        updates: {
+          aiTags: tagNames
+        }
+      }));
+
+      clearSuggestions();
+
+      showMessage({
+        message: '所有标签已应用',
+        description: `已添加 ${tagNames.length} 个标签`,
+        type: 'success',
+        duration: 2000,
+      });
+    } catch (err) {
+      showMessage({
+        message: '应用标签失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        type: 'danger',
+        duration: 3000,
+      });
+    }
+  }, [dispatch, suggestions, clearSuggestions]);
+
+  /**
+   * 忽略标签建议
+   */
+  const dismissTag = useCallback((tagName: string) => {
+    setSuggestions(prev => prev.filter(tag => tag.name !== tagName));
+    
+    showMessage({
+      message: '已忽略标签建议',
+      description: `"${tagName}" 标签已被移除`,
+      type: 'info',
+      duration: 1500,
+    });
   }, []);
 
   return {
-    suggestedTags,
-    isLoading,
+    isAnalyzing,
+    suggestions,
     error,
-    generateTags,
-    toggleTag,
-    selectAllTags,
-    deselectAllTags,
-    getSelectedTags,
+    analyzeImage,
     clearSuggestions,
+    applyTag,
+    applyAllTags,
+    dismissTag,
   };
 };
 
+// AI标签建议相关工具函数
+export const filterTagsByConfidence = (tags: AITag[], minConfidence: number = 0.6): AITag[] => {
+  return tags.filter(tag => tag.confidence >= minConfidence);
+};
+
+export const sortTagsByConfidence = (tags: AITag[]): AITag[] => {
+  return [...tags].sort((a, b) => b.confidence - a.confidence);
+};
+
+export const deduplicateTags = (tags: AITag[]): AITag[] => {
+  const seen = new Set<string>();
+  return tags.filter(tag => {
+    if (seen.has(tag.name)) {
+      return false;
+    }
+    seen.add(tag.name);
+    return true;
+  });
+};
+
+export const getTopTags = (tags: AITag[], count: number = 3): AITag[] => {
+  return sortTagsByConfidence(deduplicateTags(tags)).slice(0, count);
+};
+
+// AI标签分类映射
+export const TAG_CATEGORIES = {
+  饮食: ['食物', '美食', '餐厅', '咖啡', '甜品'],
+  风景: ['风景', '自然', '山水', '日落', '日出'],
+  人物: ['人物', '人像', '朋友', '家人', '同事'],
+  动物: ['动物', '宠物', '猫', '狗', '鸟类'],
+  活动: ['运动', '旅行', '工作', '学习', '娱乐'],
+  建筑: ['建筑', '城市', '街道', '室内', '装饰'],
+  情感: ['快乐', '兴奋', '平静', '思考', '感动'],
+} as const;
+
+export const categorizeTag = (tagName: string): string | null => {
+  for (const [category, keywords] of Object.entries(TAG_CATEGORIES)) {
+    if (keywords.some(keyword => tagName.includes(keyword))) {
+      return category;
+    }
+  }
+  return null;
+};
+
+// 标签置信度评估
+export const evaluateTagQuality = (tag: AITag): {
+  isHighQuality: boolean;
+  category: string | null;
+  suggestions: string[];
+} => {
+  const isHighQuality = tag.confidence >= 0.8;
+  const category = categorizeTag(tag.name);
+  
+  const suggestions = [];
+  if (tag.confidence < 0.6) {
+    suggestions.push('置信度较低，建议手动确认');
+  }
+  if (!category) {
+    suggestions.push('标签分类不明确');
+  }
+  if (tag.name.length > 10) {
+    suggestions.push('标签名称过长');
+  }
+
+  return {
+    isHighQuality,
+    category,
+    suggestions,
+  };
+};
