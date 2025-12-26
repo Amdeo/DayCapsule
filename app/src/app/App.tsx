@@ -1,76 +1,87 @@
-import React, { useEffect } from 'react';
-import { StatusBar } from 'react-native';
-import { Provider, useSelector } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-// import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Provider as PaperProvider } from 'react-native-paper';
-import { theme } from './theme';
-import { store, persistor } from '../../store/index';
-import { AppNavigator } from './navigation';
-import { ErrorBoundary, FullScreenLoading } from '../../ui/components';
-import { selectIsAppReady } from '../../store/slices/appSlice';
-import { initializeAppIfNeeded } from '../../store/slices/appSlice';
-import { initializeNetworkListener } from '../../store/slices/syncSlice';
-import FlashMessage from 'react-native-flash-message';
+import React from 'react';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 
-// App Content Component
-const AppContent: React.FC = () => {
-  const isAppReady = useSelector(selectIsAppReady);
-
-  useEffect(() => {
-    // Initialize app if needed
-    store.dispatch(initializeAppIfNeeded());
-    
-    // Initialize network listener
-    const unsubscribe = initializeNetworkListener(store.dispatch);
-    
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  if (!isAppReady) {
-    return (
-      <PaperProvider theme={theme}>
-        <FullScreenLoading message="正在初始化应用..." />
-        <FlashMessage position="top" />
-      </PaperProvider>
-    );
-  }
-
-  return (
-    <PaperProvider theme={theme}>
-      <StatusBar 
-        barStyle={theme.dark ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
-      />
-      <AppNavigator />
-      <FlashMessage position="top" />
-    </PaperProvider>
-  );
+// 简单的主题
+const theme = {
+  dark: false,
+  colors: {
+    primary: '#6A89CC',
+    background: '#FAFAFA',
+    surface: '#FFFFFF',
+    onSurface: '#1C1B1F',
+    onSurfaceVariant: '#6C6B70',
+    outline: '#79747E',
+    error: '#B00020',
+  },
 };
 
-// Main App Component
+// 测试屏幕
+const TestScreen = () => (
+  <SafeAreaView style={styles.container}>
+    <View style={styles.content}>
+      <Text style={styles.title}>✅ MemoryCapsule</Text>
+      <Text style={styles.subtitle}>应用运行正常！</Text>
+      <Text style={styles.text}>这是简化版测试界面</Text>
+    </View>
+  </SafeAreaView>
+);
+
+const Stack = createStackNavigator();
+
 const App: React.FC = () => {
   return (
-    <ErrorBoundary>
-      <Provider store={store}>
-        <PersistGate 
-          loading={<FullScreenLoading message="正在加载..." />}
-          persistor={persistor}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            {/* <SafeAreaProvider> */}
-              <AppContent />
-            {/* </SafeAreaProvider> */}
-          </GestureHandlerRootView>
-        </PersistGate>
-      </Provider>
-    </ErrorBoundary>
+    <NavigationContainer theme={{
+      dark: theme.dark,
+      colors: {
+        primary: theme.colors.primary,
+        background: theme.colors.background,
+        card: theme.colors.surface,
+        text: theme.colors.onSurface,
+        border: theme.colors.outline,
+        notification: theme.colors.error,
+      },
+    }}>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Home"
+          component={TestScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 20,
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  text: {
+    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+  },
+});
 
 export default App;

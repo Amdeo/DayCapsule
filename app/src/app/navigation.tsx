@@ -1,15 +1,58 @@
 import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useSelector } from 'react-redux';
 import { theme } from './theme';
 import { selectIsLocked } from '@store/slices/appSlice';
 
-// Placeholder for screens - these will be implemented later
-const TimelineScreen = () => null;
-const SearchScreen = () => null;
-const SettingsScreen = () => null;
-const LockScreen = () => null;
+// Simple placeholder screens with content
+const TimelineScreen = () => (
+  <View style={styles.container}>
+    <Text style={styles.text}>📅 时间线</Text>
+    <Text style={styles.subtext}>您的记忆时间线</Text>
+  </View>
+);
+
+const SearchScreen = () => (
+  <View style={styles.container}>
+    <Text style={styles.text}>🔍 搜索</Text>
+    <Text style={styles.subtext}>搜索您的记忆</Text>
+  </View>
+);
+
+const SettingsScreen = () => (
+  <View style={styles.container}>
+    <Text style={styles.text}>⚙️ 设置</Text>
+    <Text style={styles.subtext}>应用设置</Text>
+  </View>
+);
+
+const LockScreen = () => (
+  <View style={styles.container}>
+    <Text style={styles.text}>🔒 已锁定</Text>
+    <Text style={styles.subtext}>请解锁后查看</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  text: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  subtext: {
+    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+  },
+});
 
 const Stack = createStackNavigator();
 
@@ -43,8 +86,8 @@ export const AppNavigator: React.FC = () => {
         }}
       >
         {isLocked ? (
-          <Stack.Screen 
-            name="Lock" 
+          <Stack.Screen
+            name="Lock"
             component={LockScreen}
             options={{
               headerShown: false,
@@ -53,26 +96,26 @@ export const AppNavigator: React.FC = () => {
           />
         ) : (
           <>
-            <Stack.Screen 
-              name="Timeline" 
+            <Stack.Screen
+              name="Timeline"
               component={TimelineScreen}
               options={{
-                headerShown: false, // Timeline screen will have custom header
+                headerShown: false,
                 gestureEnabled: true,
               }}
             />
-            <Stack.Screen 
-              name="Search" 
+            <Stack.Screen
+              name="Search"
               component={SearchScreen}
               options={{
-                headerShown: false, // Search will be an overlay
+                headerShown: false,
                 cardStyle: { backgroundColor: 'transparent' },
                 cardOverlayEnabled: true,
                 gestureEnabled: true,
               }}
             />
-            <Stack.Screen 
-              name="Settings" 
+            <Stack.Screen
+              name="Settings"
               component={SettingsScreen}
               options={{
                 title: '设置',
