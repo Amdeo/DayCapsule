@@ -1,3 +1,20 @@
 {
-  "outputStyle": "engineer-professional"
+  "outputStyle": "engineer-professional",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/analyze-image-hook.js"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/skill-evaluator-hook.js"
+          }
+        ]
+      }
+    ]
+  }
 }
