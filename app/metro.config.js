@@ -6,6 +6,8 @@ const { getDefaultConfig } = require('@react-native/metro-config');
 
 const config = {
   resolver: {
+    assetExts: ['base64', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'webp', 'svg'],
+    sourceExts: ['js', 'jsx', 'json', 'ts', 'tsx'],
     alias: {
       '@app': './src',
       '@features': './src/features',
@@ -16,7 +18,14 @@ const config = {
       '@config': './src/config',
       '@types': './src/types',
     },
-    sourceExts: ['js', 'jsx', 'json', 'ts', 'tsx'],
+  },
+  transformer: {
+    getTransformOptions: async () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: true,
+      },
+    }),
   },
 };
 
