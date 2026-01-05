@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-03T05:40:04.000Z",
+  "timestamp": "2026-01-06T02:56:27.000Z",
   "project": {
     "name": "MemoryCapsule",
     "type": "React Native",
@@ -11,28 +11,20 @@
       "name": "capture",
       "path": "app/src/features/capture",
       "type": "feature",
-      "entry": "HomeScreen.tsx",
+      "entry": "HomeScreen.tsx (推测)",
       "description": "记录创建模块，支持拍照、文字、语音三种记录方式",
       "interfaces": [
-        "screens/HomeScreen.tsx",
-        "screens/CaptureScreen.tsx",
-        "screens/EntryDetail.tsx"
+        "hooks/useAITags.ts",
+        "components/AITagSuggestions.tsx"
       ],
-      "tests": [
-        "__tests__/EntryDetail.test.tsx",
-        "__tests__/MoodSelector.test.tsx",
-        "__tests__/TagInput.test.tsx",
-        "__tests__/TranscriptionEditor.test.tsx",
-        "__tests__/TranscriptionLanguageSelector.test.tsx",
-        "__tests__/TranscriptionProgress.test.tsx"
-      ],
+      "tests": [],
       "testCoverage": 80,
       "dependencies": [
         "@services/camera",
-        "@services/ai/tagSuggestion",
-        "@store/slices/captureSlice",
-        "@hooks/useTranscription"
-      ]
+        "@services/ai",
+        "@store/slices/entriesSlice"
+      ],
+      "hasLocalDoc": false
     },
     {
       "name": "timeline",
@@ -41,167 +33,172 @@
       "entry": "TimelineScreen.tsx",
       "description": "时间线回顾模块，提供日/周/月/年四种视图模式",
       "interfaces": [
-        "screens/TimelineScreen.tsx",
-        "components/ViewSwitcher.tsx"
+        "screens/TimelineScreen.tsx"
       ],
       "tests": [],
       "testCoverage": 75,
       "dependencies": [
         "@services/storage/database",
-        "@services/reminders/reminderService",
         "@store/slices/timelineSlice"
-      ]
+      ],
+      "hasLocalDoc": false
     },
     {
       "name": "search",
       "path": "app/src/features/search",
       "type": "feature",
-      "entry": "SearchScreen.tsx",
+      "entry": "SearchScreen.tsx (计划中)",
       "description": "搜索与筛选模块，支持全文搜索和语义搜索",
-      "interfaces": [
-        "screens/SearchScreen.tsx",
-        "components/SearchBar.tsx",
-        "components/FilterPanel.tsx"
-      ],
+      "interfaces": [],
       "tests": [],
       "testCoverage": 70,
       "dependencies": [
         "@services/storage/database",
-        "@services/ai/semanticSearch",
-        "@services/export/exportService",
         "@store/slices/searchSlice"
-      ]
+      ],
+      "hasLocalDoc": false
     },
     {
       "name": "settings",
       "path": "app/src/features/settings",
       "type": "feature",
-      "entry": "SettingsScreen.tsx",
+      "entry": "SettingsScreen.tsx (计划中)",
       "description": "设置与安全管理模块，包含主题、安全、隐私等设置",
-      "interfaces": [
-        "screens/SettingsScreen.tsx",
-        "components/ThemeSelector.tsx",
-        "components/PrivacySettings.tsx"
-      ],
+      "interfaces": [],
       "tests": [],
       "testCoverage": 85,
       "dependencies": [
-        "@services/security/biometricAuth",
-        "@services/security/passwordAuth",
-        "@services/permissions",
         "@store/slices/settingsSlice"
-      ]
+      ],
+      "hasLocalDoc": false
     },
     {
       "name": "voice",
       "path": "app/src/features/voice",
       "type": "feature",
-      "entry": "VoiceRecordScreen.tsx",
+      "entry": "VoiceRecordScreen.tsx (计划中)",
       "description": "语音录制与转写模块，专门处理语音相关功能",
-      "interfaces": [
-        "screens/VoiceRecordScreen.tsx",
-        "components/VoiceRecorder.tsx",
-        "components/AudioPlayer.tsx"
-      ],
+      "interfaces": [],
       "tests": [],
       "testCoverage": 75,
       "dependencies": [
-        "@services/speechToText",
-        "@services/storage/audioStorage",
-        "@hooks/useTranscription"
-      ]
+        "@services/voice"
+      ],
+      "hasLocalDoc": false
     },
     {
       "name": "stats",
       "path": "app/src/features/stats",
       "type": "feature",
-      "entry": "StatsScreen.tsx",
+      "entry": "StatsScreen.tsx (计划中)",
       "description": "数据统计与可视化模块，提供用户记录习惯分析",
-      "interfaces": [
-        "screens/StatsScreen.tsx",
-        "components/TranscriptionStatsCard.tsx"
-      ],
+      "interfaces": [],
       "tests": [],
       "testCoverage": 65,
       "dependencies": [
-        "@services/storage/database",
-        "@services/speechToText/transcriptionStats",
-        "@store/slices/statsSlice"
-      ]
+        "@services/storage/database"
+      ],
+      "hasLocalDoc": false
     }
   ],
   "services": [
     {
       "name": "storage",
       "path": "app/src/services/storage",
-      "description": "数据存储服务，包含数据库、加密、音频存储等",
+      "description": "数据存储服务，包含SQLite数据库、FTS5全文搜索",
       "keyFiles": [
         "database.ts",
-        "encryption.ts",
-        "audioStorage.ts"
-      ]
+        "databaseService.ts"
+      ],
+      "hasLocalDoc": true
     },
     {
       "name": "ai",
       "path": "app/src/services/ai",
-      "description": "AI相关服务，包含图像识别、标签建议、语义搜索等",
+      "description": "AI相关服务，包含图像识别、标签建议",
       "keyFiles": [
         "imageRecognition.ts",
-        "tagSuggestion.ts",
-        "semanticSearch.ts",
-        "asrService.ts"
-      ]
+        "modelUpdater.ts"
+      ],
+      "hasLocalDoc": true
     },
     {
       "name": "camera",
       "path": "app/src/services/camera",
       "description": "相机服务，处理拍照和图片选择功能",
       "keyFiles": [
-        "cameraService.ts",
-        "index.ts"
-      ]
+        "cameraService.ts"
+      ],
+      "hasLocalDoc": false
     },
     {
-      "name": "security",
-      "path": "app/src/services/security",
-      "description": "安全认证服务，包含生物识别和密码认证",
+      "name": "voice",
+      "path": "app/src/services/voice",
+      "description": "语音录制服务",
       "keyFiles": [
-        "biometricAuth.ts",
-        "passwordAuth.ts"
-      ]
+        "audioRecorder.ts"
+      ],
+      "hasLocalDoc": false
     },
     {
-      "name": "speechToText",
-      "path": "app/src/services/speechToText",
-      "description": "语音转写服务，集成腾讯云ASR",
+      "name": "location",
+      "path": "app/src/services/location",
+      "description": "位置服务，获取地理位置信息",
       "keyFiles": [
-        "index.ts",
-        "config.ts",
-        "transcriptionStats.ts",
-        "cache.ts",
-        "errorHandler.ts"
-      ]
+        "locationService.ts"
+      ],
+      "hasLocalDoc": false
+    },
+    {
+      "name": "weather",
+      "path": "app/src/services/weather",
+      "description": "天气服务，获取天气信息",
+      "keyFiles": [
+        "weatherService.ts"
+      ],
+      "hasLocalDoc": false
     }
   ],
   "store": {
     "path": "app/src/store",
     "slices": [
-      "captureSlice.ts",
+      "entriesSlice.ts",
       "timelineSlice.ts",
       "searchSlice.ts",
       "settingsSlice.ts",
-      "statsSlice.ts",
-      "entriesSlice.ts",
-      "syncSlice.ts"
+      "syncSlice.ts",
+      "appSlice.ts"
     ],
     "middleware": [],
-    "index": "index.ts"
+    "index": "index.ts",
+    "hasLocalDoc": true
+  },
+  "ui": {
+    "path": "app/src/ui",
+    "components": [
+      "LoadingIndicator.tsx",
+      "EmptyState.tsx",
+      "ErrorBoundary.tsx"
+    ],
+    "hasLocalDoc": true
   },
   "coverage": {
     "totalFiles": 95,
-    "scannedFiles": 45,
-    "coveragePercentage": 47.4,
-    "testFiles": 20,
+    "scannedFiles": 26,
+    "coveragePercentage": 27.4,
+    "scannedModules": {
+      "store": "完整",
+      "services/storage": "完整",
+      "services/ai": "完整",
+      "services/camera": "部分",
+      "services/voice": "部分",
+      "services/location": "部分",
+      "services/weather": "部分",
+      "features/capture": "部分",
+      "features/timeline": "部分",
+      "ui": "完整"
+    },
+    "testFiles": 1,
     "testCoverage": {
       "capture": 80,
       "timeline": 75,
@@ -214,47 +211,101 @@
     "ignored": [
       "node_modules/**",
       ".git/**",
+      ".github/**",
       "ios/Pods/**",
-      "android/build/**",
       "ios/build/**",
+      "android/build/**",
+      "android/.gradle/**",
+      "dist/**",
+      "build/**",
+      ".next/**",
+      "__pycache__/**",
+      "*.lock",
       "*.log",
+      "*.bin",
+      "*.pdf",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.mp4",
+      "*.zip",
+      "*.tar",
+      "*.gz",
       "*.db",
-      "*.sqlite"
+      "*.sqlite",
+      "*.sqlite3"
     ]
   },
   "gaps": [
     {
-      "module": "timeline",
-      "issue": "缺少测试文件",
-      "recommendation": "添加组件测试，特别是视图切换和性能优化测试"
+      "module": "features/capture",
+      "issue": "缺少主屏幕实现",
+      "recommendation": "实现 HomeScreen.tsx 作为记录创建入口"
     },
     {
-      "module": "search",
+      "module": "features/timeline",
       "issue": "缺少测试文件",
-      "recommendation": "添加搜索功能、筛选器和导出功能的测试"
+      "recommendation": "添加 TimelineScreen 的组件测试和视图切换测试"
     },
     {
-      "module": "settings",
-      "issue": "缺少测试文件",
-      "recommendation": "添加设置变更、安全认证的测试"
+      "module": "features/search",
+      "issue": "缺少实现文件",
+      "recommendation": "实现 SearchScreen.tsx 和搜索相关组件"
     },
     {
-      "module": "voice",
-      "issue": "缺少测试文件",
-      "recommendation": "添加语音录制、转写功能的测试"
+      "module": "features/settings",
+      "issue": "缺少实现文件",
+      "recommendation": "实现 SettingsScreen.tsx 和设置相关组件"
     },
     {
-      "module": "stats",
-      "issue": "功能不完整",
-      "recommendation": "完成图表组件和数据分析功能的实现"
+      "module": "features/voice",
+      "issue": "缺少实现文件",
+      "recommendation": "实现 VoiceRecordScreen.tsx 和语音相关组件"
+    },
+    {
+      "module": "features/stats",
+      "issue": "缺少实现文件",
+      "recommendation": "实现 StatsScreen.tsx 和统计图表组件"
+    },
+    {
+      "module": "services/camera",
+      "issue": "缺少本地文档",
+      "recommendation": "为 camera 服务创建 CLAUDE.md 文档"
+    },
+    {
+      "module": "services/voice",
+      "issue": "缺少本地文档",
+      "recommendation": "为 voice 服务创建 CLAUDE.md 文档"
+    },
+    {
+      "module": "services/location",
+      "issue": "缺少本地文档",
+      "recommendation": "为 location 服务创建 CLAUDE.md 文档"
+    },
+    {
+      "module": "services/weather",
+      "issue": "缺少本地文档",
+      "recommendation": "为 weather 服务创建 CLAUDE.md 文档"
+    },
+    {
+      "module": "features/*",
+      "issue": "所有功能模块缺少本地文档",
+      "recommendation": "为每个功能模块创建 CLAUDE.md 文档"
+    },
+    {
+      "module": "testing",
+      "issue": "测试覆盖率不足",
+      "recommendation": "补充单元测试和集成测试，目标达到 70% 覆盖率"
     }
   ],
   "nextSteps": [
-    "补充各模块的单元测试文件",
-    "完善stats模块的图表组件实现",
-    "添加E2E测试覆盖核心用户流程",
-    "优化大文件列表的性能处理",
-    "完善错误处理和用户反馈机制"
+    "优先补充功能模块本地文档（features/capture、timeline、search 等）",
+    "为服务层创建剩余的 CLAUDE.md（camera、voice、location、weather）",
+    "实现缺失的功能模块屏幕（search、settings、voice、stats）",
+    "补充各模块的单元测试和集成测试",
+    "完善 app/src/app/navigation.tsx 导航配置",
+    "添加 E2E 测试覆盖核心用户流程"
   ],
   "architecture": {
     "pattern": "Feature-driven architecture",
@@ -275,9 +326,44 @@
     "framework": "React Native 0.74",
     "language": "TypeScript 5.x",
     "stateManagement": "Redux Toolkit",
-    "navigation": "React Navigation 6",
+    "navigation": "React Navigation 7",
     "database": "SQLite + FTS5",
     "ui": "React Native Paper",
     "testing": "Jest + React Native Testing Library + Detox"
+  },
+  "documentation": {
+    "rootDoc": "CLAUDE.md",
+    "agentDocs": [
+      "agent_docs/00-mcp-tools.md",
+      "agent_docs/01-architecture.md",
+      "agent_docs/02-module-index.md",
+      "agent_docs/03-setup-build.md",
+      "agent_docs/04-coding-standards.md",
+      "agent_docs/05-testing-strategy.md",
+      "agent_docs/06-ai-services.md",
+      "agent_docs/07-security-privacy.md",
+      "agent_docs/08-directory-structure.md",
+      "agent_docs/09-spec-workflow.md",
+      "agent_docs/10-faq.md",
+      "agent_docs/11-changelog.md"
+    ],
+    "moduleDocsCreated": [
+      "app/src/store/CLAUDE.md",
+      "app/src/services/storage/CLAUDE.md",
+      "app/src/services/ai/CLAUDE.md",
+      "app/src/ui/CLAUDE.md"
+    ],
+    "moduleDocsPending": [
+      "app/src/features/capture/CLAUDE.md",
+      "app/src/features/timeline/CLAUDE.md",
+      "app/src/features/search/CLAUDE.md",
+      "app/src/features/settings/CLAUDE.md",
+      "app/src/features/voice/CLAUDE.md",
+      "app/src/features/stats/CLAUDE.md",
+      "app/src/services/camera/CLAUDE.md",
+      "app/src/services/voice/CLAUDE.md",
+      "app/src/services/location/CLAUDE.md",
+      "app/src/services/weather/CLAUDE.md"
+    ]
   }
 }
