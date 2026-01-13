@@ -2,9 +2,7 @@ const path = require('path');
 
 module.exports = {
   project: {
-    ios: {
-      unstable_reactLegacyComponentNames: [],
-    },
+    ios: {},
   },
   resolver: {
     platforms: ['ios', 'android', 'native'],

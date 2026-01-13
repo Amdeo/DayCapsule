@@ -36,5 +36,39 @@ target 'MemoryCapsule' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Fix for Apple Silicon Macs - exclude x86_64 architecture
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386 x86_64'
+      end
+    end
+
+    # Fix for Xcode 16 / iOS SDK 26 - RCT-Folly clockid_t compatibility
+    time_h_files = [
+      'Pods/RCT-Folly/folly/portability/Time.h',
+      'Pods/Headers/Private/RCT-Folly/folly/portability/Time.h',
+      'Pods/Headers/Public/RCT-Folly/folly/portability/Time.h'
+    ]
+
+    time_h_files.each do |file|
+      next unless File.exist?(file)
+
+      content = File.read(file)
+
+      # Only patch if not already patched
+      if content.include?('typedef uint8_t clockid_t;') && !content.include?('#ifndef clockid_t')
+        # Make file writable
+        FileUtils.chmod('u+w', file)
+
+        new_content = content.gsub(
+          /typedef uint8_t clockid_t;/,
+          "#ifndef clockid_t\ntypedef uint8_t clockid_t;\n#endif"
+        )
+
+        File.write(file, new_content)
+        puts "Patched #{file} for Xcode 16 compatibility"
+      end
+    end
   end
 end

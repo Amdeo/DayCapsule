@@ -2,12 +2,15 @@
  * Metro configuration
  * https://facebook.github.io/metro/docs/configuration
  */
-const { getDefaultConfig } = require('@react-native/metro-config');
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const path = require('path');
+
+const defaultConfig = getDefaultConfig(__dirname);
 
 const config = {
   resolver: {
-    assetExts: ['base64', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'webp', 'svg'],
-    sourceExts: ['js', 'jsx', 'json', 'ts', 'tsx'],
+    assetExts: [...defaultConfig.resolver.assetExts, 'base64', 'svg'],
+    sourceExts: [...defaultConfig.resolver.sourceExts],
     alias: {
       '@app': './src',
       '@features': './src/features',
@@ -17,6 +20,9 @@ const config = {
       '@utils': './src/utils',
       '@config': './src/config',
       '@types': './src/types',
+    },
+    extraNodeModules: {
+      '@babel/runtime': path.resolve(__dirname, 'node_modules/@babel/runtime'),
     },
   },
   transformer: {
@@ -29,4 +35,4 @@ const config = {
   },
 };
 
-module.exports = config;
+module.exports = mergeConfig(defaultConfig, config);
