@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import { Storage } from '@/src/utils/storage';
+
+// 存储键常量
+const ENTRIES_KEY = 'entries';
 
 export interface Entry {
   id: string;
@@ -10,29 +14,62 @@ export interface Entry {
 
 interface EntryStore {
   entries: Entry[];
-  addEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => void;
-  deleteEntry: (id: string) => void;
+  isLoading: boolean;
+  loadEntries: () => Promise<void>;
+  addEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   getRecentEntries: (limit?: number) => Entry[];
 }
 
 export const useEntryStore = create<EntryStore>((set, get) => ({
   entries: [],
+  isLoading: false,
 
-  addEntry: (entry) => set((state) => ({
-    entries: [
-      ...state.entries,
-      {
-        ...entry,
-        id: Date.now().toString(),
-        timestamp: Date.now(),
-      },
-    ],
-  })),
+  /**
+   * 从 AsyncStorage 加载数据
+   */
+  loadEntries: async () => {
+    set({ isLoading: true });
+    try {
+      const entries = await Storage.getObject<Entry[]>(ENTRIES_KEY);
+      set({ entries: entries || [], isLoading: false });
+    } catch (error) {
+      console.error('Failed to load entries:', error);
+      set({ isLoading: false });
+    }
+  },
 
-  deleteEntry: (id) => set((state) => ({
-    entries: state.entries.filter((e) => e.id !== id),
-  })),
+  /**
+   * 添加新记录（异步保存）
+   */
+  addEntry: async (entry) => {
+    const newEntry: Entry = {
+      ...entry,
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+    };
 
+    const newEntries = [...get().entries, newEntry];
+    set({ entries: newEntries });
+
+    // 异步保存到 AsyncStorage
+    await Storage.setObject(ENTRIES_KEY, newEntries);
+  },
+
+  /**
+   * 删除记录（异步保存）
+   */
+  deleteEntry: async (id) => {
+    const newEntries = get().entries.filter((e) => e.id !== id);
+    set({ entries: newEntries });
+
+    // 异步保存到 AsyncStorage
+    await Storage.setObject(ENTRIES_KEY, newEntries);
+  },
+
+  /**
+   * 获取最近的记录
+   */
   getRecentEntries: (limit = 10) => {
     const { entries } = get();
     return entries

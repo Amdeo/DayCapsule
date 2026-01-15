@@ -1,14 +1,19 @@
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useEntryStore } from '@/src/store/entryStore';
 
 export default function HomeScreen() {
-  const { entries, addEntry, deleteEntry } = useEntryStore();
+  const { entries, addEntry, deleteEntry, loadEntries, isLoading } = useEntryStore();
   const [newEntry, setNewEntry] = useState('');
 
-  const handleAddEntry = () => {
+  // 在组件挂载时加载数据
+  useEffect(() => {
+    loadEntries();
+  }, []);
+
+  const handleAddEntry = async () => {
     if (newEntry.trim()) {
-      addEntry({
+      await addEntry({
         type: 'text',
         content: newEntry.trim(),
       });
@@ -49,7 +54,12 @@ export default function HomeScreen() {
 
       {/* Entries List */}
       <ScrollView className="flex-1 px-6 py-4">
-        {entries.length === 0 ? (
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#6200ee" />
+            <Text className="text-gray-400 mt-4">加载中...</Text>
+          </View>
+        ) : entries.length === 0 ? (
           <View className="items-center justify-center py-20">
             <Text className="text-6xl mb-4">🎯</Text>
             <Text className="text-gray-400 text-center">
