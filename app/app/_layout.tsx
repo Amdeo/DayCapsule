@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import '../global.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { initializeFileSystem } from '@/src/utils/fileSystem';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -32,6 +33,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) throw error;
   }, [error]);
+
+  // 初始化文件系统
+  useEffect(() => {
+    initializeFileSystem().catch((err) => {
+      console.error('Failed to initialize file system:', err);
+    });
+  }, []);
 
   useEffect(() => {
     if (loaded) {
