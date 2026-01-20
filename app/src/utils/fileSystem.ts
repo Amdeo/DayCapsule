@@ -3,7 +3,7 @@
  * 统一处理媒体文件的保存、删除和检索
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 /**
@@ -16,8 +16,8 @@ export const MEDIA_DIRS = {
   // 缓存目录（临时、可被清除）
   cache: FileSystem.cacheDirectory || '',
 
-  // 临时目录（最快、最容易被清除）
-  temp: FileSystem.temporaryDirectory || '',
+  // 临时目录（最快、最容易被清除）- 如果不可用则使用缓存目录
+  temp: FileSystem.cacheDirectory || '',
 };
 
 /**

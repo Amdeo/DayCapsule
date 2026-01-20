@@ -129,11 +129,11 @@ export function PhotoSelector({ visible, onSelectPhoto, onCancel }: PhotoSelecto
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#FFFFFF', // 白色背景
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: '#262626', // 深色文字
     marginBottom: 24,
     textAlign: 'center',
   },
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#F5F5F5', // 浅灰背景
     borderRadius: 12,
   },
   optionIcon: {
@@ -166,12 +166,12 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#262626', // 深色
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 13,
-    color: '#999',
+    color: '#737373', // 中灰
   },
   cancelButton: {
     marginTop: 16,
@@ -181,6 +181,6 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6200ee',
+    color: '#F97316', // 橙色
   },
 });

@@ -1,102 +1,104 @@
-import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useEntryStore } from '@/src/store/entryStore';
+import { Timeline } from '@/src/components/Timeline.v2';
+import { BottomToolbar } from '@/src/components/BottomToolbar';
+import { Sidebar } from '@/src/components/Sidebar';
+import { MediaSelector } from '@/src/components/MediaSelector';
+import { PhotoSelector } from '@/src/components/PhotoSelector';
+import { VoiceRecorder } from '@/src/components/VoiceRecorder';
 
 export default function HomeScreen() {
-  const { entries, addEntry, deleteEntry, loadEntries, isLoading } = useEntryStore();
-  const [newEntry, setNewEntry] = useState('');
+  const { loadEntries, addEntry } = useEntryStore();
+  const [showMediaSelector, setShowMediaSelector] = useState(false);
+  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // 在组件挂载时加载数据
   useEffect(() => {
     loadEntries();
   }, []);
 
-  const handleAddEntry = async () => {
-    if (newEntry.trim()) {
-      await addEntry({
-        type: 'text',
-        content: newEntry.trim(),
-      });
-      setNewEntry('');
+  // 处理媒体类型选择
+  const handleMediaSelect = (type: 'text' | 'photo' | 'voice') => {
+    setShowMediaSelector(false);
+
+    switch(type) {
+      case 'text':
+        // 文本类型直接添加空记录，让用户在卡片中编辑
+        addEntry({
+          type: 'text',
+          content: '点击编辑...',
+        });
+        break;
+      case 'photo':
+        setShowPhotoSelector(true);
+        break;
+      case 'voice':
+        setShowVoiceRecorder(true);
+        break;
     }
   };
 
+  // 处理照片选择
+  const handlePhotoSelect = (uri: string) => {
+    addEntry({
+      type: 'photo',
+      content: '',
+      media: {
+        uri,
+        type: 'photo',
+      },
+    });
+    setShowPhotoSelector(false);
+  };
+
+  // 处理语音录制完成
+  const handleVoiceRecord = (uri: string, duration: number) => {
+    addEntry({
+      type: 'voice',
+      content: '',
+      media: {
+        uri,
+        type: 'voice',
+        duration,
+      },
+    });
+    setShowVoiceRecorder(false);
+  };
+
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="px-6 pt-16 pb-6 bg-surface">
-        <Text className="text-3xl font-bold text-white">
-          📝 MemoryCapsule
-        </Text>
-        <Text className="text-gray-400 mt-2">
-          使用最新技术栈 ✨
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
+      {/* 时间轴内容（包含搜索栏） */}
+      <Timeline onQuickAdd={handleMediaSelect} onMenuPress={() => setShowSidebar(true)} />
 
-      {/* Add Entry Section */}
-      <View className="px-6 py-4 bg-surface border-b border-gray-800">
-        <View className="flex-row gap-3">
-          <TextInput
-            className="flex-1 bg-background text-white px-4 py-3 rounded-xl"
-            placeholder="写下你的想法..."
-            placeholderTextColor="#666"
-            value={newEntry}
-            onChangeText={setNewEntry}
-          />
-          <TouchableOpacity
-            className="bg-primary px-6 py-3 rounded-xl justify-center"
-            onPress={handleAddEntry}
-          >
-            <Text className="text-white font-semibold">添加</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* 底部圆形工具栏 */}
+      <BottomToolbar onPress={handleMediaSelect} />
 
-      {/* Entries List */}
-      <ScrollView className="flex-1 px-6 py-4">
-        {isLoading ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <ActivityIndicator size="large" color="#6200ee" />
-            <Text className="text-gray-400 mt-4">加载中...</Text>
-          </View>
-        ) : entries.length === 0 ? (
-          <View className="items-center justify-center py-20">
-            <Text className="text-6xl mb-4">🎯</Text>
-            <Text className="text-gray-400 text-center">
-              还没有记录{'\n'}添加你的第一条记录吧！
-            </Text>
-          </View>
-        ) : (
-          entries.map((entry) => (
-            <View
-              key={entry.id}
-              className="bg-surface p-4 rounded-2xl mb-3 border border-gray-800"
-            >
-              <View className="flex-row justify-between items-start mb-2">
-                <Text className="text-xs text-gray-500">
-                  {new Date(entry.timestamp).toLocaleString('zh-CN')}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => deleteEntry(entry.id)}
-                  className="px-3 py-1 bg-error/20 rounded-lg"
-                >
-                  <Text className="text-error text-xs">删除</Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="text-white text-base leading-6">
-                {entry.content}
-              </Text>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      {/* 侧边栏 */}
+      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
 
-      {/* Tech Stack Badge */}
-      <View className="px-6 py-3 bg-surface border-t border-gray-800">
-        <Text className="text-xs text-center text-gray-500">
-          Expo SDK 54 • React Native 0.81 • Zustand • NativeWind
-        </Text>
-      </View>
+      {/* 媒体选择器模态框 */}
+      <MediaSelector
+        visible={showMediaSelector}
+        onSelect={handleMediaSelect}
+        onCancel={() => setShowMediaSelector(false)}
+      />
+
+      {/* 照片选择器模态框 */}
+      <PhotoSelector
+        visible={showPhotoSelector}
+        onSelectPhoto={handlePhotoSelect}
+        onCancel={() => setShowPhotoSelector(false)}
+      />
+
+      {/* 语音录制器模态框 */}
+      <VoiceRecorder
+        visible={showVoiceRecorder}
+        onSave={handleVoiceRecord}
+        onCancel={() => setShowVoiceRecorder(false)}
+      />
     </View>
   );
 }

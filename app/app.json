@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.memorycapsule.app"
+      "bundleIdentifier": "com.memorycapsule.app",
+      "deploymentTarget": "16.0"
     },
     "android": {
       "adaptiveIcon": {
