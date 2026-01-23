@@ -3,9 +3,10 @@
  * 整合搜索栏和快速添加功能
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
 import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
@@ -32,6 +33,9 @@ interface TimeGroupSectionProps {
   onEditEntry?: (entry: Entry) => void;
   onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
   showQuickAdd?: boolean;
+  onPauseRecording?: (id: string) => void;
+  onResumeRecording?: (id: string) => void;
+  onStopRecording?: (id: string) => void;
 }
 
 function TimeGroupSection({
@@ -42,6 +46,9 @@ function TimeGroupSection({
   onEditEntry,
   onQuickAdd,
   showQuickAdd = false,
+  onPauseRecording,
+  onResumeRecording,
+  onStopRecording,
 }: TimeGroupSectionProps) {
   if (entries.length === 0 && !showQuickAdd) {
     return null;
@@ -175,7 +182,14 @@ function TimeGroupSection({
                 </View>
 
                 {/* 卡片 */}
-                <EntryCard entry={entry} onDelete={onDeleteEntry} onEdit={onEditEntry} />
+                <EntryCard 
+                  entry={entry} 
+                  onDelete={onDeleteEntry} 
+                  onEdit={onEditEntry}
+                  onPauseRecording={onPauseRecording}
+                  onResumeRecording={onResumeRecording}
+                  onStopRecording={onStopRecording}
+                />
               </Animated.View>
             );
           })}
@@ -208,13 +222,20 @@ function EmptyState() {
 interface TimelineProps {
   onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
   onMenuPress?: () => void;
+  onPauseRecording?: (id: string) => void;
+  onResumeRecording?: (id: string) => void;
+  onStopRecording?: (id: string) => void;
 }
 
-export function Timeline({ onQuickAdd, onMenuPress }: TimelineProps) {
+export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording }: TimelineProps) {
   const { entries, deleteEntry, searchQuery, filteredEntries, updateEntry, filterType, filterDateRange } = useEntryStore();
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [showFilterBar, setShowFilterBar] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const searchInputRef = React.useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
+  const scrollTopScale = useRef(new RNAnimated.Value(1)).current;
 
   // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
   const hasFilters = searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all';
@@ -256,6 +277,64 @@ export function Timeline({ onQuickAdd, onMenuPress }: TimelineProps) {
     console.log('editingEntry 已设置');
   };
 
+  // 处理滚动事件
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    
+    // 当快速添加按钮区域滚出屏幕时显示"返回顶部"按钮
+    if (offsetY > 200 && !showScrollTop) {
+      setShowScrollTop(true);
+      RNAnimated.timing(scrollTopOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+    // 当快速添加按钮区域还在屏幕内时隐藏"返回顶部"按钮
+    else if (offsetY <= 200 && showScrollTop) {
+      RNAnimated.timing(scrollTopOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowScrollTop(false);
+      });
+    }
+  };
+
+  // 返回顶部函数
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  // 按钮按下动画
+  const handlePressIn = () => {
+    RNAnimated.spring(scrollTopScale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // 按钮释放动画
+  const handlePressOut = () => {
+    RNAnimated.spring(scrollTopScale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePauseRecording = (id: string) => {
+    onPauseRecording?.(id);
+  };
+
+  const handleResumeRecording = (id: string) => {
+    onResumeRecording?.(id);
+  };
+
+  const handleStopRecording = (id: string) => {
+    onStopRecording?.(id);
+  };
+
   // 分组配置
   const groups: Array<{ key: TimeGroup; title: string }> = [
     { key: 'today', title: '2024年6月' }, // 今天显示为月份
@@ -279,9 +358,12 @@ export function Timeline({ onQuickAdd, onMenuPress }: TimelineProps) {
       <FilterBar isVisible={showFilterBar} onClose={handleFilterBarClose} />
 
       <ScrollView
+        ref={scrollViewRef}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 160 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {!hasEntries ? (
           <EmptyState />
@@ -296,7 +378,10 @@ export function Timeline({ onQuickAdd, onMenuPress }: TimelineProps) {
                 onDeleteEntry={deleteEntry}
                 onEditEntry={handleEditEntry}
                 onQuickAdd={onQuickAdd}
-                showQuickAdd={groupIndex === 0} // 只在第一个分组（今天）显示快速添加
+                showQuickAdd={groupIndex === 0}
+                onPauseRecording={handlePauseRecording}
+                onResumeRecording={handleResumeRecording}
+                onStopRecording={handleStopRecording}
               />
             ))}
           </View>
@@ -310,6 +395,42 @@ export function Timeline({ onQuickAdd, onMenuPress }: TimelineProps) {
         onSave={handleSaveEdit}
         onClose={() => setEditingEntry(null)}
       />
+
+      {/* 返回顶部按钮 */}
+      {showScrollTop && (
+        <RNAnimated.View
+          style={{
+            position: 'absolute',
+            bottom: 80,
+            right: 20,
+            zIndex: 999,
+            opacity: scrollTopOpacity,
+            transform: [{ scale: scrollTopScale }],
+          }}
+        >
+          <TouchableOpacity
+            onPress={scrollToTop}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            activeOpacity={0.8}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <Ionicons name="arrow-up" size={24} color="#6A89CC" />
+          </TouchableOpacity>
+        </RNAnimated.View>
+      )}
     </View>
   );
 }

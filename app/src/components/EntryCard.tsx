@@ -3,7 +3,7 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,63 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import Animated, { FadeIn, Layout } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  Layout,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '@/src/types/entry';
 import { VoiceService } from '@/src/services/voiceService';
+import WaveformAnimation from './WaveformAnimation';
 
 interface EntryCardProps {
   entry: Entry;
   onDelete: (id: string) => void;
   onEdit?: (entry: Entry) => void;
+  onPauseRecording?: (id: string) => void;
+  onResumeRecording?: (id: string) => void;
+  onStopRecording?: (id: string) => void;
 }
 
-export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
+export function EntryCard({
+  entry,
+  onDelete,
+  onEdit,
+  onPauseRecording,
+  onResumeRecording,
+  onStopRecording,
+}: EntryCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // 红点闪烁动画
+  const redDotOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    if (entry.recordingStatus === 'recording') {
+      redDotOpacity.value = withRepeat(
+        withTiming(0.3, {
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        true
+      );
+    } else {
+      redDotOpacity.value = 1;
+    }
+  }, [entry.recordingStatus]);
+
+  const redDotStyle = useAnimatedStyle(() => ({
+    opacity: redDotOpacity.value,
+  }));
 
   // 处理音频播放
   const handlePlayAudio = async () => {
@@ -48,6 +92,13 @@ export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
     const sizes = ['B', 'KB', 'MB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  };
+
+  // 格式化录音时长
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // 根据类型获取左边框颜色
@@ -91,6 +142,8 @@ export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
 
   return (
     <Pressable
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
       onPress={() => {
         console.log('卡片被点击，entry.id:', entry.id);
         console.log('onEdit 是否存在:', !!onEdit);
@@ -99,10 +152,11 @@ export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
         }
       }}
       onLongPress={handleLongPress}
+      android_ripple={{ color: '#E5E5E5' }}
       style={[
         styles.cardContainer,
         {
-          backgroundColor: getBackgroundColor(),
+          backgroundColor: isPressed ? '#E8F0FF' : getBackgroundColor(),
           borderLeftColor: getBorderColor(),
         },
       ]}
@@ -132,33 +186,77 @@ export function EntryCard({ entry, onDelete, onEdit }: EntryCardProps) {
                 </Text>
               )}
             </>
-          ) : entry.type === 'voice' && entry.media ? (
-            // 语音内容
-            <View style={styles.voiceContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.playButton,
-                  isPlayingAudio && styles.playButtonActive,
-                ]}
-                onPress={handlePlayAudio}
-                disabled={isPlayingAudio}
-              >
-                {isPlayingAudio ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.playIcon}>▶</Text>
-                )}
-              </TouchableOpacity>
+           ) : entry.type === 'voice' ? (
+             entry.recordingStatus === 'recording' ? (
+               <View style={styles.recordingContainer}>
+                 <View style={styles.recordingCompact}>
+                   <View style={styles.recordingCenter}>
+                     <View style={styles.waveformCompact}>
+                       <WaveformAnimation isRecording={true} color="#FF3B30" />
+                     </View>
+                     <Text style={styles.recordingTimeCompact}>
+                       {formatDuration(entry.recordingDuration || 0)}
+                     </Text>
+                   </View>
 
-              <View style={styles.voiceInfo}>
-                <Text style={styles.voiceDuration}>
-                  {Math.floor(entry.media.duration / 1000)}秒
-                </Text>
-                <Text style={styles.voiceSize}>
-                  {formatFileSize(entry.media.size)}
-                </Text>
-              </View>
-            </View>
+                   <TouchableOpacity
+                     style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
+                     disabled={isProcessing}
+                     activeOpacity={0.7}
+                     onPress={async () => {
+                       if (isProcessing) return;
+                       setIsProcessing(true);
+                       try {
+                         await onStopRecording?.(entry.id);
+                       } catch (error) {
+                         console.error('Failed to stop recording:', error);
+                       } finally {
+                         setTimeout(() => setIsProcessing(false), 300);
+                       }
+                     }}
+                   >
+                     <View style={styles.stopIconCompact} />
+                   </TouchableOpacity>
+                 </View>
+                </View>
+             ) : entry.media ? (
+               <View style={styles.voicePlayContainer}>
+                 <TouchableOpacity
+                   style={[
+                     styles.playButton,
+                     isPlayingAudio && styles.playButtonPlaying,
+                   ]}
+                   onPress={handlePlayAudio}
+                   disabled={isPlayingAudio}
+                   activeOpacity={0.7}
+                 >
+                   {isPlayingAudio ? (
+                     <ActivityIndicator size={28} color="#FFFFFF" />
+                   ) : (
+                     <Ionicons name="play" size={28} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                   )}
+                 </TouchableOpacity>
+
+                 <View style={styles.voiceDetails}>
+                   <View style={styles.voiceMetaRow}>
+                     <Ionicons name="time-outline" size={16} color="#8E8E93" />
+                     <Text style={styles.voiceMetaText}>
+                       {entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0}″
+                     </Text>
+                   </View>
+                   <View style={styles.voiceMetaRow}>
+                     <Ionicons name="document-outline" size={16} color="#8E8E93" />
+                     <Text style={styles.voiceMetaText}>
+                       {formatFileSize(entry.media.size)}
+                     </Text>
+                   </View>
+                 </View>
+
+                 <View style={styles.voiceWaveform}>
+                   <WaveformAnimation isRecording={false} color="#C7C7CC" />
+                 </View>
+               </View>
+            ) : null
           ) : null}
 
           {/* 标签（如果有） */}
@@ -230,52 +328,11 @@ const styles = StyleSheet.create({
   photoCaption: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#525252', // 中性深色
+    color: '#525252',
     marginTop: 8,
   },
-  voiceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingVertical: 8,
-  },
-  playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5A623', // 新配色的语音橙色
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playButtonActive: {
-    backgroundColor: '#E09510', // 深一点的橙色
-  },
-  playIcon: {
-    fontSize: 18,
-    color: '#fff',
-    marginLeft: 3,
-  },
-  voiceInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  voiceDuration: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A4A4A', // 新配色的文字颜色
-  },
-  voiceSize: {
-    fontSize: 13,
-    color: '#737373', // 中灰
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
   tag: {
-    backgroundColor: '#F9731620', // 浅橙背景
+    backgroundColor: '#F9731620',
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -284,7 +341,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    color: '#EA580C', // 深橙
+    color: '#EA580C',
     fontWeight: '500',
   },
   moreTagsHint: {
@@ -293,7 +350,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   transcriptionContainer: {
-    backgroundColor: '#F5F5F5', // 浅灰背景
+    backgroundColor: '#F5F5F5',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
@@ -315,5 +372,118 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  recordingContainer: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    padding: 12,
+  },
+  recordingCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  recordingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+  },
+  recordingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FF3B30',
+    letterSpacing: 1,
+  },
+  recordingCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  waveformCompact: {
+    flex: 1,
+    height: 32,
+  },
+  recordingTimeCompact: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    fontVariant: ['tabular-nums'],
+    minWidth: 50,
+  },
+  stopButtonCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  stopIconCompact: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  voicePlayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 16,
+    padding: 16,
+  },
+  playButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  playButtonPlaying: {
+    backgroundColor: '#5AC8FA',
+  },
+  voiceDetails: {
+    gap: 8,
+  },
+  voiceMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  voiceMetaText: {
+    fontSize: 15,
+    color: '#3C3C43',
+    fontWeight: '500',
+  },
+  voiceWaveform: {
+    flex: 1,
+    height: 40,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
   },
 });

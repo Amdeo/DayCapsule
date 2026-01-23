@@ -59,21 +59,5 @@ target 'app' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # Force iOS deployment target to 16.0 for all pods
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-      end
-    end
-
-    # Force iOS deployment target to 16.0 for the main app project
-    installer.aggregate_targets.each do |target|
-      target.user_project.targets.each do |project_target|
-        project_target.build_configurations.each do |config|
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-        end
-      end
-    end
   end
 end

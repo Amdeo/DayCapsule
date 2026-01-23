@@ -94,4 +94,5 @@ app/ios/build/
 # Media files (local development)
 media/
 thumbs/
+.serena
 

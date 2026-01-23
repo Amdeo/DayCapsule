@@ -1,0 +1,98 @@
+import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  cancelAnimation,
+} from 'react-native-reanimated';
+
+interface WaveformAnimationProps {
+  isRecording: boolean;
+  color?: string;
+}
+
+const WAVE_COUNT = 20;
+const BAR_WIDTH = 3;
+const BAR_GAP = 4;
+const BAR_RADIUS = 2;
+const MIN_HEIGHT = 10;
+const MAX_HEIGHT = 50;
+const CONTAINER_HEIGHT = 60;
+
+const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
+  isRecording,
+  color = '#F5A623',
+}) => {
+  const waveHeights = Array.from({ length: WAVE_COUNT }, () =>
+    useSharedValue(MIN_HEIGHT)
+  );
+
+  useEffect(() => {
+    if (isRecording) {
+      waveHeights.forEach((height) => {
+        const randomDuration = 100 + Math.random() * 100;
+        const randomHeight = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
+        
+        height.value = withRepeat(
+          withTiming(randomHeight, {
+            duration: randomDuration,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          -1,
+          true
+        );
+      });
+    } else {
+      waveHeights.forEach((height) => {
+        cancelAnimation(height);
+        height.value = withTiming(MIN_HEIGHT, {
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+        });
+      });
+    }
+  }, [isRecording]);
+
+  return (
+    <View style={styles.container}>
+      {waveHeights.map((height, index) => (
+        <WaveBar key={index} height={height} color={color} />
+      ))}
+    </View>
+  );
+};
+
+interface WaveBarProps {
+  height: Animated.SharedValue<number>;
+  color: string;
+}
+
+const WaveBar: React.FC<WaveBarProps> = ({ height, color }) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      height: height.value,
+      backgroundColor: color,
+    };
+  });
+
+  return <Animated.View style={[styles.bar, animatedStyle]} />;
+};
+
+const styles = StyleSheet.create({
+  container: {
+    height: CONTAINER_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: BAR_GAP,
+  },
+  bar: {
+    width: BAR_WIDTH,
+    borderRadius: BAR_RADIUS,
+  },
+});
+
+export default WaveformAnimation;

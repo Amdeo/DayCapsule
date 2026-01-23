@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,80 +11,65 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Entry } from '../types/entry';
 
-interface EntryEditorProps {
+interface TextEditorProps {
   visible: boolean;
-  entry: Entry | null;
-  onSave: (id: string, content: string, tags: string[]) => void;
-  onClose: () => void;
+  onSave: (content: string, tags: string[]) => void;
+  onCancel: () => void;
 }
 
-export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProps) {
+export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
 
-  useEffect(() => {
-    if (visible && entry) {
-      setContent(entry.content);
-      setTagsInput(entry.tags?.join(', ') || '');
-    }
-  }, [visible, entry]);
-
-  if (!visible || !entry) {
-    return null;
-  }
-
   const handleSave = () => {
+    if (!content.trim()) {
+      return;
+    }
     const tags = tagsInput
       .split(',')
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
-    onSave(entry.id, content, tags);
-    onClose();
+    onSave(content, tags);
+    setContent('');
+    setTagsInput('');
   };
+
+  const handleCancel = () => {
+    setContent('');
+    setTagsInput('');
+    onCancel();
+  };
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <Modal
       visible={visible}
       transparent={true}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleCancel}
     >
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={handleCancel} />
 
         <View style={styles.editor}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>编辑记录</Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.headerTitle}>添加文字记录</Text>
+            <Pressable onPress={handleCancel} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#4A4A4A" />
             </Pressable>
           </View>
 
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.typeTag}>
-              <Ionicons
-                name={
-                  entry.type === 'text'
-                    ? 'document-text'
-                    : entry.type === 'photo'
-                    ? 'image'
-                    : 'mic'
-                }
-                size={16}
-                color="#6A89CC"
-              />
-              <Text style={styles.typeText}>
-                {entry.type === 'text' ? '文本' : entry.type === 'photo' ? '照片' : '语音'}
-              </Text>
+              <Ionicons name="document-text" size={16} color="#6A89CC" />
+              <Text style={styles.typeText}>文本</Text>
             </View>
 
             <View style={styles.section}>
@@ -98,6 +83,7 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
                 multiline
                 numberOfLines={6}
                 textAlignVertical="top"
+                autoFocus
               />
             </View>
 
@@ -124,27 +110,21 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
                 </View>
               )}
             </View>
-
-            <View style={styles.section}>
-              <Text style={styles.infoLabel}>创建时间</Text>
-              <Text style={styles.infoText}>
-                {new Date(entry.timestamp).toLocaleString('zh-CN')}
-              </Text>
-            </View>
           </ScrollView>
 
           <View style={styles.footer}>
             <Pressable
               style={[styles.button, styles.cancelButton]}
-              onPress={onClose}
+              onPress={handleCancel}
             >
               <Text style={styles.cancelButtonText}>取消</Text>
             </Pressable>
             <Pressable
-              style={[styles.button, styles.saveButton]}
+              style={[styles.button, styles.saveButton, !content.trim() && styles.saveButtonDisabled]}
               onPress={handleSave}
+              disabled={!content.trim()}
             >
-              <Text style={styles.saveButtonText}>保存</Text>
+              <Text style={[styles.saveButtonText, !content.trim() && styles.saveButtonTextDisabled]}>保存</Text>
             </Pressable>
           </View>
         </View>
@@ -268,16 +248,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#6A89CC',
   },
-  infoLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#A3A3A3',
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#737373',
-  },
   footer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -304,9 +274,15 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: '#6A89CC',
   },
+  saveButtonDisabled: {
+    backgroundColor: '#D1D1D1',
+  },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  saveButtonTextDisabled: {
+    color: '#A3A3A3',
   },
 });

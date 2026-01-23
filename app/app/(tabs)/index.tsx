@@ -2,46 +2,154 @@ import { View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useEntryStore } from '@/src/store/entryStore';
 import { Timeline } from '@/src/components/Timeline.v2';
-import { BottomToolbar } from '@/src/components/BottomToolbar';
 import { Sidebar } from '@/src/components/Sidebar';
 import { MediaSelector } from '@/src/components/MediaSelector';
 import { PhotoSelector } from '@/src/components/PhotoSelector';
-import { VoiceRecorder } from '@/src/components/VoiceRecorder';
+import { TextEditor } from '@/src/components/TextEditor';
+import { VoiceService } from '@/src/services/voiceService';
 
 export default function HomeScreen() {
-  const { loadEntries, addEntry } = useEntryStore();
+  const { loadEntries, addEntry, updateRecordingStatus, updateRecordingDuration, completeRecording } = useEntryStore();
   const [showMediaSelector, setShowMediaSelector] = useState(false);
   const [showPhotoSelector, setShowPhotoSelector] = useState(false);
-  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showTextEditor, setShowTextEditor] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [currentRecordingId, setCurrentRecordingId] = useState<string | null>(null);
+  const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
 
   // 在组件挂载时加载数据
   useEffect(() => {
     loadEntries();
   }, []);
 
-  // 处理媒体类型选择
-  const handleMediaSelect = (type: 'text' | 'photo' | 'voice') => {
+  // 组件卸载时清理录音
+  useEffect(() => {
+    console.log('[HomeScreen] Cleanup effect mounted');
+    return () => {
+      console.log('[HomeScreen] Component unmounting, cleaning up');
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+      }
+      if (currentRecordingId) {
+        console.log('[HomeScreen] Cancelling recording:', currentRecordingId);
+        VoiceService.cancelRecording().catch(console.error);
+      }
+    };
+  }, []);
+
+  const startRecordingTimer = (entryId: string) => {
+    console.log('[HomeScreen] startRecordingTimer called for entry:', entryId);
+    const timer = setInterval(async () => {
+      const duration = await VoiceService.getRecordingDuration();
+      console.log('[HomeScreen] Timer tick - duration:', duration);
+      updateRecordingDuration(entryId, duration);
+    }, 100);
+    setRecordingTimer(timer);
+    console.log('[HomeScreen] Timer started');
+  };
+
+  const handleMediaSelect = async (type: 'text' | 'photo' | 'voice') => {
     setShowMediaSelector(false);
 
     switch(type) {
       case 'text':
-        // 文本类型直接添加空记录，让用户在卡片中编辑
-        addEntry({
-          type: 'text',
-          content: '点击编辑...',
-        });
+        setShowTextEditor(true);
         break;
       case 'photo':
         setShowPhotoSelector(true);
         break;
       case 'voice':
-        setShowVoiceRecorder(true);
+        console.log('[HomeScreen] Starting voice recording');
+        try {
+          console.log('[HomeScreen] Adding entry to store');
+          await addEntry({
+            type: 'voice',
+            content: '',
+            recordingStatus: 'recording',
+            recordingDuration: 0,
+            media: {
+              uri: '',
+              type: 'voice',
+              duration: 0,
+            },
+          });
+          
+          const entries = useEntryStore.getState().entries;
+          const newEntry = entries[entries.length - 1];
+          console.log('[HomeScreen] New entry created:', newEntry?.id);
+          
+          if (newEntry) {
+            setCurrentRecordingId(newEntry.id);
+            console.log('[HomeScreen] Calling VoiceService.startRecording');
+            await VoiceService.startRecording();
+            console.log('[HomeScreen] VoiceService.startRecording completed');
+            startRecordingTimer(newEntry.id);
+          }
+        } catch (error) {
+          console.error('[HomeScreen] Failed to start recording:', error);
+        }
         break;
     }
   };
 
-  // 处理照片选择
+  const handleResumeRecording = async (id: string) => {
+    console.log('[HomeScreen] handleResumeRecording called for entry:', id);
+    try {
+      console.log('[HomeScreen] Calling VoiceService.resumeRecording');
+      await VoiceService.resumeRecording();
+      console.log('[HomeScreen] VoiceService.resumeRecording completed');
+      
+      console.log('[HomeScreen] Updating entry status to recording');
+      updateRecordingStatus(id, 'recording');
+      
+      if (!recordingTimer) {
+        console.log('[HomeScreen] Starting recording timer');
+        startRecordingTimer(id);
+      } else {
+        console.log('[HomeScreen] Timer already running');
+      }
+      console.log('[HomeScreen] Resume completed');
+    } catch (error) {
+      console.error('[HomeScreen] Failed to resume recording:', error);
+    }
+  };
+
+  const handleStopRecording = async (id: string) => {
+    console.log('[HomeScreen] handleStopRecording called for entry:', id);
+    try {
+      console.log('[HomeScreen] Calling VoiceService.stopRecording');
+      const audioFile = await VoiceService.stopRecording();
+      console.log('[HomeScreen] VoiceService.stopRecording completed, audioFile:', audioFile);
+      
+      console.log('[HomeScreen] Completing recording in store');
+      await completeRecording(id, audioFile.uri, audioFile.duration * 1000);
+      
+      if (recordingTimer) {
+        console.log('[HomeScreen] Clearing recording timer');
+        clearInterval(recordingTimer);
+        setRecordingTimer(null);
+      }
+      setCurrentRecordingId(null);
+      console.log('[HomeScreen] Stop completed');
+    } catch (error) {
+      console.error('[HomeScreen] Failed to stop recording:', error);
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+        setRecordingTimer(null);
+      }
+      setCurrentRecordingId(null);
+    }
+  };
+
+  const handleTextSave = (content: string, tags: string[]) => {
+    addEntry({
+      type: 'text',
+      content,
+      tags,
+    });
+    setShowTextEditor(false);
+  };
+
   const handlePhotoSelect = (uri: string) => {
     addEntry({
       type: 'photo',
@@ -54,27 +162,14 @@ export default function HomeScreen() {
     setShowPhotoSelector(false);
   };
 
-  // 处理语音录制完成
-  const handleVoiceRecord = (uri: string, duration: number) => {
-    addEntry({
-      type: 'voice',
-      content: '',
-      media: {
-        uri,
-        type: 'voice',
-        duration,
-      },
-    });
-    setShowVoiceRecorder(false);
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
       {/* 时间轴内容（包含搜索栏） */}
-      <Timeline onQuickAdd={handleMediaSelect} onMenuPress={() => setShowSidebar(true)} />
-
-      {/* 底部圆形工具栏 */}
-      <BottomToolbar onPress={handleMediaSelect} />
+      <Timeline 
+        onQuickAdd={handleMediaSelect} 
+        onMenuPress={() => setShowSidebar(true)}
+        onStopRecording={handleStopRecording}
+      />
 
       {/* 侧边栏 */}
       <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
@@ -93,11 +188,11 @@ export default function HomeScreen() {
         onCancel={() => setShowPhotoSelector(false)}
       />
 
-      {/* 语音录制器模态框 */}
-      <VoiceRecorder
-        visible={showVoiceRecorder}
-        onSave={handleVoiceRecord}
-        onCancel={() => setShowVoiceRecorder(false)}
+      {/* 文本编辑器模态框 */}
+      <TextEditor
+        visible={showTextEditor}
+        onSave={handleTextSave}
+        onCancel={() => setShowTextEditor(false)}
       />
     </View>
   );

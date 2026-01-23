@@ -16,6 +16,10 @@ export interface Entry {
   // 语音转文字
   transcription?: TranscriptionInfo;
 
+  // 录音状态（仅在 type 为 'voice' 时使用）
+  recordingStatus?: 'recording' | 'paused' | 'completed';
+  recordingDuration?: number; // 录音时长（秒）
+
   // 编辑与同步
   editedAt?: number;
   syncStatus: 'pending' | 'synced' | 'failed';
@@ -102,6 +106,8 @@ export interface MediaError extends Error {
     | 'INVALID_FILE'
     | 'CODEC_ERROR'
     | 'NETWORK_ERROR'
+    | 'MICROPHONE_ERROR'
+    | 'DEVICE_ERROR'
     | 'UNKNOWN';
   userMessage: string;
   recoveryAction?: () => void;

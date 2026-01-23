@@ -15,6 +15,8 @@ export interface Entry {
     type: 'photo' | 'voice';
     duration?: number;
   };
+  recordingStatus?: 'recording' | 'paused' | 'completed';
+  recordingDuration?: number; // 录音时长（秒）
 }
 
 interface EntryStore {
@@ -38,6 +40,9 @@ interface EntryStore {
   getAllTags: () => string[];
   toggleTag: (tag: string) => void;
   clearTags: () => void;
+  updateRecordingStatus: (id: string, status: 'recording' | 'paused' | 'completed') => void;
+  updateRecordingDuration: (id: string, duration: number) => void;
+  completeRecording: (id: string, uri: string, duration: number) => Promise<void>;
 }
 
 export const useEntryStore = create<EntryStore>((set, get) => ({
@@ -102,8 +107,25 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
         set({ entries: sampleEntries, isLoading: false });
         console.log('✅ 添加了示例数据:', sampleEntries.length, '条');
       } else {
-        set({ entries, isLoading: false });
-        console.log('✅ 加载了现有数据:', entries.length, '条');
+        // 清理无效的录音状态
+        const cleanedEntries = entries.filter(entry => {
+          // 移除未完成的录音（应用重启后录音会话已失效）
+          if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
+            console.log('🧹 清理无效录音:', entry.id);
+            return false;
+          }
+          return true;
+        });
+        
+        set({ entries: cleanedEntries, isLoading: false });
+        
+        // 如果清理了数据，保存回存储
+        if (cleanedEntries.length !== entries.length) {
+          await Storage.setObject(ENTRIES_KEY, cleanedEntries);
+          console.log('✅ 清理了', entries.length - cleanedEntries.length, '条无效录音');
+        }
+        
+        console.log('✅ 加载了现有数据:', cleanedEntries.length, '条');
       }
     } catch (error) {
       console.error('Failed to load entries:', error);
@@ -299,5 +321,47 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
   clearTags: () => {
     set({ selectedTags: [] });
     get().applyFilters();
+  },
+
+  /**
+   * 更新录音状态
+   */
+  updateRecordingStatus: (id, status) => {
+    const newEntries = get().entries.map((entry) =>
+      entry.id === id ? { ...entry, recordingStatus: status } : entry
+    );
+    set({ entries: newEntries });
+  },
+
+  /**
+   * 更新录音时长
+   */
+  updateRecordingDuration: (id, duration) => {
+    const newEntries = get().entries.map((entry) =>
+      entry.id === id ? { ...entry, recordingDuration: duration } : entry
+    );
+    set({ entries: newEntries });
+  },
+
+  /**
+   * 完成录音
+   */
+  completeRecording: async (id, uri, duration) => {
+    const newEntries = get().entries.map((entry) =>
+      entry.id === id
+        ? {
+            ...entry,
+            recordingStatus: 'completed' as const,
+            recordingDuration: Math.floor(duration / 1000),
+            media: {
+              uri,
+              type: 'voice' as const,
+              duration,
+            },
+          }
+        : entry
+    );
+    set({ entries: newEntries });
+    await Storage.setObject(ENTRIES_KEY, newEntries);
   },
 }));
