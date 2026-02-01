@@ -14,13 +14,13 @@ interface WaveformAnimationProps {
   color?: string;
 }
 
-const WAVE_COUNT = 20;
-const BAR_WIDTH = 3;
-const BAR_GAP = 4;
-const BAR_RADIUS = 2;
-const MIN_HEIGHT = 10;
-const MAX_HEIGHT = 50;
-const CONTAINER_HEIGHT = 60;
+const WAVE_COUNT = 50; // 更密集的波形条
+const BAR_WIDTH = 2;
+const BAR_GAP = 1; // 更小的间隔
+const BAR_RADIUS = 1;
+const MIN_HEIGHT = 4;
+const MAX_HEIGHT = 24;
+const CONTAINER_HEIGHT = 28;
 
 const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
   isRecording,
@@ -35,7 +35,7 @@ const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
       waveHeights.forEach((height) => {
         const randomDuration = 100 + Math.random() * 100;
         const randomHeight = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
-        
+
         height.value = withRepeat(
           withTiming(randomHeight, {
             duration: randomDuration,
@@ -54,7 +54,7 @@ const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
         });
       });
     }
-  }, [isRecording]);
+  }, [isRecording, waveHeights]);
 
   return (
     <View style={styles.container}>

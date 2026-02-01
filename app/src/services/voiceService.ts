@@ -58,6 +58,8 @@ export class VoiceService {
   private static recorder: Audio.Recording | null = null;
   private static sound: Audio.Sound | null = null;
   private static recordingSession: RecordingSession | null = null;
+  private static isAudioInitialized: boolean = false;
+  private static currentAudioMode: 'recording' | 'playback' | null = null;
 
   /**
    * 初始化音频系统
@@ -70,6 +72,8 @@ export class VoiceService {
         shouldDuckAndroid: true,
         playThroughEarpiece: false,
       });
+      this.isAudioInitialized = true;
+      this.currentAudioMode = 'recording';
     } catch (error) {
       console.error('Failed to initialize audio:', error);
     }
@@ -174,6 +178,11 @@ export class VoiceService {
         throw new Error('No active recording');
       }
 
+      // 先获取状态（在停止之前）
+      const status = await this.recorder.getStatusAsync();
+      const duration = (status.durationMillis || 0) / 1000; // 转换为秒
+
+      // 然后停止并卸载
       await this.recorder.stopAndUnloadAsync();
 
       const uri = this.recorder.getURI();
@@ -182,8 +191,6 @@ export class VoiceService {
       }
 
       const { size } = await getFileInfo(uri);
-      const status = await this.recorder.getStatusAsync();
-      const duration = (status.durationMillis || 0) / 1000; // 转换为秒
 
       this.recorder = null;
       this.recordingSession = null;
@@ -242,16 +249,49 @@ export class VoiceService {
   /**
    * 播放音频
    */
-  static async playAudio(uri: string): Promise<void> {
+  static async playAudio(
+    uri: string,
+    onComplete?: () => void,
+    onProgress?: (position: number) => void
+  ): Promise<void> {
     try {
       // 停止之前的播放
       if (this.sound) {
         await this.sound.unloadAsync();
       }
 
+      // 只在需要时切换音频模式
+      if (this.currentAudioMode !== 'playback') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+        this.currentAudioMode = 'playback';
+      }
+
       // 创建新的 Sound 实例
       this.sound = new Audio.Sound();
       await this.sound.loadAsync({ uri });
+
+      // 设置播放状态更新回调
+      this.sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          // 更新播放进度
+          if (status.isPlaying && onProgress) {
+            onProgress(status.positionMillis);
+          }
+
+          // 播放完成
+          if (status.didJustFinish) {
+            this.sound?.unloadAsync();
+            onComplete?.();
+          }
+        }
+      });
+
       await this.sound.playAsync();
     } catch (error) {
       console.error('Failed to play audio:', error);
@@ -286,6 +326,22 @@ export class VoiceService {
       this.sound = null;
     } catch (error) {
       console.error('Failed to stop playback:', error);
+    }
+  }
+
+  /**
+   * 检查是否正在播放
+   */
+  static async isPlaying(): Promise<boolean> {
+    try {
+      if (!this.sound) {
+        return false;
+      }
+      const status = await this.sound.getStatusAsync();
+      return status.isLoaded && status.isPlaying;
+    } catch (error) {
+      console.error('Failed to check playback status:', error);
+      return false;
     }
   }
 

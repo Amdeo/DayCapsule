@@ -46,6 +46,7 @@ export function EntryCard({
   onStopRecording,
 }: EntryCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [playbackPosition, setPlaybackPosition] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,12 +77,26 @@ export function EntryCard({
   const handlePlayAudio = async () => {
     try {
       setIsPlayingAudio(true);
-      await VoiceService.playAudio(entry.media?.uri || entry.content);
+      setPlaybackPosition(0);
+
+      // 播放音频，传入完成回调和进度回调
+      await VoiceService.playAudio(
+        entry.media?.uri || entry.content,
+        () => {
+          // 播放完成回调
+          setIsPlayingAudio(false);
+          setPlaybackPosition(0);
+        },
+        (position) => {
+          // 播放进度回调
+          setPlaybackPosition(position);
+        }
+      );
     } catch (error) {
       console.error('Failed to play audio:', error);
       alert('播放失败');
-    } finally {
       setIsPlayingAudio(false);
+      setPlaybackPosition(0);
     }
   };
 
@@ -163,7 +178,7 @@ export function EntryCard({
     >
       <Animated.View layout={Layout.springify()}>
         {/* 卡片主内容 */}
-        <View style={styles.content}>
+        <View style={entry.type === 'voice' ? styles.contentVoice : styles.content}>
           {entry.type === 'text' ? (
             // 文本内容
             <Text
@@ -190,15 +205,7 @@ export function EntryCard({
              entry.recordingStatus === 'recording' ? (
                <View style={styles.recordingContainer}>
                  <View style={styles.recordingCompact}>
-                   <View style={styles.recordingCenter}>
-                     <View style={styles.waveformCompact}>
-                       <WaveformAnimation isRecording={true} color="#FF3B30" />
-                     </View>
-                     <Text style={styles.recordingTimeCompact}>
-                       {formatDuration(entry.recordingDuration || 0)}
-                     </Text>
-                   </View>
-
+                   {/* 左侧：停止按钮 */}
                    <TouchableOpacity
                      style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
                      disabled={isProcessing}
@@ -217,43 +224,50 @@ export function EntryCard({
                    >
                      <View style={styles.stopIconCompact} />
                    </TouchableOpacity>
+
+                   {/* 中间：波形 + 文字 */}
+                   <View style={styles.recordingCenter}>
+                     <View style={styles.waveformCompact}>
+                       <WaveformAnimation isRecording={true} color="#F5A68D" />
+                     </View>
+                     <Text style={styles.recordingLabel}>录音中...</Text>
+                   </View>
+
+                   {/* 右侧：时长 */}
+                   <Text style={styles.recordingTimeCompact}>
+                     {formatDuration(entry.recordingDuration || 0)}
+                   </Text>
                  </View>
                 </View>
              ) : entry.media ? (
                <View style={styles.voicePlayContainer}>
-                 <TouchableOpacity
-                   style={[
-                     styles.playButton,
-                     isPlayingAudio && styles.playButtonPlaying,
-                   ]}
-                   onPress={handlePlayAudio}
-                   disabled={isPlayingAudio}
-                   activeOpacity={0.7}
-                 >
-                   {isPlayingAudio ? (
-                     <ActivityIndicator size={28} color="#FFFFFF" />
-                   ) : (
-                     <Ionicons name="play" size={28} color="#FFFFFF" style={{ marginLeft: 4 }} />
-                   )}
-                 </TouchableOpacity>
+                 <View style={styles.voicePlayCompact}>
+                   {/* 左侧：播放按钮 */}
+                   <TouchableOpacity
+                     style={[styles.playButtonCompact, isPlayingAudio && styles.buttonDisabled]}
+                     onPress={handlePlayAudio}
+                     disabled={isPlayingAudio}
+                     activeOpacity={0.7}
+                   >
+                     {isPlayingAudio ? (
+                       <ActivityIndicator size={24} color="#FFFFFF" />
+                     ) : (
+                       <Ionicons name="play" size={28} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                     )}
+                   </TouchableOpacity>
 
-                 <View style={styles.voiceDetails}>
-                   <View style={styles.voiceMetaRow}>
-                     <Ionicons name="time-outline" size={16} color="#8E8E93" />
-                     <Text style={styles.voiceMetaText}>
-                       {entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0}″
-                     </Text>
+                   {/* 中间：波形 */}
+                   <View style={styles.voiceWaveformCompact}>
+                     <WaveformAnimation isRecording={isPlayingAudio} color="#5E5E5E" />
                    </View>
-                   <View style={styles.voiceMetaRow}>
-                     <Ionicons name="document-outline" size={16} color="#8E8E93" />
-                     <Text style={styles.voiceMetaText}>
-                       {formatFileSize(entry.media.size)}
-                     </Text>
-                   </View>
-                 </View>
 
-                 <View style={styles.voiceWaveform}>
-                   <WaveformAnimation isRecording={false} color="#C7C7CC" />
+                   {/* 右侧：时长 */}
+                   <Text style={styles.voiceTimeCompact}>
+                     {isPlayingAudio
+                       ? formatDuration(Math.floor(playbackPosition / 1000))
+                       : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
+                     }
+                   </Text>
                  </View>
                </View>
             ) : null
@@ -313,6 +327,9 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingLeft: 20, // 左侧增加padding
     gap: 12,
+  },
+  contentVoice: {
+    padding: 0,
   },
   textContent: {
     fontSize: 15,
@@ -374,14 +391,14 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   recordingContainer: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
   },
   recordingCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   recordingLeft: {
     flexDirection: 'row',
@@ -402,50 +419,83 @@ const styles = StyleSheet.create({
   },
   recordingCenter: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   waveformCompact: {
-    flex: 1,
-    height: 32,
+    width: '100%',
+    height: 28,
+  },
+  recordingLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#8E8E93',
+    marginTop: 4,
   },
   recordingTimeCompact: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#1C1C1E',
     fontVariant: ['tabular-nums'],
-    minWidth: 50,
+    minWidth: 60,
+    textAlign: 'right',
   },
   stopButtonCompact: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FF3B30',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5A68D',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FF3B30',
+    shadowColor: '#F5A68D',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
   stopIconCompact: {
-    width: 14,
-    height: 14,
-    borderRadius: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 3,
     backgroundColor: '#FFFFFF',
+  },
+  playButtonCompact: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   voicePlayContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+  },
+  voicePlayCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 16,
-    padding: 16,
+  },
+  voiceWaveformCompact: {
+    flex: 1,
+    height: 28,
+  },
+  voiceTimeCompact: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    fontVariant: ['tabular-nums'],
+    minWidth: 60,
+    textAlign: 'right',
   },
   playButton: {
     width: 64,
@@ -487,3 +537,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+// 使用 React.memo 优化性能，避免不必要的重新渲染
+export default React.memo(EntryCard);
