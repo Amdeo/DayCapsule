@@ -1,218 +1,306 @@
 /**
- * 时间轴视图组件 - 重新设计版
+ * 时间轴视图组件 - 连续不间断版本（带 Sticky Header）
  * 整合搜索栏和快速添加功能
  */
 
-import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent, SectionList } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
 import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
+import { SearchOverlay } from './SearchOverlay';
 import { QuickAddButtons } from './QuickAddButtons';
 import { EntryEditor } from './EntryEditor';
-import { FilterBar } from './FilterBar';
 import {
-  groupEntriesByTime,
-  TIME_GROUP_LABELS,
-  TimeGroup,
-  formatRelativeTime,
+  formatDateLabel,
+  formatShortDate,
 } from '../utils/timeUtils';
 import { useEntryStore } from '../store/entryStore';
 import type { TextInput } from 'react-native';
 
 /**
- * 时间分组区块
+ * 时间分组配置
  */
-interface TimeGroupSectionProps {
+interface TimeSection {
   title: string;
-  groupKey: TimeGroup;
-  entries: Entry[];
-  onDeleteEntry: (id: string) => void;
-  onEditEntry?: (entry: Entry) => void;
-  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
-  showQuickAdd?: boolean;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
-  onStopRecording?: (id: string) => void;
+  timestamp: number;
+  data: (Entry | { type: 'quickAdd' })[];
 }
 
-function TimeGroupSection({
-  title,
-  groupKey,
-  entries,
-  onDeleteEntry,
-  onEditEntry,
-  onQuickAdd,
-  showQuickAdd = false,
-  onPauseRecording,
-  onResumeRecording,
-  onStopRecording,
-}: TimeGroupSectionProps) {
-  if (entries.length === 0 && !showQuickAdd) {
-    return null;
+/**
+ * 生成时间分组数据
+ */
+function generateTimeSections(
+  entries: Entry[],
+  showQuickAdd: boolean
+): TimeSection[] {
+  const sections: TimeSection[] = [];
+  let currentDateLabel = '';
+  let currentSection: TimeSection | null = null;
+
+  // 按时间倒序排序
+  const sortedEntries = [...entries].sort((a, b) => b.timestamp - a.timestamp);
+
+  sortedEntries.forEach((entry, index) => {
+    const dateLabel = formatDateLabel(entry.timestamp);
+
+    // 如果日期标签变化，创建一个新的分组
+    if (dateLabel !== currentDateLabel) {
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      currentSection = {
+        title: dateLabel,
+        timestamp: entry.timestamp,
+        data: [],
+      };
+      currentDateLabel = dateLabel;
+    }
+
+    // 添加记录到当前分组
+    if (currentSection) {
+      currentSection.data.push(entry);
+    }
+  });
+
+  // 添加最后一个分组
+  if (currentSection) {
+    sections.push(currentSection);
   }
 
-  const isToday = groupKey === 'today';
-  const timelineLeft = 40; // 统一的时间线位置（所有圆点的中心点）
+  // 在第一个分组添加快速添加按钮（如果是今天）
+  if (showQuickAdd && sections.length > 0) {
+    const firstSection = sections[0];
+    const today = new Date();
+    const firstEntryDate = new Date(firstSection.timestamp);
+    const isToday =
+      firstEntryDate.getDate() === today.getDate() &&
+      firstEntryDate.getMonth() === today.getMonth() &&
+      firstEntryDate.getFullYear() === today.getFullYear();
+
+    if (isToday) {
+      firstSection.data.unshift({ type: 'quickAdd' } as any);
+    }
+  }
+
+  return sections;
+}
+
+/**
+ * 时间轴头部组件 - Sticky
+ */
+interface TimelineHeaderProps {
+  title: string;
+  timestamp: number;
+}
+
+function TimelineHeader({ title, timestamp }: TimelineHeaderProps) {
+  const timelineLeft = 40;
 
   return (
-    <View style={{ marginBottom: 0, position: 'relative' }}>
-      {/* 整个分组的连续时间线 */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 64, height: 48, backgroundColor: '#FAF8F5' }}>
+      {/* 上方的线 - 从顶部到圆心，与主时间线对齐 */}
       <View
         style={{
           position: 'absolute',
           left: timelineLeft,
-          top: isToday ? 48 : 30, // 从圆形标记底部开始
-          bottom: 0,
+          top: 0,
           width: 2,
+          height: 24,
           backgroundColor: '#E5E5E5',
           zIndex: 1,
         }}
       />
 
-      {/* 分组标题 */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: isToday ? 16 : 30, paddingVertical: 20, position: 'relative', zIndex: 10 }}>
-        {/* 时间轴圆形标记 */}
-        <View
-          style={{
-            width: isToday ? 48 : 20,
-            height: isToday ? 48 : 20,
-            borderRadius: 999,
-            backgroundColor: isToday ? '#6A89CC' : '#D1D1D1',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: isToday ? '#6A89CC' : '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isToday ? 0.3 : 0.1,
-            shadowRadius: 4,
-            elevation: isToday ? 4 : 2,
-          }}
-        >
-          {isToday && (
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 }}>
-              今天
-            </Text>
-          )}
-        </View>
+      {/* 时间轴圆形标记 - 小圆点，圆心在 x=41（线的中心） */}
+      <View
+        style={{
+          position: 'absolute',
+          left: timelineLeft - 7,
+          top: 16,
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#6A89CC',
+          shadowColor: '#6A89CC',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2,
+          zIndex: 10,
+        }}
+      />
 
-        {/* 标题文本 */}
-        <Text style={{ fontSize: isToday ? 20 : 18, fontWeight: '700', color: '#4A4A4A', marginLeft: 16 }}>
-          {title}
+      {/* 下方的线 - 从圆心到底部，与主时间线对齐 */}
+      <View
+        style={{
+          position: 'absolute',
+          left: timelineLeft,
+          top: 24,
+          width: 2,
+          height: 24,
+          backgroundColor: '#E5E5E5',
+          zIndex: 1,
+        }}
+      />
+
+      {/* 标题文本 */}
+      <Text style={{ fontSize: 18, fontWeight: '600', color: '#4A4A4A' }}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * 快速添加组件
+ */
+interface QuickAddMarkerProps {
+  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
+}
+
+function QuickAddMarker({ onQuickAdd }: QuickAddMarkerProps) {
+  return (
+    <View style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: 20 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#A3A3A3' }}>
+          添加新的记忆...
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: '#E5E5E5', marginLeft: 12 }} />
+      </View>
+      <QuickAddButtons onPress={onQuickAdd} />
+    </View>
+  );
+}
+
+/**
+ * 记录项组件
+ */
+interface EntryMarkerProps {
+  entry: Entry;
+  onDeleteEntry: (id: string) => void;
+  onEditEntry?: (entry: Entry) => void;
+  onPauseRecording?: (id: string) => void;
+  onResumeRecording?: (id: string) => void;
+  onStopRecording?: (id: string) => void;
+  isLast: boolean;
+}
+
+function EntryMarker({
+  entry,
+  onDeleteEntry,
+  onEditEntry,
+  onPauseRecording,
+  onResumeRecording,
+  onStopRecording,
+  isLast,
+}: EntryMarkerProps) {
+  const timelineLeft = 40;
+
+  // 根据类型获取圆点颜色
+  const getDotColor = () => {
+    switch (entry.type) {
+      case 'text': return '#A491D3';
+      case 'photo': return '#77C9D4';
+      case 'voice': return '#F5A623';
+      default: return '#D1D1D1';
+    }
+  };
+
+  // 格式化为时分
+  const formatTime = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  return (
+    <Animated.View
+      entering={FadeIn.springify()}
+      exiting={FadeOut.duration(200)}
+      layout={LinearTransition.springify()}
+      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : 24, position: 'relative' }}
+    >
+      {/* 时间点圆点（带外圈）- 固定在时间线上 */}
+      <View
+        style={{
+          position: 'absolute',
+          left: timelineLeft - 7,
+          top: 1,
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: getDotColor(),
+          borderWidth: 2,
+          borderColor: '#FFFFFF',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+          elevation: 2,
+          zIndex: 2,
+        }}
+      />
+
+      {/* 时间文本 - 与卡片开头对齐，颜色和圆点一致 */}
+      <View style={{ marginBottom: 8 }}>
+        <Text style={{ fontSize: 12, color: getDotColor(), fontWeight: '500' }}>
+          {formatTime(entry.timestamp)}
         </Text>
       </View>
 
-      {/* 快速添加按钮（仅在"今天"分组显示） */}
-      {showQuickAdd && onQuickAdd && (
-        <View style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: 20, position: 'relative', zIndex: 5 }}>
-          {/* 圆点 */}
-          <View
-            style={{
-              position: 'absolute',
-              left: timelineLeft - 5,
-              top: 12,
-              width: 12,
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: '#FFFFFF',
-              borderWidth: 2,
-              borderColor: '#D1D1D1',
-              zIndex: 10,
-            }}
-          />
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#A3A3A3' }}>
-              添加新的记忆...
-            </Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#E5E5E5', marginLeft: 12 }} />
-          </View>
-          <QuickAddButtons onPress={onQuickAdd} />
-        </View>
-      )}
-
-      {/* 记录列表 */}
-      {entries.length > 0 && (
-        <View style={{ position: 'relative', zIndex: 5 }}>
-          {entries.map((entry, index) => {
-            // 根据类型获取圆点颜色
-            const getDotColor = () => {
-              switch (entry.type) {
-                case 'text': return '#A491D3';
-                case 'photo': return '#77C9D4';
-                case 'voice': return '#F5A623';
-                default: return '#D1D1D1';
-              }
-            };
-
-            return (
-              <Animated.View
-                key={entry.id}
-                style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: 24, position: 'relative' }}
-                entering={FadeIn.delay(index * 50).springify()}
-                exiting={FadeOut.duration(200)}
-              >
-                {/* 时间点圆点（带外圈） */}
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: timelineLeft - 5,
-                    top: 8,
-                    width: 12,
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: getDotColor(),
-                    borderWidth: 2,
-                    borderColor: '#FFFFFF',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 2,
-                    zIndex: 10,
-                  }}
-                />
-
-                {/* 相对时间 */}
-                <View style={{ marginBottom: 8 }}>
-                  <Text style={{ fontSize: 12, color: '#A3A3A3', fontWeight: '500' }}>
-                    {formatRelativeTime(entry.timestamp)}
-                  </Text>
-                </View>
-
-                {/* 卡片 */}
-                <EntryCard 
-                  entry={entry} 
-                  onDelete={onDeleteEntry} 
-                  onEdit={onEditEntry}
-                  onPauseRecording={onPauseRecording}
-                  onResumeRecording={onResumeRecording}
-                  onStopRecording={onStopRecording}
-                />
-              </Animated.View>
-            );
-          })}
-        </View>
-      )}
-    </View>
+      {/* 卡片 */}
+      <EntryCard
+        entry={entry}
+        onDelete={onDeleteEntry}
+        onEdit={onEditEntry}
+        onPauseRecording={onPauseRecording}
+        onResumeRecording={onResumeRecording}
+        onStopRecording={onStopRecording}
+      />
+    </Animated.View>
   );
 }
 
 /**
  * 空状态组件
  */
-function EmptyState() {
+interface EmptyStateProps {
+  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
+}
+
+function EmptyState({ onQuickAdd }: EmptyStateProps) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
-      <Text style={{ fontSize: 48, marginBottom: 16 }}>📭</Text>
-      <Text style={{ fontSize: 16, color: '#A3A3A3', textAlign: 'center' }}>
-        还没有记忆
-      </Text>
-      <Text style={{ fontSize: 14, color: '#D1D1D1', textAlign: 'center', marginTop: 8 }}>
-        点击下方按钮开始记录
-      </Text>
-    </View>
+    <Animated.View
+      entering={FadeIn.duration(300).delay(200)}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 24 }}
+    >
+      <Animated.View entering={FadeIn.delay(400).springify()}>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>📭</Text>
+      </Animated.View>
+
+      <Animated.View entering={FadeIn.delay(600)}>
+        <Text style={{ fontSize: 16, color: '#A3A3A3', textAlign: 'center' }}>
+          还没有记忆
+        </Text>
+        <Text style={{ fontSize: 14, color: '#D1D1D1', textAlign: 'center', marginTop: 8, marginBottom: 32 }}>
+          选择一种方式开始记录
+        </Text>
+      </Animated.View>
+
+      {/* 添加快速添加按钮 */}
+      {onQuickAdd && (
+        <Animated.View
+          entering={FadeIn.delay(800)}
+          style={{ width: '100%', maxWidth: 400 }}
+        >
+          <QuickAddButtons onPress={onQuickAdd} />
+        </Animated.View>
+      )}
+    </Animated.View>
   );
 }
 
@@ -225,24 +313,30 @@ interface TimelineProps {
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
+  onOpenMediaSelector?: () => void;
 }
 
-export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording }: TimelineProps) {
+export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording, onOpenMediaSelector }: TimelineProps) {
   const { entries, deleteEntry, searchQuery, filteredEntries, updateEntry, filterType, filterDateRange } = useEntryStore();
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
-  const [showFilterBar, setShowFilterBar] = useState(false);
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const searchInputRef = React.useRef<TextInput>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const sectionListRef = useRef<SectionList>(null);
   const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
   const scrollTopScale = useRef(new RNAnimated.Value(1)).current;
+  const fabOpacity = useRef(new RNAnimated.Value(1)).current;
+  const [fabColor, setFabColor] = useState('#6A89CC');
+  const lastScrollY = useRef(0);
 
   // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
   const hasFilters = searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all';
   const displayEntries = hasFilters ? filteredEntries : entries;
 
-  // 按时间分组
-  const groupedEntries = groupEntriesByTime(displayEntries);
+  // 生成时间分组数据
+  const sections = useMemo(() => {
+    return generateTimeSections(displayEntries, !hasFilters);
+  }, [displayEntries, hasFilters]);
 
   // 检查是否有记录
   const hasEntries = displayEntries.length > 0;
@@ -253,21 +347,19 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     setEditingEntry(null);
   };
 
-  // 处理搜索框聚焦
+  // 处理搜索框聚焦 - 显示搜索遮罩
   const handleSearchFocus = () => {
-    setShowFilterBar(true);
+    setShowSearchOverlay(true);
   };
 
-  // 处理搜索框失焦
-  const handleSearchBlur = () => {
-    setShowFilterBar(false);
+  // 处理搜索
+  const handleSearch = () => {
+    setShowSearchOverlay(false);
   };
 
-  // 处理筛选栏关闭
-  const handleFilterBarClose = () => {
-    setShowFilterBar(false);
-    // 让搜索框失去焦点
-    searchInputRef.current?.blur();
+  // 处理搜索遮罩关闭
+  const handleSearchOverlayClose = () => {
+    setShowSearchOverlay(false);
   };
 
   // 处理编辑
@@ -280,7 +372,28 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 处理滚动事件
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    
+    const scrollDirection = offsetY > lastScrollY.current ? 'down' : 'up';
+    lastScrollY.current = offsetY;
+
+    // FAB 颜色和透明度：根据滚动方向变化
+    if (scrollDirection === 'down' && offsetY > 50) {
+      // 向下滑动：淡灰色
+      setFabColor('#D1D1D6');
+      RNAnimated.timing(fabOpacity, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else if (scrollDirection === 'up') {
+      // 向上滑动：恢复蓝色
+      setFabColor('#6A89CC');
+      RNAnimated.timing(fabOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+
     // 当快速添加按钮区域滚出屏幕时显示"返回顶部"按钮
     if (offsetY > 200 && !showScrollTop) {
       setShowScrollTop(true);
@@ -304,7 +417,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   // 返回顶部函数
   const scrollToTop = () => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    sectionListRef.current?.scrollToLocation({
+      sectionIndex: 0,
+      itemIndex: 0,
+      animated: true,
+    });
   };
 
   // 按钮按下动画
@@ -335,58 +452,86 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     onStopRecording?.(id);
   };
 
-  // 分组配置
-  const groups: Array<{ key: TimeGroup; title: string }> = [
-    { key: 'today', title: '2024年6月' }, // 今天显示为月份
-    { key: 'yesterday', title: '昨天' },
-    { key: 'thisWeek', title: '本周' },
-    { key: 'thisMonth', title: '本月' },
-    { key: 'earlier', title: '更早' },
-  ];
+  // 渲染列表项
+  const renderItem = useCallback(({ item, index, section }: { item: Entry | { type: 'quickAdd' }; index: number; section: TimeSection }) => {
+    if ('type' in item && item.type === 'quickAdd') {
+      return <QuickAddMarker onQuickAdd={onQuickAdd} />;
+    }
+
+    const isLast = index === section.data.length - 1;
+    return (
+      <EntryMarker
+        entry={item as Entry}
+        onDeleteEntry={deleteEntry}
+        onEditEntry={handleEditEntry}
+        onPauseRecording={handlePauseRecording}
+        onResumeRecording={handleResumeRecording}
+        onStopRecording={handleStopRecording}
+        isLast={isLast}
+      />
+    );
+  }, [deleteEntry, handleEditEntry, handlePauseRecording, handleResumeRecording, handleStopRecording, onQuickAdd]);
+
+  // 渲染分组头部 - Sticky
+  const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
+    return <TimelineHeader title={section.title} timestamp={section.timestamp} />;
+  }, []);
+
+  const timelineLeft = 40;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
+      {/* 搜索遮罩 */}
+      <SearchOverlay
+        visible={showSearchOverlay}
+        onClose={handleSearchOverlayClose}
+        onSearch={handleSearch}
+      />
+
       {/* 搜索栏 */}
       <SearchBar
         onMenuPress={onMenuPress}
         onSearchFocus={handleSearchFocus}
-        onSearchBlur={handleSearchBlur}
+        onSearchBlur={() => {}}
         searchInputRef={searchInputRef}
       />
 
-      {/* 过滤栏 */}
-      <FilterBar isVisible={showFilterBar} onClose={handleFilterBarClose} />
+      {!hasEntries ? (
+        <EmptyState onQuickAdd={onQuickAdd} />
+      ) : (
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* 连续的时间线 - 贯穿整个时间轴（在最底层） */}
+          <View
+            style={{
+              position: 'absolute',
+              left: timelineLeft,
+              top: 0,
+              bottom: 0,
+              width: 2,
+              backgroundColor: '#E5E5E5',
+              zIndex: 0,
+            }}
+          />
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160 }}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {!hasEntries ? (
-          <EmptyState />
-        ) : (
-          <View style={{ paddingTop: 8 }}>
-            {groups.map((group, groupIndex) => (
-              <TimeGroupSection
-                key={group.key}
-                title={group.title}
-                groupKey={group.key}
-                entries={groupedEntries[group.key]}
-                onDeleteEntry={deleteEntry}
-                onEditEntry={handleEditEntry}
-                onQuickAdd={onQuickAdd}
-                showQuickAdd={groupIndex === 0}
-                onPauseRecording={handlePauseRecording}
-                onResumeRecording={handleResumeRecording}
-                onStopRecording={handleStopRecording}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
+          <SectionList
+            ref={sectionListRef}
+            sections={sections}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            stickySectionHeadersEnabled={true}
+            keyExtractor={(item, index) => {
+              if ('type' in item && item.type === 'quickAdd') {
+                return 'quick-add';
+              }
+              return (item as Entry).id;
+            }}
+            contentContainerStyle={{ paddingBottom: 160 }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      )}
 
       {/* 编辑器模态框 */}
       <EntryEditor
@@ -431,6 +576,38 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
           </TouchableOpacity>
         </RNAnimated.View>
       )}
+
+      {/* FAB 浮动操作按钮 */}
+      <RNAnimated.View
+        style={{
+          position: 'absolute',
+          bottom: 32,
+          left: '50%',
+          marginLeft: -28,
+          opacity: fabOpacity,
+          zIndex: 1000,
+        }}
+      >
+        <TouchableOpacity
+          onPress={onOpenMediaSelector}
+          activeOpacity={0.8}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: fabColor,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </RNAnimated.View>
     </View>
   );
 }

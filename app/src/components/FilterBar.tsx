@@ -3,11 +3,50 @@
  * 提供类型、日期范围和标签筛选功能
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, Pressable } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '../store/entryStore';
+
+// 动画按钮组件
+interface AnimatedButtonProps {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: any;
+}
+
+function AnimatedButton({ children, onPress, style }: AnimatedButtonProps) {
+  const scale = useSharedValue(1);
+
+  // 组件卸载时清理动画
+  useEffect(() => {
+    return () => {
+      cancelAnimation(scale);
+    };
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPressIn={() => {
+          scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+        }}
+        onPress={onPress}
+        style={style}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?: () => void }) {
   const {
@@ -83,13 +122,13 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
           {typeFilters.map((filter) => {
             const isSelected = filterType === filter.type;
             return (
-              <TouchableOpacity
+              <AnimatedButton
                 key={filter.type}
+                onPress={() => setFilterType(filter.type)}
                 style={[
                   styles.filterButton,
                   isSelected && styles.filterButtonActive,
                 ]}
-                onPress={() => setFilterType(filter.type)}
               >
                 <View
                   style={[
@@ -119,7 +158,7 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
                 >
                   {typeStats[filter.type]}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedButton>
             );
           })}
         </ScrollView>
@@ -136,13 +175,13 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
           {dateFilters.map((filter) => {
             const isSelected = filterDateRange === filter.range;
             return (
-              <TouchableOpacity
+              <AnimatedButton
                 key={filter.range}
+                onPress={() => setFilterDateRange(filter.range)}
                 style={[
-         styles.dateButton,
+                  styles.dateButton,
                   isSelected && styles.dateButtonActive,
                 ]}
-                onPress={() => setFilterDateRange(filter.range)}
               >
                 <Text
                   style={[
@@ -152,7 +191,7 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
                 >
                   {filter.label}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedButton>
             );
           })}
         </ScrollView>
@@ -161,17 +200,17 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
       {/* 重置按钮 */}
       {(filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0) && (
         <View style={styles.resetSection}>
-          <TouchableOpacity
-            style={styles.resetButton}
+          <AnimatedButton
             onPress={() => {
               setFilterType('all');
               setFilterDateRange('all');
               clearTags();
             }}
+            style={styles.resetButton}
           >
             <Ionicons name="refresh" size={16} color="#6A89CC" />
             <Text style={styles.resetText}>重置筛选</Text>
-          </TouchableOpacity>
+          </AnimatedButton>
         </View>
       )}
 
@@ -183,9 +222,9 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <TouchableOpacity
-            style={[styles.tagButton, selectedTags.length > 0 && styles.tagButtonActive]}
+          <AnimatedButton
             onPress={() => setShowTagModal(true)}
+            style={[styles.tagButton, selectedTags.length > 0 && styles.tagButtonActive]}
           >
             <Ionicons
               name="pricetags"
@@ -200,7 +239,7 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
             >
               {selectedTags.length > 0 ? `已选 ${selectedTags.length} 个` : '选择标签'}
             </Text>
-          </TouchableOpacity>
+          </AnimatedButton>
 
           {selectedTags.map((tag) => (
             <View key={tag} style={styles.selectedTag}>
@@ -218,7 +257,7 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
       {showTagModal && (
         <TagModal
           visible={showTagModal}
-          allTags={getAllTags()}
+          allTags={getAllTags() || []}
           selectedTags={selectedTags}
           onToggleTag={toggleTag}
           onClose={() => setShowTagModal(false)}

@@ -17,9 +17,39 @@ export default function HomeScreen() {
   const [currentRecordingId, setCurrentRecordingId] = useState<string | null>(null);
   const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // 在组件挂载时加载数据
+  // 在组件挂载时加载数据和预初始化音频
   useEffect(() => {
     loadEntries();
+
+    // 预初始化音频系统（后台执行，不阻塞 UI）
+    VoiceService.prewarmAudioSystem().catch(() => {
+      // 静默失败，不影响用户体验
+    });
+
+    // 立即预加载最近的语音记录（不延迟，后台执行）
+    const preloadRecentVoiceEntries = async () => {
+      try {
+        const entries = useEntryStore.getState().entries;
+        const voiceEntries = entries
+          .filter(e => e.type === 'voice' && e.media?.uri)
+          .slice(0, 3); // 只预加载最近3条
+
+        console.log(`[HomeScreen] Preloading ${voiceEntries.length} recent voice entries`);
+
+        for (const entry of voiceEntries) {
+          await VoiceService.preloadAudio(entry.media!.uri).catch((error) => {
+            console.warn('[HomeScreen] Failed to preload audio:', entry.id, error);
+          });
+        }
+
+        console.log('[HomeScreen] Voice entries preloaded successfully');
+      } catch (error) {
+        console.error('[HomeScreen] Failed to preload voice entries:', error);
+      }
+    };
+
+    // 立即执行预加载（不延迟）
+    preloadRecentVoiceEntries();
   }, []);
 
   // 组件卸载时清理录音
@@ -120,10 +150,16 @@ export default function HomeScreen() {
       console.log('[HomeScreen] Calling VoiceService.stopRecording');
       const audioFile = await VoiceService.stopRecording();
       console.log('[HomeScreen] VoiceService.stopRecording completed, audioFile:', audioFile);
-      
+
       console.log('[HomeScreen] Completing recording in store');
       await completeRecording(id, audioFile.uri, audioFile.duration * 1000);
-      
+
+      // 立即预加载音频，减少播放时的延迟
+      console.log('[HomeScreen] Preloading audio for instant playback');
+      VoiceService.preloadAudio(audioFile.uri).catch((error) => {
+        console.warn('[HomeScreen] Failed to preload audio:', error);
+      });
+
       if (recordingTimer) {
         console.log('[HomeScreen] Clearing recording timer');
         clearInterval(recordingTimer);
@@ -165,10 +201,11 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
       {/* 时间轴内容（包含搜索栏） */}
-      <Timeline 
-        onQuickAdd={handleMediaSelect} 
+      <Timeline
+        onQuickAdd={handleMediaSelect}
         onMenuPress={() => setShowSidebar(true)}
         onStopRecording={handleStopRecording}
+        onOpenMediaSelector={() => setShowMediaSelector(true)}
       />
 
       {/* 侧边栏 */}

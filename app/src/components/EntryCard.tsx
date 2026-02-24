@@ -22,11 +22,13 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '@/src/types/entry';
 import { VoiceService } from '@/src/services/voiceService';
 import WaveformAnimation from './WaveformAnimation';
+import { ImageViewer } from './ImageViewer';
 
 interface EntryCardProps {
   entry: Entry;
@@ -50,6 +52,7 @@ export function EntryCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
 
   // 红点闪烁动画
   const redDotOpacity = useSharedValue(1);
@@ -65,8 +68,14 @@ export function EntryCard({
         true
       );
     } else {
+      cancelAnimation(redDotOpacity);
       redDotOpacity.value = 1;
     }
+
+    // 组件卸载时清理动画
+    return () => {
+      cancelAnimation(redDotOpacity);
+    };
   }, [entry.recordingStatus]);
 
   const redDotStyle = useAnimatedStyle(() => ({
@@ -126,59 +135,127 @@ export function EntryCard({
     }
   };
 
-  // 根据类型获取背景色（统一白色）
+  // 根据类型获取背景色（浅灰色背景，参考图片风格）
   const getBackgroundColor = () => {
-    return '#FFFFFF'; // 纯白背景
+    return '#F8F7F5'; // 温暖的浅灰背景
   };
 
   // 判断是否需要展开
   const needsExpansion = entry.content.length > 150 || (entry.tags && entry.tags.length > 3);
 
-  // 处理长按删除
+  // 处理长按菜单
   const handleLongPress = () => {
-    console.log('长按触发，准备删除:', entry.id);
+    console.log('长按触发，显示操作菜单:', entry.id);
+
+    // 录音中不允许编辑和删除
+    if (entry.recordingStatus === 'recording') {
+      Alert.alert(
+        '提示',
+        '录音进行中，请先停止录音',
+        [{ text: '知道了', style: 'cancel' }]
+      );
+      return;
+    }
+
     Alert.alert(
-      '删除记录',
-      '确定要删除这条记录吗？',
+      '选择操作',
+      '请选择要执行的操作',
       [
         {
           text: '取消',
           style: 'cancel',
         },
         {
+          text: '编辑',
+          onPress: () => {
+            console.log('用户选择编辑');
+            onEdit?.(entry);
+          },
+        },
+        {
           text: '删除',
           style: 'destructive',
-          onPress: () => onDelete(entry.id),
+          onPress: () => {
+            console.log('用户选择删除');
+            // 二次确认删除
+            Alert.alert(
+              '确认删除',
+              '确定要删除这条记录吗？此操作无法撤销。',
+              [
+                { text: '取消', style: 'cancel' },
+                { text: '删除', style: 'destructive', onPress: () => onDelete(entry.id) },
+              ]
+            );
+          },
         },
       ],
       { cancelable: true }
     );
   };
 
+  // 处理卡片点击 - 根据类型执行不同操作
+  const handleCardPress = () => {
+    console.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
+
+    // 录音中不允许点击
+    if (entry.recordingStatus === 'recording') {
+      console.log('录音中，忽略点击');
+      return;
+    }
+
+    switch (entry.type) {
+      case 'text':
+        // 文本记录：点击编辑
+        console.log('文本记录，触发编辑');
+        onEdit?.(entry);
+        break;
+
+      case 'photo':
+        // 图片记录：点击打开图片查看器
+        console.log('图片记录，打开图片查看器');
+        setShowImageViewer(true);
+        break;
+
+      case 'voice':
+        // 语音记录：点击播放
+        if (entry.media && !isPlayingAudio) {
+          console.log('语音记录，触发播放');
+          handlePlayAudio();
+        }
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  // 处理图片点击（阻止事件冒泡）
+  const handleImagePress = () => {
+    console.log('图片被点击，打开查看器');
+    setShowImageViewer(true);
+  };
+
   return (
     <Pressable
       onPressIn={() => setIsPressed(true)}
       onPressOut={() => setIsPressed(false)}
-      onPress={() => {
-        console.log('卡片被点击，entry.id:', entry.id);
-        console.log('onEdit 是否存在:', !!onEdit);
-        if (onEdit) {
-          onEdit(entry);
-        }
-      }}
+      onPress={handleCardPress}
       onLongPress={handleLongPress}
       android_ripple={{ color: '#E5E5E5' }}
       style={[
         styles.cardContainer,
         {
-          backgroundColor: isPressed ? '#E8F0FF' : getBackgroundColor(),
-          borderLeftColor: getBorderColor(),
+          backgroundColor: isPressed ? '#F5F5F5' : getBackgroundColor(),
         },
       ]}
     >
       <Animated.View layout={Layout.springify()}>
         {/* 卡片主内容 */}
-        <View style={entry.type === 'voice' ? styles.contentVoice : styles.content}>
+        <View style={[
+          entry.type === 'voice' ? styles.contentVoice : styles.content,
+          entry.type === 'text' && styles.contentText,
+          entry.type === 'photo' && styles.contentPhoto
+        ]}>
           {entry.type === 'text' ? (
             // 文本内容
             <Text
@@ -190,11 +267,16 @@ export function EntryCard({
           ) : entry.type === 'photo' && entry.media?.uri ? (
             // 照片内容
             <>
-              <Image
-                source={{ uri: entry.media.uri }}
-                style={styles.photoImage}
-                resizeMode="cover"
-              />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handleImagePress}
+              >
+                <Image
+                  source={{ uri: entry.media.uri }}
+                  style={styles.photoImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
               {entry.content && (
                 <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
                   {entry.content}
@@ -306,35 +388,52 @@ export function EntryCard({
           <Text style={styles.expandHint}>点击展开更多</Text>
         )}
       </Animated.View>
+
+      {/* 图片查看器 */}
+      {entry.type === 'photo' && entry.media?.uri && (
+        <ImageViewer
+          visible={showImageViewer}
+          imageUri={entry.media.uri}
+          onClose={() => setShowImageViewer(false)}
+        />
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: 12,
-    borderLeftWidth: 6, // 稍微粗一些的左边框
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
-    // 浅色阴影
+    backgroundColor: '#FFFFFF',
+    // 柔和的阴影
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   content: {
-    padding: 16,
-    paddingLeft: 20, // 左侧增加padding
+    padding: 20,
     gap: 12,
+  },
+  contentText: {
+    backgroundColor: '#F7F5FC', // 淡紫色背景
+    borderRadius: 12,
+  },
+  contentPhoto: {
+    backgroundColor: '#F0F9FA', // 淡青色背景
+    borderRadius: 12,
   },
   contentVoice: {
     padding: 0,
   },
   textContent: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#4A4A4A', // 新配色的文字颜色
+    fontSize: 16,
+    lineHeight: 28,
+    color: '#1A1A1A',
+    letterSpacing: 0.3,
   },
   photoImage: {
     width: '100%',

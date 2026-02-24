@@ -60,9 +60,11 @@ export class VoiceService {
   private static recordingSession: RecordingSession | null = null;
   private static isAudioInitialized: boolean = false;
   private static currentAudioMode: 'recording' | 'playback' | null = null;
+  private static soundCache: Map<string, Audio.Sound> = new Map();
+  private static currentPlayingUri: string | null = null;
 
   /**
-   * 初始化音频系统
+   * 初始化音频系统为录音模式
    */
   static async initializeAudio(): Promise<void> {
     try {
@@ -76,6 +78,112 @@ export class VoiceService {
       this.currentAudioMode = 'recording';
     } catch (error) {
       console.error('Failed to initialize audio:', error);
+    }
+  }
+
+  /**
+   * 切换到录音模式
+   */
+  static async switchToRecordingMode(): Promise<void> {
+    if (this.currentAudioMode === 'recording') {
+      return; // 已经是录音模式，无需切换
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpiece: false,
+      });
+      this.currentAudioMode = 'recording';
+      console.log('[VoiceService] Switched to recording mode');
+    } catch (error) {
+      console.error('Failed to switch to recording mode:', error);
+    }
+  }
+
+  /**
+   * 切换到播放模式
+   */
+  static async switchToPlaybackMode(): Promise<void> {
+    if (this.currentAudioMode === 'playback') {
+      return; // 已经是播放模式，无需切换
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      this.currentAudioMode = 'playback';
+      console.log('[VoiceService] Switched to playback mode');
+    } catch (error) {
+      console.error('Failed to switch to playback mode:', error);
+    }
+  }
+
+  /**
+   * 预初始化音频系统（用于提前准备）
+   * 静默失败，不抛出错误
+   */
+  static async prewarmAudioSystem(): Promise<void> {
+    try {
+      console.log('[VoiceService] Starting audio system prewarm...');
+
+      // 检查权限状态（不弹窗）
+      const hasPermission = await this.checkMicrophonePermission();
+      if (!hasPermission) {
+        console.log('[VoiceService] Microphone permission not granted, skipping prewarm');
+        return;
+      }
+
+      // 预初始化音频系统
+      if (!this.isAudioInitialized) {
+        await this.initializeAudio();
+        console.log('[VoiceService] Audio system prewarmed successfully');
+      } else {
+        console.log('[VoiceService] Audio system already initialized');
+      }
+    } catch (error) {
+      console.error('[VoiceService] Failed to prewarm audio system:', error);
+      // 静默失败，不影响用户
+    }
+  }
+
+  /**
+   * 检查麦克风权限状态（不弹窗）
+   */
+  static async checkMicrophonePermission(): Promise<boolean> {
+    try {
+      const { status } = await Camera.getMicrophonePermissionsAsync();
+      return status === 'granted';
+    } catch (error) {
+      console.error('Failed to check microphone permission:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 确保麦克风权限已授予
+   */
+  static async ensureMicrophonePermission(): Promise<boolean> {
+    try {
+      // 先检查权限状态
+      const hasPermission = await this.checkMicrophonePermission();
+      if (hasPermission) {
+        return true;
+      }
+
+      // 未授权时才请求
+      const { granted } = await Camera.requestMicrophonePermissionsAsync();
+      return granted;
+    } catch (error) {
+      console.error('Failed to ensure microphone permission:', error);
+      return false;
     }
   }
 
@@ -100,8 +208,8 @@ export class VoiceService {
    */
   static async startRecording(): Promise<RecordingSession> {
     try {
-      // 检查权限
-      const granted = await this.requestMicrophonePermission();
+      // 检查权限（优化：先查询再请求）
+      const granted = await this.ensureMicrophonePermission();
       if (!granted) {
         throw this.createError(
           'PERMISSION_DENIED',
@@ -109,8 +217,12 @@ export class VoiceService {
         );
       }
 
-      // 初始化音频
-      await this.initializeAudio();
+      // 初始化音频系统或切换到录音模式
+      if (!this.isAudioInitialized) {
+        await this.initializeAudio();
+      } else {
+        await this.switchToRecordingMode();
+      }
 
       // 创建录音实例
       this.recorder = new Audio.Recording();
@@ -247,7 +359,7 @@ export class VoiceService {
   }
 
   /**
-   * 播放音频
+   * 播放音频（优化版 - 支持预加载和缓存）
    */
   static async playAudio(
     uri: string,
@@ -255,26 +367,46 @@ export class VoiceService {
     onProgress?: (position: number) => void
   ): Promise<void> {
     try {
+      // 如果正在播放同一个音频，直接返回
+      if (this.currentPlayingUri === uri && this.sound) {
+        const status = await this.sound.getStatusAsync();
+        if (status.isLoaded && status.isPlaying) {
+          return;
+        }
+      }
+
       // 停止之前的播放
-      if (this.sound) {
-        await this.sound.unloadAsync();
+      if (this.sound && this.currentPlayingUri !== uri) {
+        await this.sound.stopAsync();
+        this.sound = null;
       }
 
-      // 只在需要时切换音频模式
-      if (this.currentAudioMode !== 'playback') {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-        this.currentAudioMode = 'playback';
+      // 切换到播放模式（优化：使用新的切换方法）
+      await this.switchToPlaybackMode();
+
+      // 尝试从缓存获取 Sound 实例
+      let sound = this.soundCache.get(uri);
+
+      if (!sound) {
+        // 创建新的 Sound 实例并预加载
+        sound = new Audio.Sound();
+        await sound.loadAsync({ uri }, { shouldPlay: false });
+
+        // 缓存 Sound 实例（最多缓存 5 个）
+        if (this.soundCache.size >= 5) {
+          // 删除最旧的缓存
+          const firstKey = this.soundCache.keys().next().value;
+          const oldSound = this.soundCache.get(firstKey);
+          if (oldSound) {
+            await oldSound.unloadAsync().catch(() => {});
+          }
+          this.soundCache.delete(firstKey);
+        }
+        this.soundCache.set(uri, sound);
       }
 
-      // 创建新的 Sound 实例
-      this.sound = new Audio.Sound();
-      await this.sound.loadAsync({ uri });
+      this.sound = sound;
+      this.currentPlayingUri = uri;
 
       // 设置播放状态更新回调
       this.sound.setOnPlaybackStatusUpdate((status) => {
@@ -286,16 +418,54 @@ export class VoiceService {
 
           // 播放完成
           if (status.didJustFinish) {
-            this.sound?.unloadAsync();
+            this.currentPlayingUri = null;
             onComplete?.();
           }
         }
       });
 
+      // 从头开始播放
+      await this.sound.setPositionAsync(0);
       await this.sound.playAsync();
     } catch (error) {
       console.error('Failed to play audio:', error);
+      this.currentPlayingUri = null;
       throw this.createError('CODEC_ERROR', ERROR_MESSAGES.CODEC_ERROR);
+    }
+  }
+
+  /**
+   * 预加载音频（在后台加载，不播放）
+   */
+  static async preloadAudio(uri: string): Promise<void> {
+    try {
+      // 如果已经缓存，直接返回
+      if (this.soundCache.has(uri)) {
+        return;
+      }
+
+      // 切换到播放模式（优化：使用新的切换方法）
+      await this.switchToPlaybackMode();
+
+      // 创建并预加载 Sound 实例
+      const sound = new Audio.Sound();
+      await sound.loadAsync({ uri }, { shouldPlay: false });
+
+      // 缓存 Sound 实例
+      if (this.soundCache.size >= 5) {
+        const firstKey = this.soundCache.keys().next().value;
+        const oldSound = this.soundCache.get(firstKey);
+        if (oldSound) {
+          await oldSound.unloadAsync().catch(() => {});
+        }
+        this.soundCache.delete(firstKey);
+      }
+      this.soundCache.set(uri, sound);
+
+      console.log('[VoiceService] Audio preloaded:', uri);
+    } catch (error) {
+      console.error('[VoiceService] Failed to preload audio:', error);
+      // 预加载失败不抛出错误，只记录日志
     }
   }
 

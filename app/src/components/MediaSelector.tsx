@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { ENTRY_TYPES } from '@/src/utils/constants';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 
 interface MediaSelectorProps {
   visible: boolean;
@@ -14,74 +15,122 @@ interface MediaSelectorProps {
 }
 
 export function MediaSelector({ visible, onSelect, onCancel }: MediaSelectorProps) {
+  const slideAnim = React.useRef(new Animated.Value(300)).current;
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 300,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const handleSelect = (type: 'text' | 'photo' | 'voice') => {
+    onSelect(type);
+    onCancel();
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onCancel}
     >
-      {/* 背景遮罩 */}
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onCancel}
-      >
-        {/* 菜单容器 */}
-        <View style={styles.container} onStartShouldSetResponder={() => true}>
-          <Text style={styles.title}>选择记录类型</Text>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <TouchableOpacity
+          style={styles.overlayTouchable}
+          activeOpacity={1}
+          onPress={onCancel}
+        />
 
-          {/* 文本选项 */}
-          <TouchableOpacity
-            style={styles.option}
-            onPress={() => {
-              onSelect('text');
-              onCancel();
-            }}
-          >
-            <Text style={styles.icon}>{ENTRY_TYPES.TEXT.icon}</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>{ENTRY_TYPES.TEXT.label}</Text>
-              <Text style={styles.optionDescription}>写下你的想法</Text>
-            </View>
-          </TouchableOpacity>
+        <Animated.View
+          style={[
+            styles.container,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          {/* 顶部指示条 */}
+          <View style={styles.handle} />
 
-          {/* 照片选项 */}
-          <TouchableOpacity
-            style={styles.option}
-            onPress={() => {
-              onSelect('photo');
-              onCancel();
-            }}
-          >
-            <Text style={styles.icon}>{ENTRY_TYPES.PHOTO.icon}</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>{ENTRY_TYPES.PHOTO.label}</Text>
-              <Text style={styles.optionDescription}>拍照或选择图片</Text>
-            </View>
-          </TouchableOpacity>
+          <Text style={styles.title}>创建新记忆</Text>
 
-          {/* 语音选项 */}
-          <TouchableOpacity
-            style={styles.option}
-            onPress={() => {
-              onSelect('voice');
-              onCancel();
-            }}
-          >
-            <Text style={styles.icon}>{ENTRY_TYPES.VOICE.icon}</Text>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>{ENTRY_TYPES.VOICE.label}</Text>
-              <Text style={styles.optionDescription}>录制语音备忘录</Text>
-            </View>
-          </TouchableOpacity>
+          {/* 选项网格 */}
+          <View style={styles.optionsGrid}>
+            {/* 文本选项 */}
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleSelect('text')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconCircle, { backgroundColor: '#A491D3' }]}>
+                <Ionicons name="create-outline" size={28} color="#FFFFFF" />
+              </View>
+              <Text style={styles.optionLabel}>文本</Text>
+              <Text style={styles.optionDescription}>写下想法</Text>
+            </TouchableOpacity>
+
+            {/* 照片选项 */}
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleSelect('photo')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconCircle, { backgroundColor: '#77C9D4' }]}>
+                <Ionicons name="camera-outline" size={28} color="#FFFFFF" />
+              </View>
+              <Text style={styles.optionLabel}>照片</Text>
+              <Text style={styles.optionDescription}>拍照记录</Text>
+            </TouchableOpacity>
+
+            {/* 语音选项 */}
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleSelect('voice')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconCircle, { backgroundColor: '#F5A623' }]}>
+                <Ionicons name="mic-outline" size={28} color="#FFFFFF" />
+              </View>
+              <Text style={styles.optionLabel}>语音</Text>
+              <Text style={styles.optionDescription}>录音备忘</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* 取消按钮 */}
-          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={onCancel}
+            activeOpacity={0.7}
+          >
             <Text style={styles.cancelText}>取消</Text>
           </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -89,58 +138,88 @@ export function MediaSelector({ visible, onSelect, onCancel }: MediaSelectorProp
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // 半透明遮罩
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  overlayTouchable: {
+    flex: 1,
+  },
   container: {
-    backgroundColor: '#FFFFFF', // 白色背景
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 12,
     paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E5E5E5',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#262626', // 深色文字
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#262626',
     marginBottom: 24,
     textAlign: 'center',
   },
-  option: {
+  optionsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#F5F5F5', // 浅灰背景
-    borderRadius: 12,
+    justifyContent: 'space-between',
+    marginBottom: 24,
   },
-  icon: {
-    fontSize: 32,
-    marginRight: 16,
-  },
-  optionContent: {
+  optionCard: {
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 8,
+    marginHorizontal: 6,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   optionLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#262626', // 深色
+    color: '#262626',
     marginBottom: 4,
   },
   optionDescription: {
-    fontSize: 13,
-    color: '#737373', // 中灰
+    fontSize: 12,
+    color: '#A3A3A3',
   },
   cancelButton: {
-    marginTop: 16,
     paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
   },
   cancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F97316', // 橙色
+    color: '#737373',
   },
 });

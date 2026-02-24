@@ -54,6 +54,13 @@ const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
         });
       });
     }
+
+    // 组件卸载时清理所有动画
+    return () => {
+      waveHeights.forEach((height) => {
+        cancelAnimation(height);
+      });
+    };
   }, [isRecording, waveHeights]);
 
   return (

@@ -2,9 +2,9 @@
  * 搜索栏组件
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 
@@ -20,6 +20,13 @@ export function SearchBar({ onMenuPress, onSearchFocus, onSearchBlur, searchInpu
   const { searchQuery, setSearchQuery } = useEntryStore();
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const inputRef = useRef<TextInput>(null);
+
+  // 组件卸载时清理动画
+  useEffect(() => {
+    return () => {
+      cancelAnimation(scale);
+    };
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -82,7 +89,7 @@ export function SearchBar({ onMenuPress, onSearchFocus, onSearchBlur, searchInpu
           </Pressable>
         )}
         <Pressable onPress={handleSearch} style={styles.searchButton}>
-          <Text style={styles.searchButtonText}>搜索</Text>
+          <Ionicons name="search" size={20} color="#6A89CC" />
         </Pressable>
       </View>
     </View>
@@ -127,15 +134,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   searchButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#6A89CC',
-    borderRadius: 16,
-  },
-  searchButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    padding: 8,
+    marginLeft: 4,
   },
   menuButton: {
     width: 48,

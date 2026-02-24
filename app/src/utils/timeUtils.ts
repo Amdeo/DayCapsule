@@ -248,6 +248,63 @@ export function getEntriesCountByDate(
 }
 
 /**
+ * 判断两个时间戳是否是同一天
+ */
+export function isSameDay(timestamp1: number, timestamp2: number): boolean {
+  const date1 = new Date(timestamp1);
+  const date2 = new Date(timestamp2);
+
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
+  );
+}
+
+/**
+ * 格式化日期标签（用于时间轴分组标题）
+ * 返回如："今天"、"昨天"、"6月15日"、"2024年5月20日"
+ */
+export function formatDateLabel(timestamp: number): string {
+  const today = new Date();
+  const date = new Date(timestamp);
+
+  // 今天
+  if (isToday(timestamp)) {
+    return '今天';
+  }
+
+  // 昨天
+  if (isYesterday(timestamp)) {
+    return '昨天';
+  }
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const currentYear = today.getFullYear();
+
+  // 今年
+  if (year === currentYear) {
+    return `${month}月${day}日`;
+  }
+
+  // 往年
+  return `${year}年${month}月${day}日`;
+}
+
+/**
+ * 格式化短日期（用于时间轴圆圈显示）
+ * 返回如："6/18"、"12/25"
+ */
+export function formatShortDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
+}
+
+/**
  * 获取某个月份的记录统计
  */
 export function getMonthStats(
