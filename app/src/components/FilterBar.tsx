@@ -3,7 +3,7 @@
  * 提供类型、日期范围和标签筛选功能
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, Pressable } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutDown, useSharedValue, useAnimatedStyle, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,14 +62,20 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
   } = useEntryStore();
 
   const [showTagModal, setShowTagModal] = useState(false);
+  const [allTagsList, setAllTagsList] = useState<string[]>([]);
 
-  // 计算各类型数量
-  const typeStats = {
+  // 仅在 FilterBar 变为可见时加载标签，避免 entries 变化（录音计时器）触发高频查询
+  useEffect(() => {
+    if (isVisible) getAllTags().then(setAllTagsList);
+  }, [isVisible]);
+
+  // 用 useMemo 缓存类型统计，避免每次渲染重新遍历
+  const typeStats = useMemo(() => ({
     all: entries.length,
     text: entries.filter((e) => e.type === 'text').length,
     photo: entries.filter((e) => e.type === 'photo').length,
     voice: entries.filter((e) => e.type === 'voice').length,
-  };
+  }), [entries]);
 
   // 类型筛选配置
   const typeFilters: Array<{
@@ -257,7 +263,7 @@ export function FilterBar({ isVisible, onClose }: { isVisible: boolean; onClose?
       {showTagModal && (
         <TagModal
           visible={showTagModal}
-          allTags={getAllTags() || []}
+          allTags={allTagsList}
           selectedTags={selectedTags}
           onToggleTag={toggleTag}
           onClose={() => setShowTagModal(false)}

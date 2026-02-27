@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,13 @@ import {
   StyleSheet,
   Modal,
   Pressable,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { suggestTags } from '@/src/services/tagSuggestionService';
 
 interface TextEditorProps {
   visible: boolean;
@@ -21,23 +23,38 @@ interface TextEditorProps {
 export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // 内容变化时更新建议标签（300ms 防抖）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const existing = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+      setSuggestions(suggestTags(content, existing));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [content, tagsInput]);
+
+  const handleAddSuggestion = useCallback((tag: string) => {
+    setTagsInput((prev) => {
+      const parts = prev.split(',').map((t) => t.trim()).filter(Boolean);
+      if (parts.includes(tag)) return prev;
+      return parts.length > 0 ? `${parts.join(', ')}, ${tag}` : tag;
+    });
+  }, []);
 
   const handleSave = () => {
-    if (!content.trim()) {
-      return;
-    }
-    const tags = tagsInput
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
+    if (!content.trim()) return;
+    const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
     onSave(content, tags);
     setContent('');
     setTagsInput('');
+    setSuggestions([]);
   };
 
   const handleCancel = () => {
     setContent('');
     setTagsInput('');
+    setSuggestions([]);
     onCancel();
   };
 
@@ -49,7 +66,7 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={handleCancel}
     >
       <KeyboardAvoidingView
@@ -107,6 +124,21 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
                         <Text style={styles.tagText}>{tag}</Text>
                       </View>
                     ))}
+                </View>
+              )}
+              {suggestions.length > 0 && (
+                <View style={styles.suggestionsRow}>
+                  <Text style={styles.suggestionsLabel}>建议：</Text>
+                  {suggestions.map((tag) => (
+                    <TouchableOpacity
+                      key={tag}
+                      style={styles.suggestionChip}
+                      onPress={() => handleAddSuggestion(tag)}
+                    >
+                      <Ionicons name="add" size={13} color="#6A89CC" />
+                      <Text style={styles.suggestionChipText}>{tag}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
@@ -247,6 +279,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#6A89CC',
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 6,
+  },
+  suggestionsLabel: {
+    fontSize: 12,
+    color: '#A3A3A3',
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#F0F4FF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#C7D7F5',
+    gap: 3,
+  },
+  suggestionChipText: {
+    fontSize: 12,
+    color: '#6A89CC',
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',

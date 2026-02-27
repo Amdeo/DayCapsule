@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated } from 'react-native';
+// @ts-ignore - expo-blur types not available
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 

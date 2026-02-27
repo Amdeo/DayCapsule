@@ -2,7 +2,7 @@
  * 设置页面组件
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,22 +14,78 @@ import {
   Alert,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useEntryStore } from '@/src/store/entryStore';
+import { Storage } from '@/src/utils/storage';
+import { getStorageStats } from '@/src/utils/fileSystem';
+import { VoiceService } from '@/src/services/voiceService';
+import { NotificationService } from '@/src/services/notificationService';
+import { Share } from 'react-native';
 
 interface SettingsPageProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const SETTINGS_KEYS = {
+  notifications: 'settings:notifications',
+  autoBackup: 'settings:autoBackup',
+  highQualityPhotos: 'settings:highQualityPhotos',
+};
+
+const DEFAULT_SETTINGS = {
+  notifications: true,
+  autoBackup: false,
+  highQualityPhotos: true,
+};
+
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
+  const insets = useSafeAreaInsets();
+  const { entries } = useEntryStore();
   const [isAnimating, setIsAnimating] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
   // 设置状态
-  const [darkMode, setDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState(true);
-  const [autoBackup, setAutoBackup] = useState(false);
-  const [highQualityPhotos, setHighQualityPhotos] = useState(true);
+  const [notifications, setNotifications] = useState(DEFAULT_SETTINGS.notifications);
+  const [autoBackup, setAutoBackup] = useState(DEFAULT_SETTINGS.autoBackup);
+  const [highQualityPhotos, setHighQualityPhotos] = useState(DEFAULT_SETTINGS.highQualityPhotos);
+
+  // 存储统计
+  const [usedSpace, setUsedSpace] = useState('计算中...');
+
+  // 从持久化存储加载设置，并同步通知调度状态
+  useEffect(() => {
+    const loadSettings = async () => {
+      const [notif, backup, hq] = await Promise.all([
+        Storage.getString(SETTINGS_KEYS.notifications),
+        Storage.getString(SETTINGS_KEYS.autoBackup),
+        Storage.getString(SETTINGS_KEYS.highQualityPhotos),
+      ]);
+      if (notif !== null) setNotifications(notif === 'true');
+      if (backup !== null) setAutoBackup(backup === 'true');
+      if (hq !== null) setHighQualityPhotos(hq === 'true');
+
+      // 若设置为开启通知但调度已丢失（如重装后），重新调度
+      if (notif === 'true') {
+        const isScheduled = await NotificationService.isReminderScheduled();
+        if (!isScheduled) {
+          const granted = await NotificationService.requestPermission();
+          if (granted) await NotificationService.scheduleDailyReminder();
+        }
+      }
+    };
+    loadSettings();
+  }, []);
+
+  // 加载存储统计
+  useEffect(() => {
+    if (!visible) return;
+    getStorageStats().then((stats) => {
+      const mb = stats.totalSize / (1024 * 1024);
+      setUsedSpace(mb < 0.1 ? '< 0.1 MB' : `${mb.toFixed(1)} MB`);
+    }).catch(() => setUsedSpace('未知'));
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -37,16 +93,44 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       setIsAnimating(true);
     } else {
       setIsAnimating(false);
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 300);
+      const timer = setTimeout(() => setShouldRender(false), 300);
       return () => clearTimeout(timer);
     }
   }, [visible]);
 
-  if (!shouldRender) {
-    return null;
-  }
+  // 推送通知：请求权限并调度/取消每日提醒
+  const handleNotifications = useCallback(async (v: boolean) => {
+    if (v) {
+      const granted = await NotificationService.requestPermission();
+      if (!granted) {
+        Alert.alert('权限不足', '请在系统设置中允许通知权限后再开启');
+        return;
+      }
+      await NotificationService.scheduleDailyReminder();
+    } else {
+      await NotificationService.cancelDailyReminder();
+    }
+    setNotifications(v);
+    Storage.setString(SETTINGS_KEYS.notifications, String(v));
+  }, []);
+
+  const handleAutoBackup = useCallback((v: boolean) => {
+    setAutoBackup(v);
+    Storage.setString(SETTINGS_KEYS.autoBackup, String(v));
+  }, []);
+
+  const handleHighQualityPhotos = useCallback((v: boolean) => {
+    setHighQualityPhotos(v);
+    Storage.setString(SETTINGS_KEYS.highQualityPhotos, String(v));
+  }, []);
+
+  // 真实统计数据
+  const { photoCount, voiceCount } = useMemo(() => ({
+    photoCount: entries.filter((e) => e.type === 'photo').length,
+    voiceCount: entries.filter((e) => e.type === 'voice').length,
+  }), [entries]);
+
+  if (!shouldRender) return null;
 
   const handleClearCache = () => {
     Alert.alert(
@@ -57,7 +141,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         {
           text: '清除',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await VoiceService.clearSoundCache();
+            setUsedSpace('计算中...');
+            getStorageStats().then((stats) => {
+              const mb = stats.totalSize / (1024 * 1024);
+              setUsedSpace(mb < 0.1 ? '< 0.1 MB' : `${mb.toFixed(1)} MB`);
+            }).catch(() => setUsedSpace('未知'));
             Alert.alert('成功', '缓存已清除');
           },
         },
@@ -65,8 +155,27 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     );
   };
 
-  const handleExportData = () => {
-    Alert.alert('导出数据', '数据导出功能即将推出');
+  const handleExportData = async () => {
+    try {
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0',
+        entries: entries.map((e) => ({
+          id: e.id,
+          type: e.type,
+          content: e.content,
+          tags: e.tags,
+          timestamp: e.timestamp,
+          media: e.media ? { mimeType: e.media.mimeType, size: e.media.size } : undefined,
+        })),
+      };
+      await Share.share({
+        message: JSON.stringify(exportData, null, 2),
+        title: 'MemoryCapsule 数据导出',
+      });
+    } catch {
+      Alert.alert('导出失败', '无法导出数据，请重试');
+    }
   };
 
   const handleResetSettings = () => {
@@ -78,11 +187,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         {
           text: '重置',
           style: 'destructive',
-          onPress: () => {
-            setDarkMode(false);
-            setNotifications(true);
-            setAutoBackup(false);
-            setHighQualityPhotos(true);
+          onPress: async () => {
+            setNotifications(DEFAULT_SETTINGS.notifications);
+            setAutoBackup(DEFAULT_SETTINGS.autoBackup);
+            setHighQualityPhotos(DEFAULT_SETTINGS.highQualityPhotos);
+            await Promise.all(
+              Object.values(SETTINGS_KEYS).map((k) => Storage.delete(k))
+            );
             Alert.alert('成功', '设置已重置');
           },
         },
@@ -133,24 +244,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
               {/* 内容区域 */}
               <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* 外观设置 */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>外观</Text>
-                  <SettingItem
-                    icon="moon"
-                    title="深色模式"
-                    subtitle="切换深色主题"
-                    rightComponent={
-                      <Switch
-                        value={darkMode}
-                        onValueChange={setDarkMode}
-                        trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-                        thumbColor="#FFFFFF"
-                      />
-                    }
-                  />
-                </View>
-
                 {/* 通知设置 */}
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>通知</Text>
@@ -161,7 +254,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                     rightComponent={
                       <Switch
                         value={notifications}
-                        onValueChange={setNotifications}
+                        onValueChange={handleNotifications}
                         trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
                         thumbColor="#FFFFFF"
                       />
@@ -175,11 +268,11 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                   <SettingItem
                     icon="cloud-upload"
                     title="自动备份"
-                    subtitle="自动备份到云端"
+                    subtitle="进入后台时自动保存到本地"
                     rightComponent={
                       <Switch
                         value={autoBackup}
-                        onValueChange={setAutoBackup}
+                        onValueChange={handleAutoBackup}
                         trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
                         thumbColor="#FFFFFF"
                       />
@@ -192,7 +285,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                     rightComponent={
                       <Switch
                         value={highQualityPhotos}
-                        onValueChange={setHighQualityPhotos}
+                        onValueChange={handleHighQualityPhotos}
                         trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
                         thumbColor="#FFFFFF"
                       />
@@ -218,19 +311,19 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                   <View style={styles.storageInfo}>
                     <View style={styles.storageRow}>
                       <Text style={styles.storageLabel}>已用空间</Text>
-                      <Text style={styles.storageValue}>12.5 MB</Text>
+                      <Text style={styles.storageValue}>{usedSpace}</Text>
                     </View>
                     <View style={styles.storageRow}>
                       <Text style={styles.storageLabel}>记录数量</Text>
-                      <Text style={styles.storageValue}>5 条</Text>
+                      <Text style={styles.storageValue}>{entries.length} 条</Text>
                     </View>
                     <View style={styles.storageRow}>
                       <Text style={styles.storageLabel}>照片数量</Text>
-                      <Text style={styles.storageValue}>0 张</Text>
+                      <Text style={styles.storageValue}>{photoCount} 张</Text>
                     </View>
                     <View style={styles.storageRow}>
                       <Text style={styles.storageLabel}>语音数量</Text>
-                      <Text style={styles.storageValue}>0 条</Text>
+                      <Text style={styles.storageValue}>{voiceCount} 条</Text>
                     </View>
                   </View>
                 </View>
@@ -248,7 +341,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                 </View>
 
                 {/* 底部间距 */}
-                <View style={{ height: 40 }} />
+                <View style={{ height: 40 + insets.bottom }} />
               </ScrollView>
             </View>
           </Animated.View>

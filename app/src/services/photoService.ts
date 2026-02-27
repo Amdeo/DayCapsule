@@ -9,19 +9,17 @@ import { Camera } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   COMPRESSION_PRESETS,
-  MIME_TYPES,
   STORAGE_QUOTA,
   ERROR_MESSAGES,
 } from '@/src/utils/constants';
 import {
   MEDIA_PATHS,
   generateUniqueFilename,
-  getMimeType,
-  fileExists,
   deleteFile,
   getFileInfo,
 } from '@/src/utils/fileSystem';
 import { MediaError } from '@/src/types/entry';
+import { logger } from '@/src/utils/logger';
 
 /**
  * 照片结果
@@ -79,6 +77,21 @@ export interface PickPhotoOptions {
  */
 export class PhotoService {
   /**
+   * 解析照片 URI：兼容旧绝对路径（沙盒 UUID 可能已变）
+   * 统一提取文件名后用当前 documentDirectory 重建路径
+   */
+  static resolvePhotoUri(uri: string): string {
+    const photoOriginalRelative = 'media/photos/original/';
+    if (uri.includes(photoOriginalRelative)) {
+      const filename = uri.split(photoOriginalRelative).pop();
+      if (filename) {
+        return `${MEDIA_PATHS.photoOriginal}${filename}`;
+      }
+    }
+    return uri;
+  }
+
+  /**
    * 请求相机权限
    */
   static async requestCameraPermission(): Promise<boolean> {
@@ -86,7 +99,7 @@ export class PhotoService {
       const { granted } = await Camera.requestCameraPermissionsAsync();
       return granted;
     } catch (error) {
-      console.error('Failed to request camera permission:', error);
+      logger.error('Failed to request camera permission:', error);
       throw this.createError(
         'PERMISSION_DENIED',
         ERROR_MESSAGES.CAMERA_ERROR
@@ -130,7 +143,7 @@ export class PhotoService {
       if (error instanceof Error && error.message === 'User cancelled camera') {
         throw error;
       }
-      console.error('Failed to take photo:', error);
+      logger.error('Failed to take photo:', error);
       throw this.createError('CAMERA_ERROR', ERROR_MESSAGES.CAMERA_ERROR);
     }
   }
@@ -147,7 +160,6 @@ export class PhotoService {
         allowsEditing: options?.allowsEditing ?? false,
         aspect: options?.aspect,
         quality: options?.quality ?? 0.8,
-        allowsMultiple: true,
       });
 
       if (result.canceled) {
@@ -164,7 +176,7 @@ export class PhotoService {
       if (error instanceof Error && error.message === 'User cancelled photo library') {
         throw error;
       }
-      console.error('Failed to pick photo:', error);
+      logger.error('Failed to pick photo:', error);
       throw this.createError('INVALID_FILE', ERROR_MESSAGES.INVALID_FILE);
     }
   }
@@ -204,7 +216,7 @@ export class PhotoService {
         quality,
       };
     } catch (error) {
-      console.error('Failed to compress photo:', error);
+      logger.error('Failed to compress photo:', error);
       throw this.createError('CODEC_ERROR', ERROR_MESSAGES.CODEC_ERROR);
     }
   }
@@ -228,7 +240,7 @@ export class PhotoService {
 
       return result.uri;
     } catch (error) {
-      console.error('Failed to generate thumbnail:', error);
+      logger.error('Failed to generate thumbnail:', error);
       // 不抛出错误，缩略图生成失败不应该中断流程
       return uri;
     }
@@ -281,7 +293,7 @@ export class PhotoService {
       if (error instanceof MediaError) {
         throw error;
       }
-      console.error('Failed to save photo:', error);
+      logger.error('Failed to save photo:', error);
       throw this.createError('DEVICE_STORAGE_FULL', ERROR_MESSAGES.STORAGE_FULL);
     }
   }
@@ -306,7 +318,7 @@ export class PhotoService {
         size,
       };
     } catch (error) {
-      console.error('Failed to get photo metadata:', error);
+      logger.error('Failed to get photo metadata:', error);
       return {
         width: 0,
         height: 0,
@@ -322,7 +334,7 @@ export class PhotoService {
     try {
       await deleteFile(uri);
     } catch (error) {
-      console.error('Failed to delete photo:', error);
+      logger.error('Failed to delete photo:', error);
       // 不抛出错误，删除失败不应该中断流程
     }
   }
@@ -342,56 +354,13 @@ export class PhotoService {
 }
 
 /**
- * 照片相关的 Hook
+ * 照片相关的 Hook - 直接委托给 PhotoService
  */
 export function usePhotoEntry() {
-  const takePhoto = async () => {
-    try {
-      return await PhotoService.takePhoto();
-    } catch (error) {
-      console.error('Failed to take photo:', error);
-      throw error;
-    }
-  };
-
-  const pickPhotos = async (options?: PickPhotoOptions) => {
-    try {
-      return await PhotoService.pickPhotoFromLibrary(options);
-    } catch (error) {
-      console.error('Failed to pick photos:', error);
-      throw error;
-    }
-  };
-
-  const compressPhoto = async (
-    uri: string,
-    quality: 'low' | 'medium' | 'high' = 'medium'
-  ) => {
-    try {
-      return await PhotoService.compressPhoto(uri, quality);
-    } catch (error) {
-      console.error('Failed to compress photo:', error);
-      throw error;
-    }
-  };
-
-  const savePhoto = async (
-    uri: string,
-    entryId: string,
-    quality: 'low' | 'medium' | 'high' = 'medium'
-  ) => {
-    try {
-      return await PhotoService.savePhotoToStorage(uri, entryId, quality);
-    } catch (error) {
-      console.error('Failed to save photo:', error);
-      throw error;
-    }
-  };
-
   return {
-    takePhoto,
-    pickPhotos,
-    compressPhoto,
-    savePhoto,
+    takePhoto: PhotoService.takePhoto.bind(PhotoService),
+    pickPhotos: PhotoService.pickPhotoFromLibrary.bind(PhotoService),
+    compressPhoto: PhotoService.compressPhoto.bind(PhotoService),
+    savePhoto: PhotoService.savePhotoToStorage.bind(PhotoService),
   };
 }

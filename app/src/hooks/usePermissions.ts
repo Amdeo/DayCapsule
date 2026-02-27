@@ -7,9 +7,10 @@ import { useCallback, useEffect, useState } from 'react';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera } from 'expo-camera';
-import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import { Platform, Linking } from 'react-native';
 import { PermissionStatus, PermissionType } from '@/src/types/entry';
+import { logger } from '@/src/utils/logger';
 
 /**
  * 权限管理 Hook
@@ -37,7 +38,8 @@ export function usePermissions() {
           return cameraStatus.granted;
 
         case 'microphone':
-          const micStatus = await Camera.requestMicrophonePermissionsAsync();
+          // 使用 Audio API 而非 Camera API，确保 expo-av 录音权限正确识别
+          const micStatus = await Audio.requestPermissionsAsync();
           setPermissions((prev) => ({
             ...prev,
             microphone: micStatus.granted ? 'granted' : 'denied',
@@ -83,64 +85,31 @@ export function usePermissions() {
           return false;
       }
     } catch (error) {
-      console.error(`Failed to check ${type} permission:`, error);
+      logger.error(`Failed to check ${type} permission:`, error);
       return false;
     }
   }, []);
-
-  /**
-   * 请求单个权限
-   */
-  const requestPermission = useCallback(
-    async (type: PermissionType): Promise<boolean> => {
-      const granted = await checkPermission(type);
-      return granted;
-    },
-    [checkPermission]
-  );
 
   /**
    * 检查多个权限
    */
   const checkMultiplePermissions = useCallback(
     async (...types: PermissionType[]): Promise<PermissionStatus> => {
+      const pairs = await Promise.all(
+        types.map((type) => checkPermission(type).then((granted) => ({ type, granted })))
+      );
       const results: PermissionStatus = {
         camera: 'undetermined',
         mediaLibrary: 'undetermined',
         microphone: 'undetermined',
         photoLibrary: 'undetermined',
       };
-
-      for (const type of types) {
-        const granted = await checkPermission(type);
+      pairs.forEach(({ type, granted }) => {
         results[type] = granted ? 'granted' : 'denied';
-      }
-
+      });
       return results;
     },
     [checkPermission]
-  );
-
-  /**
-   * 请求多个权限
-   */
-  const requestMultiplePermissions = useCallback(
-    async (...types: PermissionType[]): Promise<PermissionStatus> => {
-      const results: PermissionStatus = {
-        camera: 'undetermined',
-        mediaLibrary: 'undetermined',
-        microphone: 'undetermined',
-        photoLibrary: 'undetermined',
-      };
-
-      for (const type of types) {
-        const granted = await requestPermission(type);
-        results[type] = granted ? 'granted' : 'denied';
-      }
-
-      return results;
-    },
-    [requestPermission]
   );
 
   /**
@@ -164,7 +133,7 @@ export function usePermissions() {
         await Linking.openSettings();
       }
     } catch (error) {
-      console.error('Failed to open app settings:', error);
+      logger.error('Failed to open app settings:', error);
     }
   }, []);
 
@@ -178,9 +147,9 @@ export function usePermissions() {
   return {
     permissions,
     checkPermission,
-    requestPermission,
+    requestPermission: checkPermission,
     checkMultiplePermissions,
-    requestMultiplePermissions,
+    requestMultiplePermissions: checkMultiplePermissions,
     hasPermission,
     openAppSettings,
   };
@@ -224,11 +193,10 @@ export function getPermissionMessage(
  */
 export async function checkSpeechPermissions(): Promise<boolean> {
   try {
-    // 检查麦克风权限就足够了
-    const { granted } = await Camera.requestMicrophonePermissionsAsync();
+    const { granted } = await Audio.requestPermissionsAsync();
     return granted;
   } catch (error) {
-    console.error('Failed to check speech permissions:', error);
+    logger.error('Failed to check speech permissions:', error);
     return false;
   }
 }

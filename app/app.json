@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "MemoryCapsule",
+    "slug": "memorycapsule",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,7 +16,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.memorycapsule.app",
-      "deploymentTarget": "16.0"
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "允许 MemoryCapsule 访问您的照片以保存记忆",
+        "NSCameraUsageDescription": "允许 MemoryCapsule 使用相机拍摄照片",
+        "NSMicrophoneUsageDescription": "允许 MemoryCapsule 录制语音记忆"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +29,15 @@
       },
       "package": "com.memorycapsule.app",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -33,7 +45,27 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许 MemoryCapsule 访问您的照片以保存记忆",
+          "cameraPermission": "允许 MemoryCapsule 使用相机拍摄照片"
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "允许 MemoryCapsule 录制语音记忆"
+        }
+      ],
+      "@sentry/react-native",
+      [
+        "expo-notifications",
+        {
+          "color": "#6A89CC"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

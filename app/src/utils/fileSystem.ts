@@ -4,7 +4,7 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
-import { Platform } from 'react-native';
+import { logger } from '@/src/utils/logger';
 
 /**
  * 应用文件目录路径
@@ -51,13 +51,14 @@ export const MEDIA_PATHS = {
  */
 export async function ensureDirectories(): Promise<void> {
   const directories = Object.values(MEDIA_PATHS);
-
-  for (const dir of directories) {
-    const dirInfo = await FileSystem.getInfoAsync(dir);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    }
-  }
+  await Promise.all(
+    directories.map(async (dir) => {
+      const dirInfo = await FileSystem.getInfoAsync(dir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      }
+    })
+  );
 }
 
 /**
@@ -70,10 +71,10 @@ export async function getFileInfo(
     const info = await FileSystem.getInfoAsync(uri);
     return {
       exists: info.exists,
-      size: info.size || 0,
+      size: info.exists ? (info as any).size || 0 : 0,
     };
   } catch (error) {
-    console.error('Failed to get file info:', error);
+    logger.error('Failed to get file info:', error);
     return { exists: false, size: 0 };
   }
 }
@@ -102,7 +103,7 @@ export async function copyFile(
 
     return targetUri;
   } catch (error) {
-    console.error('Failed to copy file:', error);
+    logger.error('Failed to copy file:', error);
     throw error;
   }
 }
@@ -117,7 +118,7 @@ export async function deleteFile(uri: string): Promise<void> {
       await FileSystem.deleteAsync(uri, { idempotent: true });
     }
   } catch (error) {
-    console.error('Failed to delete file:', error);
+    logger.error('Failed to delete file:', error);
     // 不抛出错误，删除失败不应该中断流程
   }
 }
@@ -132,7 +133,7 @@ export async function deleteDirectory(dirUri: string): Promise<void> {
       await FileSystem.deleteAsync(dirUri, { idempotent: true });
     }
   } catch (error) {
-    console.error('Failed to delete directory:', error);
+    logger.error('Failed to delete directory:', error);
   }
 }
 
@@ -142,22 +143,17 @@ export async function deleteDirectory(dirUri: string): Promise<void> {
 export async function getDirectorySize(dirUri: string): Promise<number> {
   try {
     const files = await FileSystem.readDirectoryAsync(dirUri);
-    let totalSize = 0;
-
-    for (const file of files) {
-      const fileUri = `${dirUri}${file}`;
-      const info = await FileSystem.getInfoAsync(fileUri);
-
-      if (info.isDirectory) {
-        totalSize += await getDirectorySize(fileUri);
-      } else {
-        totalSize += info.size || 0;
-      }
-    }
-
-    return totalSize;
+    const sizes = await Promise.all(
+      files.map(async (file) => {
+        const fileUri = `${dirUri}${file}`;
+        const info = await FileSystem.getInfoAsync(fileUri);
+        if (info.isDirectory) return getDirectorySize(fileUri);
+        return info.exists ? (info as any).size || 0 : 0;
+      })
+    );
+    return sizes.reduce((sum, s) => sum + s, 0);
   } catch (error) {
-    console.error('Failed to get directory size:', error);
+    logger.error('Failed to get directory size:', error);
     return 0;
   }
 }
@@ -174,7 +170,7 @@ export async function clearDirectory(dirUri: string): Promise<void> {
       await deleteFile(fileUri);
     }
   } catch (error) {
-    console.error('Failed to clear directory:', error);
+    logger.error('Failed to clear directory:', error);
   }
 }
 
@@ -190,14 +186,15 @@ export async function getStorageStats(): Promise<{
   available: number;
 }> {
   try {
-    const photoOriginalSize = await getDirectorySize(MEDIA_PATHS.photoOriginal);
-    const photoDisplaySize = await getDirectorySize(MEDIA_PATHS.photoDisplay);
-    const voiceOriginalSize = await getDirectorySize(MEDIA_PATHS.voiceOriginal);
-    const voiceCompressedSize = await getDirectorySize(
-      MEDIA_PATHS.voiceCompressed
-    );
-    const databaseSize = await getDirectorySize(MEDIA_PATHS.database);
-    const tempSize = await getDirectorySize(MEDIA_PATHS.temp);
+    const [photoOriginalSize, photoDisplaySize, voiceOriginalSize, voiceCompressedSize, databaseSize, tempSize] =
+      await Promise.all([
+        getDirectorySize(MEDIA_PATHS.photoOriginal),
+        getDirectorySize(MEDIA_PATHS.photoDisplay),
+        getDirectorySize(MEDIA_PATHS.voiceOriginal),
+        getDirectorySize(MEDIA_PATHS.voiceCompressed),
+        getDirectorySize(MEDIA_PATHS.database),
+        getDirectorySize(MEDIA_PATHS.temp),
+      ]);
 
     return {
       photoSize: photoOriginalSize + photoDisplaySize,
@@ -211,10 +208,10 @@ export async function getStorageStats(): Promise<{
         voiceCompressedSize +
         databaseSize +
         tempSize,
-      available: Platform.OS === 'ios' ? -1 : -1, // TODO: 实现平台特定的可用空间查询
+      available: -1, // TODO: 实现可用空间查询
     };
   } catch (error) {
-    console.error('Failed to get storage stats:', error);
+    logger.error('Failed to get storage stats:', error);
     return {
       photoSize: 0,
       voiceSize: 0,
@@ -287,8 +284,8 @@ export async function fileExists(uri: string): Promise<boolean> {
 export async function initializeFileSystem(): Promise<void> {
   try {
     await ensureDirectories();
-    console.log('✅ File system initialized');
+    logger.log('✅ File system initialized');
   } catch (error) {
-    console.error('❌ Failed to initialize file system:', error);
+    logger.error('❌ Failed to initialize file system:', error);
   }
 }

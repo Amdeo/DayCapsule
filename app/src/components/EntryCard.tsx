@@ -3,7 +3,7 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,11 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import Animated, {
-  FadeIn,
   Layout,
   useSharedValue,
-  useAnimatedStyle,
   withRepeat,
   withTiming,
   Easing,
@@ -26,8 +25,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '@/src/types/entry';
+import { useEntryStore } from '@/src/store/entryStore';
+import * as FileSystem from 'expo-file-system';
 import { VoiceService } from '@/src/services/voiceService';
+import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
+import { logger } from '@/src/utils/logger';
 import { ImageViewer } from './ImageViewer';
 
 interface EntryCardProps {
@@ -39,7 +42,7 @@ interface EntryCardProps {
   onStopRecording?: (id: string) => void;
 }
 
-export function EntryCard({
+function EntryCard({
   entry,
   onDelete,
   onEdit,
@@ -47,12 +50,26 @@ export function EntryCard({
   onResumeRecording,
   onStopRecording,
 }: EntryCardProps) {
+  const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
+
+  // 当其他卡片开始播放时，重置本卡片状态
+  useEffect(() => {
+    logger.log('[EntryCard] currentPlayingId changed:', currentPlayingId, 'myId:', entry.id, 'isPlayingAudio:', isPlayingAudio);
+    if (currentPlayingId !== entry.id && isPlayingAudio) {
+      logger.log('[EntryCard] resetting card', entry.id);
+      setIsPlayingAudio(false);
+      setPlaybackPosition(0);
+    }
+  }, [currentPlayingId, entry.id]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const [audioMissing, setAudioMissing] = useState(false);
 
   // 红点闪烁动画
   const redDotOpacity = useSharedValue(1);
@@ -78,44 +95,71 @@ export function EntryCard({
     };
   }, [entry.recordingStatus]);
 
-  const redDotStyle = useAnimatedStyle(() => ({
-    opacity: redDotOpacity.value,
-  }));
+  // 挂载时检查音频文件是否存在
+  useEffect(() => {
+    if (entry.type !== 'voice') return;
+    const uri = entry.media?.uri || entry.content;
+    if (!uri) return;
+    FileSystem.getInfoAsync(uri)
+      .then(info => { if (!info.exists) setAudioMissing(true); })
+      .catch(() => {});
+  }, [entry.id]);
+
+  // 停止音频播放
+  const handleStopAudio = async () => {
+    try {
+      await VoiceService.stopPlayback();
+    } catch (error) {
+      logger.error('Failed to stop audio:', error);
+    } finally {
+      setIsPlayingAudio(false);
+      setPlaybackPosition(0);
+      setCurrentPlayingId(null);
+    }
+  };
 
   // 处理音频播放
   const handlePlayAudio = async () => {
+    const uri = entry.media?.uri || entry.content;
+
+    // 检查文件是否存在
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
+        Alert.alert(
+          '文件不存在',
+          '音频文件已丢失或被删除，无法播放。',
+          [{ text: '知道了', style: 'default' }]
+        );
+        return;
+      }
+    } catch {
+      // getInfoAsync 本身失败时降级到播放，让 VoiceService 处理错误
+    }
+
     try {
       setIsPlayingAudio(true);
       setPlaybackPosition(0);
+      setCurrentPlayingId(entry.id);
 
-      // 播放音频，传入完成回调和进度回调
       await VoiceService.playAudio(
-        entry.media?.uri || entry.content,
+        uri,
         () => {
-          // 播放完成回调
           setIsPlayingAudio(false);
           setPlaybackPosition(0);
+          setCurrentPlayingId(null);
         },
         (position) => {
-          // 播放进度回调
           setPlaybackPosition(position);
         }
       );
     } catch (error) {
-      console.error('Failed to play audio:', error);
-      alert('播放失败');
+      logger.error('Failed to play audio:', error);
+      Alert.alert('播放失败', '无法播放此音频，请重试');
       setIsPlayingAudio(false);
       setPlaybackPosition(0);
+      setCurrentPlayingId(null);
     }
-  };
-
-  // 格式化文件大小
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   };
 
   // 格式化录音时长
@@ -135,91 +179,85 @@ export function EntryCard({
     }
   };
 
-  // 根据类型获取背景色（浅灰色背景，参考图片风格）
-  const getBackgroundColor = () => {
-    return '#F8F7F5'; // 温暖的浅灰背景
+  const getCardBgColor = () => {
+    switch (entry.type) {
+      case 'text':  return '#F7F5FC'; // 淡紫
+      case 'photo': return '#EEF8FA'; // 淡青
+      case 'voice': return '#FFF8EE'; // 淡橙
+      default:      return '#FFFFFF';
+    }
+  };
+
+  const getCardPressedColor = () => {
+    switch (entry.type) {
+      case 'text':  return '#EDE8F7';
+      case 'photo': return '#E3F4F7';
+      case 'voice': return '#FFF0DC';
+      default:      return '#F5F5F5';
+    }
   };
 
   // 判断是否需要展开
-  const needsExpansion = entry.content.length > 150 || (entry.tags && entry.tags.length > 3);
+  const needsExpansion = useMemo(
+    () => entry.content.length > 150 || (entry.tags != null && entry.tags.length > 3),
+    [entry.content, entry.tags]
+  );
 
   // 处理长按菜单
   const handleLongPress = () => {
-    console.log('长按触发，显示操作菜单:', entry.id);
-
-    // 录音中不允许编辑和删除
     if (entry.recordingStatus === 'recording') {
-      Alert.alert(
-        '提示',
-        '录音进行中，请先停止录音',
-        [{ text: '知道了', style: 'cancel' }]
-      );
+      Alert.alert('提示', '录音进行中，请先停止录音', [{ text: '知道了', style: 'cancel' }]);
       return;
     }
+    setShowActionSheet(true);
+  };
 
+  const handleActionEdit = () => {
+    setShowActionSheet(false);
+    onEdit?.(entry);
+  };
+
+  const handleActionDelete = () => {
+    setShowActionSheet(false);
     Alert.alert(
-      '选择操作',
-      '请选择要执行的操作',
+      '确认删除',
+      '确定要删除这条记录吗？此操作无法撤销。',
       [
-        {
-          text: '取消',
-          style: 'cancel',
-        },
-        {
-          text: '编辑',
-          onPress: () => {
-            console.log('用户选择编辑');
-            onEdit?.(entry);
-          },
-        },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: () => {
-            console.log('用户选择删除');
-            // 二次确认删除
-            Alert.alert(
-              '确认删除',
-              '确定要删除这条记录吗？此操作无法撤销。',
-              [
-                { text: '取消', style: 'cancel' },
-                { text: '删除', style: 'destructive', onPress: () => onDelete(entry.id) },
-              ]
-            );
-          },
-        },
-      ],
-      { cancelable: true }
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: () => onDelete(entry.id) },
+      ]
     );
   };
 
   // 处理卡片点击 - 根据类型执行不同操作
   const handleCardPress = () => {
-    console.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
+    logger.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
 
     // 录音中不允许点击
     if (entry.recordingStatus === 'recording') {
-      console.log('录音中，忽略点击');
+      logger.log('录音中，忽略点击');
       return;
     }
 
     switch (entry.type) {
       case 'text':
         // 文本记录：点击编辑
-        console.log('文本记录，触发编辑');
+        logger.log('文本记录，触发编辑');
         onEdit?.(entry);
         break;
 
       case 'photo':
         // 图片记录：点击打开图片查看器
-        console.log('图片记录，打开图片查看器');
+        logger.log('图片记录，打开图片查看器');
+        if (photoError) return;
         setShowImageViewer(true);
         break;
 
       case 'voice':
         // 语音记录：点击播放
+        if (audioMissing) return;
         if (entry.media && !isPlayingAudio) {
-          console.log('语音记录，触发播放');
+          logger.log('语音记录，触发播放');
           handlePlayAudio();
         }
         break;
@@ -231,21 +269,26 @@ export function EntryCard({
 
   // 处理图片点击（阻止事件冒泡）
   const handleImagePress = () => {
-    console.log('图片被点击，打开查看器');
+    if (photoError) return;
+    logger.log('图片被点击，打开查看器');
     setShowImageViewer(true);
   };
 
   return (
+    <View style={[
+      styles.cardShadow,
+      { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor() },
+    ]}>
     <Pressable
+      testID="entry-card"
       onPressIn={() => setIsPressed(true)}
       onPressOut={() => setIsPressed(false)}
       onPress={handleCardPress}
       onLongPress={handleLongPress}
-      android_ripple={{ color: '#E5E5E5' }}
       style={[
         styles.cardContainer,
         {
-          backgroundColor: isPressed ? '#F5F5F5' : getBackgroundColor(),
+          backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
         },
       ]}
     >
@@ -271,11 +314,20 @@ export function EntryCard({
                 activeOpacity={0.9}
                 onPress={handleImagePress}
               >
-                <Image
-                  source={{ uri: entry.media.uri }}
-                  style={styles.photoImage}
-                  resizeMode="cover"
-                />
+                {photoError ? (
+                  <View style={[styles.photoImage, styles.photoMissing]}>
+                    <Ionicons name="image-outline" size={32} color="#A3A3A3" />
+                    <Text style={styles.photoMissingText}>图片已丢失</Text>
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: PhotoService.resolvePhotoUri(entry.media.uri) }}
+                    style={styles.photoImage}
+                    resizeMode="cover"
+                    testID="photo-image"
+                    onError={() => setPhotoError(true)}
+                  />
+                )}
               </TouchableOpacity>
               {entry.content && (
                 <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
@@ -298,7 +350,7 @@ export function EntryCard({
                        try {
                          await onStopRecording?.(entry.id);
                        } catch (error) {
-                         console.error('Failed to stop recording:', error);
+                         logger.error('Failed to stop recording:', error);
                        } finally {
                          setTimeout(() => setIsProcessing(false), 300);
                        }
@@ -322,35 +374,48 @@ export function EntryCard({
                  </View>
                 </View>
              ) : entry.media ? (
-               <View style={styles.voicePlayContainer}>
-                 <View style={styles.voicePlayCompact}>
-                   {/* 左侧：播放按钮 */}
-                   <TouchableOpacity
-                     style={[styles.playButtonCompact, isPlayingAudio && styles.buttonDisabled]}
-                     onPress={handlePlayAudio}
-                     disabled={isPlayingAudio}
-                     activeOpacity={0.7}
-                   >
-                     {isPlayingAudio ? (
-                       <ActivityIndicator size={24} color="#FFFFFF" />
-                     ) : (
-                       <Ionicons name="play" size={28} color="#FFFFFF" style={{ marginLeft: 3 }} />
-                     )}
-                   </TouchableOpacity>
+               <View style={styles.voiceCard}>
+                 {/* 播放行：按钮 + 波形 + 时长 */}
+                 <View style={styles.voicePlayRow}>
+                   {audioMissing ? (
+                     <View style={styles.audioMissingRow}>
+                       <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
+                       <Text style={styles.audioMissingText}>音频文件已丢失</Text>
+                     </View>
+                   ) : (
+                     <>
+                       <TouchableOpacity
+                         style={styles.voicePlayBtn}
+                         onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
+                         activeOpacity={0.8}
+                       >
+                         {isPlayingAudio ? (
+                           <Ionicons name="stop" size={22} color="#FFFFFF" />
+                         ) : (
+                           <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                         )}
+                       </TouchableOpacity>
 
-                   {/* 中间：波形 */}
-                   <View style={styles.voiceWaveformCompact}>
-                     <WaveformAnimation isRecording={isPlayingAudio} color="#5E5E5E" />
-                   </View>
+                       <View style={styles.voiceWaveform}>
+                         <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F5A623' : '#C4C4C4'} />
+                       </View>
 
-                   {/* 右侧：时长 */}
-                   <Text style={styles.voiceTimeCompact}>
-                     {isPlayingAudio
-                       ? formatDuration(Math.floor(playbackPosition / 1000))
-                       : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
-                     }
-                   </Text>
+                       <Text style={styles.voiceDuration}>
+                         {isPlayingAudio
+                           ? formatDuration(Math.floor(playbackPosition / 1000))
+                           : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
+                         }
+                       </Text>
+                     </>
+                   )}
                  </View>
+
+                 {/* 转录/描述文字 */}
+                 {(entry.transcription?.text || entry.content) ? (
+                   <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
+                     {entry.transcription?.text || entry.content}
+                   </Text>
+                 ) : null}
                </View>
             ) : null
           ) : null}
@@ -397,33 +462,97 @@ export function EntryCard({
           onClose={() => setShowImageViewer(false)}
         />
       )}
+
+      {/* 长按操作面板 */}
+      <Modal
+        visible={showActionSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionSheet(false)}
+      >
+        <Pressable style={styles.actionSheetBackdrop} onPress={() => setShowActionSheet(false)}>
+          <Pressable style={styles.actionSheet} onPress={() => {}}>
+            {/* 拖动条 */}
+            <View style={styles.actionSheetHandle} />
+
+            {/* 类型标识 */}
+            <View style={styles.actionSheetHeader}>
+              <View style={[styles.actionSheetTypeBadge, { backgroundColor: getBorderColor() + '20' }]}>
+                <Ionicons
+                  name={entry.type === 'text' ? 'document-text' : entry.type === 'photo' ? 'image' : 'mic'}
+                  size={14}
+                  color={getBorderColor()}
+                />
+                <Text style={[styles.actionSheetTypeText, { color: getBorderColor() }]}>
+                  {entry.type === 'text' ? '文字记录' : entry.type === 'photo' ? '照片记录' : '语音记录'}
+                </Text>
+              </View>
+              <Text style={styles.actionSheetTime}>
+                {new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+
+            {/* 操作按钮 */}
+            {onEdit && (
+              <TouchableOpacity style={styles.actionSheetButton} onPress={handleActionEdit} activeOpacity={0.7}>
+                <View style={styles.actionSheetButtonIcon}>
+                  <Ionicons name="pencil" size={20} color="#6A89CC" />
+                </View>
+                <Text style={styles.actionSheetButtonText}>编辑</Text>
+                <Ionicons name="chevron-forward" size={16} color="#D1D1D1" />
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.actionSheetDivider} />
+
+            <TouchableOpacity style={styles.actionSheetButton} onPress={handleActionDelete} activeOpacity={0.7}>
+              <View style={[styles.actionSheetButtonIcon, styles.actionSheetDeleteIcon]}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              </View>
+              <Text style={[styles.actionSheetButtonText, styles.actionSheetDeleteText]}>删除</Text>
+              <Ionicons name="chevron-forward" size={16} color="#D1D1D1" />
+            </TouchableOpacity>
+
+            {/* 取消 */}
+            <TouchableOpacity
+              style={styles.actionSheetCancel}
+              onPress={() => setShowActionSheet(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionSheetCancelText}>取消</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
+  cardShadow: {
     borderRadius: 16,
-    overflow: 'hidden',
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    // 柔和的阴影
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   content: {
     padding: 20,
     gap: 12,
   },
   contentText: {
-    backgroundColor: '#F7F5FC', // 淡紫色背景
     borderRadius: 12,
   },
   contentPhoto: {
-    backgroundColor: '#F0F9FA', // 淡青色背景
     borderRadius: 12,
   },
   contentVoice: {
@@ -440,6 +569,15 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
     backgroundColor: '#F5F5F5',
+  },
+  photoMissing: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoMissingText: {
+    fontSize: 13,
+    color: '#A3A3A3',
   },
   photoCaption: {
     fontSize: 14,
@@ -499,23 +637,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  recordingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
-  },
-  recordingText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF3B30',
-    letterSpacing: 1,
-  },
   recordingCenter: {
     flex: 1,
     alignItems: 'center',
@@ -562,10 +683,10 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#F5A623',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: '#F5A623',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -596,46 +717,155 @@ const styles = StyleSheet.create({
     minWidth: 60,
     textAlign: 'right',
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#007AFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  playButtonPlaying: {
-    backgroundColor: '#5AC8FA',
-  },
-  voiceDetails: {
-    gap: 8,
-  },
-  voiceMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  voiceMetaText: {
-    fontSize: 15,
-    color: '#3C3C43',
-    fontWeight: '500',
-  },
-  voiceWaveform: {
-    flex: 1,
-    height: 40,
-  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 4,
   },
+  // 新语音卡片样式
+  voiceCard: {
+    padding: 16,
+    gap: 14,
+    borderRadius: 12,
+  },
+  voicePlayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  voicePlayBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5A623',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F5A623',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  voiceWaveform: {
+    flex: 1,
+    height: 32,
+  },
+  voiceDuration: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E93',
+    fontVariant: ['tabular-nums'],
+    minWidth: 38,
+    textAlign: 'right',
+  },
+  voiceCaption: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#1A1A1A',
+    letterSpacing: 0.2,
+  },
+  actionSheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  actionSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 36,
+    paddingTop: 12,
+  },
+  actionSheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E5E5',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  actionSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  actionSheetTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  actionSheetTypeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionSheetTime: {
+    fontSize: 12,
+    color: '#A3A3A3',
+  },
+  actionSheetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    gap: 14,
+  },
+  actionSheetButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F0F4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionSheetDeleteIcon: {
+    backgroundColor: '#FEF2F2',
+  },
+  actionSheetButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  actionSheetDeleteText: {
+    color: '#EF4444',
+  },
+  actionSheetDivider: {
+    height: 1,
+    backgroundColor: '#F5F5F5',
+    marginHorizontal: 4,
+  },
+  actionSheetCancel: {
+    marginTop: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+  },
+  actionSheetCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  audioMissingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  audioMissingText: {
+    fontSize: 13,
+    color: '#A3A3A3',
+  },
 });
 
 // 使用 React.memo 优化性能，避免不必要的重新渲染
-export default React.memo(EntryCard);
+// 注意：以 named export 形式导出，与 Timeline.v2.tsx 的 import { EntryCard } 保持一致
+const MemoizedEntryCard = React.memo(EntryCard);
+export { MemoizedEntryCard as EntryCard };

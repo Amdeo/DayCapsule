@@ -5,6 +5,7 @@
 
 import { getDatabase } from './sqlite';
 import { Entry } from '@/src/types/entry';
+import { logger } from '@/src/utils/logger';
 
 /**
  * 将数据库行转换为 Entry 对象
@@ -29,19 +30,41 @@ const rowToEntry = (row: any): Entry => {
 };
 
 /**
+ * 同步 entry 的规范化 tags（双写：JSON 列 + entry_tags 表）
+ * 先清除旧关联，再插入新关联
+ */
+const upsertEntryTags = async (
+  db: ReturnType<typeof getDatabase>,
+  entryId: string,
+  tags: string[]
+): Promise<void> => {
+  await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [entryId]);
+  for (const name of tags) {
+    await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name]);
+    await db.runAsync(
+      `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
+       SELECT ?, id FROM tags WHERE name = ?`,
+      [entryId, name]
+    );
+  }
+};
+
+/**
  * 获取所有记录
  */
 export const getAllEntries = async (limit?: number): Promise<Entry[]> => {
   try {
     const db = getDatabase();
     const query = limit
-      ? `SELECT * FROM entries ORDER BY timestamp DESC LIMIT ${limit}`
+      ? `SELECT * FROM entries ORDER BY timestamp DESC LIMIT ?`
       : `SELECT * FROM entries ORDER BY timestamp DESC`;
 
-    const result = await db.getAllAsync(query);
+    const result = limit
+      ? await db.getAllAsync(query, [limit])
+      : await db.getAllAsync(query);
     return result.map(rowToEntry);
   } catch (error) {
-    console.error('Failed to get all entries:', error);
+    logger.error('Failed to get all entries:', error);
     return [];
   }
 };
@@ -58,7 +81,7 @@ export const getEntryById = async (id: string): Promise<Entry | null> => {
     );
     return result ? rowToEntry(result) : null;
   } catch (error) {
-    console.error('Failed to get entry by id:', error);
+    logger.error('Failed to get entry by id:', error);
     return null;
   }
 };
@@ -69,8 +92,8 @@ export const getEntryById = async (id: string): Promise<Entry | null> => {
 export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<Entry> => {
   try {
     const db = getDatabase();
-    const id = Date.now().toString();
     const timestamp = Date.now();
+    const id = `${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
 
     await db.runAsync(
       `INSERT INTO entries (
@@ -92,6 +115,11 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       ]
     );
 
+    // 同步规范化 tags
+    if (entry.tags?.length) {
+      await upsertEntryTags(db, id, entry.tags);
+    }
+
     return {
       ...entry,
       id,
@@ -99,7 +127,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       syncStatus: 'synced',
     } as Entry;
   } catch (error) {
-    console.error('Failed to add entry:', error);
+    logger.error('Failed to add entry:', error);
     throw error;
   }
 };
@@ -120,8 +148,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     if (updates.tags !== undefined) {
       fields.push('tags = ?');
       values.push(JSON.stringify(updates.tags));
-    }
-    if (updates.media !== undefined) {
+    }    if (updates.media !== undefined) {
       fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
       values.push(
         updates.media.uri,
@@ -147,8 +174,13 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
       `UPDATE entries SET ${fields.join(', ')} WHERE id = ?`,
       values
     );
+
+    // 同步规范化 tags
+    if (updates.tags !== undefined) {
+      await upsertEntryTags(db, id, updates.tags);
+    }
   } catch (error) {
-    console.error('Failed to update entry:', error);
+    logger.error('Failed to update entry:', error);
     throw error;
   }
 };
@@ -161,7 +193,7 @@ export const deleteEntry = async (id: string): Promise<void> => {
     const db = getDatabase();
     await db.runAsync('DELETE FROM entries WHERE id = ?', [id]);
   } catch (error) {
-    console.error('Failed to delete entry:', error);
+    logger.error('Failed to delete entry:', error);
     throw error;
   }
 };
@@ -169,18 +201,19 @@ export const deleteEntry = async (id: string): Promise<void> => {
 /**
  * 搜索记录
  */
-export const searchEntries = async (query: string): Promise<Entry[]> => {
+export const searchEntries = async (query: string, limit = 100): Promise<Entry[]> => {
   try {
     const db = getDatabase();
     const result = await db.getAllAsync(
       `SELECT * FROM entries
        WHERE content LIKE ? OR tags LIKE ?
-       ORDER BY timestamp DESC`,
-      [`%${query}%`, `%${query}%`]
+       ORDER BY timestamp DESC
+       LIMIT ?`,
+      [`%${query}%`, `%${query}%`, limit]
     );
     return result.map(rowToEntry);
   } catch (error) {
-    console.error('Failed to search entries:', error);
+    logger.error('Failed to search entries:', error);
     return [];
   }
 };
@@ -197,7 +230,7 @@ export const getEntriesByType = async (type: string): Promise<Entry[]> => {
     );
     return result.map(rowToEntry);
   } catch (error) {
-    console.error('Failed to get entries by type:', error);
+    logger.error('Failed to get entries by type:', error);
     return [];
   }
 };
@@ -216,7 +249,7 @@ export const getEntriesByDateRange = async (startTime: number, endTime?: number)
     const result = await db.getAllAsync(query, params);
     return result.map(rowToEntry);
   } catch (error) {
-    console.error('Failed to get entries by date range:', error);
+    logger.error('Failed to get entries by date range:', error);
     return [];
   }
 };
@@ -227,21 +260,12 @@ export const getEntriesByDateRange = async (startTime: number, endTime?: number)
 export const getAllTags = async (): Promise<string[]> => {
   try {
     const db = getDatabase();
-    const result = await db.getAllAsync(
-      'SELECT DISTINCT tags FROM entries WHERE tags IS NOT NULL'
+    const result = await db.getAllAsync<{ name: string }>(
+      'SELECT name FROM tags ORDER BY name ASC'
     );
-
-    const tagsSet = new Set<string>();
-    result.forEach((row: any) => {
-      if (row.tags) {
-        const tags = JSON.parse(row.tags);
-        tags.forEach((tag: string) => tagsSet.add(tag));
-      }
-    });
-
-    return Array.from(tagsSet).sort();
+    return result.map((r) => r.name);
   } catch (error) {
-    console.error('Failed to get all tags:', error);
+    logger.error('Failed to get all tags:', error);
     return [];
   }
 };
@@ -257,8 +281,67 @@ export const getEntriesCount = async (): Promise<number> => {
     );
     return result?.count || 0;
   } catch (error) {
-    console.error('Failed to get entries count:', error);
+    logger.error('Failed to get entries count:', error);
     return 0;
+  }
+};
+
+export interface EntryFilters {
+  type?: 'text' | 'photo' | 'voice';
+  startTime?: number;
+  search?: string;
+  tags?: string[];
+}
+
+/**
+ * 游标分页查询（支持过滤条件）
+ * cursor = 上一页最后一条的 timestamp，首页不传
+ */
+export const getEntriesPage = async (
+  filters: EntryFilters = {},
+  limit = 20,
+  cursor?: number
+): Promise<Entry[]> => {
+  try {
+    const db = getDatabase();
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (cursor) {
+      conditions.push('e.timestamp < ?');
+      params.push(cursor);
+    }
+    if (filters.type) {
+      conditions.push('e.type = ?');
+      params.push(filters.type);
+    }
+    if (filters.startTime) {
+      conditions.push('e.timestamp >= ?');
+      params.push(filters.startTime);
+    }
+    if (filters.search?.trim()) {
+      conditions.push('(e.content LIKE ? OR e.tags LIKE ?)');
+      params.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
+    if (filters.tags?.length) {
+      // 使用规范化表 JOIN，每个 tag 一个子查询（AND 语义）
+      filters.tags.forEach((tag) => {
+        conditions.push(
+          `e.id IN (SELECT et.entry_id FROM entry_tags et JOIN tags t ON et.tag_id = t.id WHERE t.name = ?)`
+        );
+        params.push(tag);
+      });
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await db.getAllAsync(
+      `SELECT e.* FROM entries e ${where} ORDER BY e.timestamp DESC LIMIT ?`,
+      [...params, limit]
+    );
+    return result.map(rowToEntry);
+  } catch (error) {
+    logger.error('Failed to get entries page:', error);
+    return [];
   }
 };
 
@@ -269,9 +352,42 @@ export const clearAllEntries = async (): Promise<void> => {
   try {
     const db = getDatabase();
     await db.runAsync('DELETE FROM entries');
-    console.log('✅ 已清空所有记录');
+    logger.log('✅ 已清空所有记录');
   } catch (error) {
-    console.error('Failed to clear all entries:', error);
+    logger.error('Failed to clear all entries:', error);
     throw error;
   }
+};
+
+/**
+ * 批量恢复记录（跳过已存在的 ID，幂等）
+ * 返回实际插入的数量
+ */
+export const restoreEntries = async (entries: Entry[]): Promise<number> => {
+  const db = getDatabase();
+  let inserted = 0;
+  for (const e of entries) {
+    try {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO entries
+           (id, type, content, timestamp, tags, media_uri, media_type,
+            media_duration, recording_status, recording_duration, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          e.id, e.type, e.content, e.timestamp,
+          e.tags ? JSON.stringify(e.tags) : null,
+          e.media?.uri ?? null, e.media?.mimeType ?? null,
+          e.media?.duration ?? null,
+          e.recordingStatus ?? null, e.recordingDuration ?? null,
+          e.timestamp, e.editedAt ?? e.timestamp,
+        ]
+      );
+      await upsertEntryTags(db, e.id, e.tags ?? []);
+      inserted++;
+    } catch {
+      // 跳过单条失败，继续处理其余记录
+    }
+  }
+  logger.log(`✅ 恢复完成：${inserted}/${entries.length} 条`);
+  return inserted;
 };

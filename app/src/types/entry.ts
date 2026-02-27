@@ -107,6 +107,7 @@ export interface MediaError extends Error {
     | 'CODEC_ERROR'
     | 'NETWORK_ERROR'
     | 'MICROPHONE_ERROR'
+    | 'CAMERA_ERROR'
     | 'DEVICE_ERROR'
     | 'UNKNOWN';
   userMessage: string;

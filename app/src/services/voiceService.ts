@@ -5,7 +5,6 @@
 
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Camera } from 'expo-camera';
 import {
   AUDIO_PRESETS,
   STORAGE_QUOTA,
@@ -14,11 +13,11 @@ import {
 import {
   MEDIA_PATHS,
   generateUniqueFilename,
-  fileExists,
   deleteFile,
   getFileInfo,
 } from '@/src/utils/fileSystem';
 import { MediaError, AudioCompressionOptions } from '@/src/types/entry';
+import { logger } from '@/src/utils/logger';
 
 /**
  * 录音会话
@@ -61,7 +60,10 @@ export class VoiceService {
   private static isAudioInitialized: boolean = false;
   private static currentAudioMode: 'recording' | 'playback' | null = null;
   private static soundCache: Map<string, Audio.Sound> = new Map();
+  private static soundAccessTime: Map<string, number> = new Map();
+  private static readonly MAX_CACHE_SIZE = 5;
   private static currentPlayingUri: string | null = null;
+  private static prevOnComplete: (() => void) | null = null;
 
   /**
    * 初始化音频系统为录音模式
@@ -72,12 +74,12 @@ export class VoiceService {
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
-        playThroughEarpiece: false,
+
       });
       this.isAudioInitialized = true;
       this.currentAudioMode = 'recording';
     } catch (error) {
-      console.error('Failed to initialize audio:', error);
+      logger.error('Failed to initialize audio:', error);
     }
   }
 
@@ -94,23 +96,19 @@ export class VoiceService {
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
-        playThroughEarpiece: false,
+
       });
       this.currentAudioMode = 'recording';
-      console.log('[VoiceService] Switched to recording mode');
+      logger.log('[VoiceService] Switched to recording mode');
     } catch (error) {
-      console.error('Failed to switch to recording mode:', error);
+      logger.error('Failed to switch to recording mode:', error);
     }
   }
 
   /**
-   * 切换到播放模式
+   * 切换到播放模式（始终执行，不依赖缓存状态）
    */
   static async switchToPlaybackMode(): Promise<void> {
-    if (this.currentAudioMode === 'playback') {
-      return; // 已经是播放模式，无需切换
-    }
-
     try {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
@@ -120,9 +118,9 @@ export class VoiceService {
         playThroughEarpieceAndroid: false,
       });
       this.currentAudioMode = 'playback';
-      console.log('[VoiceService] Switched to playback mode');
+      logger.log('[VoiceService] Switched to playback mode');
     } catch (error) {
-      console.error('Failed to switch to playback mode:', error);
+      logger.error('Failed to switch to playback mode:', error);
     }
   }
 
@@ -132,37 +130,38 @@ export class VoiceService {
    */
   static async prewarmAudioSystem(): Promise<void> {
     try {
-      console.log('[VoiceService] Starting audio system prewarm...');
+      logger.log('[VoiceService] Starting audio system prewarm...');
 
       // 检查权限状态（不弹窗）
       const hasPermission = await this.checkMicrophonePermission();
       if (!hasPermission) {
-        console.log('[VoiceService] Microphone permission not granted, skipping prewarm');
+        logger.log('[VoiceService] Microphone permission not granted, skipping prewarm');
         return;
       }
 
       // 预初始化音频系统
       if (!this.isAudioInitialized) {
         await this.initializeAudio();
-        console.log('[VoiceService] Audio system prewarmed successfully');
+        logger.log('[VoiceService] Audio system prewarmed successfully');
       } else {
-        console.log('[VoiceService] Audio system already initialized');
+        logger.log('[VoiceService] Audio system already initialized');
       }
     } catch (error) {
-      console.error('[VoiceService] Failed to prewarm audio system:', error);
+      logger.error('[VoiceService] Failed to prewarm audio system:', error);
       // 静默失败，不影响用户
     }
   }
 
   /**
    * 检查麦克风权限状态（不弹窗）
+   * 使用 Audio API 而非 Camera API，确保 expo-av 录音权限正确识别
    */
   static async checkMicrophonePermission(): Promise<boolean> {
     try {
-      const { status } = await Camera.getMicrophonePermissionsAsync();
-      return status === 'granted';
+      const { granted } = await Audio.getPermissionsAsync();
+      return granted;
     } catch (error) {
-      console.error('Failed to check microphone permission:', error);
+      logger.error('Failed to check microphone permission:', error);
       return false;
     }
   }
@@ -179,27 +178,11 @@ export class VoiceService {
       }
 
       // 未授权时才请求
-      const { granted } = await Camera.requestMicrophonePermissionsAsync();
+      const { granted } = await Audio.requestPermissionsAsync();
       return granted;
     } catch (error) {
-      console.error('Failed to ensure microphone permission:', error);
+      logger.error('Failed to ensure microphone permission:', error);
       return false;
-    }
-  }
-
-  /**
-   * 请求麦克风权限
-   */
-  static async requestMicrophonePermission(): Promise<boolean> {
-    try {
-      const { granted } = await Camera.requestMicrophonePermissionsAsync();
-      return granted;
-    } catch (error) {
-      console.error('Failed to request microphone permission:', error);
-      throw this.createError(
-        'PERMISSION_DENIED',
-        ERROR_MESSAGES.MICROPHONE_ERROR
-      );
     }
   }
 
@@ -242,9 +225,15 @@ export class VoiceService {
 
       return this.recordingSession;
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      if (error instanceof MediaError) {
-        throw error;
+      logger.error('Failed to start recording:', error);
+      // 清理未准备好的 recorder，防止后续 stopRecording 崩溃
+      if (this.recorder) {
+        try { await this.recorder.stopAndUnloadAsync(); } catch {}
+        this.recorder = null;
+      }
+      this.recordingSession = null;
+      if ((error as any)?.code) {
+        throw error; // 已是 MediaError，直接透传
       }
       throw this.createError(
         'MICROPHONE_ERROR',
@@ -263,7 +252,7 @@ export class VoiceService {
       }
       await this.recorder.pauseAsync();
     } catch (error) {
-      console.error('Failed to pause recording:', error);
+      logger.error('Failed to pause recording:', error);
     }
   }
 
@@ -275,9 +264,9 @@ export class VoiceService {
       if (!this.recorder) {
         throw new Error('No active recording');
       }
-      await this.recorder.resumeAsync();
+      await this.recorder.startAsync();
     } catch (error) {
-      console.error('Failed to resume recording:', error);
+      logger.error('Failed to resume recording:', error);
     }
   }
 
@@ -290,11 +279,18 @@ export class VoiceService {
         throw new Error('No active recording');
       }
 
-      // 先获取状态（在停止之前）
+      // 先获取状态，确认 recorder 已准备好再操作
       const status = await this.recorder.getStatusAsync();
-      const duration = (status.durationMillis || 0) / 1000; // 转换为秒
+      const duration = (status.durationMillis || 0) / 1000;
 
-      // 然后停止并卸载
+      if (!status.canRecord && !status.isRecording) {
+        // recorder 存在但未准备好，直接清理
+        logger.warn('[stopRecording] recorder not prepared, cleaning up');
+        this.recorder = null;
+        this.recordingSession = null;
+        throw new Error('Recorder not prepared');
+      }
+
       await this.recorder.stopAndUnloadAsync();
 
       const uri = this.recorder.getURI();
@@ -314,7 +310,7 @@ export class VoiceService {
         mimeType: 'audio/m4a',
       };
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      logger.error('Failed to stop recording:', error);
       throw this.createError('DEVICE_ERROR', ERROR_MESSAGES.DEVICE_ERROR);
     }
   }
@@ -328,16 +324,21 @@ export class VoiceService {
         return;
       }
 
-      await this.recorder.stopAndUnloadAsync();
-      const uri = this.recorder.getURI();
-      if (uri) {
-        await deleteFile(uri);
+      const status = await this.recorder.getStatusAsync();
+      if (status.canRecord || status.isRecording) {
+        await this.recorder.stopAndUnloadAsync();
+        const uri = this.recorder.getURI();
+        if (uri) {
+          await deleteFile(uri);
+        }
       }
 
       this.recorder = null;
       this.recordingSession = null;
     } catch (error) {
-      console.error('Failed to cancel recording:', error);
+      logger.error('Failed to cancel recording:', error);
+      this.recorder = null;
+      this.recordingSession = null;
     }
   }
 
@@ -353,9 +354,63 @@ export class VoiceService {
       const status = await this.recorder.getStatusAsync();
       return (status.durationMillis || 0) / 1000; // 转换为秒
     } catch (error) {
-      console.error('Failed to get recording duration:', error);
+      logger.error('Failed to get recording duration:', error);
       return 0;
     }
+  }
+
+  /**
+   * 解析音频 URI：兼容旧绝对路径（沙盒 UUID 可能已变）
+   * 统一提取文件名后用当前 documentDirectory 重建路径
+   */
+  static resolveAudioUri(uri: string): string {
+    const voiceOriginalRelative = 'media/voice/original/';
+    // 绝对路径中包含 media/voice/original/，提取文件名重建
+    if (uri.includes(voiceOriginalRelative)) {
+      const filename = uri.split(voiceOriginalRelative).pop();
+      if (filename) {
+        return `${MEDIA_PATHS.voiceOriginal}${filename}`;
+      }
+    }
+    // 纯文件名（相对路径），直接拼接
+    if (!uri.includes('/')) {
+      return `${MEDIA_PATHS.voiceOriginal}${uri}`;
+    }
+    return uri;
+  }
+
+  /**
+   * LRU 缓存淘汰：移除最久未访问的音频
+   */
+  private static async evictLruIfNeeded(): Promise<void> {
+    if (this.soundCache.size < this.MAX_CACHE_SIZE) return;
+    const lruKey = Array.from(this.soundAccessTime.entries())
+      .sort((a, b) => a[1] - b[1])[0][0];
+    const oldSound = this.soundCache.get(lruKey);
+    if (oldSound) {
+      await oldSound.unloadAsync().catch(() => {});
+    }
+    this.soundCache.delete(lruKey);
+    this.soundAccessTime.delete(lruKey);
+  }
+
+  /**
+   * 加载音频到缓存并返回 Sound 实例
+   */
+  private static async loadToCache(uri: string): Promise<Audio.Sound> {
+    let sound = this.soundCache.get(uri);
+    if (!sound) {
+      sound = new Audio.Sound();
+      // progressUpdateIntervalMillis: 100 确保进度每 100ms 上报一次
+      await sound.loadAsync({ uri }, { shouldPlay: false, progressUpdateIntervalMillis: 100 });
+      await this.evictLruIfNeeded();
+      this.soundCache.set(uri, sound);
+    } else {
+      // 缓存命中时也要确保更新间隔正确
+      await sound.setStatusAsync({ progressUpdateIntervalMillis: 100 });
+    }
+    this.soundAccessTime.set(uri, Date.now());
+    return sound;
   }
 
   /**
@@ -367,68 +422,82 @@ export class VoiceService {
     onProgress?: (position: number) => void
   ): Promise<void> {
     try {
+      // 修复旧绝对路径（沙盒 UUID 变化后路径失效）
+      const resolvedUri = this.resolveAudioUri(uri);
+      if (resolvedUri !== uri) {
+        logger.log('[playAudio] uri resolved:', uri.slice(-30), '→', resolvedUri.slice(-30));
+      }
+      uri = resolvedUri;
+
+      logger.log('[playAudio] ▶ called uri:', uri.slice(-30));
+      logger.log('[playAudio] currentPlayingUri:', this.currentPlayingUri?.slice(-30) ?? 'null');
+
+      // 文件不存在时提前退出，避免 expo-av 抛出 WARN
+      const { exists } = await getFileInfo(uri);
+      if (!exists) {
+        logger.warn('[playAudio] File not found:', uri.slice(-50));
+        throw this.createError('CODEC_ERROR', '音频文件不存在或已被删除');
+      }
+
       // 如果正在播放同一个音频，直接返回
       if (this.currentPlayingUri === uri && this.sound) {
         const status = await this.sound.getStatusAsync();
+        logger.log('[playAudio] same uri status:', JSON.stringify(status));
         if (status.isLoaded && status.isPlaying) {
+          logger.log('[playAudio] already playing, return early');
           return;
         }
       }
 
-      // 停止之前的播放
+      // 停止之前的播放，并通知旧卡片重置状态
       if (this.sound && this.currentPlayingUri !== uri) {
+        logger.log('[playAudio] stopping previous sound');
         await this.sound.stopAsync();
+        this.prevOnComplete?.();
+        this.prevOnComplete = null;
         this.sound = null;
       }
 
-      // 切换到播放模式（优化：使用新的切换方法）
+      // 切换到播放模式
       await this.switchToPlaybackMode();
 
-      // 尝试从缓存获取 Sound 实例
-      let sound = this.soundCache.get(uri);
-
-      if (!sound) {
-        // 创建新的 Sound 实例并预加载
-        sound = new Audio.Sound();
-        await sound.loadAsync({ uri }, { shouldPlay: false });
-
-        // 缓存 Sound 实例（最多缓存 5 个）
-        if (this.soundCache.size >= 5) {
-          // 删除最旧的缓存
-          const firstKey = this.soundCache.keys().next().value;
-          const oldSound = this.soundCache.get(firstKey);
-          if (oldSound) {
-            await oldSound.unloadAsync().catch(() => {});
-          }
-          this.soundCache.delete(firstKey);
-        }
-        this.soundCache.set(uri, sound);
-      }
-
+      // 从缓存获取或加载 Sound 实例
+      const fromCache = this.soundCache.has(uri);
+      logger.log('[playAudio] loadToCache fromCache:', fromCache);
+      const sound = await this.loadToCache(uri);
       this.sound = sound;
       this.currentPlayingUri = uri;
 
+      // 记录新的完成回调，供下次切换时调用
+      this.prevOnComplete = onComplete || null;
+
       // 设置播放状态更新回调
       this.sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          // 更新播放进度
-          if (status.isPlaying && onProgress) {
-            onProgress(status.positionMillis);
-          }
-
-          // 播放完成
-          if (status.didJustFinish) {
-            this.currentPlayingUri = null;
-            onComplete?.();
-          }
+        if (!status.isLoaded) {
+          logger.log('[playAudio] status NOT loaded, error:', (status as any).error);
+          return;
+        }
+        if (onProgress && status.isPlaying) {
+          onProgress(status.positionMillis);
+        }
+        if (status.didJustFinish) {
+          logger.log('[playAudio] didJustFinish');
+          this.currentPlayingUri = null;
+          this.prevOnComplete = null;
+          onComplete?.();
         }
       });
 
+      // 回调注册后再设置进度更新间隔，确保回调能收到进度事件
+      await this.sound.setStatusAsync({ progressUpdateIntervalMillis: 100 });
+
       // 从头开始播放
       await this.sound.setPositionAsync(0);
+      logger.log('[playAudio] calling playAsync...');
       await this.sound.playAsync();
+      logger.log('[playAudio] playAsync done');
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      logger.error('[playAudio] error:', error);
       this.currentPlayingUri = null;
       throw this.createError('CODEC_ERROR', ERROR_MESSAGES.CODEC_ERROR);
     }
@@ -439,33 +508,21 @@ export class VoiceService {
    */
   static async preloadAudio(uri: string): Promise<void> {
     try {
-      // 如果已经缓存，直接返回
-      if (this.soundCache.has(uri)) {
+      const resolvedUri = this.resolveAudioUri(uri);
+      if (this.soundCache.has(resolvedUri)) return;
+
+      // 文件不存在时静默跳过，避免 expo-av 报错
+      const { exists } = await getFileInfo(resolvedUri);
+      if (!exists) {
+        logger.warn('[VoiceService] Preload skipped, file not found:', resolvedUri.slice(-40));
         return;
       }
 
-      // 切换到播放模式（优化：使用新的切换方法）
       await this.switchToPlaybackMode();
-
-      // 创建并预加载 Sound 实例
-      const sound = new Audio.Sound();
-      await sound.loadAsync({ uri }, { shouldPlay: false });
-
-      // 缓存 Sound 实例
-      if (this.soundCache.size >= 5) {
-        const firstKey = this.soundCache.keys().next().value;
-        const oldSound = this.soundCache.get(firstKey);
-        if (oldSound) {
-          await oldSound.unloadAsync().catch(() => {});
-        }
-        this.soundCache.delete(firstKey);
-      }
-      this.soundCache.set(uri, sound);
-
-      console.log('[VoiceService] Audio preloaded:', uri);
+      await this.loadToCache(resolvedUri);
+      logger.log('[VoiceService] Audio preloaded:', resolvedUri);
     } catch (error) {
-      console.error('[VoiceService] Failed to preload audio:', error);
-      // 预加载失败不抛出错误，只记录日志
+      logger.error('[VoiceService] Failed to preload audio:', error);
     }
   }
 
@@ -479,7 +536,7 @@ export class VoiceService {
       }
       await this.sound.pauseAsync();
     } catch (error) {
-      console.error('Failed to pause playback:', error);
+      logger.error('Failed to pause playback:', error);
     }
   }
 
@@ -492,10 +549,12 @@ export class VoiceService {
         return;
       }
       await this.sound.stopAsync();
-      await this.sound.unloadAsync();
+      // 不调用 unloadAsync：sound 实例可能在 soundCache 中，
+      // unload 会使缓存失效，下次播放同一文件时报错
       this.sound = null;
+      this.currentPlayingUri = null;
     } catch (error) {
-      console.error('Failed to stop playback:', error);
+      logger.error('Failed to stop playback:', error);
     }
   }
 
@@ -510,7 +569,7 @@ export class VoiceService {
       const status = await this.sound.getStatusAsync();
       return status.isLoaded && status.isPlaying;
     } catch (error) {
-      console.error('Failed to check playback status:', error);
+      logger.error('Failed to check playback status:', error);
       return false;
     }
   }
@@ -528,12 +587,13 @@ export class VoiceService {
       }
 
       const status = await this.sound.getStatusAsync();
+      const loaded = status.isLoaded ? status : null;
       return {
-        current: (status.positionMillis || 0) / 1000,
-        total: (status.durationMillis || 0) / 1000,
+        current: (loaded?.positionMillis || 0) / 1000,
+        total: (loaded?.durationMillis || 0) / 1000,
       };
     } catch (error) {
-      console.error('Failed to get playback progress:', error);
+      logger.error('Failed to get playback progress:', error);
       return { current: 0, total: 0 };
     }
   }
@@ -565,7 +625,7 @@ export class VoiceService {
         mimeType: 'audio/m4a',
       };
     } catch (error) {
-      console.error('Failed to compress audio:', error);
+      logger.error('Failed to compress audio:', error);
       throw this.createError('CODEC_ERROR', ERROR_MESSAGES.CODEC_ERROR);
     }
   }
@@ -581,13 +641,13 @@ export class VoiceService {
       await sound.loadAsync({ uri });
       const status = await sound.getStatusAsync();
       await sound.unloadAsync();
-
+      const loaded = status.isLoaded ? status : null;
       return {
-        duration: (status.durationMillis || 0) / 1000,
+        duration: (loaded?.durationMillis || 0) / 1000,
         size,
       };
     } catch (error) {
-      console.error('Failed to get audio metadata:', error);
+      logger.error('Failed to get audio metadata:', error);
       return {
         duration: 0,
         size: 0,
@@ -602,7 +662,7 @@ export class VoiceService {
     try {
       await deleteFile(uri);
     } catch (error) {
-      console.error('Failed to delete audio:', error);
+      logger.error('Failed to delete audio:', error);
     }
   }
 
@@ -644,12 +704,25 @@ export class VoiceService {
 
       return targetUri;
     } catch (error) {
-      if (error instanceof MediaError) {
-        throw error;
+      if ((error as any)?.code) {
+        throw error; // 已是 MediaError，直接透传
       }
-      console.error('Failed to save voice:', error);
+      logger.error('Failed to save voice:', error);
       throw this.createError('DEVICE_STORAGE_FULL', ERROR_MESSAGES.STORAGE_FULL);
     }
+  }
+
+  /**
+   * 清除音频缓存
+   */
+  static async clearSoundCache(): Promise<void> {
+    for (const [, sound] of this.soundCache) {
+      await sound.unloadAsync().catch(() => {});
+    }
+    this.soundCache.clear();
+    this.soundAccessTime.clear();
+    this.currentPlayingUri = null;
+    this.sound = null;
   }
 
   /**
@@ -667,53 +740,13 @@ export class VoiceService {
 }
 
 /**
- * 语音相关的 Hook
+ * 语音相关的 Hook - 直接委托给 VoiceService
  */
 export function useVoiceEntry() {
-  const startRecording = async () => {
-    try {
-      return await VoiceService.startRecording();
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      throw error;
-    }
-  };
-
-  const stopRecording = async () => {
-    try {
-      return await VoiceService.stopRecording();
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      throw error;
-    }
-  };
-
-  const playAudio = async (uri: string) => {
-    try {
-      return await VoiceService.playAudio(uri);
-    } catch (error) {
-      console.error('Failed to play audio:', error);
-      throw error;
-    }
-  };
-
-  const saveVoice = async (
-    uri: string,
-    entryId: string,
-    quality: 'low' | 'medium' | 'high' = 'medium'
-  ) => {
-    try {
-      return await VoiceService.saveVoiceToStorage(uri, entryId, quality);
-    } catch (error) {
-      console.error('Failed to save voice:', error);
-      throw error;
-    }
-  };
-
   return {
-    startRecording,
-    stopRecording,
-    playAudio,
-    saveVoice,
+    startRecording: VoiceService.startRecording.bind(VoiceService),
+    stopRecording: VoiceService.stopRecording.bind(VoiceService),
+    playAudio: VoiceService.playAudio.bind(VoiceService),
+    saveVoice: VoiceService.saveVoiceToStorage.bind(VoiceService),
   };
 }

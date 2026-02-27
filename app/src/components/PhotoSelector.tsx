@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { PhotoService } from '@/src/services/photoService';
+import { logger } from '@/src/utils/logger';
 
 interface PhotoSelectorProps {
   visible: boolean;
@@ -34,7 +35,7 @@ export function PhotoSelector({ visible, onSelectPhoto, onCancel }: PhotoSelecto
       if (error instanceof Error && error.message === 'User cancelled camera') {
         return;
       }
-      console.error('Failed to take photo:', error);
+      logger.error('Failed to take photo:', error);
       alert('拍照失败，请检查相机权限');
     } finally {
       setIsLoading(false);
@@ -54,7 +55,7 @@ export function PhotoSelector({ visible, onSelectPhoto, onCancel }: PhotoSelecto
       if (error instanceof Error && error.message === 'User cancelled photo library') {
         return;
       }
-      console.error('Failed to pick photo:', error);
+      logger.error('Failed to pick photo:', error);
       alert('选择照片失败，请检查相册权限');
     } finally {
       setIsLoading(false);

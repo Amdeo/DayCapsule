@@ -313,14 +313,15 @@ export function getMonthStats(
   month: number
 ): Map<string, number> {
   const stats = new Map<string, number>();
-  const dates = getMonthDates(year, month);
 
-  dates.forEach((date) => {
-    const count = getEntriesCountByDate(entries, date);
-    if (count > 0) {
-      stats.set(formatDate(date.getTime()), count);
+  // O(entries) 单次遍历，避免 O(days × entries) 的嵌套过滤
+  for (const entry of entries) {
+    const d = new Date(entry.timestamp);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = formatDate(entry.timestamp);
+      stats.set(key, (stats.get(key) ?? 0) + 1);
     }
-  });
+  }
 
   return stats;
 }

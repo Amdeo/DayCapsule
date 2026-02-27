@@ -14,78 +14,66 @@ interface WaveformAnimationProps {
   color?: string;
 }
 
-const WAVE_COUNT = 50; // 更密集的波形条
+const WAVE_COUNT = 50;
 const BAR_WIDTH = 2;
-const BAR_GAP = 1; // 更小的间隔
+const BAR_GAP = 1;
 const BAR_RADIUS = 1;
 const MIN_HEIGHT = 4;
 const MAX_HEIGHT = 24;
 const CONTAINER_HEIGHT = 28;
 
+// 每个 bar 自管理 useSharedValue，避免在父组件循环中调用 Hook（违反 Rules of Hooks）
+interface WaveBarProps {
+  isRecording: boolean;
+  color: string;
+}
+
+const WaveBar = React.memo(function WaveBar({ isRecording, color }: WaveBarProps) {
+  const height = useSharedValue(MIN_HEIGHT);
+
+  useEffect(() => {
+    if (isRecording) {
+      const randomDuration = 100 + Math.random() * 100;
+      const randomHeight = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
+      height.value = withRepeat(
+        withTiming(randomHeight, {
+          duration: randomDuration,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        true
+      );
+    } else {
+      cancelAnimation(height);
+      height.value = withTiming(MIN_HEIGHT, {
+        duration: 200,
+        easing: Easing.out(Easing.ease),
+      });
+    }
+    return () => {
+      cancelAnimation(height);
+    };
+  }, [isRecording]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+    backgroundColor: color,
+  }));
+
+  return <Animated.View style={[styles.bar, animatedStyle]} />;
+});
+
 const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
   isRecording,
   color = '#F5A623',
 }) => {
-  const waveHeights = Array.from({ length: WAVE_COUNT }, () =>
-    useSharedValue(MIN_HEIGHT)
-  );
-
-  useEffect(() => {
-    if (isRecording) {
-      waveHeights.forEach((height) => {
-        const randomDuration = 100 + Math.random() * 100;
-        const randomHeight = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
-
-        height.value = withRepeat(
-          withTiming(randomHeight, {
-            duration: randomDuration,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          -1,
-          true
-        );
-      });
-    } else {
-      waveHeights.forEach((height) => {
-        cancelAnimation(height);
-        height.value = withTiming(MIN_HEIGHT, {
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-        });
-      });
-    }
-
-    // 组件卸载时清理所有动画
-    return () => {
-      waveHeights.forEach((height) => {
-        cancelAnimation(height);
-      });
-    };
-  }, [isRecording, waveHeights]);
-
   return (
     <View style={styles.container}>
-      {waveHeights.map((height, index) => (
-        <WaveBar key={index} height={height} color={color} />
+      {Array.from({ length: WAVE_COUNT }, (_, index) => (
+        <WaveBar key={index} isRecording={isRecording} color={color} />
       ))}
     </View>
   );
-};
-
-interface WaveBarProps {
-  height: Animated.SharedValue<number>;
-  color: string;
-}
-
-const WaveBar: React.FC<WaveBarProps> = ({ height, color }) => {
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      height: height.value,
-      backgroundColor: color,
-    };
-  });
-
-  return <Animated.View style={[styles.bar, animatedStyle]} />;
 };
 
 const styles = StyleSheet.create({

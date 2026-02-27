@@ -1,6 +1,5 @@
 /**
- * 语音录制组件
- * 提供录音界面和控制
+ * 语音录制组件 - 现代浅色风格
  */
 
 import React, { useEffect, useState } from 'react';
@@ -11,8 +10,12 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { VoiceService } from '@/src/services/voiceService';
+import WaveformAnimation from './WaveformAnimation';
+import { logger } from '@/src/utils/logger';
 
 interface VoiceRecorderProps {
   visible: boolean;
@@ -27,19 +30,25 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 更新时长
+  // 计时器
   useEffect(() => {
     if (!isRecording || isPaused) return;
-
-    const timer = setInterval(() => {
-      setDuration((prev) => prev + 1);
-    }, 1000);
-
+    const timer = setInterval(() => setDuration((p) => p + 1), 1000);
     return () => clearInterval(timer);
   }, [isRecording, isPaused]);
 
-  // 开始录音
-  const handleStartRecording = async () => {
+  // 关闭时重置状态
+  useEffect(() => {
+    if (!visible) {
+      setIsRecording(false);
+      setIsPaused(false);
+      setDuration(0);
+      setRecordingUri(null);
+      setIsLoading(false);
+    }
+  }, [visible]);
+
+  const handleStart = async () => {
     try {
       setIsLoading(true);
       await VoiceService.startRecording();
@@ -47,35 +56,32 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
       setDuration(0);
       setIsPaused(false);
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      alert('无法启动录音，请检查权限');
+      logger.error('Failed to start recording:', error);
+      Alert.alert('录音失败', '无法启动录音，请检查麦克风权限');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 暂停录音
-  const handlePauseRecording = async () => {
+  const handlePause = async () => {
     try {
       await VoiceService.pauseRecording();
       setIsPaused(true);
     } catch (error) {
-      console.error('Failed to pause recording:', error);
+      logger.error('Failed to pause recording:', error);
     }
   };
 
-  // 继续录音
-  const handleResumeRecording = async () => {
+  const handleResume = async () => {
     try {
       await VoiceService.resumeRecording();
       setIsPaused(false);
     } catch (error) {
-      console.error('Failed to resume recording:', error);
+      logger.error('Failed to resume recording:', error);
     }
   };
 
-  // 停止录音
-  const handleStopRecording = async () => {
+  const handleStop = async () => {
     try {
       setIsLoading(true);
       const audioFile = await VoiceService.stopRecording();
@@ -83,172 +89,171 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
       setIsRecording(false);
       setIsPaused(false);
     } catch (error) {
-      console.error('Failed to stop recording:', error);
-      alert('保存录音失败');
+      logger.error('Failed to stop recording:', error);
+      Alert.alert('保存失败', '保存录音失败，请重试');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 取消录音
-  const handleCancelRecording = async () => {
+  const handleCancel = async () => {
     try {
-      if (isRecording) {
-        await VoiceService.cancelRecording();
-      }
-      setIsRecording(false);
-      setIsPaused(false);
-      setDuration(0);
-      setRecordingUri(null);
-      onCancel();
+      if (isRecording) await VoiceService.cancelRecording();
     } catch (error) {
-      console.error('Failed to cancel recording:', error);
+      logger.error('Failed to cancel recording:', error);
     }
+    onCancel();
   };
 
-  // 保存录音
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!recordingUri) return;
-
-    try {
-      onSave(recordingUri, duration);
-      setDuration(0);
-      setRecordingUri(null);
-    } catch (error) {
-      console.error('Failed to save recording:', error);
-    }
+    onSave(recordingUri, duration);
   };
 
-  // 格式化时间
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const handleRetry = () => {
+    setRecordingUri(null);
+    setDuration(0);
   };
+
+  const formatTime = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={handleCancelRecording}
+      animationType="fade"
+      onRequestClose={handleCancel}
     >
-      <View style={styles.container}>
-        {/* 标题 */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancelRecording}>
-            <Text style={styles.closeButton}>✕</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>🎤 语音记录</Text>
-          <View style={{ width: 44 }} />
-        </View>
+      <View style={styles.overlay}>
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleCancel} />
 
-        {/* 主要内容 */}
-        <View style={styles.content}>
-          {isRecording ? (
-            <>
-              {/* 录音中 */}
-              <View style={styles.wavformContainer}>
-                <View style={styles.wavform}>
-                  {[...Array(5)].map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.bar,
-                        {
-                          height: Math.random() * 60 + 20,
-                          animationDelay: `${i * 100}ms`,
-                        },
-                      ]}
-                    />
-                  ))}
+        <View style={styles.sheet}>
+          {/* 拖动条 */}
+          <View style={styles.handle} />
+
+          {/* 标题栏 */}
+          <View style={styles.header}>
+            <View style={styles.typeBadge}>
+              <Ionicons name="mic" size={14} color="#F5A623" />
+              <Text style={styles.typeBadgeText}>语音记录</Text>
+            </View>
+            <TouchableOpacity onPress={handleCancel} style={styles.closeBtn}>
+              <Ionicons name="close" size={20} color="#737373" />
+            </TouchableOpacity>
+          </View>
+
+          {/* 内容区 */}
+          <View style={styles.body}>
+            {!isRecording && !recordingUri ? (
+              /* ── 待机状态 ── */
+              <View style={styles.idleContainer}>
+                <View style={styles.micCircle}>
+                  <Ionicons name="mic" size={40} color="#F5A623" />
                 </View>
+                <Text style={styles.idleTitle}>准备录音</Text>
+                <Text style={styles.idleSubtitle}>点击下方按钮开始</Text>
               </View>
-
-              {/* 时长和文件大小 */}
-              <View style={styles.statsContainer}>
-                <Text style={styles.duration}>{formatTime(duration)}</Text>
-                <Text style={styles.quality}>质量: 高</Text>
-              </View>
-
-              {/* 控制按钮 */}
-              <View style={styles.controls}>
-                {isPaused ? (
-                  <TouchableOpacity
-                    style={[styles.button, styles.continueButton]}
-                    onPress={handleResumeRecording}
-                  >
-                    <Text style={styles.buttonText}>▶ 继续</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.button, styles.pauseButton]}
-                    onPress={handlePauseRecording}
-                  >
-                    <Text style={styles.buttonText}>⏸ 暂停</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.button, styles.stopButton]}
-                  onPress={handleStopRecording}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>⏹ 停止</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : recordingUri ? (
-            <>
-              {/* 录音完成 */}
-              <Text style={styles.completeText}>✓ 录音完成</Text>
-              <Text style={styles.fileInfo}>时长: {formatTime(duration)}</Text>
-
-              <View style={styles.controls}>
-                <TouchableOpacity
-                  style={[styles.button, styles.saveButton]}
-                  onPress={handleSave}
-                >
-                  <Text style={styles.buttonText}>💾 保存</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.button, styles.retryButton]}
-                  onPress={() => {
-                    setRecordingUri(null);
-                    setDuration(0);
-                  }}
-                >
-                  <Text style={styles.buttonText}>🔄 重新录制</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* 准备录音 */}
-              <View style={styles.placeholderContainer}>
-                <Text style={styles.placeholderIcon}>🎤</Text>
-                <Text style={styles.placeholderText}>准备好了吗？</Text>
-                <Text style={styles.placeholderSubtext}>
-                  点击下方按钮开始录音
+            ) : isRecording ? (
+              /* ── 录音中 ── */
+              <View style={styles.recordingContainer}>
+                <Text style={styles.timer}>{formatTime(duration)}</Text>
+                <View style={styles.waveformBox}>
+                  <WaveformAnimation
+                    isRecording={!isPaused}
+                    color={isPaused ? '#D1D1D1' : '#F5A623'}
+                  />
+                </View>
+                <Text style={styles.recordingHint}>
+                  {isPaused ? '已暂停' : '录音中...'}
                 </Text>
               </View>
+            ) : (
+              /* ── 录音完成 ── */
+              <View style={styles.doneContainer}>
+                <View style={styles.doneCircle}>
+                  <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+                </View>
+                <Text style={styles.doneTitle}>录音完成</Text>
+                <Text style={styles.doneDuration}>{formatTime(duration)}</Text>
+              </View>
+            )}
+          </View>
 
-              <View style={styles.controls}>
+          {/* 操作按钮 */}
+          <View style={styles.actions}>
+            {!isRecording && !recordingUri ? (
+              /* 开始录音 */
+              <TouchableOpacity
+                style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
+                onPress={handleStart}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="mic" size={20} color="#FFFFFF" />
+                    <Text style={styles.primaryBtnText}>开始录音</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : isRecording ? (
+              /* 暂停 + 停止 */
+              <>
                 <TouchableOpacity
-                  style={[styles.button, styles.startButton]}
-                  onPress={handleStartRecording}
+                  style={styles.secondaryBtn}
+                  onPress={isPaused ? handleResume : handlePause}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={isPaused ? 'play' : 'pause'}
+                    size={20}
+                    color="#4A4A4A"
+                  />
+                  <Text style={styles.secondaryBtnText}>{isPaused ? '继续' : '暂停'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.stopBtn, isLoading && styles.btnDisabled]}
+                  onPress={handleStop}
                   disabled={isLoading}
+                  activeOpacity={0.8}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.buttonText}>🎙 开始录音</Text>
+                    <>
+                      <View style={styles.stopIcon} />
+                      <Text style={styles.primaryBtnText}>停止</Text>
+                    </>
                   )}
                 </TouchableOpacity>
-              </View>
-            </>
-          )}
+              </>
+            ) : (
+              /* 重录 + 保存 */
+              <>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={handleRetry}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="refresh" size={20} color="#4A4A4A" />
+                  <Text style={styles.secondaryBtnText}>重新录制</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={handleSave}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>保存</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          <View style={{ height: 24 }} />
         </View>
       </View>
     </Modal>
@@ -256,129 +261,200 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
 }
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
-    backgroundColor: '#121212',
-    paddingTop: 50,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E5E5',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  closeButton: {
-    fontSize: 28,
-    color: '#999',
-    width: 44,
-    textAlign: 'left',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 16,
   },
-  wavformContainer: {
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFF8EE',
+    borderRadius: 10,
+  },
+  typeBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F5A623',
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 200,
   },
-  wavform: {
+  body: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  // 待机
+  idleContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  micCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFF8EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  idleTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  idleSubtitle: {
+    fontSize: 14,
+    color: '#A3A3A3',
+  },
+  // 录音中
+  recordingContainer: {
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
+  },
+  timer: {
+    fontSize: 52,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 2,
+  },
+  waveformBox: {
+    width: '100%',
+    height: 28,
+  },
+  recordingHint: {
+    fontSize: 13,
+    color: '#A3A3A3',
+    fontWeight: '500',
+  },
+  // 完成
+  doneContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  doneCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  doneTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  doneDuration: {
+    fontSize: 16,
+    color: '#737373',
+    fontVariant: ['tabular-nums'],
+  },
+  // 按钮
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  primaryBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5A623',
+    shadowColor: '#F5A623',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  bar: {
-    width: 6,
-    backgroundColor: '#6200ee',
-    borderRadius: 3,
-  },
-  statsContainer: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  duration: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  quality: {
-    fontSize: 14,
-    color: '#999',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  button: {
+  stopBtn: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  startButton: {
-    backgroundColor: '#ff6f00',
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F5F5F5',
   },
-  pauseButton: {
-    backgroundColor: '#6200ee',
-  },
-  continueButton: {
-    backgroundColor: '#6200ee',
-  },
-  stopButton: {
-    backgroundColor: '#d32f2f',
-  },
-  saveButton: {
-    backgroundColor: '#4caf50',
-  },
-  retryButton: {
-    backgroundColor: '#2196f3',
-  },
-  buttonText: {
-    color: '#fff',
+  primaryBtnText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  placeholderContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  placeholderIcon: {
-    fontSize: 80,
-    marginBottom: 24,
-  },
-  placeholderText: {
-    fontSize: 24,
+  secondaryBtnText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 12,
+    color: '#4A4A4A',
   },
-  placeholderSubtext: {
-    fontSize: 14,
-    color: '#999',
+  stopIcon: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
-  completeText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#4caf50',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  fileInfo: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 40,
+  btnDisabled: {
+    opacity: 0.5,
   },
 });
