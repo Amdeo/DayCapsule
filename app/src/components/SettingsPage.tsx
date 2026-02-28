@@ -12,6 +12,7 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Dimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -405,6 +406,8 @@ function SettingButton({
   );
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -415,10 +418,10 @@ const styles = StyleSheet.create({
   },
   page: {
     position: 'absolute',
+    left: 0,
     right: 0,
     top: 0,
-    bottom: 0,
-    width: '100%',
+    height: SCREEN_HEIGHT,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },

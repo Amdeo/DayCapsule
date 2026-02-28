@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInLeft, SlideOutLeft } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -176,6 +176,8 @@ export function Sidebar({ visible, onClose }: SidebarProps) {
   );
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    bottom: 0,
+    height: SCREEN_HEIGHT,
     width: '80%',
     maxWidth: 320,
     backgroundColor: '#FFFFFF',

@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -203,11 +203,14 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   page: {
-    position: 'absolute', right: 0, top: 0, bottom: 0, width: '100%',
+    position: 'absolute', left: 0, right: 0, top: 0,
+    height: SCREEN_HEIGHT,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
