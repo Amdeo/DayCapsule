@@ -361,33 +361,53 @@ export const clearAllEntries = async (): Promise<void> => {
 
 /**
  * 批量恢复记录（跳过已存在的 ID，幂等）
- * 返回实际插入的数量
+ * 返回实际插入的记录 ID 列表
  */
-export const restoreEntries = async (entries: Entry[]): Promise<number> => {
+export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   const db = getDatabase();
-  let inserted = 0;
+  const insertedIds: string[] = [];
+  let failed = 0;
+
   for (const e of entries) {
     try {
-      await db.runAsync(
-        `INSERT OR IGNORE INTO entries
-           (id, type, content, timestamp, tags, media_uri, media_type,
-            media_duration, recording_status, recording_duration, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          e.id, e.type, e.content, e.timestamp,
-          e.tags ? JSON.stringify(e.tags) : null,
-          e.media?.uri ?? null, e.media?.mimeType ?? null,
-          e.media?.duration ?? null,
-          e.recordingStatus ?? null, e.recordingDuration ?? null,
-          e.timestamp, e.editedAt ?? e.timestamp,
-        ]
-      );
-      await upsertEntryTags(db, e.id, e.tags ?? []);
-      inserted++;
-    } catch {
-      // 跳过单条失败，继续处理其余记录
+      // 使用事务保证单条记录的原子性
+      await db.withTransactionAsync(async () => {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO entries
+             (id, type, content, timestamp, tags, media_uri, media_type,
+              media_duration, recording_status, recording_duration, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            e.id, e.type, e.content, e.timestamp,
+            e.tags ? JSON.stringify(e.tags) : null,
+            e.media?.uri ?? null, e.media?.mimeType ?? null,
+            e.media?.duration ?? null,
+            e.recordingStatus ?? null, e.recordingDuration ?? null,
+            e.timestamp, e.editedAt ?? e.timestamp,
+          ]
+        );
+
+        // 检查实际插入的行数
+        const result = await db.getFirstAsync<{ changes: number }>(
+          'SELECT changes() as changes'
+        );
+        const wasInserted = result?.changes === 1;
+
+        // 只有实际插入成功后才同步标签并记录 ID
+        if (wasInserted) {
+          await upsertEntryTags(db, e.id, e.tags ?? []);
+          insertedIds.push(e.id);
+        }
+      });
+    } catch (error) {
+      failed++;
+      logger.warn(`[restoreEntries] 恢复记录失败: ${e.id}`, error);
     }
   }
-  logger.log(`✅ 恢复完成：${inserted}/${entries.length} 条`);
-  return inserted;
+
+  if (failed > 0) {
+    logger.warn(`[restoreEntries] ${failed} 条记录恢复失败`);
+  }
+  logger.log(`✅ 恢复完成：${insertedIds.length}/${entries.length} 条${failed > 0 ? `，${failed} 条失败` : ''}`);
+  return insertedIds;
 };

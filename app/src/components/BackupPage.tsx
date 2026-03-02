@@ -11,6 +11,7 @@ import { useEntryStore } from '@/src/store/entryStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '@/src/services/syncService';
+import { logger } from '@/src/utils/logger';
 
 interface BackupPageProps {
   visible: boolean;
@@ -34,7 +35,7 @@ function formatLastBackupTime(ts: number | null): string {
 
 export function BackupPage({ visible, onClose }: BackupPageProps) {
   const insets = useSafeAreaInsets();
-  const { entries, restoreEntries } = useEntryStore();
+  const { entries, restoreEntries, updateEntry } = useEntryStore();
   const [shouldRender, setShouldRender] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [usedSpace, setUsedSpace] = useState('计算中...');
@@ -89,12 +90,49 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
 
   const handleImport = async () => {
     setIsImporting(true);
+    let parsedBackup: { data: any; zip: any } | null = null;
+
     try {
-      const data = await SyncService.pickAndParseBackup();
-      if (!data) return;
-      const count = await restoreEntries(data.entries as any);
+      // ① 解析备份（不提取媒体）
+      parsedBackup = await SyncService.pickAndParseBackup();
+      if (!parsedBackup) return;
+
+      const { data, zip } = parsedBackup;
+
+      // ② 先恢复数据库记录，获取实际插入的 ID 列表
+      const insertedIds = await restoreEntries(data.entries as any);
+
+      // ③ 数据库恢复成功后，再提取媒体文件
+      if (insertedIds.length > 0) {
+        try {
+          const entriesWithMedia = await SyncService.extractMediaFromZip(
+            zip,
+            data.entries
+          );
+
+          // 仅对本次实际插入的记录更新媒体 URI（保持幂等性）
+          const insertedIdSet = new Set(insertedIds);
+          for (const entry of entriesWithMedia) {
+            if (entry.id && insertedIdSet.has(entry.id) && entry.media?.uri) {
+              await updateEntry(entry.id as string, {
+                media: entry.media as any,
+              });
+            }
+          }
+        } catch (mediaError) {
+          logger.warn('[BackupPage] 媒体文件提取失败:', mediaError);
+          // 媒体提取失败不阻断流程，但提示用户
+          Alert.alert(
+            '部分恢复',
+            `已恢复 ${insertedIds.length} 条记录，但部分媒体文件未能还原。您可以重新导入备份尝试恢复媒体。`
+          );
+          await refreshBackupInfo();
+          return;
+        }
+      }
+
       await refreshBackupInfo();
-      Alert.alert('导入成功', `已恢复 ${count} / ${data.entries.length} 条记录`);
+      Alert.alert('导入成功', `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`);
     } catch (e: any) {
       Alert.alert('导入失败', e?.message ?? '无法解析备份文件，请确认格式正确');
     } finally {

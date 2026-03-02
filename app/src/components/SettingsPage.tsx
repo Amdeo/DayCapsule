@@ -1,5 +1,6 @@
 /**
  * 设置页面组件
+ * 使用 settingsStore 共享状态
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -18,7 +19,7 @@ import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
-import { Storage } from '@/src/utils/storage';
+import { useSettingsStore, CardSpacing, SPACING_VALUES } from '@/src/store/settingsStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { NotificationService } from '@/src/services/notificationService';
@@ -29,16 +30,11 @@ interface SettingsPageProps {
   onClose: () => void;
 }
 
-const SETTINGS_KEYS = {
-  notifications: 'settings:notifications',
-  autoBackup: 'settings:autoBackup',
-  highQualityPhotos: 'settings:highQualityPhotos',
-};
-
-const DEFAULT_SETTINGS = {
-  notifications: true,
-  autoBackup: false,
-  highQualityPhotos: true,
+// 间距标签映射
+const SPACING_LABELS: Record<CardSpacing, string> = {
+  compact: '紧凑',
+  default: '默认',
+  loose: '宽松',
 };
 
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
@@ -47,28 +43,37 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
-  // 设置状态
-  const [notifications, setNotifications] = useState(DEFAULT_SETTINGS.notifications);
-  const [autoBackup, setAutoBackup] = useState(DEFAULT_SETTINGS.autoBackup);
-  const [highQualityPhotos, setHighQualityPhotos] = useState(DEFAULT_SETTINGS.highQualityPhotos);
+  // 从共享 store 获取设置
+  const {
+    notifications,
+    autoBackup,
+    highQualityPhotos,
+    cardSpacing,
+    isLoaded,
+    loadSettings,
+    setNotifications: saveNotifications,
+    setAutoBackup: saveAutoBackup,
+    setHighQualityPhotos: saveHighQualityPhotos,
+    setCardSpacing: saveCardSpacing,
+    resetSettings,
+  } = useSettingsStore();
 
   // 存储统计
   const [usedSpace, setUsedSpace] = useState('计算中...');
 
-  // 从持久化存储加载设置，并同步通知调度状态
+  // 加载设置（首次挂载时）
   useEffect(() => {
-    const loadSettings = async () => {
-      const [notif, backup, hq] = await Promise.all([
-        Storage.getString(SETTINGS_KEYS.notifications),
-        Storage.getString(SETTINGS_KEYS.autoBackup),
-        Storage.getString(SETTINGS_KEYS.highQualityPhotos),
-      ]);
-      if (notif !== null) setNotifications(notif === 'true');
-      if (backup !== null) setAutoBackup(backup === 'true');
-      if (hq !== null) setHighQualityPhotos(hq === 'true');
+    if (!isLoaded) {
+      loadSettings();
+    }
+  }, [isLoaded, loadSettings]);
 
-      // 若设置为开启通知但调度已丢失（如重装后），重新调度
-      if (notif === 'true') {
+  // 同步通知调度状态（仅在设置加载后）
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const syncNotifications = async () => {
+      if (notifications) {
         const isScheduled = await NotificationService.isReminderScheduled();
         if (!isScheduled) {
           const granted = await NotificationService.requestPermission();
@@ -76,8 +81,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         }
       }
     };
-    loadSettings();
-  }, []);
+    syncNotifications();
+  }, [isLoaded, notifications]);
 
   // 加载存储统计
   useEffect(() => {
@@ -111,19 +116,20 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     } else {
       await NotificationService.cancelDailyReminder();
     }
-    setNotifications(v);
-    Storage.setString(SETTINGS_KEYS.notifications, String(v));
-  }, []);
+    await saveNotifications(v);
+  }, [saveNotifications]);
 
-  const handleAutoBackup = useCallback((v: boolean) => {
-    setAutoBackup(v);
-    Storage.setString(SETTINGS_KEYS.autoBackup, String(v));
-  }, []);
+  const handleAutoBackup = useCallback(async (v: boolean) => {
+    await saveAutoBackup(v);
+  }, [saveAutoBackup]);
 
-  const handleHighQualityPhotos = useCallback((v: boolean) => {
-    setHighQualityPhotos(v);
-    Storage.setString(SETTINGS_KEYS.highQualityPhotos, String(v));
-  }, []);
+  const handleHighQualityPhotos = useCallback(async (v: boolean) => {
+    await saveHighQualityPhotos(v);
+  }, [saveHighQualityPhotos]);
+
+  const handleCardSpacing = useCallback(async (spacing: CardSpacing) => {
+    await saveCardSpacing(spacing);
+  }, [saveCardSpacing]);
 
   // 真实统计数据
   const { photoCount, voiceCount } = useMemo(() => ({
@@ -167,7 +173,18 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           content: e.content,
           tags: e.tags,
           timestamp: e.timestamp,
-          media: e.media ? { mimeType: e.media.mimeType, size: e.media.size } : undefined,
+          editedAt: e.editedAt,
+          syncStatus: e.syncStatus,
+          media: e.media ? {
+            uri: e.media.uri,
+            mimeType: e.media.mimeType,
+            size: e.media.size,
+            duration: e.media.duration,
+            thumbnail: e.media.thumbnail,
+          } : undefined,
+          transcription: e.transcription,
+          recordingStatus: e.recordingStatus,
+          recordingDuration: e.recordingDuration,
         })),
       };
       await Share.share({
@@ -189,12 +206,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           text: '重置',
           style: 'destructive',
           onPress: async () => {
-            setNotifications(DEFAULT_SETTINGS.notifications);
-            setAutoBackup(DEFAULT_SETTINGS.autoBackup);
-            setHighQualityPhotos(DEFAULT_SETTINGS.highQualityPhotos);
-            await Promise.all(
-              Object.values(SETTINGS_KEYS).map((k) => Storage.delete(k))
-            );
+            await resetSettings();
             Alert.alert('成功', '设置已重置');
           },
         },
@@ -292,6 +304,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                       />
                     }
                   />
+                  <CardSpacingSelector
+                    value={cardSpacing}
+                    onChange={handleCardSpacing}
+                  />
                   <SettingButton
                     icon="download"
                     title="导出数据"
@@ -377,6 +393,104 @@ function SettingItem({
     </View>
   );
 }
+
+// 卡片间距选择器组件
+function CardSpacingSelector({
+  value,
+  onChange,
+}: {
+  value: CardSpacing;
+  onChange: (spacing: CardSpacing) => void;
+}) {
+  const options: CardSpacing[] = ['compact', 'default', 'loose'];
+
+  return (
+    <View style={csStyles.container}>
+      <View style={csStyles.icon}>
+        <Ionicons name="albums" size={20} color="#6A89CC" />
+      </View>
+      <View style={csStyles.content}>
+        <Text style={csStyles.title}>卡片间距</Text>
+        <Text style={csStyles.subtitle}>调整记录卡片之间的间距</Text>
+      </View>
+      <View style={csStyles.segmentContainer}>
+        {options.map((option) => (
+          <Pressable
+            key={option}
+            style={[csStyles.segment, value === option && csStyles.segmentActive]}
+            onPress={() => onChange(option)}
+          >
+            <Text style={[csStyles.segmentText, value === option && csStyles.segmentTextActive]}>
+              {SPACING_LABELS[option]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const csStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F4FF',
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  content: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4A4A4A',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#A3A3A3',
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5E5',
+    borderRadius: 8,
+    padding: 2,
+  },
+  segment: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  segmentActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 12,
+    color: '#737373',
+    fontWeight: '500',
+  },
+  segmentTextActive: {
+    color: '#6A89CC',
+    fontWeight: '600',
+  },
+});
 
 // 设置按钮组件
 function SettingButton({
@@ -523,3 +637,5 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
   },
 });
+
+export { CardSpacing, SPACING_VALUES };

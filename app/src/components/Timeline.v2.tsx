@@ -18,6 +18,7 @@ import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarView } from './CalendarView';
 import { StatsView } from './StatsView';
+import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 
 type ViewMode = 'list' | 'monthly' | 'calendar' | 'stats';
 
@@ -286,6 +287,7 @@ interface EntryMarkerProps {
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   isLast: boolean;
+  cardSpacing: number;
 }
 
 const EntryMarker = React.memo(function EntryMarker({
@@ -296,6 +298,7 @@ const EntryMarker = React.memo(function EntryMarker({
   onResumeRecording,
   onStopRecording,
   isLast,
+  cardSpacing,
 }: EntryMarkerProps) {
   const timelineLeft = 40;
 
@@ -322,7 +325,7 @@ const EntryMarker = React.memo(function EntryMarker({
       entering={FadeIn.springify()}
       exiting={FadeOut.duration(200)}
       layout={LinearTransition.springify()}
-      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : 24, position: 'relative' }}
+      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
     >
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
       <View
@@ -360,6 +363,7 @@ const EntryMarker = React.memo(function EntryMarker({
         onPauseRecording={onPauseRecording}
         onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
+        cardSpacing={cardSpacing}
       />
     </Animated.View>
   );
@@ -430,6 +434,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showViewToggle, setShowViewToggle] = useState(false);
   const sectionListRef = useRef<SectionList<Entry | { type: 'quickAdd' }, TimeSection>>(null);
+
+  // 从共享 store 获取卡片间距设置（无需轮询，自动响应状态变化）
+  const { cardSpacing: cardSpacingKey } = useSettingsStore();
+  const cardSpacing = SPACING_VALUES[cardSpacingKey];
+
   const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
   const scrollTopScale = useRef(new RNAnimated.Value(1)).current;
   const fabOpacity = useRef(new RNAnimated.Value(1)).current;
@@ -575,9 +584,10 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
         isLast={isLast}
+        cardSpacing={cardSpacing}
       />
     );
-  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, onQuickAdd]);
+  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, onQuickAdd, cardSpacing]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {

@@ -35,12 +35,8 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
     filterType,
     filterDateRange,
     selectedTags,
-    setSearchQuery,
-    setFilterType,
-    setFilterDateRange,
     getAllTags,
-    toggleTag,
-    clearTags,
+    applySearchFilters,
   } = useEntryStore();
 
   // 本地状态，点击搜索才提交
@@ -69,14 +65,14 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
     );
   };
 
-  const handleSearch = () => {
-    // 提交所有筛选到 store
-    setSearchQuery(localQuery);
-    setFilterType(localType);
-    setFilterDateRange(localDate);
-    // 同步标签：先清除再逐个添加
-    clearTags();
-    localTags.forEach((tag) => toggleTag(tag));
+  const handleSearch = async () => {
+    // 批量提交所有筛选条件，只触发一次数据库查询
+    await applySearchFilters({
+      query: localQuery,
+      type: localType,
+      dateRange: localDate,
+      tags: localTags,
+    });
     onSearch(localQuery);
     onClose();
   };

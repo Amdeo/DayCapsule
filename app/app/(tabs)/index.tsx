@@ -9,6 +9,7 @@ import { TextEditor } from '@/src/components/TextEditor';
 import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
+import { useSettingsStore } from '@/src/store/settingsStore';
 
 export default function HomeScreen() {
   const {
@@ -25,9 +26,13 @@ export default function HomeScreen() {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentRecordingIdRef = useRef<string | null>(null);
 
-  // 初始化：加载数据 + 预热音频
+  // 初始化：加载设置 + 数据 + 预热音频
   useEffect(() => {
-    loadEntries();
+    // 并行加载设置和条目数据
+    Promise.all([
+      useSettingsStore.getState().loadSettings(),
+      loadEntries(),
+    ]).catch(() => {});
 
     VoiceService.prewarmAudioSystem().catch(() => {});
 
@@ -94,7 +99,7 @@ export default function HomeScreen() {
           });
 
           const entries = useEntryStore.getState().entries;
-          const newEntry = entries[entries.length - 1];
+          const newEntry = entries[0];
 
           if (newEntry) {
             currentRecordingIdRef.current = newEntry.id;
@@ -197,7 +202,7 @@ export default function HomeScreen() {
       });
 
       const allEntries = useEntryStore.getState().entries;
-      const newEntry = allEntries[allEntries.length - 1];
+      const newEntry = allEntries[0];
 
       if (newEntry) {
         const persistentUri = await PhotoService.savePhotoToStorage(uri, newEntry.id);

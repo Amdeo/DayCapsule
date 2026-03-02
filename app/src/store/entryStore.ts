@@ -58,6 +58,9 @@ interface EntryStore {
   filterDateRange: 'all' | 'today' | 'week' | 'month';
   selectedTags: string[];
 
+  // 重试计数
+  loadRetryCount: number;
+
   // 播放状态
   currentPlayingId: string | null;
   setCurrentPlayingId: (id: string | null) => void;
@@ -89,8 +92,16 @@ interface EntryStore {
   toggleTag: (tag: string) => void;
   clearTags: () => void;
   applyFilters: () => Promise<void>;
-  restoreEntries: (entries: Entry[]) => Promise<number>;
+  applySearchFilters: (filters: {
+    query?: string;
+    type?: 'all' | 'text' | 'photo' | 'voice';
+    dateRange?: 'all' | 'today' | 'week' | 'month';
+    tags?: string[];
+  }) => Promise<void>;
+  restoreEntries: (entries: Entry[]) => Promise<string[]>;
 }
+
+const MAX_LOAD_RETRIES = 5;
 
 export const useEntryStore = create<EntryStore>((set, get) => ({
   entries: [],
@@ -103,6 +114,7 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
   filterType: 'all',
   filterDateRange: 'all',
   selectedTags: [],
+  loadRetryCount: 0,
   currentPlayingId: null,
   setCurrentPlayingId: (id) => set({ currentPlayingId: id }),
 
@@ -110,6 +122,7 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
    * 首次加载（重置游标，加载第一页）
    */
   loadEntries: async () => {
+    const { loadRetryCount } = get();
     set({ isLoading: true, cursor: null, hasMore: true });
     try {
       const state = get();
@@ -131,6 +144,11 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
         }
       }
 
+      // 加载成功，重置重试计数
+      if (loadRetryCount > 0) {
+        set({ loadRetryCount: 0 });
+      }
+
       set({
         entries: cleaned,
         filteredEntries: cleaned,
@@ -142,10 +160,17 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
     } catch (error: any) {
       logger.error('Failed to load entries:', error);
       if (error?.message?.includes('no such table')) {
-        logger.log('⏳ 数据库表尚未创建，等待后重试...');
-        setTimeout(() => get().loadEntries(), 500);
+        if (loadRetryCount < MAX_LOAD_RETRIES) {
+          const nextRetry = loadRetryCount + 1;
+          set({ loadRetryCount: nextRetry });
+          logger.log(`⏳ 数据库表尚未创建，${nextRetry}/${MAX_LOAD_RETRIES} 秒后重试...`);
+          setTimeout(() => get().loadEntries(), 500);
+        } else {
+          logger.error('❌ 数据库表加载失败，已达最大重试次数');
+          set({ isLoading: false, loadRetryCount: 0 });
+        }
       } else {
-        set({ isLoading: false });
+        set({ isLoading: false, loadRetryCount: 0 });
       }
     }
   },
@@ -285,12 +310,25 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
   },
 
   /**
+   * 批量应用搜索筛选条件，只触发一次数据库查询
+   */
+  applySearchFilters: async (filters) => {
+    set({
+      searchQuery: filters.query ?? get().searchQuery,
+      filterType: filters.type ?? get().filterType,
+      filterDateRange: filters.dateRange ?? get().filterDateRange,
+      selectedTags: filters.tags ?? get().selectedTags,
+    });
+    await get().applyFilters();
+  },
+
+  /**
    * 批量恢复备份记录，完成后重新加载第一页
    */
-  restoreEntries: async (entries: Entry[]): Promise<number> => {
-    const count = await DB.restoreEntries(entries);
+  restoreEntries: async (entries: Entry[]): Promise<string[]> => {
+    const insertedIds = await DB.restoreEntries(entries);
     await get().loadEntries();
-    return count;
+    return insertedIds;
   },
 
   /**

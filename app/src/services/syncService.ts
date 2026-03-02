@@ -12,6 +12,9 @@ import { MEDIA_PATHS } from '@/src/utils/fileSystem';
 import { BackupService, BackupManifest } from './backupService';
 import { logger } from '@/src/utils/logger';
 
+// 最大备份文件大小：100MB
+const MAX_BACKUP_SIZE_BYTES = 100 * 1024 * 1024;
+
 export interface ImportResult {
   success: boolean;
   imported: number;
@@ -26,6 +29,12 @@ export interface BackupData {
   entries: Partial<Entry & { media: any }>[];
 }
 
+/** 解析后的备份数据（包含 ZIP 引用，用于延迟提取媒体） */
+interface ParsedBackup {
+  data: BackupData;
+  zip: JSZip;
+}
+
 export class SyncService {
   /**
    * 导出所有记录为 ZIP 并调起系统分享
@@ -38,9 +47,9 @@ export class SyncService {
 
   /**
    * 从设备文件选择器导入备份（ZIP 格式）
-   * 流程：选文件 → 解压 → 校验完整性 → 恢复媒体文件 → 返回条目
+   * 流程：选文件 → 解压 → 校验完整性 → 返回数据和 ZIP 引用（媒体未提取）
    */
-  static async pickAndParseBackup(): Promise<BackupData | null> {
+  static async pickAndParseBackup(): Promise<ParsedBackup | null> {
     const result = await DocumentPicker.getDocumentAsync({
       type: [
         'application/zip',
@@ -58,9 +67,17 @@ export class SyncService {
 
   /**
    * 解析 ZIP 备份文件
-   * 校验顺序：① manifest 存在 → ② data.json 存在 → ③ 条目数一致 → ④ 媒体文件完整
+   * 校验顺序：① 文件大小检查 → ② manifest 存在 → ③ data.json 存在 → ④ 条目数一致 → ⑤ 媒体文件完整
    */
-  private static async parseZipBackup(uri: string): Promise<BackupData> {
+  private static async parseZipBackup(uri: string): Promise<ParsedBackup> {
+    // ① 预检文件大小，避免大文件导致 OOM
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (fileInfo.exists && 'size' in fileInfo && fileInfo.size > MAX_BACKUP_SIZE_BYTES) {
+      throw new Error(
+        `备份文件过大（${(fileInfo.size / 1024 / 1024).toFixed(1)}MB），超过 ${MAX_BACKUP_SIZE_BYTES / 1024 / 1024}MB 上限`
+      );
+    }
+
     // 读取 ZIP（base64）
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
@@ -117,17 +134,15 @@ export class SyncService {
       );
     }
 
-    // ⑥ 提取媒体文件到应用媒体目录
-    data.entries = await this.extractMediaFromZip(zip, data.entries);
-
-    logger.log(`📥 ZIP 备份解析完成：${data.entries.length} 条记录，${manifest.mediaFiles.length} 个媒体文件`);
-    return data;
+    logger.log(`📥 ZIP 备份解析完成：${data.entries.length} 条记录，${manifest.mediaFiles.length} 个媒体文件（媒体未提取）`);
+    return { data, zip };
   }
 
   /**
    * 从 ZIP 中提取媒体文件，写入应用媒体目录
+   * 公开方法，允许在数据库恢复成功后调用
    */
-  private static async extractMediaFromZip(
+  static async extractMediaFromZip(
     zip: JSZip,
     entries: BackupData['entries']
   ): Promise<BackupData['entries']> {

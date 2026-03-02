@@ -40,6 +40,7 @@ interface EntryCardProps {
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
+  cardSpacing?: number;
 }
 
 function EntryCard({
@@ -49,6 +50,7 @@ function EntryCard({
   onPauseRecording,
   onResumeRecording,
   onStopRecording,
+  cardSpacing = 12,
 }: EntryCardProps) {
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -277,7 +279,7 @@ function EntryCard({
   return (
     <View style={[
       styles.cardShadow,
-      { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor() },
+      { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
     ]}>
     <Pressable
       testID="entry-card"
@@ -532,7 +534,6 @@ function EntryCard({
 const styles = StyleSheet.create({
   cardShadow: {
     borderRadius: 16,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
