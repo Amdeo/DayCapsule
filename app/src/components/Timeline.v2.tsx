@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarView } from './CalendarView';
 import { StatsView } from './StatsView';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
+import { FABMenu } from './FABMenu';
 
 type ViewMode = 'list' | 'monthly' | 'calendar' | 'stats';
 
@@ -417,10 +418,9 @@ interface TimelineProps {
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
-  onOpenMediaSelector?: () => void;
 }
 
-export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording, onOpenMediaSelector }: TimelineProps) {
+export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording }: TimelineProps) {
   const {
     entries, deleteEntry, searchQuery, filteredEntries, updateEntry,
     filterType, filterDateRange, selectedTags,
@@ -729,38 +729,14 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         </RNAnimated.View>
       )}
 
-      {/* FAB 浮动操作按钮（搜索界面时隐藏） */}
-      {!showSearchOverlay && <RNAnimated.View
-        style={{
-          position: 'absolute',
-          bottom: 32,
-          left: '50%',
-          marginLeft: -28,
-          opacity: fabOpacity,
-          transform: [{ scale: fabScale }],
-          zIndex: 1000,
-        }}
-      >
-        <TouchableOpacity
-          onPress={onOpenMediaSelector}
-          activeOpacity={0.8}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: '#6A89CC',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      </RNAnimated.View>}
+      {/* FAB 浮动操作按钮（搜索界面时隐藏）- 花瓣展开动画 */}
+      {!showSearchOverlay && (
+        <FABMenu
+          onSelect={onQuickAdd ?? (() => {})}
+          fabOpacity={fabOpacity}
+          fabScale={fabScale}
+        />
+      )}
     </View>
   );
 }

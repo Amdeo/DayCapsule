@@ -225,7 +225,6 @@ export default function HomeScreen() {
         onPauseRecording={handlePauseRecording}
         onResumeRecording={handleResumeRecording}
         onStopRecording={handleStopRecording}
-        onOpenMediaSelector={() => setShowMediaSelector(true)}
       />
 
       <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
