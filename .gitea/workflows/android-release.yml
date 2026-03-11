@@ -11,7 +11,7 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
-      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
 
     steps:
       - name: Checkout repository
@@ -65,11 +65,34 @@ jobs:
         working-directory: app
         run: npx expo prebuild --platform android --non-interactive --clean
 
+      - name: Show runner resources
+        run: |
+          echo "=== CPU ==="
+          nproc
+          echo "=== Memory ==="
+          free -h || true
+          echo "=== Disk ==="
+          df -h
+
+      - name: Tune Gradle for CI
+        working-directory: app/android
+        run: |
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=false/' gradle.properties
+          grep -q '^org\.gradle\.workers\.max=' gradle.properties || echo 'org.gradle.workers.max=2' >> gradle.properties
+          echo "=== Gradle properties ==="
+          cat gradle.properties
+
       - name: Build unsigned release APK
         working-directory: app/android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon --stacktrace assembleRelease || {
+            status=$?
+            echo "=== Gradle daemon logs ==="
+            find "$HOME/.gradle/daemon" -maxdepth 2 -name 'daemon-*.out.log' -type f -exec tail -n 200 {} \; || true
+            exit $status
+          }
 
       - name: Show APK output
         run: ls -lah app/android/app/build/outputs/apk/release
