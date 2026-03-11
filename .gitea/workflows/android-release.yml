@@ -82,11 +82,19 @@ jobs:
           echo "Runner architecture: $arch"
           if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
             export DEBIAN_FRONTEND=noninteractive
+            dpkg --add-architecture amd64
             apt-get update
-            apt-get install -y cmake ninja-build
+            apt-get install -y \
+              cmake \
+              ninja-build \
+              libc6:amd64 \
+              libstdc++6:amd64 \
+              libgcc-s1:amd64 \
+              zlib1g:amd64
 
             sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
             sdk_cmake_bin="$sdk_root/cmake/3.22.1/bin"
+            ndk_clang="$sdk_root/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
 
             mv "$sdk_cmake_bin/cmake" "$sdk_cmake_bin/cmake.sdk"
             ln -sf /usr/bin/cmake "$sdk_cmake_bin/cmake"
@@ -96,6 +104,11 @@ jobs:
             echo "=== Patched SDK CMake binaries ==="
             "$sdk_cmake_bin/cmake" --version
             "$sdk_cmake_bin/ninja" --version
+            echo "=== x86_64 loader ==="
+            ls -l /lib64/ld-linux-x86-64.so.2 || true
+            echo "=== NDK clang smoke test ==="
+            file "$ndk_clang" || true
+            "$ndk_clang" --version
           else
             echo "Skipping arm64 CMake patch"
           fi
