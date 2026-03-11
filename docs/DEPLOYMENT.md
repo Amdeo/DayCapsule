@@ -72,26 +72,45 @@ eas build --profile production --platform all
 
 ---
 
+## Gitea 本地 Android APK
+
+当前仓库已经提供 Gitea Actions workflow: `.gitea/workflows/android-release.yml`
+
+用途:
+- 在现有 `ubuntu-latest` runner 上执行本地 Android release 构建
+- 产出未正式签名的 APK，仅用于验证 CI 构建链路
+
+触发方式:
+- 在 Gitea Actions 中手动运行 `Android Release APK`
+
+主要步骤:
+1. 安装 Node 20 和 Java 17
+2. 安装 Android SDK / Build Tools / NDK
+3. 运行 `npm ci`
+4. 运行 `npm run typecheck`
+5. 运行 `npm test -- --runInBand`
+6. 运行 `npx expo prebuild --platform android --non-interactive --clean`
+7. 运行 `./gradlew assembleRelease`
+8. 上传 APK artifact
+
+产物位置:
+- Workflow artifact: `android-release-unsigned-apk`
+- Runner 内构建路径: `app/android/app/build/outputs/apk/release/`
+
+限制:
+- 当前 runner 只有 Linux，不能本地构建 iOS
+- iOS 需要单独增加 macOS + Xcode runner 后再接 workflow
+- 该 APK 未正式签名，不用于商店发布
+
+---
+
 ## App Store 发布
 
 ### 1. 准备工作
 
 - 确保 Apple Developer 账号已激活
 - 在 App Store Connect 创建应用
-- 配置 `eas.json` 中的 iOS 提交信息:
-  ```json
-  {
-    "submit": {
-      "production": {
-        "ios": {
-          "appleId": "your-apple-id@example.com",
-          "ascAppId": "1234567890",
-          "appleTeamId": "ABCDE12345"
-        }
-      }
-    }
-  }
-  ```
+- 在本地或 CI 中准备 `eas submit` 所需的 Apple 账号、Team ID 和 App Store Connect 信息
 
 ### 2. 构建并提交
 
@@ -124,20 +143,11 @@ eas submit --platform ios
   3. 下载 JSON 密钥文件
   4. 保存为 `service-account.json`(不要提交到 Git)
 
-### 2. 配置 eas.json
+### 2. 提交凭据
 
-```json
-{
-  "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./service-account.json",
-        "track": "internal"
-      }
-    }
-  }
-}
-```
+- 生成 Google Play 服务账号 JSON 密钥
+- 将密钥保存在本地安全位置，例如 `app/service-account.json`
+- 不要将真实密钥提交到 Git
 
 ### 3. 构建并提交
 
@@ -211,12 +221,9 @@ cp .env.example .env
 编辑 `.env`:
 
 ```env
-SENTRY_DSN=
-APP_ENV=development
-API_URL=http://localhost:3000
-ENABLE_ANALYTICS=false
-ENABLE_CRASH_REPORTING=false
-DEBUG_MODE=true
+EXPO_PUBLIC_SENTRY_DSN=
+EXPO_PUBLIC_ENABLE_CRASH_REPORTING=false
+EXPO_PUBLIC_APP_ENV=development
 ```
 
 ### 生产环境
@@ -224,9 +231,9 @@ DEBUG_MODE=true
 在 EAS 构建时设置环境变量:
 
 ```bash
-eas secret:create --scope project --name SENTRY_DSN --value "your-sentry-dsn"
-eas secret:create --scope project --name APP_ENV --value "production"
-eas secret:create --scope project --name API_URL --value "https://api.memorycapsule.com"
+eas secret:create --scope project --name EXPO_PUBLIC_SENTRY_DSN --value "your-sentry-dsn"
+eas secret:create --scope project --name EXPO_PUBLIC_ENABLE_CRASH_REPORTING --value "true"
+eas secret:create --scope project --name EXPO_PUBLIC_APP_ENV --value "production"
 ```
 
 查看已设置的密钥:
@@ -332,7 +339,7 @@ eas submit --platform all
 - [ ] 所有测试通过
 - [ ] 代码已合并到 main 分支
 - [ ] 版本号已更新
-- [ ] CHANGELOG.md 已更新
+- [ ] 发布说明已准备
 - [ ] 环境变量已配置
 
 ### 构建后
