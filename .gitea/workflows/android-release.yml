@@ -67,12 +67,38 @@ jobs:
 
       - name: Show runner resources
         run: |
+          echo "=== Architecture ==="
+          uname -m
           echo "=== CPU ==="
           nproc
           echo "=== Memory ==="
           free -h || true
           echo "=== Disk ==="
           df -h
+
+      - name: Patch Android CMake on arm64 runners
+        run: |
+          arch="$(uname -m)"
+          echo "Runner architecture: $arch"
+          if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y cmake ninja-build
+
+            sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
+            sdk_cmake_bin="$sdk_root/cmake/3.22.1/bin"
+
+            mv "$sdk_cmake_bin/cmake" "$sdk_cmake_bin/cmake.sdk"
+            ln -sf /usr/bin/cmake "$sdk_cmake_bin/cmake"
+            mv "$sdk_cmake_bin/ninja" "$sdk_cmake_bin/ninja.sdk"
+            ln -sf /usr/bin/ninja "$sdk_cmake_bin/ninja"
+
+            echo "=== Patched SDK CMake binaries ==="
+            "$sdk_cmake_bin/cmake" --version
+            "$sdk_cmake_bin/ninja" --version
+          else
+            echo "Skipping arm64 CMake patch"
+          fi
 
       - name: Tune Gradle for CI
         working-directory: app/android
