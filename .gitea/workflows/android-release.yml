@@ -38,7 +38,10 @@ jobs:
 
       - name: Install Android SDK packages
         run: |
+          # sdkmanager exits before yes, which trips pipefail with SIGPIPE.
+          set +o pipefail
           yes | sdkmanager --licenses > /dev/null
+          set -o pipefail
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-36" \
