@@ -11,7 +11,6 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
-      NODE_ENV: "production"
       GRADLE_OPTS: -Dorg.gradle.daemon=false
 
     steps:
@@ -64,6 +63,8 @@ jobs:
 
       - name: Generate Android project
         working-directory: app
+        env:
+          NODE_ENV: "production"
         run: npx expo prebuild --platform android --non-interactive --clean
 
       - name: Show runner resources
@@ -153,6 +154,8 @@ jobs:
 
       - name: Build unsigned release APK
         working-directory: app/android
+        env:
+          NODE_ENV: "production"
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace --info assembleRelease || {
