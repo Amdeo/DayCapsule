@@ -85,9 +85,17 @@ jobs:
             dpkg --add-architecture amd64
 
             if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-              sed -i 's/^Architectures: .*$/Architectures: arm64/' /etc/apt/sources.list.d/ubuntu.sources
-              sed -i 's#^URIs: .*#URIs: https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports#' /etc/apt/sources.list.d/ubuntu.sources
+              mv /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.disabled
             fi
+
+            printf '%s\n' \
+              'Types: deb' \
+              'URIs: https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports' \
+              'Suites: noble noble-updates noble-backports noble-security' \
+              'Components: main restricted universe multiverse' \
+              'Architectures: arm64' \
+              'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+              >/etc/apt/sources.list.d/ubuntu-arm64.sources
 
             printf '%s\n' \
               'Types: deb' \
@@ -99,7 +107,8 @@ jobs:
               >/etc/apt/sources.list.d/ubuntu-amd64.sources
 
             echo "=== Ubuntu sources ==="
-            cat /etc/apt/sources.list.d/ubuntu.sources || true
+            cat /etc/apt/sources.list.d/ubuntu.sources.disabled || true
+            cat /etc/apt/sources.list.d/ubuntu-arm64.sources
             cat /etc/apt/sources.list.d/ubuntu-amd64.sources
 
             apt-get update
