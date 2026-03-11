@@ -237,24 +237,38 @@ describe('BackupService', () => {
 
   // ── shouldBackup ────────────────────────────────────────────────────────────
 
-  describe('shouldBackup', () => {
-    it('从未备份时应返回 true', () => {
+  describe('backup timestamp helpers', () => {
+    it('从未备份时应返回 null', async () => {
       const { Storage } = require('@/src/utils/storage');
-      Storage.getString.mockReturnValue(null);
-      expect(BackupService.shouldBackup()).toBe(true);
+      Storage.getString.mockResolvedValue(null);
+      await expect(BackupService.getLastBackupTime()).resolves.toBeNull();
     });
 
-    it('距上次备份超过 24 小时应返回 true', () => {
+    it('存在上次备份时间时应返回数值时间戳', async () => {
+      const { Storage } = require('@/src/utils/storage');
+      Storage.getString.mockResolvedValue('1700000000000');
+      await expect(BackupService.getLastBackupTime()).resolves.toBe(1700000000000);
+    });
+  });
+
+  describe('shouldBackup', () => {
+    it('从未备份时应返回 true', async () => {
+      const { Storage } = require('@/src/utils/storage');
+      Storage.getString.mockResolvedValue(null);
+      await expect(BackupService.shouldBackup()).resolves.toBe(true);
+    });
+
+    it('距上次备份超过 24 小时应返回 true', async () => {
       const { Storage } = require('@/src/utils/storage');
       const yesterday = Date.now() - 25 * 60 * 60 * 1000;
-      Storage.getString.mockReturnValue(String(yesterday));
-      expect(BackupService.shouldBackup()).toBe(true);
+      Storage.getString.mockResolvedValue(String(yesterday));
+      await expect(BackupService.shouldBackup()).resolves.toBe(true);
     });
 
-    it('距上次备份不足 24 小时应返回 false', () => {
+    it('距上次备份不足 24 小时应返回 false', async () => {
       const { Storage } = require('@/src/utils/storage');
-      Storage.getString.mockReturnValue(String(Date.now() - 1000));
-      expect(BackupService.shouldBackup()).toBe(false);
+      Storage.getString.mockResolvedValue(String(Date.now() - 1000));
+      await expect(BackupService.shouldBackup()).resolves.toBe(false);
     });
   });
 });

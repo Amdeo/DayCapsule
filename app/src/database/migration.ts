@@ -212,3 +212,37 @@ export const migrateTagsToNormalized = async (): Promise<void> => {
     logger.error('❌ Tags 规范化迁移失败:', error);
   }
 };
+
+/**
+ * 迁移数据库表结构，添加新的媒体元数据列
+ * 幂等：已存在则跳过
+ */
+export const migrateMediaMetadataColumns = async (): Promise<void> => {
+  if (migrationStore.getString('media_metadata_columns_added') === 'true') return;
+
+  const db = getDatabase();
+  try {
+    // 检查 media_thumbnail 列是否存在
+    const tableInfo = await db.getAllAsync<{ name: string }>(
+      `PRAGMA table_info(entries)`
+    );
+    const columnNames = tableInfo.map(col => col.name);
+
+    // 添加 media_thumbnail 列（如果不存在）
+    if (!columnNames.includes('media_thumbnail')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN media_thumbnail TEXT`);
+      logger.log('✅ 添加 media_thumbnail 列');
+    }
+
+    // 添加 media_metadata 列（如果不存在）
+    if (!columnNames.includes('media_metadata')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN media_metadata TEXT`);
+      logger.log('✅ 添加 media_metadata 列');
+    }
+
+    migrationStore.set('media_metadata_columns_added', 'true');
+    logger.log('✅ 媒体元数据列迁移完成');
+  } catch (error) {
+    logger.error('❌ 媒体元数据列迁移失败:', error);
+  }
+};

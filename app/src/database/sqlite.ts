@@ -39,6 +39,8 @@ export const initDatabase = async () => {
         media_uri TEXT,
         media_type TEXT,
         media_duration INTEGER,
+        media_thumbnail TEXT,
+        media_metadata TEXT,
         recording_status TEXT,
         recording_duration INTEGER,
         created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),

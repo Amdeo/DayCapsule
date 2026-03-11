@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "app",
+    "scheme": "memorycapsule",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -59,7 +59,12 @@
           "microphonePermission": "允许 MemoryCapsule 录制语音记忆"
         }
       ],
-      "@sentry/react-native",
+      [
+        "@sentry/react-native",
+        {
+          "enableSourceMapsUpload": false
+        }
+      ],
       [
         "expo-notifications",
         {

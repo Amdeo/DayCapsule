@@ -3,7 +3,7 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Dimensions,
 } from 'react-native';
 import Animated, {
   Layout,
@@ -32,6 +33,18 @@ import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
 import { ImageViewer } from './ImageViewer';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// 卡片内容宽度（考虑边距）
+const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
+
+// 计算图片高度，保持宽高比，最大高度 600px
+const calculateImageHeight = (aspectRatio?: number): number => {
+  if (!aspectRatio || aspectRatio <= 0) return 200; // 默认高度
+  const calculatedHeight = getCardContentWidth() / aspectRatio;
+  return Math.min(calculatedHeight, 600); // 最大 600px
+};
 
 interface EntryCardProps {
   entry: Entry;
@@ -310,7 +323,7 @@ function EntryCard({
               {entry.content}
             </Text>
           ) : entry.type === 'photo' && entry.media?.uri ? (
-            // 照片内容
+            // 照片内容 - 自适应宽高比
             <>
               <TouchableOpacity
                 activeOpacity={0.9}
@@ -323,9 +336,12 @@ function EntryCard({
                   </View>
                 ) : (
                   <Image
-                    source={{ uri: PhotoService.resolvePhotoUri(entry.media.uri) }}
-                    style={styles.photoImage}
-                    resizeMode="cover"
+                    source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
+                    style={[
+                      styles.photoImage,
+                      { height: calculateImageHeight(entry.media?.metadata?.aspectRatio) }
+                    ]}
+                    resizeMode="contain"
                     testID="photo-image"
                     onError={() => setPhotoError(true)}
                   />
@@ -567,7 +583,7 @@ const styles = StyleSheet.create({
   },
   photoImage: {
     width: '100%',
-    height: 200,
+    minHeight: 200,
     borderRadius: 12,
     backgroundColor: '#F5F5F5',
   },

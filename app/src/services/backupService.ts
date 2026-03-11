@@ -132,7 +132,7 @@ export class BackupService {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    Storage.setString(LAST_BACKUP_KEY, String(Date.now()));
+    await Storage.setString(LAST_BACKUP_KEY, String(Date.now()));
     await this.pruneOldBackups(MAX_BACKUPS);
 
     logger.log('✅ ZIP 备份完成:', zipUri);
@@ -140,14 +140,14 @@ export class BackupService {
   }
 
   /** 获取上次备份时间戳（毫秒），未备份过返回 null */
-  static getLastBackupTime(): number | null {
-    const val = Storage.getString(LAST_BACKUP_KEY);
+  static async getLastBackupTime(): Promise<number | null> {
+    const val = await Storage.getString(LAST_BACKUP_KEY);
     return val ? Number(val) : null;
   }
 
   /** 判断是否需要执行备份（距上次超过 24 小时） */
-  static shouldBackup(): boolean {
-    const last = this.getLastBackupTime();
+  static async shouldBackup(): Promise<boolean> {
+    const last = await this.getLastBackupTime();
     if (!last) return true;
     return Date.now() - last > BACKUP_INTERVAL_MS;
   }

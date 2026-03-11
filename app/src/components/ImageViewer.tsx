@@ -68,6 +68,32 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
     }
   };
 
+  // 缩放到 1:1 (100%)
+  const zoomTo100 = () => {
+    if (isMountedRef.current) {
+      scale.value = withSpring(1);
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+      savedScale.value = 1;
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+    }
+  };
+
+  // 双击手势 - 缩放到 100%
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (isMountedRef.current) {
+        // 如果当前已经缩放到 1 附近，则缩放到适应屏幕；否则缩放到 1:1
+        if (scale.value > 0.9 && scale.value < 1.1) {
+          resetTransform();
+        } else {
+          zoomTo100();
+        }
+      }
+    });
+
   // 捏合手势 - 使用新的 Gesture API
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
@@ -98,8 +124,11 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
       savedTranslateY.value = translateY.value;
     });
 
-  // 组合手势
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  // 组合手势 - 捏合和拖动同时进行，双击单独处理
+  const composedGesture = Gesture.Race(
+    doubleTapGesture,
+    Gesture.Simultaneous(pinchGesture, panGesture)
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

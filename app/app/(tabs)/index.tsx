@@ -3,11 +3,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useEntryStore } from '@/src/store/entryStore';
 import { Timeline } from '@/src/components/Timeline.v2';
 import { Sidebar } from '@/src/components/Sidebar';
-import { MediaSelector } from '@/src/components/MediaSelector';
-import { PhotoSelector } from '@/src/components/PhotoSelector';
 import { TextEditor } from '@/src/components/TextEditor';
 import { VoiceService } from '@/src/services/voiceService';
-import { PhotoService } from '@/src/services/photoService';
+import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 
@@ -17,8 +15,6 @@ export default function HomeScreen() {
     updateRecordingStatus, updateRecordingDuration, completeRecording,
   } = useEntryStore();
 
-  const [showMediaSelector, setShowMediaSelector] = useState(false);
-  const [showPhotoSelector, setShowPhotoSelector] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
 
@@ -75,16 +71,16 @@ export default function HomeScreen() {
     }, 100);
   }, [updateRecordingDuration]);
 
-  const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice') => {
-    setShowMediaSelector(false);
-
+  const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => {
     switch (type) {
       case 'text':
         setShowTextEditor(true);
         break;
 
       case 'photo':
-        setShowPhotoSelector(true);
+        if (photoResult) {
+          await handlePhotoSelect(photoResult);
+        }
         break;
 
       case 'voice':
@@ -192,28 +188,54 @@ export default function HomeScreen() {
     }
   }, [addEntry]);
 
-  const handlePhotoSelect = useCallback(async (uri: string) => {
+  const handlePhotoSelect = useCallback(async (result: PhotoResult) => {
     try {
       await addEntry({
         type: 'photo',
         content: '',
         syncStatus: 'pending',
-        media: { uri, mimeType: 'image/jpeg', size: 0 },
+        media: {
+          uri: result.uri,
+          mimeType: 'image/jpeg',
+          size: 0,
+          metadata: {
+            width: result.width,
+            height: result.height,
+            aspectRatio: result.aspectRatio,
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+        },
       });
 
       const allEntries = useEntryStore.getState().entries;
       const newEntry = allEntries[0];
 
       if (newEntry) {
-        const persistentUri = await PhotoService.savePhotoToStorage(uri, newEntry.id);
+        const savedPhoto = await PhotoService.savePhotoToStorage(
+          result.uri,
+          newEntry.id,
+          'medium',
+          result.aspectRatio
+        );
         await updateEntry(newEntry.id, {
-          media: { uri: persistentUri, mimeType: 'image/jpeg', size: 0 },
+          media: {
+            uri: savedPhoto.originalUri,
+            mimeType: 'image/jpeg',
+            size: 0,
+            thumbnail: savedPhoto.thumbnailUri,
+            metadata: {
+              width: savedPhoto.width,
+              height: savedPhoto.height,
+              aspectRatio: savedPhoto.aspectRatio,
+              createdAt: Date.now(),
+              modifiedAt: Date.now(),
+            },
+          },
         });
       }
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
-    } finally {
-      setShowPhotoSelector(false);
     }
   }, [addEntry, updateEntry]);
 
@@ -228,18 +250,6 @@ export default function HomeScreen() {
       />
 
       <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
-
-      <MediaSelector
-        visible={showMediaSelector}
-        onSelect={handleMediaSelect}
-        onCancel={() => setShowMediaSelector(false)}
-      />
-
-      <PhotoSelector
-        visible={showPhotoSelector}
-        onSelectPhoto={handlePhotoSelect}
-        onCancel={() => setShowPhotoSelector(false)}
-      />
 
       <TextEditor
         visible={showTextEditor}

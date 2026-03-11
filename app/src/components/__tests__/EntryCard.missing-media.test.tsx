@@ -35,6 +35,16 @@ jest.mock('../ImageViewer', () => {
       visible ? <View testID="image-viewer" /> : null,
   };
 });
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  const MockIcon = ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text>;
+  return {
+    Ionicons: MockIcon,
+    FontAwesome: MockIcon,
+    MaterialIcons: MockIcon,
+  };
+});
 
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');

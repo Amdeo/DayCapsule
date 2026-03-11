@@ -15,7 +15,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { initializeFileSystem } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { initDatabase } from '@/src/database/sqlite';
-import { migrateFromAsyncStorage, migrateTagsToNormalized } from '@/src/database/migration';
+import { migrateFromAsyncStorage, migrateTagsToNormalized, migrateMediaMetadataColumns } from '@/src/database/migration';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { logger } from '@/src/utils/logger';
 import { BackupService } from '@/src/services/backupService';
@@ -30,7 +30,7 @@ if (SENTRY_DSN && ENABLE_CRASH_REPORTING) {
   Sentry.init({
     dsn: SENTRY_DSN,
     debug: __DEV__,
-    environment: process.env.APP_ENV || 'development',
+    environment: process.env.EXPO_PUBLIC_APP_ENV || 'development',
     tracesSampleRate: __DEV__ ? 1.0 : 0.2,
     enableAutoSessionTracking: true,
     sessionTrackingIntervalMillis: 30000,
@@ -93,6 +93,10 @@ export default function RootLayout() {
         // Tags 规范化迁移（幂等，已迁移则跳过）
         await migrateTagsToNormalized();
         logger.log('✅ Tags 规范化迁移完成');
+
+        // 媒体元数据列迁移（幂等，已迁移则跳过）
+        await migrateMediaMetadataColumns();
+        logger.log('✅ 媒体元数据列迁移完成');
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
         Alert.alert(
@@ -115,7 +119,8 @@ export default function RootLayout() {
 
       if (prev !== 'background' && nextState === 'background') {
         const autoBackup = await Storage.getString('settings:autoBackup');
-        if (autoBackup === 'true' && BackupService.shouldBackup()) {
+        const shouldBackup = await BackupService.shouldBackup();
+        if (autoBackup === 'true' && shouldBackup) {
           const entries = useEntryStore.getState().entries;
           await BackupService.createBackup(entries).catch((e) =>
             logger.error('自动备份失败:', e)

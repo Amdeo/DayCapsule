@@ -28,6 +28,7 @@ export interface PhotoResult {
   uri: string;
   width: number;
   height: number;
+  aspectRatio: number; // width / height
   exif?: any;
 }
 
@@ -45,6 +46,17 @@ export interface CompressedPhoto {
   };
   ratio: number;
   quality: 'low' | 'medium' | 'high';
+}
+
+/**
+ * 保存照片结果
+ */
+export interface SavedPhotoResult {
+  originalUri: string;
+  thumbnailUri: string;
+  aspectRatio: number;
+  width: number;
+  height: number;
 }
 
 /**
@@ -109,6 +121,7 @@ export class PhotoService {
 
   /**
    * 拍照
+   * 保持原始尺寸，不裁剪
    */
   static async takePhoto(): Promise<PhotoResult> {
     try {
@@ -121,10 +134,9 @@ export class PhotoService {
         );
       }
 
-      // 打开相机
+      // 打开相机 - 保持原始尺寸，不裁剪
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 0.95,
       });
 
@@ -133,10 +145,13 @@ export class PhotoService {
       }
 
       const asset = result.assets[0];
+      const width = asset.width || 0;
+      const height = asset.height || 0;
       return {
         uri: asset.uri,
-        width: asset.width,
-        height: asset.height,
+        width,
+        height,
+        aspectRatio: height > 0 ? width / height : 1,
         exif: asset.exif,
       };
     } catch (error) {
@@ -150,6 +165,7 @@ export class PhotoService {
 
   /**
    * 从相册选择照片
+   * 保持原始尺寸，不裁剪
    */
   static async pickPhotoFromLibrary(
     options?: PickPhotoOptions
@@ -158,20 +174,24 @@ export class PhotoService {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: options?.allowsEditing ?? false,
-        aspect: options?.aspect,
-        quality: options?.quality ?? 0.8,
+        quality: options?.quality ?? 0.95,
       });
 
       if (result.canceled) {
         throw new Error('User cancelled photo library');
       }
 
-      return result.assets.map((asset) => ({
-        uri: asset.uri,
-        width: asset.width,
-        height: asset.height,
-        exif: asset.exif,
-      }));
+      return result.assets.map((asset) => {
+        const width = asset.width || 0;
+        const height = asset.height || 0;
+        return {
+          uri: asset.uri,
+          width,
+          height,
+          aspectRatio: height > 0 ? width / height : 1,
+          exif: asset.exif,
+        };
+      });
     } catch (error) {
       if (error instanceof Error && error.message === 'User cancelled photo library') {
         throw error;
@@ -223,17 +243,20 @@ export class PhotoService {
 
   /**
    * 生成缩略图
+   * 保持宽高比，只限制最大宽度
+   * @param uri 原图 URI
+   * @param maxWidth 最大宽度（默认 1200px）
    */
   static async generateThumbnail(
     uri: string,
-    size: number = 256
+    maxWidth: number = 1200
   ): Promise<string> {
     try {
       const result = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: size, height: size } }],
+        [{ resize: { width: maxWidth } }],
         {
-          compress: 0.7,
+          compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
         }
       );
@@ -248,12 +271,15 @@ export class PhotoService {
 
   /**
    * 保存照片到本地
+   * 双轨制：保存原图 + 生成缩略图
+   * @returns SavedPhotoResult 包含原图、缩略图路径和宽高比信息
    */
   static async savePhotoToStorage(
     sourceUri: string,
     entryId: string,
-    quality: 'low' | 'medium' | 'high' = 'medium'
-  ): Promise<string> {
+    quality: 'low' | 'medium' | 'high' = 'medium',
+    aspectRatio?: number
+  ): Promise<SavedPhotoResult> {
     try {
       // 检查存储空间
       const { size } = await getFileInfo(sourceUri);
@@ -264,10 +290,20 @@ export class PhotoService {
         );
       }
 
-      // 压缩照片
+      // 获取图片真实元数据
+      const metadata = await this.getPhotoMetadata(sourceUri);
+      const width = metadata.width;
+      const height = metadata.height;
+      // 优先使用传入的 aspectRatio，否则从实际尺寸计算
+      const finalAspectRatio = aspectRatio || (height > 0 ? width / height : 1);
+
+      // 压缩照片（原图质量压缩）
       const compressed = await this.compressPhoto(sourceUri, quality);
 
-      // 保存到存储
+      // 生成缩略图（保持比例，限制宽度）
+      const thumbnailUri = await this.generateThumbnail(compressed.compressed.uri);
+
+      // 保存原图到存储
       const filename = generateUniqueFilename(entryId, 'photo', 'jpg');
       const targetUri = `${MEDIA_PATHS.photoOriginal}${filename}`;
 
@@ -279,16 +315,34 @@ export class PhotoService {
         });
       }
 
-      // 复制压缩后的文件
+      // 复制压缩后的文件作为原图
       await FileSystem.copyAsync({
         from: compressed.compressed.uri,
         to: targetUri,
       });
 
+      // 保存缩略图
+      const thumbnailFilename = generateUniqueFilename(entryId, 'thumb', 'jpg');
+      const targetThumbnailUri = `${MEDIA_PATHS.photoOriginal}${thumbnailFilename}`;
+      await FileSystem.copyAsync({
+        from: thumbnailUri,
+        to: targetThumbnailUri,
+      });
+
       // 清理临时文件
       await deleteFile(compressed.compressed.uri);
+      // 缩略图是新生成的临时文件，需要清理
+      if (thumbnailUri !== compressed.compressed.uri) {
+        await deleteFile(thumbnailUri).catch(() => {});
+      }
 
-      return targetUri;
+      return {
+        originalUri: targetUri,
+        thumbnailUri: targetThumbnailUri,
+        aspectRatio: finalAspectRatio,
+        width,
+        height,
+      };
     } catch (error) {
       if (error instanceof MediaError) {
         throw error;
@@ -300,6 +354,7 @@ export class PhotoService {
 
   /**
    * 获取照片元数据
+   * 注意：ImageManipulator.manipulateAsync 会创建临时文件，使用后会自动清理
    */
   static async getPhotoMetadata(uri: string): Promise<PhotoMetadata> {
     try {
@@ -310,6 +365,11 @@ export class PhotoService {
         compress: 1,
         format: ImageManipulator.SaveFormat.JPEG,
       });
+
+      // 清理临时文件（manipulateAsync 生成的临时文件）
+      if (result.uri !== uri) {
+        await deleteFile(result.uri).catch(() => {});
+      }
 
       // 这里简化处理，实际应该读取 EXIF 数据
       return {
@@ -329,6 +389,7 @@ export class PhotoService {
 
   /**
    * 删除照片文件
+   * @param uri 照片 URI（原图或缩略图路径）
    */
   static async deletePhoto(uri: string): Promise<void> {
     try {
@@ -337,6 +398,28 @@ export class PhotoService {
       logger.error('Failed to delete photo:', error);
       // 不抛出错误，删除失败不应该中断流程
     }
+  }
+
+  /**
+   * 解析缩略图 URI
+   * 根据原图路径获取对应的缩略图路径
+   */
+  static resolveThumbnailUri(originalUri: string): string | null {
+    // 如果已经是缩略图路径，直接返回
+    if (originalUri.includes('_thumb.')) {
+      return originalUri;
+    }
+    // 根据原图路径生成缩略图路径
+    const photoOriginalRelative = 'media/photos/original/';
+    if (originalUri.includes(photoOriginalRelative)) {
+      const filename = originalUri.split(photoOriginalRelative).pop();
+      if (filename) {
+        // 将 _photo_ 替换为 _thumb_ 获取缩略图文件名
+        const thumbFilename = filename.replace('_photo_', '_thumb_');
+        return `${MEDIA_PATHS.photoOriginal}${thumbFilename}`;
+      }
+    }
+    return null;
   }
 
   /**

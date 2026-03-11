@@ -128,7 +128,8 @@ describe('SyncService — ZIP 完整性校验', () => {
     const result = await SyncService.pickAndParseBackup();
 
     expect(result).not.toBeNull();
-    expect(result!.entries).toHaveLength(2);
+    expect(result!.data.entries).toHaveLength(2);
+    expect(result!.zip).toBeDefined();
   });
 
   it('用户取消选择时应返回 null', async () => {
@@ -260,7 +261,10 @@ describe('SyncService — ZIP 完整性校验', () => {
       async: jest.fn().mockResolvedValue('base64photodata'),
     };
 
-    await SyncService.pickAndParseBackup();
+    const result = await SyncService.pickAndParseBackup();
+    expect(result).not.toBeNull();
+
+    await SyncService.extractMediaFromZip(result!.zip, result!.data.entries);
 
     expect(FileSystem.writeAsStringAsync).toHaveBeenCalledWith(
       expect.stringContaining('photo_e0.jpg'),
@@ -270,26 +274,19 @@ describe('SyncService — ZIP 完整性校验', () => {
   });
 
   it('ZIP 中找不到媒体文件时应降级（media 置为 undefined）', async () => {
-    mockPickZip();
-    const { json, size } = makeDataJson(1, true);
-    const manifest = makeManifest({
-      entryCount: 1,
-      dataSize: size,
-      mediaFiles: ['photo_e0.jpg'],
-    });
-    mockZipFiles['manifest.json'] = {
-      async: jest.fn().mockResolvedValue(JSON.stringify(manifest)),
-    };
-    mockZipFiles['data.json'] = {
-      async: jest.fn().mockResolvedValue(json),
-    };
-    mockZipFiles['media/photo_e0.jpg'] = {
-      async: jest.fn().mockResolvedValue('base64photodata'),
-    };
+    const restored = await SyncService.extractMediaFromZip(mockZipInstance as any, [
+      {
+        id: 'e0',
+        type: 'photo',
+        media: {
+          mimeType: 'image/jpeg',
+          size: 512,
+          relativeUri: 'media/photo_missing.jpg',
+        },
+      },
+    ]);
 
-    const result = await SyncService.pickAndParseBackup();
-
-    // 条目应存在，media.uri 应被设置
-    expect(result!.entries[0]).toBeDefined();
+    expect(restored[0]).toBeDefined();
+    expect(restored[0].media).toBeUndefined();
   });
 });

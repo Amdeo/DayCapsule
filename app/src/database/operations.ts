@@ -11,6 +11,16 @@ import { logger } from '@/src/utils/logger';
  * 将数据库行转换为 Entry 对象
  */
 const rowToEntry = (row: any): Entry => {
+  // 解析媒体元数据
+  let metadata = undefined;
+  if (row.media_metadata) {
+    try {
+      metadata = JSON.parse(row.media_metadata);
+    } catch {
+      metadata = undefined;
+    }
+  }
+
   return {
     id: row.id,
     type: row.type,
@@ -22,6 +32,8 @@ const rowToEntry = (row: any): Entry => {
       mimeType: row.media_type || 'audio/m4a',
       size: 0,
       duration: row.media_duration,
+      thumbnail: row.media_thumbnail,
+      metadata: metadata,
     } : undefined,
     recordingStatus: row.recording_status,
     recordingDuration: row.recording_duration,
@@ -87,7 +99,20 @@ export const getEntryById = async (id: string): Promise<Entry | null> => {
 };
 
 /**
+ * 检查表是否包含指定列
+ */
+let cachedColumnNames: Set<string> | null = null;
+const getTableColumns = async (db: ReturnType<typeof getDatabase>): Promise<Set<string>> => {
+  if (cachedColumnNames) return cachedColumnNames;
+
+  const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+  cachedColumnNames = new Set(tableInfo.map(col => col.name));
+  return cachedColumnNames;
+};
+
+/**
  * 添加新记录
+ * 兼容旧表结构：如果 media_thumbnail/media_metadata 列不存在则使用旧语句
  */
 export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<Entry> => {
   try {
@@ -95,25 +120,59 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     const timestamp = Date.now();
     const id = `${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
 
-    await db.runAsync(
-      `INSERT INTO entries (
-        id, type, content, timestamp, tags,
-        media_uri, media_type, media_duration,
-        recording_status, recording_duration
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        entry.type,
-        entry.content,
-        timestamp,
-        entry.tags ? JSON.stringify(entry.tags) : null,
-        entry.media?.uri || null,
-        entry.media?.mimeType || null,
-        entry.media?.duration || null,
-        entry.recordingStatus || null,
-        entry.recordingDuration || null,
-      ]
-    );
+    // 获取表列信息
+    const columns = await getTableColumns(db);
+    const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
+
+    if (hasMediaColumns) {
+      // 序列化媒体元数据
+      const mediaMetadata = entry.media?.metadata
+        ? JSON.stringify(entry.media.metadata)
+        : null;
+
+      await db.runAsync(
+        `INSERT INTO entries (
+          id, type, content, timestamp, tags,
+          media_uri, media_type, media_duration, media_thumbnail, media_metadata,
+          recording_status, recording_duration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          entry.type,
+          entry.content,
+          timestamp,
+          entry.tags ? JSON.stringify(entry.tags) : null,
+          entry.media?.uri || null,
+          entry.media?.mimeType || null,
+          entry.media?.duration || null,
+          entry.media?.thumbnail || null,
+          mediaMetadata,
+          entry.recordingStatus || null,
+          entry.recordingDuration || null,
+        ]
+      );
+    } else {
+      // 旧表结构：不使用新列
+      await db.runAsync(
+        `INSERT INTO entries (
+          id, type, content, timestamp, tags,
+          media_uri, media_type, media_duration,
+          recording_status, recording_duration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          entry.type,
+          entry.content,
+          timestamp,
+          entry.tags ? JSON.stringify(entry.tags) : null,
+          entry.media?.uri || null,
+          entry.media?.mimeType || null,
+          entry.media?.duration || null,
+          entry.recordingStatus || null,
+          entry.recordingDuration || null,
+        ]
+      );
+    }
 
     // 同步规范化 tags
     if (entry.tags?.length) {
@@ -134,12 +193,17 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
 
 /**
  * 更新记录
+ * 兼容旧表结构：如果 media_thumbnail/media_metadata 列不存在则不更新这些列
  */
 export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<void> => {
   try {
     const db = getDatabase();
     const fields: string[] = [];
     const values: any[] = [];
+
+    // 获取表列信息
+    const columns = await getTableColumns(db);
+    const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
 
     if (updates.content !== undefined) {
       fields.push('content = ?');
@@ -148,13 +212,26 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     if (updates.tags !== undefined) {
       fields.push('tags = ?');
       values.push(JSON.stringify(updates.tags));
-    }    if (updates.media !== undefined) {
-      fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
-      values.push(
-        updates.media.uri,
-        updates.media.mimeType,
-        updates.media.duration
-      );
+    }
+    if (updates.media !== undefined) {
+      if (hasMediaColumns) {
+        fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?', 'media_thumbnail = ?', 'media_metadata = ?');
+        values.push(
+          updates.media.uri,
+          updates.media.mimeType,
+          updates.media.duration,
+          updates.media.thumbnail || null,
+          updates.media.metadata ? JSON.stringify(updates.media.metadata) : null
+        );
+      } else {
+        // 旧表结构：不更新新列
+        fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
+        values.push(
+          updates.media.uri,
+          updates.media.mimeType,
+          updates.media.duration
+        );
+      }
     }
     if (updates.recordingStatus !== undefined) {
       fields.push('recording_status = ?');

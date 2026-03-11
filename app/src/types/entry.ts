@@ -38,6 +38,7 @@ export interface MediaInfo {
   metadata?: {
     width?: number; // 图片宽度
     height?: number; // 图片高度
+    aspectRatio?: number; // 宽高比 (width / height)
     bitrate?: number; // 音频比特率
     sampleRate?: number; // 采样率
     createdAt: number; // 创建时间

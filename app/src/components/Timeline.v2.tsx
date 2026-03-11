@@ -11,7 +11,6 @@ import { Entry } from '../types/entry';
 import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
 import { SearchOverlay } from './SearchOverlay';
-import { QuickAddButtons } from './QuickAddButtons';
 import { EntryEditor } from './EntryEditor';
 import { formatDateLabel } from '../utils/timeUtils';
 import { useEntryStore } from '../store/entryStore';
@@ -20,6 +19,7 @@ import { CalendarView } from './CalendarView';
 import { StatsView } from './StatsView';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 import { FABMenu } from './FABMenu';
+import { PhotoResult } from '../services/photoService';
 
 type ViewMode = 'list' | 'monthly' | 'calendar' | 'stats';
 
@@ -29,15 +29,14 @@ type ViewMode = 'list' | 'monthly' | 'calendar' | 'stats';
 interface TimeSection {
   title: string;
   timestamp: number;
-  data: (Entry | { type: 'quickAdd' })[];
+  data: Entry[];
 }
 
 /**
  * 生成时间分组数据
  */
 function generateTimeSections(
-  entries: Entry[],
-  showQuickAdd: boolean
+  entries: Entry[]
 ): TimeSection[] {
   const sections: TimeSection[] = [];
   let currentDateLabel = '';
@@ -71,21 +70,6 @@ function generateTimeSections(
   // 添加最后一个分组
   if (currentSection) {
     sections.push(currentSection);
-  }
-
-  // 在第一个分组添加快速添加按钮（如果是今天）
-  if (showQuickAdd && sections.length > 0) {
-    const firstSection = sections[0];
-    const today = new Date();
-    const firstEntryDate = new Date(firstSection.timestamp);
-    const isToday =
-      firstEntryDate.getDate() === today.getDate() &&
-      firstEntryDate.getMonth() === today.getMonth() &&
-      firstEntryDate.getFullYear() === today.getFullYear();
-
-    if (isToday) {
-      firstSection.data.unshift({ type: 'quickAdd' } as any);
-    }
   }
 
   return sections;
@@ -257,27 +241,6 @@ const TimelineHeader = React.memo(function TimelineHeader({ title, timestamp }: 
 });
 
 /**
- * 快速添加组件
- */
-interface QuickAddMarkerProps {
-  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
-}
-
-function QuickAddMarker({ onQuickAdd }: QuickAddMarkerProps) {
-  return (
-    <View style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#A3A3A3' }}>
-          添加新的记忆...
-        </Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: '#E5E5E5', marginLeft: 12 }} />
-      </View>
-      <QuickAddButtons onPress={onQuickAdd ?? (() => {})} />
-    </View>
-  );
-}
-
-/**
  * 记录项组件
  */
 interface EntryMarkerProps {
@@ -373,11 +336,7 @@ const EntryMarker = React.memo(function EntryMarker({
 /**
  * 空状态组件
  */
-interface EmptyStateProps {
-  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
-}
-
-function EmptyState({ onQuickAdd }: EmptyStateProps) {
+function EmptyState() {
   return (
     <Animated.View
       entering={FadeIn.duration(300).delay(200)}
@@ -391,20 +350,10 @@ function EmptyState({ onQuickAdd }: EmptyStateProps) {
         <Text style={{ fontSize: 16, color: '#A3A3A3', textAlign: 'center' }}>
           还没有记忆
         </Text>
-        <Text style={{ fontSize: 14, color: '#D1D1D1', textAlign: 'center', marginTop: 8, marginBottom: 32 }}>
-          选择一种方式开始记录
+        <Text style={{ fontSize: 14, color: '#D1D1D1', textAlign: 'center', marginTop: 8 }}>
+          点击右下角 + 按钮开始记录
         </Text>
       </Animated.View>
-
-      {/* 添加快速添加按钮 */}
-      {onQuickAdd && (
-        <Animated.View
-          entering={FadeIn.delay(800)}
-          style={{ width: '100%', maxWidth: 400 }}
-        >
-          <QuickAddButtons onPress={onQuickAdd ?? (() => {})} />
-        </Animated.View>
-      )}
     </Animated.View>
   );
 }
@@ -413,7 +362,7 @@ function EmptyState({ onQuickAdd }: EmptyStateProps) {
  * 时间轴主组件
  */
 interface TimelineProps {
-  onQuickAdd?: (type: 'text' | 'photo' | 'voice') => void;
+  onQuickAdd?: (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => void;
   onMenuPress?: () => void;
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
@@ -433,7 +382,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showViewToggle, setShowViewToggle] = useState(false);
-  const sectionListRef = useRef<SectionList<Entry | { type: 'quickAdd' }, TimeSection>>(null);
+  const sectionListRef = useRef<SectionList<Entry, TimeSection>>(null);
 
   // 从共享 store 获取卡片间距设置（无需轮询，自动响应状态变化）
   const { cardSpacing: cardSpacingKey } = useSettingsStore();
@@ -452,8 +401,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 生成时间分组数据
   const sections = useMemo(() => {
     if (viewMode === 'monthly') return generateMonthlySections(displayEntries);
-    return generateTimeSections(displayEntries, !hasFilters);
-  }, [displayEntries, hasFilters, viewMode]);
+    return generateTimeSections(displayEntries);
+  }, [displayEntries, viewMode]);
 
   // 检查是否有记录
   const hasEntries = displayEntries.length > 0;
@@ -480,9 +429,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const handleEditEntry = useCallback((entry: Entry) => setEditingEntry(entry), []);
 
   // 稳定的 keyExtractor，避免 SectionList 每次渲染重建
-  const keyExtractor = useCallback((item: Entry | { type: 'quickAdd' }) => {
-    if ('type' in item && item.type === 'quickAdd') return 'quick-add';
-    return (item as Entry).id;
+  const keyExtractor = useCallback((item: Entry) => {
+    return item.id;
   }, []);
 
   // 处理滚动事件
@@ -569,15 +517,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   };
 
   // 渲染列表项
-  const renderItem = useCallback(({ item, index, section }: { item: Entry | { type: 'quickAdd' }; index: number; section: TimeSection }) => {
-    if ('type' in item && item.type === 'quickAdd') {
-      return <QuickAddMarker onQuickAdd={onQuickAdd} />;
-    }
-
+  const renderItem = useCallback(({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
     const isLast = index === section.data.length - 1;
     return (
       <EntryMarker
-        entry={item as Entry}
+        entry={item}
         onDeleteEntry={deleteEntry}
         onEditEntry={handleEditEntry}
         onPauseRecording={onPauseRecording}
@@ -587,7 +531,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         cardSpacing={cardSpacing}
       />
     );
-  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, onQuickAdd, cardSpacing]);
+  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, cardSpacing]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
@@ -643,7 +587,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       ) : viewMode === 'stats' ? (
         <StatsView entries={entries} />
       ) : !hasEntries ? (
-        <EmptyState onQuickAdd={onQuickAdd} />
+        <EmptyState />
       ) : (
         <View style={{ flex: 1, position: 'relative' }}>
           {/* 连续的时间线 - 仅列表模式显示 */}
@@ -659,7 +603,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
             }}
           />}
 
-          <SectionList<Entry | { type: 'quickAdd' }, TimeSection>
+          <SectionList<Entry, TimeSection>
             ref={sectionListRef}
             sections={sections}
             renderItem={renderItem}

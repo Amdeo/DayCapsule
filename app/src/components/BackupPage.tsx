@@ -47,8 +47,9 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
 
   const refreshBackupInfo = useCallback(async () => {
     const files = await BackupService.listBackups();
+    const backupTime = await BackupService.getLastBackupTime();
     setBackupFiles(files.slice(0, 3));
-    setLastBackupTime(BackupService.getLastBackupTime());
+    setLastBackupTime(backupTime);
   }, []);
 
   useEffect(() => {
