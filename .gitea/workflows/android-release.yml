@@ -11,6 +11,7 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
+      NODE_ENV: "production"
       GRADLE_OPTS: -Dorg.gradle.daemon=false
 
     steps:
@@ -154,8 +155,14 @@ jobs:
         working-directory: app/android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleRelease || {
+          ./gradlew --no-daemon --stacktrace --info assembleRelease || {
             status=$?
+            echo "=== CMake logs ==="
+            find . -path '*/CMakeFiles/CMakeError.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            find . -path '*/CMakeFiles/CMakeOutput.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            find . -path '*/CMakeCache.txt' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            echo "=== External native build logs ==="
+            find . -path '*/build/intermediates/cxx/*' -type f \( -name '*.log' -o -name '*.txt' \) -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
             echo "=== Gradle daemon logs ==="
             find "$HOME/.gradle/daemon" -maxdepth 2 -name 'daemon-*.out.log' -type f -exec tail -n 200 {} \; || true
             exit $status
