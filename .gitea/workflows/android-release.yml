@@ -129,15 +129,23 @@ jobs:
             ndk_clangxx="$ndk_toolchain_bin/clang++"
             ndk_llvm_ar="$ndk_toolchain_bin/llvm-ar"
             ndk_lld="$ndk_toolchain_bin/ld.lld"
+            ninja_wrapper="/usr/local/bin/ninja-ci"
 
             mv "$sdk_cmake_bin/cmake" "$sdk_cmake_bin/cmake.sdk"
             ln -sf /usr/bin/cmake "$sdk_cmake_bin/cmake"
+            printf '%s\n' \
+              '#!/bin/sh' \
+              'exec /usr/bin/ninja -j1 "$@"' \
+              >"$ninja_wrapper"
+            chmod +x "$ninja_wrapper"
             mv "$sdk_cmake_bin/ninja" "$sdk_cmake_bin/ninja.sdk"
-            ln -sf /usr/bin/ninja "$sdk_cmake_bin/ninja"
+            ln -sf "$ninja_wrapper" "$sdk_cmake_bin/ninja"
 
             echo "=== Patched SDK CMake binaries ==="
             "$sdk_cmake_bin/cmake" --version
             "$sdk_cmake_bin/ninja" --version
+            echo "=== Ninja wrapper ==="
+            cat "$ninja_wrapper"
             echo "=== x86_64 loader ==="
             ls -l /lib64/ld-linux-x86-64.so.2 || true
             echo "=== NDK host tools ==="
@@ -178,11 +186,28 @@ jobs:
       - name: Tune Gradle for CI
         working-directory: app/android
         run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8/' gradle.properties
           sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=false/' gradle.properties
-          grep -q '^org\.gradle\.workers\.max=' gradle.properties || echo 'org.gradle.workers.max=2' >> gradle.properties
+          if grep -q '^org\.gradle\.workers\.max=' gradle.properties; then
+            sed -i 's/^org\.gradle\.workers\.max=.*/org.gradle.workers.max=1/' gradle.properties
+          else
+            echo 'org.gradle.workers.max=1' >> gradle.properties
+          fi
           echo "=== Gradle properties ==="
           cat gradle.properties
+          echo "=== cgroup memory before build ==="
+          for f in \
+            /sys/fs/cgroup/memory.max \
+            /sys/fs/cgroup/memory.current \
+            /sys/fs/cgroup/memory.events \
+            /sys/fs/cgroup/memory.events.local \
+            /sys/fs/cgroup/memory.swap.max \
+            /sys/fs/cgroup/memory.swap.current; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+            fi
+          done
 
       - name: Build unsigned release APK
         working-directory: app/android
@@ -197,6 +222,21 @@ jobs:
           if [ "$status" -ne 0 ]; then
             echo "=== Gradle build log path ==="
             echo "$build_log"
+            echo "=== cgroup memory after build ==="
+            for f in \
+              /sys/fs/cgroup/memory.max \
+              /sys/fs/cgroup/memory.current \
+              /sys/fs/cgroup/memory.events \
+              /sys/fs/cgroup/memory.events.local \
+              /sys/fs/cgroup/memory.swap.max \
+              /sys/fs/cgroup/memory.swap.current; do
+              if [ -f "$f" ]; then
+                echo "--- $f ---"
+                cat "$f"
+              fi
+            done
+            echo "=== Kernel messages ==="
+            dmesg | tail -n 200 || true
             echo "=== CMake logs ==="
             find . -path '*/CMakeFiles/CMakeError.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
             find . -path '*/CMakeFiles/CMakeOutput.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
