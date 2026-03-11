@@ -32,6 +32,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+          log-accepted-android-sdk-licenses: "false"
 
       - name: Install Android SDK packages
         run: |
