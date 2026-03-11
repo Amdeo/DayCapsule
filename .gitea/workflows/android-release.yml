@@ -124,7 +124,11 @@ jobs:
 
             sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
             sdk_cmake_bin="$sdk_root/cmake/3.22.1/bin"
-            ndk_clang="$sdk_root/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+            ndk_toolchain_bin="$sdk_root/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin"
+            ndk_clang="$ndk_toolchain_bin/clang"
+            ndk_clangxx="$ndk_toolchain_bin/clang++"
+            ndk_llvm_ar="$ndk_toolchain_bin/llvm-ar"
+            ndk_lld="$ndk_toolchain_bin/ld.lld"
 
             mv "$sdk_cmake_bin/cmake" "$sdk_cmake_bin/cmake.sdk"
             ln -sf /usr/bin/cmake "$sdk_cmake_bin/cmake"
@@ -136,9 +140,37 @@ jobs:
             "$sdk_cmake_bin/ninja" --version
             echo "=== x86_64 loader ==="
             ls -l /lib64/ld-linux-x86-64.so.2 || true
-            echo "=== NDK clang smoke test ==="
-            file "$ndk_clang" || true
+            echo "=== NDK host tools ==="
+            file "$ndk_clang" "$ndk_clangxx" "$ndk_llvm_ar" "$ndk_lld" || true
             "$ndk_clang" --version
+            "$ndk_clangxx" --version
+            "$ndk_llvm_ar" --version
+            "$ndk_lld" --version
+            echo "=== NDK C compile/link smoke test ==="
+            tmpdir="$(mktemp -d)"
+            printf '%s\n' 'int add(int a, int b) { return a + b; }' >"$tmpdir/test.c"
+            "$ndk_clang" \
+              --target=aarch64-linux-android24 \
+              -shared \
+              -fPIC \
+              "$tmpdir/test.c" \
+              -o "$tmpdir/libtest-c.so"
+            ls -lah "$tmpdir/libtest-c.so"
+            echo "=== NDK C++ compile/link smoke test ==="
+            printf '%s\n' \
+              '#include <string>' \
+              'extern "C" int answer() {' \
+              '  std::string value = "42";' \
+              '  return value == "42" ? 42 : 0;' \
+              '}' >"$tmpdir/test.cpp"
+            "$ndk_clangxx" \
+              --target=aarch64-linux-android24 \
+              -shared \
+              -fPIC \
+              -std=c++20 \
+              "$tmpdir/test.cpp" \
+              -o "$tmpdir/libtest-cpp.so"
+            ls -lah "$tmpdir/libtest-cpp.so"
           else
             echo "Skipping arm64 CMake patch"
           fi
@@ -157,9 +189,14 @@ jobs:
         env:
           NODE_ENV: "production"
         run: |
+          set -o pipefail
+          build_log="$PWD/gradle-assemble-release.log"
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace --info assembleRelease || {
-            status=$?
+          ./gradlew --no-daemon --stacktrace --info assembleRelease 2>&1 | tee "$build_log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "=== Gradle build log path ==="
+            echo "$build_log"
             echo "=== CMake logs ==="
             find . -path '*/CMakeFiles/CMakeError.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
             find . -path '*/CMakeFiles/CMakeOutput.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
@@ -169,7 +206,22 @@ jobs:
             echo "=== Gradle daemon logs ==="
             find "$HOME/.gradle/daemon" -maxdepth 2 -name 'daemon-*.out.log' -type f -exec tail -n 200 {} \; || true
             exit $status
-          }
+          fi
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-native-build-diagnostics
+          path: |
+            app/android/**/CMakeError.log
+            app/android/**/CMakeOutput.log
+            app/android/**/CMakeCache.txt
+            app/android/**/build/intermediates/cxx/**/*.log
+            app/android/**/build/intermediates/cxx/**/*.txt
+            app/node_modules/react-native-nitro-modules/android/.cxx/**/build.ninja
+            app/android/gradle-assemble-release.log
+          if-no-files-found: warn
 
       - name: Show APK output
         run: ls -lah app/android/app/build/outputs/apk/release
