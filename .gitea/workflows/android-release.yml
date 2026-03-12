@@ -2,6 +2,11 @@ name: Android Release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      debug:
+        description: "Enable verbose diagnostics"
+        type: boolean
+        default: false
 
 jobs:
   build-android-release:
@@ -11,7 +16,14 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
+      ANDROID_PLATFORM: "36"
+      BUILD_TOOLS_VERSION: "36.0.0"
+      NDK_VERSION: "27.1.12297006"
+      CMAKE_VERSION: "3.22.1"
       GRADLE_OPTS: -Dorg.gradle.daemon=false
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout repository
@@ -44,10 +56,10 @@ jobs:
           set -o pipefail
           sdkmanager --install \
             "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0" \
-            "ndk;27.1.12297006" \
-            "cmake;3.22.1"
+            "platforms;android-${{ env.ANDROID_PLATFORM }}" \
+            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
+            "ndk;${{ env.NDK_VERSION }}" \
+            "cmake;${{ env.CMAKE_VERSION }}"
 
       - name: Install dependencies
         working-directory: app
@@ -68,6 +80,7 @@ jobs:
         run: npx expo prebuild --platform android --non-interactive --clean
 
       - name: Show runner resources
+        if: ${{ inputs.debug }}
         run: |
           echo "=== Architecture ==="
           uname -m
@@ -78,7 +91,7 @@ jobs:
           echo "=== Disk ==="
           df -h
 
-      - name: Patch Android CMake on arm64 runners
+      - name: Configure multi-arch apt sources (arm64)
         run: |
           arch="$(uname -m)"
           echo "Runner architecture: $arch"
@@ -112,7 +125,15 @@ jobs:
             cat /etc/apt/sources.list.d/ubuntu.sources.disabled || true
             cat /etc/apt/sources.list.d/ubuntu-arm64.sources
             cat /etc/apt/sources.list.d/ubuntu-amd64.sources
+          else
+            echo "Skipping arm64 apt source configuration"
+          fi
 
+      - name: Install x86_64 dependencies (arm64)
+        run: |
+          arch="$(uname -m)"
+          echo "Runner architecture: $arch"
+          if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
             apt-get update
             apt-get install -y \
               cmake \
@@ -121,21 +142,24 @@ jobs:
               libstdc++6:amd64 \
               libgcc-s1:amd64 \
               zlib1g:amd64
+          else
+            echo "Skipping arm64 x86_64 dependency installation"
+          fi
 
+      - name: Patch SDK CMake and Ninja (arm64)
+        run: |
+          arch="$(uname -m)"
+          echo "Runner architecture: $arch"
+          if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
             sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
-            sdk_cmake_bin="$sdk_root/cmake/3.22.1/bin"
-            ndk_toolchain_bin="$sdk_root/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin"
-            ndk_clang="$ndk_toolchain_bin/clang"
-            ndk_clangxx="$ndk_toolchain_bin/clang++"
-            ndk_llvm_ar="$ndk_toolchain_bin/llvm-ar"
-            ndk_lld="$ndk_toolchain_bin/ld.lld"
+            sdk_cmake_bin="$sdk_root/cmake/$CMAKE_VERSION/bin"
             ninja_wrapper="/usr/local/bin/ninja-ci"
 
             mv "$sdk_cmake_bin/cmake" "$sdk_cmake_bin/cmake.sdk"
             ln -sf /usr/bin/cmake "$sdk_cmake_bin/cmake"
             printf '%s\n' \
               '#!/bin/sh' \
-              'exec /usr/bin/ninja -j1 "$@"' \
+              'exec /usr/bin/ninja -j2 "$@"' \
               >"$ninja_wrapper"
             chmod +x "$ninja_wrapper"
             mv "$sdk_cmake_bin/ninja" "$sdk_cmake_bin/ninja.sdk"
@@ -146,6 +170,23 @@ jobs:
             "$sdk_cmake_bin/ninja" --version
             echo "=== Ninja wrapper ==="
             cat "$ninja_wrapper"
+          else
+            echo "Skipping arm64 CMake patch"
+          fi
+
+      - name: NDK smoke test (arm64)
+        if: ${{ inputs.debug }}
+        run: |
+          arch="$(uname -m)"
+          echo "Runner architecture: $arch"
+          if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+            sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
+            ndk_toolchain_bin="$sdk_root/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+            ndk_clang="$ndk_toolchain_bin/clang"
+            ndk_clangxx="$ndk_toolchain_bin/clang++"
+            ndk_llvm_ar="$ndk_toolchain_bin/llvm-ar"
+            ndk_lld="$ndk_toolchain_bin/ld.lld"
+
             echo "=== x86_64 loader ==="
             ls -l /lib64/ld-linux-x86-64.so.2 || true
             echo "=== NDK host tools ==="
@@ -180,8 +221,18 @@ jobs:
               -o "$tmpdir/libtest-cpp.so"
             ls -lah "$tmpdir/libtest-cpp.so"
           else
-            echo "Skipping arm64 CMake patch"
+            echo "Skipping arm64 NDK smoke test"
           fi
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties', 'app/android/build.gradle', 'app/android/app/build.gradle') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Tune Gradle for CI
         working-directory: app/android
@@ -195,19 +246,21 @@ jobs:
           fi
           echo "=== Gradle properties ==="
           cat gradle.properties
-          echo "=== cgroup memory before build ==="
-          for f in \
-            /sys/fs/cgroup/memory.max \
-            /sys/fs/cgroup/memory.current \
-            /sys/fs/cgroup/memory.events \
-            /sys/fs/cgroup/memory.events.local \
-            /sys/fs/cgroup/memory.swap.max \
-            /sys/fs/cgroup/memory.swap.current; do
-            if [ -f "$f" ]; then
-              echo "--- $f ---"
-              cat "$f"
-            fi
-          done
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            echo "=== cgroup memory before build ==="
+            for f in \
+              /sys/fs/cgroup/memory.max \
+              /sys/fs/cgroup/memory.current \
+              /sys/fs/cgroup/memory.events \
+              /sys/fs/cgroup/memory.events.local \
+              /sys/fs/cgroup/memory.swap.max \
+              /sys/fs/cgroup/memory.swap.current; do
+              if [ -f "$f" ]; then
+                echo "--- $f ---"
+                cat "$f"
+              fi
+            done
+          fi
 
       - name: Build unsigned release APK
         working-directory: app/android
@@ -269,6 +322,6 @@ jobs:
       - name: Upload unsigned APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-unsigned-apk
+          name: android-release-unsigned-apk-${{ github.run_number }}
           path: app/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
