@@ -21,6 +21,7 @@ jobs:
       NDK_VERSION: "27.1.12297006"
       CMAKE_VERSION: "3.22.1"
       GRADLE_OPTS: -Dorg.gradle.daemon=false
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
     defaults:
       run:
         shell: bash
@@ -47,6 +48,21 @@ jobs:
         with:
           packages: ""
           log-accepted-android-sdk-licenses: "false"
+
+      - name: Detect runner architecture
+        id: arch
+        run: echo "arch=$(uname -m)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+            ${{ env.ANDROID_HOME }}/cmake/${{ env.CMAKE_VERSION }}
+            ${{ env.ANDROID_HOME }}/platforms/android-${{ env.ANDROID_PLATFORM }}
+            ${{ env.ANDROID_HOME }}/build-tools/${{ env.BUILD_TOOLS_VERSION }}
+            ${{ env.ANDROID_HOME }}/platform-tools
+          key: android-sdk-${{ runner.os }}-${{ steps.arch.outputs.arch }}-sdk${{ env.ANDROID_PLATFORM }}-bt${{ env.BUILD_TOOLS_VERSION }}-ndk${{ env.NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}
 
       - name: Install Android SDK packages
         run: |
@@ -78,6 +94,14 @@ jobs:
         env:
           NODE_ENV: "production"
         run: npx expo prebuild --platform android --non-interactive --clean
+
+      - name: Cache native C++ build (.cxx)
+        uses: actions/cache@v4
+        with:
+          path: app/android/app/.cxx
+          key: native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-${{ hashFiles('app/package-lock.json') }}
+          restore-keys: |
+            native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-
 
       - name: Show runner resources
         if: ${{ inputs.debug }}
@@ -231,6 +255,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            ~/.gradle/build-cache
           key: gradle-${{ runner.os }}-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties', 'app/android/build.gradle', 'app/android/app/build.gradle') }}
           restore-keys: |
             gradle-${{ runner.os }}-
@@ -276,6 +301,21 @@ jobs:
             sed -i 's/^org\.gradle\.workers\.max=.*/org.gradle.workers.max=1/' gradle.properties
           else
             echo 'org.gradle.workers.max=1' >> gradle.properties
+          fi
+          if grep -q '^org\.gradle\.caching=' gradle.properties; then
+            sed -i 's/^org\.gradle\.caching=.*/org.gradle.caching=true/' gradle.properties
+          else
+            echo 'org.gradle.caching=true' >> gradle.properties
+          fi
+          sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a,armeabi-v7a/' gradle.properties
+          if ! grep -q '^reactNativeArchitectures=' gradle.properties; then
+            echo 'reactNativeArchitectures=arm64-v8a,armeabi-v7a' >> gradle.properties
+          fi
+          arch="$(uname -m)"
+          if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+            # React Native's getHermesOSBin() doesn't recognize aarch64 Linux;
+            # force linux64-bin hermesc which runs via binfmt on arm64 runners
+            sed -i 's|%OS-BIN%|linux64-bin|' app/build.gradle
           fi
           echo "=== Gradle properties ==="
           cat gradle.properties
