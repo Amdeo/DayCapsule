@@ -235,6 +235,38 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
+      - name: Configure Gradle mirrors (China)
+        run: |
+          mkdir -p ~/.gradle/init.d/
+          cat > ~/.gradle/init.d/mirrors.init.gradle <<'EOF'
+          def configureAliyunMirrors = { repositories ->
+              repositories.maven { url = uri('https://maven.aliyun.com/repository/public') } // Maven Central, JCenter
+              repositories.maven { url = uri('https://maven.aliyun.com/repository/google') } // Google Maven
+              repositories.maven { url = uri('https://maven.aliyun.com/repository/gradle-plugin') } // Gradle Plugin Portal
+          }
+
+          gradle.projectsLoaded {
+              rootProject.allprojects { project ->
+                  project.buildscript.repositories.clear()
+                  configureAliyunMirrors(project.buildscript.repositories)
+              }
+          }
+
+          gradle.projectsEvaluated {
+              rootProject.allprojects { project ->
+                  project.repositories.clear()
+                  configureAliyunMirrors(project.repositories)
+              }
+          }
+
+          settingsEvaluated { settings ->
+              settings.pluginManagement.repositories.clear()
+              configureAliyunMirrors(settings.pluginManagement.repositories)
+          }
+          EOF
+          echo "=== ~/.gradle/init.d/mirrors.init.gradle ==="
+          cat ~/.gradle/init.d/mirrors.init.gradle
+
       - name: Tune Gradle for CI
         working-directory: app/android
         run: |
