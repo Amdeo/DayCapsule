@@ -381,7 +381,7 @@ jobs:
 
       - name: Upload build diagnostics
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.0.0
         with:
           name: android-native-build-diagnostics
           path: |
@@ -398,7 +398,7 @@ jobs:
         run: ls -lah app/android/app/build/outputs/apk/release
 
       - name: Upload unsigned APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.0.0
         with:
           name: android-release-unsigned-apk-${{ github.run_number }}
           path: app/android/app/build/outputs/apk/release/*.apk
