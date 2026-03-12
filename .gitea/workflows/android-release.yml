@@ -134,6 +134,7 @@ jobs:
           arch="$(uname -m)"
           echo "Runner architecture: $arch"
           if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+            export DEBIAN_FRONTEND=noninteractive
             apt-get update
             apt-get install -y \
               cmake \
