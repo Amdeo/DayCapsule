@@ -270,7 +270,7 @@ jobs:
       - name: Tune Gradle for CI
         working-directory: app/android
         run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
           sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=false/' gradle.properties
           if grep -q '^org\.gradle\.workers\.max=' gradle.properties; then
             sed -i 's/^org\.gradle\.workers\.max=.*/org.gradle.workers.max=1/' gradle.properties
@@ -299,7 +299,7 @@ jobs:
         working-directory: app/android
         env:
           NODE_ENV: "production"
-          NODE_OPTIONS: "--max-old-space-size=512"
+          NODE_OPTIONS: "--max-old-space-size=1024"
         run: |
           set -o pipefail
           build_log="$PWD/gradle-assemble-release.log"
