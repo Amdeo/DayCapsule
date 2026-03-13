@@ -380,17 +380,18 @@ jobs:
           fi
 
       - name: Upload build diagnostics
-        if: always()
+        if: failure()
         continue-on-error: true
         uses: actions/upload-artifact@v3
         with:
-          name: android-native-build-diagnostics
+          name: android-native-build-diagnostics-${{ github.run_number }}
           path: |
             app/android/**/CMakeFiles/CMakeError.log
             app/android/**/CMakeFiles/CMakeOutput.log
             app/android/**/build/intermediates/cxx/**/*.log
             app/android/**/build/intermediates/cxx/**/*.txt
             app/android/gradle-assemble-release.log
+            !app/android/app/.cxx/**
           if-no-files-found: warn
 
       - name: Show APK output
