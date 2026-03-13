@@ -386,12 +386,10 @@ jobs:
         with:
           name: android-native-build-diagnostics
           path: |
-            app/android/**/CMakeError.log
-            app/android/**/CMakeOutput.log
-            app/android/**/CMakeCache.txt
+            app/android/**/CMakeFiles/CMakeError.log
+            app/android/**/CMakeFiles/CMakeOutput.log
             app/android/**/build/intermediates/cxx/**/*.log
             app/android/**/build/intermediates/cxx/**/*.txt
-            app/node_modules/react-native-nitro-modules/android/.cxx/**/build.ninja
             app/android/gradle-assemble-release.log
           if-no-files-found: warn
 
