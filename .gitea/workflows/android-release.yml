@@ -397,13 +397,6 @@ jobs:
       - name: Show APK output
         run: ls -lah app/android/app/build/outputs/apk/release
 
-      - name: Upload unsigned APK artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-release-unsigned-apk-${{ github.run_number }}
-          path: app/android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
       - name: Publish APK to Gitea Package Registry
         run: |
           APK=$(find app/android/app/build/outputs/apk/release -name "*.apk" | head -1)
