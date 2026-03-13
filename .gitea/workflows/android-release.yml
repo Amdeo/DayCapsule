@@ -403,3 +403,12 @@ jobs:
           name: android-release-unsigned-apk-${{ github.run_number }}
           path: app/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Publish APK to Gitea Package Registry
+        run: |
+          APK=$(find app/android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          VERSION=$(date +%Y%m%d)-${{ github.run_number }}
+          curl --fail \
+            --user "${{ vars.PKG_USERNAME }}:${{ secrets.PKG_TOKEN }}" \
+            --upload-file "$APK" \
+            "https://gitea.yuandongbin.asia:8443/api/packages/cooper/generic/daycapsule-apk/${VERSION}/app-release.apk"
