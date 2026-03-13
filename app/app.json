@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MemoryCapsule",
-    "slug": "memorycapsule",
+    "name": "DayCapsule",
+    "slug": "daycapsule",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "memorycapsule",
+    "scheme": "daycapsule",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.memorycapsule.app",
+      "bundleIdentifier": "com.daycapsule.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "允许 MemoryCapsule 访问您的照片以保存记忆",
-        "NSCameraUsageDescription": "允许 MemoryCapsule 使用相机拍摄照片",
-        "NSMicrophoneUsageDescription": "允许 MemoryCapsule 录制语音记忆"
+        "NSPhotoLibraryUsageDescription": "允许 DayCapsule 访问您的照片以保存记忆",
+        "NSCameraUsageDescription": "允许 DayCapsule 使用相机拍摄照片",
+        "NSMicrophoneUsageDescription": "允许 DayCapsule 录制语音记忆"
       }
     },
     "android": {
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.memorycapsule.app",
+      "package": "com.daycapsule.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -49,14 +49,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "允许 MemoryCapsule 访问您的照片以保存记忆",
-          "cameraPermission": "允许 MemoryCapsule 使用相机拍摄照片"
+          "photosPermission": "允许 DayCapsule 访问您的照片以保存记忆",
+          "cameraPermission": "允许 DayCapsule 使用相机拍摄照片"
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "允许 MemoryCapsule 录制语音记忆"
+          "microphonePermission": "允许 DayCapsule 录制语音记忆"
         }
       ],
       [

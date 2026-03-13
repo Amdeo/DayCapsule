@@ -1,0 +1,224 @@
+name: Android Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Enable verbose diagnostics"
+        type: boolean
+        default: false
+
+jobs:
+  build-android-release:
+    name: Build Unsigned Android Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      ANDROID_PLATFORM: "36"
+      BUILD_TOOLS_VERSION: "36.0.0"
+      NDK_VERSION: "27.1.12297006"
+      CMAKE_VERSION: "3.22.1"
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+          log-accepted-android-sdk-licenses: "false"
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+            ${{ env.ANDROID_HOME }}/cmake/${{ env.CMAKE_VERSION }}
+            ${{ env.ANDROID_HOME }}/platforms/android-${{ env.ANDROID_PLATFORM }}
+            ${{ env.ANDROID_HOME }}/build-tools/${{ env.BUILD_TOOLS_VERSION }}
+            ${{ env.ANDROID_HOME }}/platform-tools
+          key: android-sdk-${{ runner.os }}-x86_64-sdk${{ env.ANDROID_PLATFORM }}-bt${{ env.BUILD_TOOLS_VERSION }}-ndk${{ env.NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}
+
+      - name: Install Android SDK packages
+        run: |
+          # sdkmanager exits before yes, which trips pipefail with SIGPIPE.
+          set +o pipefail
+          yes | sdkmanager --licenses > /dev/null
+          set -o pipefail
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-${{ env.ANDROID_PLATFORM }}" \
+            "build-tools;${{ env.BUILD_TOOLS_VERSION }}" \
+            "ndk;${{ env.NDK_VERSION }}" \
+            "cmake;${{ env.CMAKE_VERSION }}"
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Run tests
+        working-directory: app
+        run: npm test -- --runInBand
+
+      - name: Generate Android project
+        working-directory: app
+        env:
+          NODE_ENV: "production"
+        run: npx expo prebuild --platform android --non-interactive --clean
+
+      - name: Cache native C++ build (.cxx)
+        uses: actions/cache@v4
+        with:
+          path: app/android/app/.cxx
+          key: native-cxx-${{ runner.os }}-x86_64-ndk${{ env.NDK_VERSION }}-${{ hashFiles('app/package-lock.json') }}
+          restore-keys: |
+            native-cxx-${{ runner.os }}-x86_64-ndk${{ env.NDK_VERSION }}-
+
+      - name: Show runner resources
+        if: ${{ inputs.debug }}
+        run: |
+          echo "=== Architecture ==="
+          uname -m
+          echo "=== CPU ==="
+          nproc
+          echo "=== Memory ==="
+          free -h || true
+          echo "=== Disk ==="
+          df -h
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/build-cache
+          key: gradle-${{ runner.os }}-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties', 'app/android/build.gradle', 'app/android/app/build.gradle') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Tune Gradle for CI
+        working-directory: app/android
+        run: |
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=false/' gradle.properties
+          if grep -q '^org\.gradle\.workers\.max=' gradle.properties; then
+            sed -i 's/^org\.gradle\.workers\.max=.*/org.gradle.workers.max=1/' gradle.properties
+          else
+            echo 'org.gradle.workers.max=1' >> gradle.properties
+          fi
+          if grep -q '^org\.gradle\.caching=' gradle.properties; then
+            sed -i 's/^org\.gradle\.caching=.*/org.gradle.caching=true/' gradle.properties
+          else
+            echo 'org.gradle.caching=true' >> gradle.properties
+          fi
+          sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a,armeabi-v7a/' gradle.properties
+          if ! grep -q '^reactNativeArchitectures=' gradle.properties; then
+            echo 'reactNativeArchitectures=arm64-v8a,armeabi-v7a' >> gradle.properties
+          fi
+          echo "=== Gradle properties ==="
+          cat gradle.properties
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            echo "=== cgroup memory before build ==="
+            for f in \
+              /sys/fs/cgroup/memory.max \
+              /sys/fs/cgroup/memory.current \
+              /sys/fs/cgroup/memory.events \
+              /sys/fs/cgroup/memory.events.local \
+              /sys/fs/cgroup/memory.swap.max \
+              /sys/fs/cgroup/memory.swap.current; do
+              if [ -f "$f" ]; then
+                echo "--- $f ---"
+                cat "$f"
+              fi
+            done
+          fi
+
+      - name: Build unsigned release APK
+        working-directory: app/android
+        env:
+          NODE_ENV: "production"
+          NODE_OPTIONS: "--max-old-space-size=1024"
+        run: |
+          set -o pipefail
+          build_log="$PWD/gradle-assemble-release.log"
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace --info assembleRelease 2>&1 | tee "$build_log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "=== Gradle build log path ==="
+            echo "$build_log"
+            echo "=== cgroup memory after build ==="
+            for f in \
+              /sys/fs/cgroup/memory.max \
+              /sys/fs/cgroup/memory.current \
+              /sys/fs/cgroup/memory.events \
+              /sys/fs/cgroup/memory.events.local \
+              /sys/fs/cgroup/memory.swap.max \
+              /sys/fs/cgroup/memory.swap.current; do
+              if [ -f "$f" ]; then
+                echo "--- $f ---"
+                cat "$f"
+              fi
+            done
+            echo "=== Kernel messages ==="
+            dmesg | tail -n 200 || true
+            echo "=== CMake logs ==="
+            find . -path '*/CMakeFiles/CMakeError.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            find . -path '*/CMakeFiles/CMakeOutput.log' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            find . -path '*/CMakeCache.txt' -type f -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            echo "=== External native build logs ==="
+            find . -path '*/build/intermediates/cxx/*' -type f \( -name '*.log' -o -name '*.txt' \) -exec sh -c 'echo "--- $1 ---"; tail -n 200 "$1"' _ {} \; || true
+            echo "=== Gradle daemon logs ==="
+            find "$HOME/.gradle/daemon" -maxdepth 2 -name 'daemon-*.out.log' -type f -exec tail -n 200 {} \; || true
+            exit $status
+          fi
+
+      - name: Upload build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-native-build-diagnostics-${{ github.run_number }}
+          path: |
+            app/android/**/CMakeFiles/CMakeError.log
+            app/android/**/CMakeFiles/CMakeOutput.log
+            app/android/**/build/intermediates/cxx/**/*.log
+            app/android/**/build/intermediates/cxx/**/*.txt
+            app/android/gradle-assemble-release.log
+            !app/android/app/.cxx/**
+          if-no-files-found: warn
+
+      - name: Show APK output
+        run: ls -lah app/android/app/build/outputs/apk/release
+
+      - name: Upload unsigned APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-unsigned-apk-${{ github.run_number }}
+          path: app/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

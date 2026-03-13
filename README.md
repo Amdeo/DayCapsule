@@ -1,4 +1,4 @@
-# 📱 MemoryCapsule
+# 📱 DayCapsule
 
 > 现代化生活记录应用 — 文字 / 照片 / 语音
 
