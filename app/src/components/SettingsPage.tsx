@@ -19,7 +19,11 @@ import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
-import { useSettingsStore, CardSpacing, SPACING_VALUES } from '@/src/store/settingsStore';
+import {
+  useSettingsStore,
+  CardSpacing, SPACING_VALUES,
+  PhotoHeightPreset, PHOTO_HEIGHT_VALUES,
+} from '@/src/store/settingsStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { NotificationService } from '@/src/services/notificationService';
@@ -35,6 +39,18 @@ const SPACING_LABELS: Record<CardSpacing, string> = {
   compact: '紧凑',
   default: '默认',
   loose: '宽松',
+};
+
+const PHOTO_HEIGHT_LABELS: Record<PhotoHeightPreset, string> = {
+  compact: '紧凑',
+  default: '默认',
+  large:   '宽松',
+};
+
+const PHOTO_HEIGHT_PREVIEW_HEIGHTS: Record<PhotoHeightPreset, number> = {
+  compact: 24,
+  default: 34,
+  large:   48,
 };
 
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
@@ -55,6 +71,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setAutoBackup: saveAutoBackup,
     setHighQualityPhotos: saveHighQualityPhotos,
     setCardSpacing: saveCardSpacing,
+    photoHeight,
+    setPhotoHeight: savePhotoHeight,
     resetSettings,
   } = useSettingsStore();
 
@@ -130,6 +148,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const handleCardSpacing = useCallback(async (spacing: CardSpacing) => {
     await saveCardSpacing(spacing);
   }, [saveCardSpacing]);
+
+  const handlePhotoHeight = useCallback(async (preset: PhotoHeightPreset) => {
+    await savePhotoHeight(preset);
+  }, [savePhotoHeight]);
 
   // 真实统计数据
   const { photoCount, voiceCount } = useMemo(() => ({
@@ -307,6 +329,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                   <CardSpacingSelector
                     value={cardSpacing}
                     onChange={handleCardSpacing}
+                  />
+                  <PhotoHeightSelector
+                    value={photoHeight}
+                    onChange={handlePhotoHeight}
                   />
                   <SettingButton
                     icon="download"
@@ -492,6 +518,133 @@ const csStyles = StyleSheet.create({
   },
 });
 
+// 照片高度选择器组件
+function PhotoHeightSelector({
+  value,
+  onChange,
+}: {
+  value: PhotoHeightPreset;
+  onChange: (preset: PhotoHeightPreset) => void;
+}) {
+  const options: PhotoHeightPreset[] = ['compact', 'default', 'large'];
+
+  return (
+    <View style={phStyles.container}>
+      <View style={phStyles.header}>
+        <View style={phStyles.icon}>
+          <Ionicons name="image-outline" size={20} color="#77C9D4" />
+        </View>
+        <View style={phStyles.headerText}>
+          <Text style={phStyles.title}>照片显示高度</Text>
+          <Text style={phStyles.subtitle}>限制时间轴中照片卡片的最大高度</Text>
+        </View>
+      </View>
+      <View style={phStyles.optionsRow}>
+        {options.map((option) => {
+          const isSelected = value === option;
+          return (
+            <Pressable
+              key={option}
+              style={[phStyles.optionCard, isSelected && phStyles.optionCardSelected]}
+              onPress={() => onChange(option)}
+            >
+              <View style={[
+                phStyles.previewBlock,
+                { height: PHOTO_HEIGHT_PREVIEW_HEIGHTS[option] },
+                isSelected && phStyles.previewBlockSelected,
+              ]} />
+              <Text style={[phStyles.optionLabel, isSelected && phStyles.optionLabelSelected]}>
+                {PHOTO_HEIGHT_LABELS[option]}
+              </Text>
+              <Text style={[phStyles.optionValue, isSelected && phStyles.optionValueSelected]}>
+                {PHOTO_HEIGHT_VALUES[option]}dp
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const phStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F8FA',
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4A4A4A',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#A3A3A3',
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  optionCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  optionCardSelected: {
+    borderColor: '#77C9D4',
+    backgroundColor: '#EEF8FA',
+  },
+  previewBlock: {
+    width: '100%',
+    borderRadius: 6,
+    backgroundColor: '#D4EFF3',
+  },
+  previewBlockSelected: {
+    backgroundColor: '#77C9D4',
+  },
+  optionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#737373',
+  },
+  optionLabelSelected: {
+    color: '#4A9DAA',
+    fontWeight: '600',
+  },
+  optionValue: {
+    fontSize: 11,
+    color: '#B0B0B0',
+  },
+  optionValueSelected: {
+    color: '#77C9D4',
+  },
+});
+
 // 设置按钮组件
 function SettingButton({
   icon,
@@ -638,4 +791,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { CardSpacing, SPACING_VALUES };
+export { CardSpacing, SPACING_VALUES, PhotoHeightPreset, PHOTO_HEIGHT_VALUES };
