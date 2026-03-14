@@ -14,7 +14,7 @@ export interface PhotoSelectDeps {
     sourceUri: string,
     fileId: string,
     quality: 'low' | 'medium' | 'high',
-    aspectRatio: number
+    aspectRatio?: number
   ) => Promise<import('@/src/services/photoService').SavedPhotoResult>;
   addEntry: (entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>) => Promise<void>;
 }
@@ -239,7 +239,7 @@ export default function HomeScreen() {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
       Alert.alert('保存失败', '照片保存失败，请重试');
     }
-  }, [addEntry]);
+  }, [addEntry]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
