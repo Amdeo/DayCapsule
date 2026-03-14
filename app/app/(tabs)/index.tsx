@@ -9,9 +9,50 @@ import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 
+export interface PhotoSelectDeps {
+  savePhotoToStorage: (
+    sourceUri: string,
+    fileId: string,
+    quality: 'low' | 'medium' | 'high',
+    aspectRatio: number
+  ) => Promise<import('@/src/services/photoService').SavedPhotoResult>;
+  addEntry: (entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>) => Promise<void>;
+}
+
+export async function handlePhotoSelectForTest(
+  result: import('@/src/services/photoService').PhotoResult,
+  deps: PhotoSelectDeps
+): Promise<void> {
+  const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const savedPhoto = await deps.savePhotoToStorage(
+    result.uri,
+    fileId,
+    'medium',
+    result.aspectRatio
+  );
+  await deps.addEntry({
+    type: 'photo',
+    content: '',
+    syncStatus: 'pending',
+    media: {
+      uri: savedPhoto.originalUri,
+      mimeType: 'image/jpeg',
+      size: 0,
+      thumbnail: savedPhoto.thumbnailUri,
+      metadata: {
+        width: savedPhoto.width,
+        height: savedPhoto.height,
+        aspectRatio: savedPhoto.aspectRatio,
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      },
+    },
+  });
+}
+
 export default function HomeScreen() {
   const {
-    loadEntries, addEntry, updateEntry, deleteEntry,
+    loadEntries, addEntry, deleteEntry,
     updateRecordingStatus, updateRecordingDuration, completeRecording,
   } = useEntryStore();
 
@@ -190,54 +231,15 @@ export default function HomeScreen() {
 
   const handlePhotoSelect = useCallback(async (result: PhotoResult) => {
     try {
-      await addEntry({
-        type: 'photo',
-        content: '',
-        syncStatus: 'pending',
-        media: {
-          uri: result.uri,
-          mimeType: 'image/jpeg',
-          size: 0,
-          metadata: {
-            width: result.width,
-            height: result.height,
-            aspectRatio: result.aspectRatio,
-            createdAt: Date.now(),
-            modifiedAt: Date.now(),
-          },
-        },
+      await handlePhotoSelectForTest(result, {
+        savePhotoToStorage: PhotoService.savePhotoToStorage.bind(PhotoService),
+        addEntry,
       });
-
-      const allEntries = useEntryStore.getState().entries;
-      const newEntry = allEntries[0];
-
-      if (newEntry) {
-        const savedPhoto = await PhotoService.savePhotoToStorage(
-          result.uri,
-          newEntry.id,
-          'medium',
-          result.aspectRatio
-        );
-        await updateEntry(newEntry.id, {
-          media: {
-            uri: savedPhoto.originalUri,
-            mimeType: 'image/jpeg',
-            size: 0,
-            thumbnail: savedPhoto.thumbnailUri,
-            metadata: {
-              width: savedPhoto.width,
-              height: savedPhoto.height,
-              aspectRatio: savedPhoto.aspectRatio,
-              createdAt: Date.now(),
-              modifiedAt: Date.now(),
-            },
-          },
-        });
-      }
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
+      Alert.alert('保存失败', '照片保存失败，请重试');
     }
-  }, [addEntry, updateEntry]);
+  }, [addEntry]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
