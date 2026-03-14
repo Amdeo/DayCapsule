@@ -33,17 +33,18 @@ import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
 import { ImageViewer } from './ImageViewer';
+import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // 卡片内容宽度（考虑边距）
 const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
 
-// 计算图片高度，保持宽高比，最大高度 600px
-const calculateImageHeight = (aspectRatio?: number): number => {
-  if (!aspectRatio || aspectRatio <= 0) return 200; // 默认高度
+// 计算图片高度，保持宽高比，最大高度由设置决定
+const calculateImageHeight = (aspectRatio: number | undefined, maxHeight: number): number => {
+  if (!aspectRatio || aspectRatio <= 0) return Math.min(200, maxHeight);
   const calculatedHeight = getCardContentWidth() / aspectRatio;
-  return Math.min(calculatedHeight, 600); // 最大 600px
+  return Math.min(calculatedHeight, maxHeight);
 };
 
 interface EntryCardProps {
@@ -66,6 +67,8 @@ function EntryCard({
   cardSpacing = 12,
 }: EntryCardProps) {
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
+  const photoHeight = useSettingsStore((s) => s.photoHeight);
+  const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
 
@@ -339,9 +342,9 @@ function EntryCard({
                     source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
                     style={[
                       styles.photoImage,
-                      { height: calculateImageHeight(entry.media?.metadata?.aspectRatio) }
+                      { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight) }
                     ]}
-                    resizeMode="contain"
+                    resizeMode="cover"
                     testID="photo-image"
                     onError={() => setPhotoError(true)}
                   />
@@ -583,11 +586,11 @@ const styles = StyleSheet.create({
   },
   photoImage: {
     width: '100%',
-    minHeight: 200,
     borderRadius: 12,
     backgroundColor: '#F5F5F5',
   },
   photoMissing: {
+    minHeight: 200,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,

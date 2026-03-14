@@ -8,6 +8,11 @@ jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({ currentPlayingId: null, setCurrentPlayingId: jest.fn() }),
 }));
 
+jest.mock('@/src/store/settingsStore', () => ({
+  useSettingsStore: (selector: (s: any) => any) => selector({ photoHeight: 'default' }),
+  PHOTO_HEIGHT_VALUES: { compact: 200, default: 280, large: 400 },
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: { stopPlayback: jest.fn(), playAudio: jest.fn() },
 }));
