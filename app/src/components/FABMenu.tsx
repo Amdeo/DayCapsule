@@ -33,17 +33,17 @@ const FAB_SIZE = 56;
 const FAB_BOTTOM = 32;
 const FAB_CENTER_X = SCREEN_WIDTH / 2;
 const FAB_CENTER_Y = SCREEN_HEIGHT - FAB_BOTTOM - FAB_SIZE / 2;
-const OPTION_SIZE = 48;
+const OPTION_SIZE = 56;
 const OPTION_ICON_HALF = OPTION_SIZE / 2;
 const DEAD_ZONE_DP = 30;
 const LONG_PRESS_MS = 300;
 
 // 扇形 4 个选项配置（角度：0° = 正上方，顺时针为正）
 const FAN_OPTIONS = [
-  { type: 'text'   as LastAddType, icon: 'create-outline', label: '文字', color: '#A491D3', angle: -60, dist: 80 },
-  { type: 'photo'  as LastAddType, icon: 'images',         label: '相册', color: '#57B8C8', angle: -20, dist: 85 },
-  { type: 'camera' as LastAddType, icon: 'camera',         label: '拍照', color: '#77C9D4', angle:  20, dist: 85 },
-  { type: 'voice'  as LastAddType, icon: 'mic-outline',    label: '语音', color: '#F5A623', angle:  60, dist: 80 },
+  { type: 'text'   as LastAddType, icon: 'create-outline', label: '文字', color: '#A491D3', angle: -60, dist: 120 },
+  { type: 'photo'  as LastAddType, icon: 'images',         label: '相册', color: '#57B8C8', angle: -20, dist: 120 },
+  { type: 'camera' as LastAddType, icon: 'camera',         label: '拍照', color: '#77C9D4', angle:  20, dist: 120 },
+  { type: 'voice'  as LastAddType, icon: 'mic-outline',    label: '语音', color: '#F5A623', angle:  60, dist: 120 },
 ] as const;
 
 // 角度区间 → 选项 index（-1 = 死区）
@@ -249,7 +249,7 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
           </View>
 
           {/* 首次启动气泡提示 */}
-          {lastAddType === null && (
+          {lastAddType === null && !isExpanded && (
             <View style={styles.tipBubble}>
               <Text style={styles.tipText}>长按选择记录类型</Text>
               <View style={styles.tipArrow} />
@@ -306,7 +306,7 @@ const FanOptionButton = React.memo(function FanOptionButton({
   return (
     <Animated.View style={[styles.optionWrapper, animatedStyle]}>
       <View style={[styles.optionButton, { backgroundColor: option.color }]}>
-        <Ionicons name={option.icon as any} size={22} color="#FFFFFF" />
+        <Ionicons name={option.icon as any} size={24} color="#FFFFFF" />
       </View>
       <View style={styles.optionLabelContainer}>
         <Text style={styles.optionLabel}>{option.label}</Text>
