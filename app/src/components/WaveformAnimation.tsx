@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: BAR_GAP,
+    overflow: 'hidden',
   },
   bar: {
     width: BAR_WIDTH,
