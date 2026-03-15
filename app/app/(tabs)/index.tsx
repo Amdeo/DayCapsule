@@ -1,5 +1,14 @@
-import { View, Alert, Linking } from 'react-native';
+import { View, Alert, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  cancelAnimation,
+  interpolate,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useEntryStore } from '@/src/store/entryStore';
 import { Timeline } from '@/src/components/Timeline.v2';
 import { Sidebar } from '@/src/components/Sidebar';
@@ -8,6 +17,12 @@ import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('screen');
+const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
+const MAIN_TRANSLATE_X = SIDEBAR_WIDTH * 0.8;
+const MAIN_SCALE = 0.85;
+const MAIN_BORDER_RADIUS = 16;
 
 export interface PhotoSelectDeps {
   savePhotoToStorage: (
@@ -57,7 +72,14 @@ export default function HomeScreen() {
   } = useEntryStore();
 
   const [showTextEditor, setShowTextEditor] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const drawerProgress = useSharedValue(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showTags, setShowTags] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // 使用 ref 存储计时器和录音 ID，避免触发不必要的重渲染
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -241,23 +263,81 @@ export default function HomeScreen() {
     }
   }, [addEntry]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
-      <Timeline
-        onQuickAdd={handleMediaSelect}
-        onMenuPress={() => setShowSidebar(true)}
-        onPauseRecording={handlePauseRecording}
-        onResumeRecording={handleResumeRecording}
-        onStopRecording={handleStopRecording}
-      />
+  const openDrawer = useCallback(() => {
+    setDrawerOpen(true);
+    cancelAnimation(drawerProgress);
+    drawerProgress.value = withSpring(1, { damping: 20, stiffness: 200 });
+  }, [drawerProgress]);
 
-      <Sidebar visible={showSidebar} onClose={() => setShowSidebar(false)} />
+  const closeDrawer = useCallback(() => {
+    cancelAnimation(drawerProgress);
+    drawerProgress.value = withTiming(0, { duration: 250 }, (finished) => {
+      if (finished) runOnJS(setDrawerOpen)(false);
+    });
+  }, [drawerProgress]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeDrawer();
+      return true;
+    });
+
+    return () => sub.remove();
+  }, [drawerOpen, closeDrawer]);
+
+  const mainContentStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(drawerProgress.value, [0, 1], [0, MAIN_TRANSLATE_X]) },
+      { scale: interpolate(drawerProgress.value, [0, 1], [1, MAIN_SCALE]) },
+    ],
+    borderRadius: interpolate(drawerProgress.value, [0, 1], [0, MAIN_BORDER_RADIUS]),
+    overflow: 'hidden',
+  }));
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
+      <Animated.View style={[{ flex: 1 }, mainContentStyle]}>
+        <Timeline
+          onQuickAdd={handleMediaSelect}
+          onMenuPress={openDrawer}
+          onPauseRecording={handlePauseRecording}
+          onResumeRecording={handleResumeRecording}
+          onStopRecording={handleStopRecording}
+        />
+      </Animated.View>
 
       <TextEditor
         visible={showTextEditor}
         onSave={handleTextSave}
         onCancel={() => setShowTextEditor(false)}
       />
+
+      <Sidebar
+        drawerProgress={drawerProgress}
+        onClose={closeDrawer}
+        showSettings={showSettings} setShowSettings={setShowSettings}
+        showAbout={showAbout} setShowAbout={setShowAbout}
+        showStats={showStats} setShowStats={setShowStats}
+        showTags={showTags} setShowTags={setShowTags}
+        showBackup={showBackup} setShowBackup={setShowBackup}
+        showHelp={showHelp} setShowHelp={setShowHelp}
+      />
+
+      {drawerOpen && (
+        <Pressable
+          onPress={closeDrawer}
+          style={{
+            position: 'absolute',
+            left: MAIN_TRANSLATE_X,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 5,
+          }}
+        />
+      )}
     </View>
   );
 }
