@@ -1,18 +1,17 @@
 /**
- * FABMenu - 花瓣展开动画菜单
- * 点击加号按钮，三个选项以花瓣形式展开
+ * FABMenu - 智能记忆 FAB
+ * 单击触发上次操作；长按 300ms 后扇形展开，拖动到选项松手触发。
  */
 
-import React, { useState, useCallback, useReducer, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  PanResponder,
   StyleSheet,
   Pressable,
   Dimensions,
   Animated as RNAnimated,
-  BackHandler,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -21,79 +20,53 @@ import Animated, {
   withTiming,
   interpolate,
   Extrapolate,
-  runOnJS,
   SharedValue,
-  useDerivedValue,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { PhotoService, PhotoResult } from '@/src/services/photoService';
+import { useSettingsStore, LastAddType } from '@/src/store/settingsStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('screen');
 
-// 展开距离
-const EXPAND_DISTANCE = 80;
-const SECONDARY_DISTANCE = 75;
+// ─── 布局常量 ───────────────────────────────────────────────────────────────────
+const FAB_SIZE = 56;
+const FAB_BOTTOM = 32;
+const FAB_CENTER_X = SCREEN_WIDTH / 2;
+const FAB_CENTER_Y = SCREEN_HEIGHT - FAB_BOTTOM - FAB_SIZE / 2;
+const OPTION_SIZE = 48;
+const OPTION_ICON_HALF = OPTION_SIZE / 2;
+const DEAD_ZONE_DP = 30;
+const LONG_PRESS_MS = 300;
 
-// 动画配置
-const SPRING_CONFIG = {
-  damping: 20,
-  stiffness: 200,
-  mass: 1,
-  overshootClamping: true,
+// 扇形 4 个选项配置（角度：0° = 正上方，顺时针为正）
+const FAN_OPTIONS = [
+  { type: 'text'   as LastAddType, icon: 'create-outline', label: '文字', color: '#A491D3', angle: -60, dist: 80 },
+  { type: 'photo'  as LastAddType, icon: 'images',         label: '相册', color: '#57B8C8', angle: -20, dist: 85 },
+  { type: 'camera' as LastAddType, icon: 'camera',         label: '拍照', color: '#77C9D4', angle:  20, dist: 85 },
+  { type: 'voice'  as LastAddType, icon: 'mic-outline',    label: '语音', color: '#F5A623', angle:  60, dist: 80 },
+] as const;
+
+// 角度区间 → 选项 index（-1 = 死区）
+function hitTest(dx: number, dy: number): number {
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < DEAD_ZONE_DP) return -1;
+  // atan2(dx, -dy)：以正上方为 0°，顺时针为正
+  const angle = (Math.atan2(dx, -dy) * 180) / Math.PI;
+  if (angle < -40) return 0; // 文字
+  if (angle < 0)   return 1; // 相册
+  if (angle < 40)  return 2; // 拍照
+  return 3;                  // 语音
+}
+
+// 各 LastAddType 的外观
+const TYPE_CONFIG: Record<LastAddType, { icon: string; color: string; label: string }> = {
+  text:   { icon: 'create-outline', color: '#A491D3', label: '文字' },
+  camera: { icon: 'camera',         color: '#77C9D4', label: '拍照' },
+  photo:  { icon: 'images',         color: '#57B8C8', label: '相册' },
+  voice:  { icon: 'mic-outline',    color: '#F5A623', label: '语音' },
 };
 
-// 状态管理
-type MenuState = 'closed' | 'primary' | 'secondary';
-type MenuAction =
-  | { type: 'OPEN_PRIMARY' }
-  | { type: 'OPEN_SECONDARY' }
-  | { type: 'CLOSE_ALL' }
-  | { type: 'BACK' };
-
-function menuReducer(state: MenuState, action: MenuAction): MenuState {
-  switch (action.type) {
-    case 'OPEN_PRIMARY':
-      return state === 'closed' ? 'primary' : state;
-    case 'OPEN_SECONDARY':
-      return state === 'primary' ? 'secondary' : state;
-    case 'BACK':
-      return state === 'secondary' ? 'primary' : 'closed';
-    case 'CLOSE_ALL':
-      return 'closed';
-    default:
-      return state;
-  }
-}
-
-// 选项配置
-interface OptionConfig {
-  type: 'text' | 'photo' | 'voice';
-  icon: string;
-  label: string;
-  color: string;
-  angle: number;
-  hasSecondary?: boolean;
-}
-
-const OPTIONS: OptionConfig[] = [
-  { type: 'text', icon: 'create-outline', label: '文字', color: '#A491D3', angle: -45 },
-  { type: 'photo', icon: 'camera-outline', label: '照片', color: '#77C9D4', angle: 0, hasSecondary: true },
-  { type: 'voice', icon: 'mic-outline', label: '语音', color: '#F5A623', angle: 45 },
-];
-
-// 二级选项配置
-interface SecondaryOption {
-  type: 'camera' | 'library';
-  icon: string;
-  label: string;
-  color: string;
-  angle: number;
-}
-
-const SECONDARY_OPTIONS: SecondaryOption[] = [
-  { type: 'camera', icon: 'camera', label: '拍照', color: '#77C9D4', angle: -30 },
-  { type: 'library', icon: 'images', label: '相册', color: '#57B8C8', angle: 30 },
-];
+const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 1, overshootClamping: true };
 
 interface FABMenuProps {
   onSelect: (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => void;
@@ -102,315 +75,230 @@ interface FABMenuProps {
 }
 
 export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
-  const [menuState, dispatch] = useReducer(menuReducer, 'closed');
+  const { lastAddType, setLastAddType } = useSettingsStore();
 
-  // 共享动画值
-  const primaryProgress = useSharedValue(0);
-  const secondaryProgress = useSharedValue(0);
+  // React state 驱动遮罩显示/pointerEvents（SharedValue 不触发重渲染）
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // 派生值
-  const mainRotation = useDerivedValue(() => {
-    return primaryProgress.value * 45 + secondaryProgress.value * 45;
-  });
+  // 扇形展开进度 [0,1]（驱动 Reanimated 动画）
+  const fanProgress = useSharedValue(0);
+  // 当前悬停的选项 index（-1 = 无）
+  const hoveredIndex = useSharedValue(-1);
+  // SharedValue 供 PanResponder 回调快速读取展开状态（无需等 re-render）
+  const isExpandedRef = useSharedValue(0);
 
-  const primaryOpacity = useDerivedValue(() => {
-    return secondaryProgress.value > 0 ? 0.3 : 1.0;
-  });
-
-  const backdropOpacity = useDerivedValue(() => {
-    return Math.max(primaryProgress.value, secondaryProgress.value) * 0.4;
-  });
-
-  // 监听状态变化触发动画
+  // lastAddType ref：供 PanResponder 闭包读取最新值（避免 stale closure）
+  const lastAddTypeRef = useRef<LastAddType | null>(lastAddType);
   useEffect(() => {
-    switch (menuState) {
-      case 'primary':
-        primaryProgress.value = withSpring(1, SPRING_CONFIG);
-        secondaryProgress.value = withTiming(0, { duration: 200 });
-        break;
-      case 'secondary':
-        primaryProgress.value = 1;
-        secondaryProgress.value = withSpring(1, SPRING_CONFIG);
-        break;
-      case 'closed':
-        primaryProgress.value = withTiming(0, { duration: 200 });
-        secondaryProgress.value = withTiming(0, { duration: 200 });
-        break;
+    lastAddTypeRef.current = lastAddType;
+  }, [lastAddType]);
+
+  // refs（供 PanResponder 回调，不触发重渲染）
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPressing = useRef(false);
+
+  // refs for callbacks（避免 PanResponder 捕获过期函数引用）
+  const onSelectRef = useRef(onSelect);
+  const setLastAddTypeRef = useRef(setLastAddType);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+  useEffect(() => { setLastAddTypeRef.current = setLastAddType; }, [setLastAddType]);
+
+  // 清理 timer
+  const clearTimer = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
-  }, [menuState]);
+  }, []);
 
-  // Android 返回键处理
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (menuState !== 'closed') {
-        dispatch({ type: 'BACK' });
-        return true;
-      }
-      return false;
+  // 触发某个选项（内部）
+  const triggerOption = useCallback(async (type: LastAddType) => {
+    await setLastAddTypeRef.current(type);
+    if (type === 'camera') {
+      try {
+        const result = await PhotoService.takePhoto();
+        const photo = Array.isArray(result) ? result[0] : result;
+        if (photo) onSelectRef.current('photo', photo);
+      } catch { /* 用户取消 */ }
+    } else if (type === 'photo') {
+      try {
+        const result = await PhotoService.pickPhotoFromLibrary();
+        const photo = Array.isArray(result) ? result[0] : result;
+        if (photo) onSelectRef.current('photo', photo);
+      } catch { /* 用户取消 */ }
+    } else {
+      onSelectRef.current(type as 'text' | 'voice');
+    }
+  }, []);
+
+  // 关闭扇形
+  const closeFan = useCallback(() => {
+    fanProgress.value = withTiming(0, { duration: 200 });
+    isExpandedRef.value = 0;
+    hoveredIndex.value = -1;
+    setIsExpanded(false);
+  }, [fanProgress, isExpandedRef, hoveredIndex]);
+
+  // 展开扇形
+  const openFan = useCallback(() => {
+    isExpandedRef.value = 1;
+    setIsExpanded(true);
+    fanProgress.value = withSpring(1, SPRING_CONFIG);
+  }, [fanProgress, isExpandedRef]);
+
+  // PanResponder（惰性初始化，避免每次渲染调用 create）
+  const panResponder = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+  if (panResponder.current === null) {
+    panResponder.current = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+
+      onPanResponderGrant: () => {
+        isPressing.current = true;
+        longPressTimer.current = setTimeout(() => {
+          if (isPressing.current) openFan();
+        }, LONG_PRESS_MS);
+      },
+
+      onPanResponderMove: (_evt, gestureState) => {
+        if (isExpandedRef.value !== 1) return;
+        hoveredIndex.value = hitTest(gestureState.dx, gestureState.dy);
+      },
+
+      onPanResponderRelease: (_evt, gestureState) => {
+        isPressing.current = false;
+        clearTimer();
+
+        if (isExpandedRef.value === 1) {
+          const idx = hitTest(gestureState.dx, gestureState.dy);
+          closeFan();
+          if (idx >= 0) {
+            setTimeout(() => triggerOption(FAN_OPTIONS[idx].type), 250);
+          }
+        } else {
+          // 单击：触发上次记忆（从 ref 读取最新值）
+          const current = lastAddTypeRef.current;
+          if (current !== null) triggerOption(current);
+        }
+      },
+
+      onPanResponderTerminate: () => {
+        isPressing.current = false;
+        clearTimer();
+        if (isExpandedRef.value === 1) closeFan();
+      },
     });
-    return () => backHandler.remove();
-  }, [menuState]);
+  }
 
-  // 主按钮点击
-  const toggle = useCallback(() => {
-    if (menuState === 'closed') {
-      dispatch({ type: 'OPEN_PRIMARY' });
-    } else {
-      dispatch({ type: 'CLOSE_ALL' });
-    }
-  }, [menuState]);
-
-  // 一级选项选择
-  const handleSelect = useCallback((type: 'text' | 'photo' | 'voice') => {
-    if (type === 'photo') {
-      dispatch({ type: 'OPEN_SECONDARY' });
-    } else {
-      dispatch({ type: 'CLOSE_ALL' });
-      setTimeout(() => onSelect(type), 200);
-    }
-  }, [onSelect]);
-
-  // 二级选项选择
-  const handleSecondarySelect = useCallback(async (type: 'camera' | 'library') => {
-    dispatch({ type: 'CLOSE_ALL' });
-
-    try {
-      const result = type === 'camera'
-        ? await PhotoService.takePhoto()
-        : await PhotoService.pickPhotoFromLibrary();
-
-      // 处理单张或多张照片
-      const photoResult = Array.isArray(result) ? result[0] : result;
-      if (photoResult) {
-        onSelect('photo', photoResult);
-      }
-    } catch (error) {
-      // 用户取消，静默处理
-    }
-  }, [onSelect]);
-
-  // 遮罩点击
-  const handleBackdropPress = useCallback(() => {
-    dispatch({ type: 'BACK' });
-  }, []);
-
-  // 计算一级按钮位置
-  const getOptionPosition = useCallback((angle: number, progress: number) => {
-    'worklet';
-    const rad = (angle * Math.PI) / 180;
-    const distance = EXPAND_DISTANCE * progress;
-    return {
-      x: Math.sin(rad) * distance,
-      y: -Math.cos(rad) * distance,
-    };
-  }, []);
-
-  // 计算二级按钮位置
-  const getSecondaryPosition = useCallback((angle: number, progress: number) => {
-    'worklet';
-    const photoPos = getOptionPosition(0, primaryProgress.value);
-    const rad = (angle * Math.PI) / 180;
-    const distance = SECONDARY_DISTANCE * progress;
-    return {
-      x: photoPos.x + Math.sin(rad) * distance,
-      y: photoPos.y - Math.cos(rad) * distance,
-    };
-  }, []);
-
-  // 主按钮动画样式
-  const mainButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${mainRotation.value}deg` }],
-  }));
-
-  // 遮罩动画样式
-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
+  // FAB 外观
+  const fabConfig = lastAddType ? TYPE_CONFIG[lastAddType] : null;
+  const fabBgColor = fabConfig?.color ?? '#6A89CC';
+  const fabIcon = fabConfig?.icon ?? 'add';
+  const fabLabel = fabConfig?.label ?? null;
 
   const buttonAreaStyle = {
     opacity: fabOpacity !== undefined ? fabOpacity : 1,
     transform: [{ scale: fabScale !== undefined ? fabScale : 1 }],
   };
 
+  // 遮罩动画（backgroundColor 已含 alpha=0.4，opacity 仅做淡入淡出）
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: fanProgress.value,
+  }));
+
   return (
     <>
-      {/* 遮罩层 */}
-      {menuState !== 'closed' && (
-        <Animated.View
-          style={[styles.backdropOverlay, backdropAnimatedStyle]}
-          pointerEvents="auto"
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleBackdropPress} />
-        </Animated.View>
-      )}
+      {/* 遮罩层（React state 驱动 pointerEvents，SharedValue 驱动透明度动画） */}
+      <Animated.View
+        style={[styles.backdropOverlay, backdropAnimatedStyle]}
+        pointerEvents={isExpanded ? 'auto' : 'none'}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={closeFan} />
+      </Animated.View>
+
+      {/* 扇形选项 */}
+      <View style={styles.optionsOverlay} pointerEvents="none">
+        {FAN_OPTIONS.map((opt, idx) => (
+          <FanOptionButton
+            key={opt.type}
+            option={opt}
+            index={idx}
+            fanProgress={fanProgress}
+            hoveredIndex={hoveredIndex}
+          />
+        ))}
+      </View>
 
       {/* FAB 主按钮 */}
       <View style={styles.fabContainer} pointerEvents="box-none">
         <RNAnimated.View style={[styles.mainButtonWrapper, buttonAreaStyle]}>
-          <TouchableOpacity
-            onPress={toggle}
-            activeOpacity={0.8}
-            style={styles.mainButton}
+          <View
+            {...panResponder.current.panHandlers}
+            style={[styles.mainButton, { backgroundColor: fabBgColor }]}
           >
-            <Animated.View style={[styles.mainButtonInner, mainButtonAnimatedStyle]}>
-              <Ionicons name="add" size={28} color="#FFFFFF" />
-            </Animated.View>
-          </TouchableOpacity>
+            <Ionicons name={fabIcon as any} size={28} color="#FFFFFF" />
+          </View>
+
+          {/* 首次启动气泡提示 */}
+          {lastAddType === null && (
+            <View style={styles.tipBubble}>
+              <Text style={styles.tipText}>长按选择记录类型</Text>
+              <View style={styles.tipArrow} />
+            </View>
+          )}
+
+          {/* 记忆标签 */}
+          {fabLabel !== null && (
+            <View style={styles.labelContainer}>
+              <Text style={styles.labelText}>{fabLabel}</Text>
+            </View>
+          )}
         </RNAnimated.View>
       </View>
-
-      {/* 一级选项按钮组 */}
-      <View style={styles.optionsWrapper} pointerEvents={menuState !== 'closed' ? 'auto' : 'none'}>
-        <View style={styles.optionsContainer}>
-          {OPTIONS.map((option) => (
-            <OptionButton
-              key={option.type}
-              option={option}
-              expandProgress={primaryProgress}
-              primaryOpacity={option.type === 'photo' ? 1 : primaryOpacity}
-              disabled={menuState === 'secondary' && option.type !== 'photo'}
-              getOptionPosition={getOptionPosition}
-              onPress={() => handleSelect(option.type)}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* 二级选项按钮组 */}
-      {menuState === 'secondary' && (
-        <View style={styles.optionsWrapper} pointerEvents="auto">
-          <View style={styles.optionsContainer}>
-            {SECONDARY_OPTIONS.map((option) => (
-              <SecondaryButton
-                key={option.type}
-                option={option}
-                secondaryProgress={secondaryProgress}
-                getSecondaryPosition={getSecondaryPosition}
-                onPress={() => handleSecondarySelect(option.type)}
-              />
-            ))}
-          </View>
-        </View>
-      )}
     </>
   );
 }
 
-// 选项按钮组件
-interface OptionButtonProps {
-  option: OptionConfig;
-  expandProgress: SharedValue<number>;
-  primaryOpacity: number | SharedValue<number> | { value: number };
-  disabled: boolean;
-  getOptionPosition: (angle: number, progress: number) => { x: number; y: number };
-  onPress: () => void;
+// ─── 扇形选项按钮 ────────────────────────────────────────────────────────────────
+interface FanOptionButtonProps {
+  option: typeof FAN_OPTIONS[number];
+  index: number;
+  fanProgress: SharedValue<number>;
+  hoveredIndex: SharedValue<number>;
 }
 
-const OptionButton = React.memo(function OptionButton({
+const FanOptionButton = React.memo(function FanOptionButton({
   option,
-  expandProgress,
-  primaryOpacity,
-  disabled,
-  getOptionPosition,
-  onPress,
-}: OptionButtonProps) {
+  index,
+  fanProgress,
+  hoveredIndex,
+}: FanOptionButtonProps) {
+  const rad = (option.angle * Math.PI) / 180;
+
   const animatedStyle = useAnimatedStyle(() => {
-    const progress = expandProgress.value;
-    const pos = getOptionPosition(option.angle, progress);
-    const scale = interpolate(
-      progress,
-      [0, 0.5, 1],
-      [0.5, 1.1, 1],
-      Extrapolate.CLAMP
-    );
-    const baseOpacity = interpolate(
-      progress,
-      [0, 0.3],
-      [0, 1],
-      Extrapolate.CLAMP
-    );
+    const progress = fanProgress.value;
+    const dist = option.dist * progress;
+    const cx = FAB_CENTER_X + Math.sin(rad) * dist;
+    const cy = FAB_CENTER_Y - Math.cos(rad) * dist;
 
-    // 处理不同类型的 primaryOpacity
-    let opacityMultiplier = 1;
-    if (typeof primaryOpacity === 'number') {
-      opacityMultiplier = primaryOpacity;
-    } else if ('value' in primaryOpacity) {
-      opacityMultiplier = primaryOpacity.value;
-    }
-
-    const finalOpacity = baseOpacity * opacityMultiplier;
-
-    return {
-      transform: [
-        { translateX: pos.x },
-        { translateY: pos.y },
-        { scale },
-      ],
-      opacity: finalOpacity,
-    };
-  });
-
-  return (
-    <Animated.View style={[styles.optionWrapper, animatedStyle]} pointerEvents={disabled ? 'none' : 'auto'}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.8}
-        disabled={disabled}
-        style={[styles.optionButton, { backgroundColor: option.color }]}
-      >
-        <Ionicons name={option.icon as any} size={22} color="#FFFFFF" />
-      </TouchableOpacity>
-      <View style={styles.optionLabelContainer}>
-        <Text style={styles.optionLabel}>{option.label}</Text>
-      </View>
-    </Animated.View>
-  );
-});
-
-// 二级按钮组件
-interface SecondaryButtonProps {
-  option: SecondaryOption;
-  secondaryProgress: SharedValue<number>;
-  getSecondaryPosition: (angle: number, progress: number) => { x: number; y: number };
-  onPress: () => void;
-}
-
-const SecondaryButton = React.memo(function SecondaryButton({
-  option,
-  secondaryProgress,
-  getSecondaryPosition,
-  onPress,
-}: SecondaryButtonProps) {
-  const animatedStyle = useAnimatedStyle(() => {
-    const progress = secondaryProgress.value;
-    const pos = getSecondaryPosition(option.angle, progress);
-    const scale = interpolate(
-      progress,
-      [0, 0.5, 1],
-      [0.5, 1.1, 1],
-      Extrapolate.CLAMP
-    );
+    const isHovered = hoveredIndex.value === index;
+    const scale = interpolate(progress, [0, 0.5, 1], [0.5, 1.1, 1], Extrapolate.CLAMP)
+      * (isHovered ? 1.2 : 1.0);
     const opacity = interpolate(progress, [0, 0.3], [0, 1], Extrapolate.CLAMP);
 
     return {
-      transform: [
-        { translateX: pos.x },
-        { translateY: pos.y },
-        { scale },
-      ],
+      left: cx - OPTION_ICON_HALF,
+      top: cy - OPTION_ICON_HALF,
+      transform: [{ scale }],
       opacity,
     };
   });
 
   return (
-    <Animated.View style={[styles.secondaryWrapper, animatedStyle]}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.8}
-        style={[styles.secondaryButton, { backgroundColor: option.color }]}
-      >
-        <Ionicons name={option.icon as any} size={18} color="#FFFFFF" />
-      </TouchableOpacity>
+    <Animated.View style={[styles.optionWrapper, animatedStyle]}>
+      <View style={[styles.optionButton, { backgroundColor: option.color }]}>
+        <Ionicons name={option.icon as any} size={22} color="#FFFFFF" />
+      </View>
       <View style={styles.optionLabelContainer}>
         <Text style={styles.optionLabel}>{option.label}</Text>
       </View>
@@ -418,61 +306,93 @@ const SecondaryButton = React.memo(function SecondaryButton({
   );
 });
 
+// ─── 样式 ──────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // 遮罩层 - 真正的全屏覆盖
   backdropOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     zIndex: 998,
   },
-  // FAB 主按钮容器 - 最高层级确保可点击
   fabContainer: {
     position: 'absolute',
-    bottom: 32,
+    bottom: FAB_BOTTOM,
     left: '50%',
-    marginLeft: -28,
-    width: 56,
-    height: 56,
+    marginLeft: -(FAB_SIZE / 2),
+    width: FAB_SIZE,
     zIndex: 1000,
+    alignItems: 'center',
   },
-  // 主按钮包装器
   mainButtonWrapper: {
-    width: 56,
-    height: 56,
+    alignItems: 'center',
   },
-  // 选项按钮包装器
-  optionsWrapper: {
+  mainButton: {
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tipBubble: {
     position: 'absolute',
-    bottom: 32,
-    left: '50%',
-    marginLeft: -28,
-    width: 56,
-    height: 56,
+    bottom: FAB_SIZE + 8,
+    backgroundColor: 'rgba(50,50,50,0.88)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    alignItems: 'center',
+    minWidth: 130,
+  },
+  tipText: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  tipArrow: {
+    position: 'absolute',
+    bottom: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'rgba(50,50,50,0.88)',
+  },
+  labelContainer: {
+    marginTop: 5,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  labelText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4A4A4A',
+  },
+  optionsOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
     zIndex: 999,
-  },
-  optionsContainer: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 56,
-    height: 56,
   },
   optionWrapper: {
     position: 'absolute',
-    left: 4,
-    top: 4,
-    width: 48,
-    height: 72,
+    width: OPTION_SIZE,
+    height: OPTION_SIZE + 24,
     alignItems: 'center',
   },
   optionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: OPTION_SIZE,
+    height: OPTION_SIZE,
+    borderRadius: OPTION_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -483,7 +403,7 @@ const styles = StyleSheet.create({
   },
   optionLabelContainer: {
     marginTop: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -497,45 +417,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#4A4A4A',
-  },
-  mainButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#6A89CC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  mainButtonInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryWrapper: {
-    position: 'absolute',
-    left: 4,
-    top: 4,
-    width: 40,
-    height: 64,
-    alignItems: 'center',
-  },
-  secondaryButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
   },
 });
