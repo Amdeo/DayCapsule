@@ -519,7 +519,7 @@ function EntryCard({
                 </Text>
               </View>
               <Text style={styles.actionSheetTime}>
-                {new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </Text>
             </View>
 

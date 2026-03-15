@@ -92,6 +92,15 @@ const voiceEntry: Entry = {
   media: { uri: 'file:///missing.m4a', mimeType: 'audio/m4a', size: 0, duration: 3000 },
 };
 
+const textEntry: Entry = {
+  id: 't1',
+  type: 'text',
+  content: '一条普通文本记录',
+  tags: [],
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+};
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('EntryCard — 媒体文件丢失', () => {
@@ -163,5 +172,25 @@ describe('EntryCard — 媒体文件丢失', () => {
     await waitFor(() => {
       expect(queryByText('音频文件已丢失')).toBeNull();
     });
+  });
+
+  it('长按打开 ActionSheet 时应显示包含秒的时间', () => {
+    const { getByTestId, getByText } = render(
+      <EntryCard entry={textEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent(getByTestId('entry-card'), 'longPress');
+
+    expect(
+      getByText(
+        new Date(textEntry.timestamp).toLocaleString('zh-CN', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      )
+    ).toBeTruthy();
   });
 });
