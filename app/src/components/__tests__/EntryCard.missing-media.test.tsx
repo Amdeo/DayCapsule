@@ -57,6 +57,24 @@ jest.mock('react-native-reanimated', () => {
   return Reanimated;
 });
 
+jest.mock('react-native/Libraries/Image/Image', () => {
+  const mockComponent = jest.requireActual('react-native/jest/mockComponent').default;
+  const Image = mockComponent(
+    '../Libraries/Image/Image',
+    {
+      measureInWindow(callback: (x: number, y: number, width: number, height: number) => void) {
+        callback(0, 100, 200, 100);
+      },
+    },
+    true
+  );
+
+  return {
+    __esModule: true,
+    default: Image,
+  };
+});
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
