@@ -124,13 +124,14 @@ function EntryCard({
   }, [entry.id]);
 
   useEffect(() => {
+    setPhotoError(false);
     if (entry.type !== 'photo') return;
     const uri = entry.media?.uri;
     if (!uri) return;
     FileSystem.getInfoAsync(uri)
       .then(info => { if (!info.exists) setPhotoError(true); })
       .catch(() => {});
-  }, [entry.type, entry.media?.uri]);
+  }, [entry.id]);
 
   // 停止音频播放
   const handleStopAudio = async () => {
