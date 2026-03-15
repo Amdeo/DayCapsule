@@ -153,6 +153,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   };
 
   const triggerClose = (capturedDismissY: number = 0) => {
+    setShowActionSheet(false);
     cancelAnimation(dismissY);
     cancelAnimation(backdropOpacity);
     // 预设英雄图起点（不启动动画，挂载后再由 useEffect 启动）
