@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Pressable,
   Dimensions,
-  Animated as RNAnimated,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -37,6 +36,8 @@ const OPTION_SIZE = 56;
 const OPTION_ICON_HALF = OPTION_SIZE / 2;
 const DEAD_ZONE_DP = 30;
 const LONG_PRESS_MS = 300;
+const PEEK_HEIGHT = 10;
+const PEEK_TRANSLATE_Y = FAB_SIZE + FAB_BOTTOM - PEEK_HEIGHT;
 
 // 扇形 4 个选项配置（角度：0° = 正上方，顺时针为正）
 const FAN_OPTIONS = [
@@ -70,11 +71,11 @@ const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 1, overshootClamping:
 
 interface FABMenuProps {
   onSelect: (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => void;
-  fabOpacity?: RNAnimated.Value;
-  fabScale?: RNAnimated.Value;
+  shouldHide?: boolean;
+  onRevealRequest?: () => void;
 }
 
-export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
+export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps) {
   const { lastAddType, setLastAddType } = useSettingsStore();
 
   // React state 驱动遮罩显示/pointerEvents（SharedValue 不触发重渲染）
@@ -102,6 +103,22 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
   const setLastAddTypeRef = useRef(setLastAddType);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
   useEffect(() => { setLastAddTypeRef.current = setLastAddType; }, [setLastAddType]);
+  // Peek-hide: translateY animation (0 = visible, PEEK_TRANSLATE_Y = hidden)
+  const fabTranslateY = useSharedValue(0);
+  const isHiddenRef = useRef(false);
+  const hasRevealedInMoveRef = useRef(false);
+  const revealRef = useRef(onRevealRequest);
+  useEffect(() => { revealRef.current = onRevealRequest; }, [onRevealRequest]);
+  useEffect(() => {
+    if (shouldHide) {
+      if (isExpandedRef.value === 1) return;
+      fabTranslateY.value = withTiming(PEEK_TRANSLATE_Y, { duration: 200 });
+      isHiddenRef.current = true;
+    } else {
+      fabTranslateY.value = withSpring(0, { damping: 15, stiffness: 250, overshootClamping: false });
+      isHiddenRef.current = false;
+    }
+  }, [fabTranslateY, isExpandedRef, shouldHide]);
 
   // 清理 timer
   const clearTimer = useCallback(() => {
@@ -164,12 +181,22 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
 
       onPanResponderGrant: () => {
         isPressing.current = true;
-        longPressTimer.current = setTimeout(() => {
-          if (isPressing.current) actionsRef.current.openFan();
-        }, LONG_PRESS_MS);
+        hasRevealedInMoveRef.current = false;
+        if (!isHiddenRef.current) {
+          longPressTimer.current = setTimeout(() => {
+            if (isPressing.current) actionsRef.current.openFan();
+          }, LONG_PRESS_MS);
+        }
       },
 
       onPanResponderMove: (_evt, gestureState) => {
+        if (isHiddenRef.current) {
+          if (gestureState.dy < -20 && !hasRevealedInMoveRef.current) {
+            hasRevealedInMoveRef.current = true;
+            revealRef.current?.();
+          }
+          return;
+        }
         if (isExpandedRef.value !== 1) return;
         hoveredIndex.value = hitTest(gestureState.dx, gestureState.dy);
       },
@@ -177,6 +204,14 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
       onPanResponderRelease: (_evt, gestureState) => {
         isPressing.current = false;
         actionsRef.current.clearTimer();
+
+        if (isHiddenRef.current) {
+          const isTap = Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10;
+          if (isTap && !hasRevealedInMoveRef.current) {
+            revealRef.current?.();
+          }
+          return;
+        }
 
         if (isExpandedRef.value === 1) {
           const idx = hitTest(gestureState.dx, gestureState.dy);
@@ -205,14 +240,12 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
   const fabIcon = fabConfig?.icon ?? 'add';
   const fabLabel = fabConfig?.label ?? null;
 
-  const buttonAreaStyle = {
-    opacity: fabOpacity !== undefined ? fabOpacity : 1,
-    transform: [{ scale: fabScale !== undefined ? fabScale : 1 }],
-  };
-
   // 遮罩动画（backgroundColor 已含 alpha=0.4，opacity 仅做淡入淡出）
   const backdropAnimatedStyle = useAnimatedStyle(() => ({
     opacity: fanProgress.value,
+  }));
+  const fabTranslateYStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: fabTranslateY.value }],
   }));
 
   return (
@@ -239,8 +272,8 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
       </View>
 
       {/* FAB 主按钮 */}
-      <View style={styles.fabContainer} pointerEvents="box-none">
-        <RNAnimated.View style={[styles.mainButtonWrapper, buttonAreaStyle]}>
+      <Animated.View style={[styles.fabContainer, fabTranslateYStyle]} pointerEvents="box-none">
+        <View style={styles.mainButtonWrapper}>
           <View
             {...panResponder.current.panHandlers}
             style={[styles.mainButton, { backgroundColor: fabBgColor }]}
@@ -262,8 +295,8 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
               <Text style={styles.labelText}>{fabLabel}</Text>
             </View>
           )}
-        </RNAnimated.View>
-      </View>
+        </View>
+      </Animated.View>
     </>
   );
 }

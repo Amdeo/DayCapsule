@@ -390,9 +390,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
   const scrollTopScale = useRef(new RNAnimated.Value(1)).current;
-  const fabOpacity = useRef(new RNAnimated.Value(1)).current;
-  const fabScale = useRef(new RNAnimated.Value(1)).current;
   const lastScrollY = useRef(0);
+  const [fabShouldHide, setFabShouldHide] = useState(false);
 
   // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
   const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
@@ -439,35 +438,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     const scrollDirection = offsetY > lastScrollY.current ? 'down' : 'up';
     lastScrollY.current = offsetY;
 
-    // FAB 透明度和缩放：根据滚动方向变化
+    // FAB peek-hide：向下滚动超过 50dp 时隐藏，向上滚动时显示
     if (scrollDirection === 'down' && offsetY > 50) {
-      // 向下滑动：真透明 + 缩小
-      RNAnimated.parallel([
-        RNAnimated.timing(fabOpacity, {
-          toValue: 0.2,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(fabScale, {
-          toValue: 0.85,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      setFabShouldHide(true);
     } else if (scrollDirection === 'up') {
-      // 向上滑动：完全显示 + 恢复大小
-      RNAnimated.parallel([
-        RNAnimated.timing(fabOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(fabScale, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      setFabShouldHide(false);
     }
 
     // 当快速添加按钮区域滚出屏幕时显示"返回顶部"按钮
@@ -489,7 +464,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         setShowScrollTop(false);
       });
     }
-  }, [showScrollTop, fabOpacity, fabScale, scrollTopOpacity]);
+  }, [showScrollTop, scrollTopOpacity]);
 
   // 返回顶部函数
   const scrollToTop = () => {
@@ -677,8 +652,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       {!showSearchOverlay && (
         <FABMenu
           onSelect={onQuickAdd ?? (() => {})}
-          fabOpacity={fabOpacity}
-          fabScale={fabScale}
+          shouldHide={fabShouldHide}
+          onRevealRequest={() => setFabShouldHide(false)}
         />
       )}
     </View>
