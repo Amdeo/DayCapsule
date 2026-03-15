@@ -83,6 +83,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: BAR_GAP,
+    // 防止固定宽度（50根×3px=149px）超出父容器时覆盖相邻元素
+    // 注意：此属性在 iOS 上触发 clipsToBounds，在 Android 上禁用 elevation 阴影
     overflow: 'hidden',
   },
   bar: {
