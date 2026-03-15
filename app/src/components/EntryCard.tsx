@@ -3,7 +3,7 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,7 @@ import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
-import { ImageViewer } from './ImageViewer';
+import { ImageViewer, OriginLayout } from './ImageViewer';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -85,6 +85,8 @@ function EntryCard({
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
+  const [originLayout, setOriginLayout] = useState<OriginLayout | null>(null);
+  const thumbnailRef = useRef<React.ElementRef<typeof Image>>(null)!;
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
@@ -278,7 +280,14 @@ function EntryCard({
         // 图片记录：点击打开图片查看器
         logger.log('图片记录，打开图片查看器');
         if (photoError) return;
-        setShowImageViewer(true);
+        if (thumbnailRef.current) {
+          thumbnailRef.current.measureInWindow((x, y, width, height) => {
+            setOriginLayout({ x, y, width, height });
+            setShowImageViewer(true);
+          });
+        } else {
+          setShowImageViewer(true);
+        }
         break;
 
       case 'voice':
@@ -299,7 +308,14 @@ function EntryCard({
   const handleImagePress = () => {
     if (photoError) return;
     logger.log('图片被点击，打开查看器');
-    setShowImageViewer(true);
+    if (thumbnailRef.current) {
+      thumbnailRef.current.measureInWindow((x, y, width, height) => {
+        setOriginLayout({ x, y, width, height });
+        setShowImageViewer(true);
+      });
+    } else {
+      setShowImageViewer(true);
+    }
   };
 
   return (
@@ -349,6 +365,7 @@ function EntryCard({
                   </View>
                 ) : (
                   <Image
+                    ref={thumbnailRef}
                     source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
                     style={[
                       styles.photoImage,
@@ -490,7 +507,12 @@ function EntryCard({
         <ImageViewer
           visible={showImageViewer}
           imageUri={entry.media.uri}
-          onClose={() => setShowImageViewer(false)}
+          onClose={() => {
+            setShowImageViewer(false);
+            setOriginLayout(null);
+          }}
+          originLayout={originLayout ?? undefined}
+          thumbnailRef={thumbnailRef as any}
         />
       )}
 
