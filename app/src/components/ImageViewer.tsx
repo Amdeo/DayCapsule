@@ -146,10 +146,62 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     backdropOpacity.value = withSpring(1, springConfig);
   }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
+  // closing 动画：英雄图已挂载，安全启动飞回或淡出
+  useEffect(() => {
+    if (phase !== 'closing') return;
+    triggerCloseAnimation();
+  }, [phase]);
+
   const performClose = () => {
     if (isMountedRef.current) {
       onClose();
     }
+  };
+
+  const triggerClose = (capturedDismissY: number = 0) => {
+    cancelAnimation(dismissY);
+    cancelAnimation(backdropOpacity);
+    // 预设英雄图起点（不启动动画，挂载后再由 useEffect 启动）
+    heroLeft.value = 0;
+    heroTop.value = capturedDismissY;   // 当前图片真实位置
+    heroWidth.value = SCREEN_WIDTH;
+    heroHeight.value = SCREEN_HEIGHT;
+    // 重置手势层（即将隐藏，无视觉影响）
+    dismissY.value = 0;
+    dismissScale.value = 1;
+    setPhase('closing');
+  };
+
+  // closing 阶段动画：在英雄图挂载后（useEffect）执行
+  const triggerCloseAnimation = () => {
+    if (!thumbnailRef?.current) {
+      startFadeClose();
+      return;
+    }
+    thumbnailRef.current.measureInWindow((x, y, width, height) => {
+      const isVisible = y + height > 0 && y < SCREEN_HEIGHT;
+      if (isVisible) {
+        const closingTiming = {
+          duration: 250,
+          easing: Easing.out(Easing.cubic),
+        };
+        heroLeft.value = withTiming(x, closingTiming);
+        heroTop.value = withTiming(y, closingTiming);
+        heroWidth.value = withTiming(width, closingTiming);
+        heroHeight.value = withTiming(height, closingTiming, (finished) => {
+          if (finished) runOnJS(performClose)();
+        });
+        backdropOpacity.value = withTiming(0, closingTiming);
+      } else {
+        startFadeClose();
+      }
+    });
+  };
+
+  const startFadeClose = () => {
+    backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) runOnJS(performClose)();
+    });
   };
 
   // ─── Double tap: toggle zoom 1x ↔ 2x ──────────────────────────────────
@@ -174,11 +226,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     .numberOfTaps(1)
     .requireExternalGestureToFail(doubleTapGesture)
     .onEnd(() => {
-      backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-        if (finished) {
-          runOnJS(performClose)();
-        }
-      });
+      runOnJS(triggerClose)(0);
     });
 
   // ─── Long press: show action sheet ────────────────────────────────────
@@ -234,15 +282,9 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     .onEnd(() => {
       panMode.value = 0;
       if (dismissY.value > DISMISS_THRESHOLD) {
-        // Complete dismiss
-        dismissY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
-        backdropOpacity.value = withTiming(0, { duration: 250 }, (finished) => {
-          if (finished) {
-            dismissY.value = 0;
-            dismissScale.value = 1;
-            runOnJS(performClose)();
-          }
-        });
+        // 记录当前偏移，启动飞回关闭
+        const currentDismissY = dismissY.value;
+        runOnJS(triggerClose)(currentDismissY);
       } else if (dismissY.value > 0) {
         // Spring back
         dismissY.value = withSpring(0);
@@ -316,11 +358,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       transparent
       animationType="none"
       onRequestClose={() => {
-        backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-          if (finished) {
-            runOnJS(performClose)();
-          }
-        });
+        triggerClose(0);
       }}
       statusBarTranslucent
     >
