@@ -113,17 +113,21 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
 
   // 触发某个选项（内部）
   const triggerOption = useCallback(async (type: LastAddType) => {
-    await setLastAddTypeRef.current(type);
+    try {
+      await setLastAddTypeRef.current(type);
+    } catch (err) {
+      console.warn('[FABMenu] Failed to persist lastAddType:', err);
+    }
+
     if (type === 'camera') {
       try {
-        const result = await PhotoService.takePhoto();
-        const photo = Array.isArray(result) ? result[0] : result;
+        const photo = await PhotoService.takePhoto();
         if (photo) onSelectRef.current('photo', photo);
       } catch { /* 用户取消 */ }
     } else if (type === 'photo') {
       try {
         const result = await PhotoService.pickPhotoFromLibrary();
-        const photo = Array.isArray(result) ? result[0] : result;
+        const photo = result[0];
         if (photo) onSelectRef.current('photo', photo);
       } catch { /* 用户取消 */ }
     } else {
@@ -146,6 +150,11 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
     fanProgress.value = withSpring(1, SPRING_CONFIG);
   }, [fanProgress, isExpandedRef]);
 
+  const actionsRef = useRef({ openFan, closeFan, triggerOption, clearTimer });
+  useEffect(() => {
+    actionsRef.current = { openFan, closeFan, triggerOption, clearTimer };
+  }, [openFan, closeFan, triggerOption, clearTimer]);
+
   // PanResponder（惰性初始化，避免每次渲染调用 create）
   const panResponder = useRef<ReturnType<typeof PanResponder.create> | null>(null);
   if (panResponder.current === null) {
@@ -156,7 +165,7 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
       onPanResponderGrant: () => {
         isPressing.current = true;
         longPressTimer.current = setTimeout(() => {
-          if (isPressing.current) openFan();
+          if (isPressing.current) actionsRef.current.openFan();
         }, LONG_PRESS_MS);
       },
 
@@ -167,25 +176,25 @@ export function FABMenu({ onSelect, fabOpacity, fabScale }: FABMenuProps) {
 
       onPanResponderRelease: (_evt, gestureState) => {
         isPressing.current = false;
-        clearTimer();
+        actionsRef.current.clearTimer();
 
         if (isExpandedRef.value === 1) {
           const idx = hitTest(gestureState.dx, gestureState.dy);
-          closeFan();
+          actionsRef.current.closeFan();
           if (idx >= 0) {
-            setTimeout(() => triggerOption(FAN_OPTIONS[idx].type), 250);
+            setTimeout(() => actionsRef.current.triggerOption(FAN_OPTIONS[idx].type), 250);
           }
         } else {
           // 单击：触发上次记忆（从 ref 读取最新值）
           const current = lastAddTypeRef.current;
-          if (current !== null) triggerOption(current);
+          if (current !== null) actionsRef.current.triggerOption(current);
         }
       },
 
       onPanResponderTerminate: () => {
         isPressing.current = false;
-        clearTimer();
-        if (isExpandedRef.value === 1) closeFan();
+        actionsRef.current.clearTimer();
+        if (isExpandedRef.value === 1) actionsRef.current.closeFan();
       },
     });
   }
