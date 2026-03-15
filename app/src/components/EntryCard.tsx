@@ -86,7 +86,7 @@ function EntryCard({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [originLayout, setOriginLayout] = useState<OriginLayout | null>(null);
-  const thumbnailRef = useRef<React.ElementRef<typeof Image>>(null)!;
+  const thumbnailRef = useRef<React.ElementRef<typeof Image> | null>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
@@ -512,7 +512,7 @@ function EntryCard({
             setOriginLayout(null);
           }}
           originLayout={originLayout ?? undefined}
-          thumbnailRef={thumbnailRef as any}
+          thumbnailRef={thumbnailRef}
         />
       )}
 

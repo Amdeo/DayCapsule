@@ -48,7 +48,7 @@ interface ImageViewerProps {
   imageUri: string;
   onClose: () => void;
   originLayout?: OriginLayout;
-  thumbnailRef?: React.RefObject<React.ElementRef<typeof Image>>;
+  thumbnailRef?: React.RefObject<React.ElementRef<typeof Image> | null>;
 }
 
 export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
