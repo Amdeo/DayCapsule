@@ -36,6 +36,8 @@ import * as MediaLibrary from 'expo-media-library';
 
 const DISMISS_THRESHOLD = 80;
 
+type Phase = 'idle' | 'opening' | 'open' | 'closing' | 'closing-fade';
+
 export interface OriginLayout {
   x: number;
   y: number;
@@ -74,7 +76,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   const panMode = useSharedValue<0 | 1>(0);
 
   // ─── Hero opening animation state machine ────────────────────────────────
-  type Phase = 'idle' | 'opening' | 'open' | 'closing' | 'closing-fade';
   const [phase, setPhase] = useState<Phase>('idle');
 
   // 英雄覆盖层动画值（position: absolute 坐标）
@@ -92,6 +93,10 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       cancelAnimation(dismissY);
       cancelAnimation(dismissScale);
       cancelAnimation(backdropOpacity);
+      cancelAnimation(heroLeft);
+      cancelAnimation(heroTop);
+      cancelAnimation(heroWidth);
+      cancelAnimation(heroHeight);
     };
   }, []);
 
@@ -139,7 +144,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       if (finished) runOnJS(setPhase)('open');
     });
     backdropOpacity.value = withSpring(1, springConfig);
-  }, [phase]);
+  }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
   const performClose = () => {
     if (isMountedRef.current) {
