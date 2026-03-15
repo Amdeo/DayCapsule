@@ -20,9 +20,7 @@ import { useSettingsStore } from '@/src/store/settingsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
-const MAIN_TRANSLATE_X = SIDEBAR_WIDTH * 0.8;
-const MAIN_SCALE = 0.85;
-const MAIN_BORDER_RADIUS = 16;
+const MAIN_TRANSLATE_X = SIDEBAR_WIDTH;
 
 export interface PhotoSelectDeps {
   savePhotoToStorage: (
@@ -290,10 +288,7 @@ export default function HomeScreen() {
   const mainContentStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: interpolate(drawerProgress.value, [0, 1], [0, MAIN_TRANSLATE_X]) },
-      { scale: interpolate(drawerProgress.value, [0, 1], [1, MAIN_SCALE]) },
     ],
-    borderRadius: interpolate(drawerProgress.value, [0, 1], [0, MAIN_BORDER_RADIUS]),
-    overflow: 'hidden',
   }));
 
   return (
