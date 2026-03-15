@@ -123,6 +123,15 @@ function EntryCard({
       .catch(() => {});
   }, [entry.id]);
 
+  useEffect(() => {
+    if (entry.type !== 'photo') return;
+    const uri = entry.media?.uri;
+    if (!uri) return;
+    FileSystem.getInfoAsync(uri)
+      .then(info => { if (!info.exists) setPhotoError(true); })
+      .catch(() => {});
+  }, [entry.type, entry.media?.uri]);
+
   // 停止音频播放
   const handleStopAudio = async () => {
     try {
@@ -344,7 +353,7 @@ function EntryCard({
                       styles.photoImage,
                       { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight) }
                     ]}
-                    resizeMode="cover"
+                    resizeMode="contain"
                     testID="photo-image"
                     onError={() => setPhotoError(true)}
                   />
