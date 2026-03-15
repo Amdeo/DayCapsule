@@ -36,7 +36,7 @@ import * as MediaLibrary from 'expo-media-library';
 
 const DISMISS_THRESHOLD = 80;
 
-type Phase = 'idle' | 'opening' | 'open' | 'closing' | 'closing-fade';
+type Phase = 'idle' | 'opening' | 'open' | 'closing';
 
 export interface OriginLayout {
   x: number;
@@ -160,6 +160,10 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     setShowActionSheet(false);
     cancelAnimation(dismissY);
     cancelAnimation(backdropOpacity);
+    cancelAnimation(heroLeft);
+    cancelAnimation(heroTop);
+    cancelAnimation(heroWidth);
+    cancelAnimation(heroHeight);
     // 预设英雄图起点（不启动动画，挂载后再由 useEffect 启动）
     heroLeft.value = 0;
     heroTop.value = capturedDismissY;   // 当前图片真实位置
@@ -178,7 +182,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       return;
     }
     thumbnailRef.current.measureInWindow((x, y, width, height) => {
-      if (isRotationAborted.current) return;
+      if (!isMountedRef.current || isRotationAborted.current) return;
       const isVisible = y + height > 0 && y < SCREEN_HEIGHT;
       if (isVisible) {
         const closingTiming = {
