@@ -5,6 +5,8 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+    '^react-native-worklets$': '<rootDir>/__mocks__/react-native-worklets.js',
   },
   testMatch: [
     '**/__tests__/**/*.{ts,tsx}',

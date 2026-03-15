@@ -3,6 +3,11 @@ jest.mock('react-native', () => {
     View: 'View',
     Alert: { alert: jest.fn() },
     Linking: { openURL: jest.fn() },
+    BackHandler: { addEventListener: jest.fn(() => ({ remove: jest.fn() })), removeEventListener: jest.fn() },
+    Pressable: 'Pressable',
+    Dimensions: { get: () => ({ width: 390, height: 844 }) },
+    Platform: { OS: 'ios', select: (obj) => obj.ios ?? obj.default },
+    StyleSheet: { create: (s) => s, hairlineWidth: 0.5, absoluteFill: {}, absoluteFillObject: {} },
   };
 });
 
