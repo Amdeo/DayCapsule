@@ -23,6 +23,8 @@ export const PHOTO_HEIGHT_VALUES: Record<PhotoHeightPreset, number> = {
   large:   400,
 };
 
+export type LastAddType = 'text' | 'camera' | 'photo' | 'voice';
+
 interface SettingsState {
   // 设置值
   notifications: boolean;
@@ -30,6 +32,7 @@ interface SettingsState {
   highQualityPhotos: boolean;
   cardSpacing: CardSpacing;
   photoHeight: PhotoHeightPreset;
+  lastAddType: LastAddType | null;
 
   // 加载状态
   isLoaded: boolean;
@@ -43,6 +46,7 @@ interface SettingsState {
   setHighQualityPhotos: (value: boolean) => Promise<void>;
   setCardSpacing: (value: CardSpacing) => Promise<void>;
   setPhotoHeight: (value: PhotoHeightPreset) => Promise<void>;
+  setLastAddType: (value: LastAddType) => Promise<void>;
 
   // 重置设置
   resetSettings: () => Promise<void>;
@@ -54,6 +58,7 @@ const SETTINGS_KEYS = {
   highQualityPhotos: 'settings:highQualityPhotos',
   cardSpacing:       'settings:cardSpacing',
   photoHeight:       'settings:photoHeight',
+  lastAddType:       'settings:lastAddType',
 };
 
 const DEFAULT_SETTINGS = {
@@ -62,6 +67,7 @@ const DEFAULT_SETTINGS = {
   highQualityPhotos: true,
   cardSpacing: 'default' as CardSpacing,
   photoHeight: 'default' as PhotoHeightPreset,
+  lastAddType: null as LastAddType | null,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -70,12 +76,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const [notif, backup, hq, spacing, ph] = await Promise.all([
+      const [notif, backup, hq, spacing, ph, lat] = await Promise.all([
         Storage.getString(SETTINGS_KEYS.notifications),
         Storage.getString(SETTINGS_KEYS.autoBackup),
         Storage.getString(SETTINGS_KEYS.highQualityPhotos),
         Storage.getString(SETTINGS_KEYS.cardSpacing),
         Storage.getString(SETTINGS_KEYS.photoHeight),
+        Storage.getString(SETTINGS_KEYS.lastAddType),
       ]);
 
       const validSpacing = (value: string | null): CardSpacing => {
@@ -88,12 +95,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         return 'default';
       };
 
+      const validLastAddType = (value: string | null): LastAddType | null => {
+        if (value === 'text' || value === 'camera' || value === 'photo' || value === 'voice') return value;
+        return null;
+      };
+
       set({
         notifications: notif === null ? DEFAULT_SETTINGS.notifications : notif === 'true',
         autoBackup: backup === null ? DEFAULT_SETTINGS.autoBackup : backup === 'true',
         highQualityPhotos: hq === null ? DEFAULT_SETTINGS.highQualityPhotos : hq === 'true',
         cardSpacing: spacing === null ? DEFAULT_SETTINGS.cardSpacing : validSpacing(spacing),
         photoHeight: ph === null ? DEFAULT_SETTINGS.photoHeight : validPhotoHeight(ph),
+        lastAddType: validLastAddType(lat),
         isLoaded: true,
       });
     } catch (error) {
@@ -127,6 +140,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ photoHeight: value });
   },
 
+  setLastAddType: async (value) => {
+    await Storage.setString(SETTINGS_KEYS.lastAddType, value);
+    set({ lastAddType: value });
+  },
+
   resetSettings: async () => {
     await Promise.all([
       Storage.delete(SETTINGS_KEYS.notifications),
@@ -134,6 +152,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       Storage.delete(SETTINGS_KEYS.highQualityPhotos),
       Storage.delete(SETTINGS_KEYS.cardSpacing),
       Storage.delete(SETTINGS_KEYS.photoHeight),
+      Storage.delete(SETTINGS_KEYS.lastAddType),
     ]);
     set({ ...DEFAULT_SETTINGS });
   },
