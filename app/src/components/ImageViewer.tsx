@@ -85,6 +85,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   const heroHeight = useSharedValue(SCREEN_HEIGHT);
 
   const prevDimensions = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
+  const isRotationAborted = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -116,6 +117,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       dismissScale.value = 1;
       panMode.value = 0;
       setShowActionSheet(false);
+      isRotationAborted.current = false;
 
       if (originLayout) {
         // 有坐标：初始化英雄图位置，启动 opening 动画
@@ -176,6 +178,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       return;
     }
     thumbnailRef.current.measureInWindow((x, y, width, height) => {
+      if (isRotationAborted.current) return;
       const isVisible = y + height > 0 && y < SCREEN_HEIGHT;
       if (isVisible) {
         const closingTiming = {
@@ -212,8 +215,9 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
 
   // 旋转降级处理
   // - opening/closing 阶段：立即中止动画，降级为淡出关闭
-  // - open 阶段：无需操作。triggerClose 在关闭时会重新调用 measureInWindow
-  //   获取旋转后的最新缩略图坐标，自然处理旋转场景
+  // - open 阶段：不处理。设计规格要求将 originLayout 置 null，但该 state 属于父组件，
+  //   ImageViewer 无法直接修改。关闭时 triggerCloseAnimation 会重新 measureInWindow，
+  //   若缩略图已滚出屏幕则自动降级为淡出，是可接受的行为差异。
   useEffect(() => {
     if (
       prevDimensions.current.width === SCREEN_WIDTH &&
@@ -223,6 +227,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     }
     prevDimensions.current = { width: SCREEN_WIDTH, height: SCREEN_HEIGHT };
     if (phase === 'opening' || phase === 'closing') {
+      isRotationAborted.current = true;
       cancelAnimation(heroLeft);
       cancelAnimation(heroTop);
       cancelAnimation(heroWidth);
