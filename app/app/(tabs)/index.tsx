@@ -264,7 +264,7 @@ export default function HomeScreen() {
   const openDrawer = useCallback(() => {
     setDrawerOpen(true);
     cancelAnimation(drawerProgress);
-    drawerProgress.value = withSpring(1, { damping: 20, stiffness: 200 });
+    drawerProgress.value = withSpring(1, { damping: 35, stiffness: 180 });
   }, [drawerProgress]);
 
   const closeDrawer = useCallback(() => {
