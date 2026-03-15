@@ -36,7 +36,7 @@ jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
 jest.mock('../ImageViewer', () => {
   const { View } = require('react-native');
   return {
-    ImageViewer: ({ visible }: { visible: boolean }) =>
+    ImageViewer: ({ visible }: { visible: boolean; originLayout?: unknown; thumbnailRef?: unknown }) =>
       visible ? <View testID="image-viewer" /> : null,
   };
 });
