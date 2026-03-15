@@ -51,7 +51,7 @@ interface ImageViewerProps {
   thumbnailRef?: React.RefObject<React.ElementRef<typeof Image> | null>;
 }
 
-export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
+export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnailRef }: ImageViewerProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -73,6 +73,16 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
   // ─── Pan mode lock (0 = translate image, 1 = dismiss) ──────────────────
   const panMode = useSharedValue<0 | 1>(0);
 
+  // ─── Hero opening animation state machine ────────────────────────────────
+  type Phase = 'idle' | 'opening' | 'open' | 'closing' | 'closing-fade';
+  const [phase, setPhase] = useState<Phase>('idle');
+
+  // 英雄覆盖层动画值（position: absolute 坐标）
+  const heroLeft = useSharedValue(0);
+  const heroTop = useSharedValue(0);
+  const heroWidth = useSharedValue(SCREEN_WIDTH);
+  const heroHeight = useSharedValue(SCREEN_HEIGHT);
+
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -88,6 +98,7 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
   // 每次打开时重置所有状态
   useEffect(() => {
     if (visible) {
+      // 重置手势层状态
       scale.value = 1;
       savedScale.value = 1;
       translateX.value = 0;
@@ -96,11 +107,39 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
       savedTranslateY.value = 0;
       dismissY.value = 0;
       dismissScale.value = 1;
-      backdropOpacity.value = 1;
       panMode.value = 0;
       setShowActionSheet(false);
+
+      if (originLayout) {
+        // 有坐标：初始化英雄图位置，启动 opening 动画
+        heroLeft.value = originLayout.x;
+        heroTop.value = originLayout.y;
+        heroWidth.value = originLayout.width;
+        heroHeight.value = originLayout.height;
+        backdropOpacity.value = 0;
+        setPhase('opening');
+      } else {
+        // 无坐标：降级为淡入
+        backdropOpacity.value = withTiming(1, { duration: 250 });
+        setPhase('open');
+      }
+    } else {
+      setPhase('idle');
     }
   }, [visible]);
+
+  // opening 动画：英雄图从缩略图坐标飞入全屏
+  useEffect(() => {
+    if (phase !== 'opening') return;
+    const springConfig = { damping: 28, stiffness: 300 };
+    heroLeft.value = withSpring(0, springConfig);
+    heroTop.value = withSpring(0, springConfig);
+    heroWidth.value = withSpring(SCREEN_WIDTH, springConfig);
+    heroHeight.value = withSpring(SCREEN_HEIGHT, springConfig, (finished) => {
+      if (finished) runOnJS(setPhase)('open');
+    });
+    backdropOpacity.value = withSpring(1, springConfig);
+  }, [phase]);
 
   const performClose = () => {
     if (isMountedRef.current) {
