@@ -128,12 +128,11 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
     });
 
   // ─── Long press: show action sheet ────────────────────────────────────
+  // onStart fires after minDuration while finger is still down (WeChat style)
   const longPressGesture = Gesture.LongPress()
     .minDuration(500)
-    .onEnd((_e, success) => {
-      if (success) {
-        runOnJS(setShowActionSheet)(true);
-      }
+    .onStart(() => {
+      runOnJS(setShowActionSheet)(true);
     });
 
   // ─── Pinch: zoom 0.5x–5x ──────────────────────────────────────────────
