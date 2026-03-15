@@ -84,6 +84,8 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   const heroWidth = useSharedValue(SCREEN_WIDTH);
   const heroHeight = useSharedValue(SCREEN_HEIGHT);
 
+  const prevDimensions = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
+
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -207,6 +209,35 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     if (phase !== 'closing') return;
     triggerCloseAnimation();
   }, [phase]);
+
+  // 旋转降级处理
+  // - opening/closing 阶段：立即中止动画，降级为淡出关闭
+  // - open 阶段：无需操作。triggerClose 在关闭时会重新调用 measureInWindow
+  //   获取旋转后的最新缩略图坐标，自然处理旋转场景
+  useEffect(() => {
+    if (
+      prevDimensions.current.width === SCREEN_WIDTH &&
+      prevDimensions.current.height === SCREEN_HEIGHT
+    ) {
+      return;
+    }
+    prevDimensions.current = { width: SCREEN_WIDTH, height: SCREEN_HEIGHT };
+    if (phase === 'opening' || phase === 'closing') {
+      cancelAnimation(heroLeft);
+      cancelAnimation(heroTop);
+      cancelAnimation(heroWidth);
+      cancelAnimation(heroHeight);
+      cancelAnimation(backdropOpacity);
+      backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+        // 直接内联淡出逻辑，避免 startFadeClose 的 exhaustive-deps 问题
+        if (finished) runOnJS(performClose)();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 原因：heroLeft/Top/Width/Height/backdropOpacity 为 Reanimated shared values，
+    // 稳定引用；phase/performClose 在此 effect 生命周期内不会变化；
+    // 仅需响应尺寸变化，刻意排除其他依赖。
+  }, [SCREEN_WIDTH, SCREEN_HEIGHT]);
 
   // ─── Double tap: toggle zoom 1x ↔ 2x ──────────────────────────────────
   const doubleTapGesture = Gesture.Tap()
