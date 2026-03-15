@@ -24,6 +24,7 @@ import Animated, {
   withTiming,
   cancelAnimation,
   runOnJS,
+  Easing,
 } from 'react-native-reanimated';
 import {
   Gesture,
@@ -35,10 +36,19 @@ import * as MediaLibrary from 'expo-media-library';
 
 const DISMISS_THRESHOLD = 80;
 
+export interface OriginLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface ImageViewerProps {
   visible: boolean;
   imageUri: string;
   onClose: () => void;
+  originLayout?: OriginLayout;
+  thumbnailRef?: React.RefObject<React.ElementRef<typeof Image>>;
 }
 
 export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
