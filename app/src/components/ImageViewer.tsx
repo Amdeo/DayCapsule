@@ -9,12 +9,13 @@ import {
   View,
   Image,
   StyleSheet,
-  Dimensions,
   Alert,
   Share,
   Text,
   TouchableOpacity,
   Pressable,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -32,7 +33,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 80;
 
 interface ImageViewerProps {
@@ -42,6 +42,7 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [showActionSheet, setShowActionSheet] = useState(false);
   const isMountedRef = useRef(true);
@@ -184,6 +185,8 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
         dismissY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
         backdropOpacity.value = withTiming(0, { duration: 250 }, (finished) => {
           if (finished) {
+            dismissY.value = 0;
+            dismissScale.value = 1;
             runOnJS(performClose)();
           }
         });
@@ -246,7 +249,9 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
   const handleShare = async () => {
     setShowActionSheet(false);
     try {
-      await Share.share({ url: imageUri });
+      await Share.share(
+        Platform.OS === 'ios' ? { url: imageUri } : { message: imageUri },
+      );
     } catch {
       // User cancelled — no error needed
     }
@@ -278,7 +283,7 @@ export function ImageViewer({ visible, imageUri, onClose }: ImageViewerProps) {
             <Animated.View style={imageAnimatedStyle}>
               <Image
                 source={{ uri: imageUri }}
-                style={styles.image}
+                style={[styles.image, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
                 resizeMode="contain"
               />
             </Animated.View>
@@ -335,8 +340,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
   },
   actionSheetOverlay: {
     ...StyleSheet.absoluteFillObject,
