@@ -324,6 +324,15 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     opacity: backdropOpacity.value,
   }));
 
+  const heroAnimatedStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: heroLeft.value,
+    top: heroTop.value,
+    width: heroWidth.value,
+    height: heroHeight.value,
+    backgroundColor: '#000000',
+  }));
+
   // ─── Save to album ────────────────────────────────────────────────────
   const handleSaveToAlbum = async () => {
     setShowActionSheet(false);
@@ -366,25 +375,36 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       statusBarTranslucent
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        {/* Backdrop (animated opacity) */}
+        {/* 遮罩（始终渲染）*/}
         <Animated.View
           style={[StyleSheet.absoluteFill, styles.backdrop, backdropAnimatedStyle]}
         />
 
-        {/* Image with gestures */}
-        <GestureDetector gesture={composedGesture}>
-          <Animated.View style={styles.imageContainer}>
-            <Animated.View style={imageAnimatedStyle}>
-              <Image
-                source={{ uri: imageUri }}
-                style={[styles.image, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
-                resizeMode="contain"
-              />
-            </Animated.View>
-          </Animated.View>
-        </GestureDetector>
+        {/* 英雄覆盖层：opening / closing 阶段 */}
+        {(phase === 'opening' || phase === 'closing') && (
+          <Animated.Image
+            source={{ uri: imageUri }}
+            style={heroAnimatedStyle}
+            resizeMode="contain"
+          />
+        )}
 
-        {/* Action Sheet */}
+        {/* 手势交互层：open 阶段 */}
+        {phase === 'open' && (
+          <GestureDetector gesture={composedGesture}>
+            <Animated.View style={styles.imageContainer}>
+              <Animated.View style={imageAnimatedStyle}>
+                <Image
+                  source={{ uri: imageUri }}
+                  style={[styles.image, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+            </Animated.View>
+          </GestureDetector>
+        )}
+
+        {/* Action Sheet — 完整保留原有 JSX，位置移至手势层之后 */}
         {showActionSheet && (
           <View style={styles.actionSheetOverlay}>
             <Pressable
