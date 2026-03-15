@@ -146,12 +146,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     backdropOpacity.value = withSpring(1, springConfig);
   }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
-  // closing 动画：英雄图已挂载，安全启动飞回或淡出
-  useEffect(() => {
-    if (phase !== 'closing') return;
-    triggerCloseAnimation();
-  }, [phase]);
-
   const performClose = () => {
     if (isMountedRef.current) {
       onClose();
@@ -203,6 +197,15 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       if (finished) runOnJS(performClose)();
     });
   };
+
+  // closing 动画：英雄图已挂载，安全启动飞回或淡出
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 原因：triggerCloseAnimation 引用的是 Reanimated shared values（稳定引用）和
+  // thumbnailRef（稳定 ref 对象），仅需在 phase 切换到 'closing' 时执行一次。
+  useEffect(() => {
+    if (phase !== 'closing') return;
+    triggerCloseAnimation();
+  }, [phase]);
 
   // ─── Double tap: toggle zoom 1x ↔ 2x ──────────────────────────────────
   const doubleTapGesture = Gesture.Tap()
