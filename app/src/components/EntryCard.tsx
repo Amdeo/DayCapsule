@@ -388,7 +388,7 @@ function EntryCard({
         onSwipeClose?.();
       }}
     >
-      <View style={[
+      <Animated.View style={[
         styles.cardShadow,
         { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
       ]}>
@@ -585,7 +585,7 @@ function EntryCard({
             />
           )}
         </Pressable>
-      </View>
+      </Animated.View>
     </Swipeable>
   );
 }
