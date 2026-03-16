@@ -74,6 +74,9 @@ function EntryCard({
   onResumeRecording,
   onStopRecording,
   cardSpacing = 12,
+  isSwipeOpen,
+  onSwipeStart,
+  onSwipeClose,
 }: EntryCardProps) {
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const photoHeight = useSettingsStore((s) => s.photoHeight);
@@ -143,6 +146,13 @@ function EntryCard({
       .then(info => { if (!info.exists) setPhotoError(true); })
       .catch(() => {});
   }, [entry.id]);
+
+  // 监听 isSwipeOpen 变化，当其他卡片打开时关闭当前卡片的滑动
+  useEffect(() => {
+    if (!isSwipeOpen && swipeableRef.current) {
+      swipeableRef.current.close();
+    }
+  }, [isSwipeOpen]);
 
   // 停止音频播放
   const handleStopAudio = async () => {
