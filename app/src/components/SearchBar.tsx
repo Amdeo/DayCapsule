@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SearchBarProps {
   onMenuPress?: () => void;
@@ -23,6 +24,8 @@ export function SearchBar({ onMenuPress, onSearchFocus, onViewModePress, showVie
     };
   }, []);
 
+  const insets = useSafeAreaInsets();
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -36,7 +39,7 @@ export function SearchBar({ onMenuPress, onSearchFocus, onViewModePress, showVie
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* 菜单按钮 */}
       <Pressable
         onPress={onMenuPress}
@@ -75,7 +78,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: 60,
     backgroundColor: '#FAF8F5',
   },
   searchBox: {
