@@ -54,6 +54,14 @@ useEffect(() => {
 
 **目标行为：** 关闭动画最后 80ms 英雄图淡出至透明，Modal 关闭时英雄图已不可见，缩略图自然显现，无位置跳变。
 
+**Import 中补充 `withDelay`：**
+
+在 `react-native-reanimated` 的 import 列表中添加 `withDelay`：
+
+```ts
+import { ..., withDelay, ... } from 'react-native-reanimated';
+```
+
 **新增 shared value：**
 
 ```ts
@@ -65,6 +73,16 @@ const heroOpacity = useSharedValue(1);
 ```ts
 cancelAnimation(heroOpacity);
 ```
+
+**visible useEffect 中重置（originLayout 分支）：**
+
+在 `visible` useEffect 的 `originLayout` 分支中，`heroLeft/Top/Width/Height.value` 预设行旁边添加：
+
+```ts
+heroOpacity.value = 1;
+```
+
+这保证当 closing 动画中途（heroOpacity < 1）被强制关闭再重新打开时，不会残留透明度。
 
 **triggerClose 中重置：**
 
@@ -103,7 +121,7 @@ const heroAnimatedStyle = useAnimatedStyle(() => ({
 
 - 无 originLayout 的降级路径（`backdropOpacity.value = withTiming(1, { duration: 250 })`）保持不变
 - closing 动画的位置动画（heroLeft/Top/Width/Height withTiming 250ms）保持不变
-- 旋转降级逻辑保持不变（但需在旋转 effect 中同样 `cancelAnimation(heroOpacity)` 并不需要额外处理，因为 heroOpacity 会在下次打开时重置）
+- 旋转降级逻辑：需在旋转 effect 的 `cancelAnimation` 列表中加入 `cancelAnimation(heroOpacity)`。原因：closing 阶段旋转时，`heroOpacity` 可能正处于 `withDelay` 动画中间，若不取消会残留透明度；opening 阶段旋转时 `heroOpacity` 固定为 1，取消操作无副作用
 - 手势交互层（withSpring）保持不变
 
 ---
@@ -118,3 +136,4 @@ const heroAnimatedStyle = useAnimatedStyle(() => ({
 | 关闭（缩略图不在屏幕内）| 走 startFadeClose，行为不变（heroOpacity 不参与）|
 | 无 originLayout 降级 | 纯淡入/淡出，行为不变 |
 | 快速连续打开关闭 | heroOpacity 在每次 triggerClose 中重置为 1，无状态残留 |
+| closing 动画进行中旋转设备 | 旋转 effect 取消 heroOpacity 动画，降级淡出关闭，无残留透明度 |
