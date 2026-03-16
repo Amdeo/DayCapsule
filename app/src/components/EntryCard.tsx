@@ -373,204 +373,220 @@ function EntryCard({
   };
 
   return (
-    <View style={[
-      styles.cardShadow,
-      { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
-    ]}>
-    <Pressable
-      testID="entry-card"
-      onPressIn={() => setIsPressed(true)}
-      onPressOut={() => setIsPressed(false)}
-      onPress={handleCardPress}
-      onLongPress={handleLongPress}
-      style={[
-        styles.cardContainer,
-        {
-          backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
-        },
-      ]}
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      friction={2}
+      leftThreshold={40}
+      rightThreshold={40}
+      overshootRight={false}
+      dragOffsetFromRightEdge={10}
+      onSwipeableWillOpen={() => {
+        onSwipeStart?.(entry.id);
+      }}
+      onSwipeableWillClose={() => {
+        onSwipeClose?.();
+      }}
     >
-      <Animated.View layout={Layout.springify()}>
-        {/* 卡片主内容 */}
-        <View style={[
-          entry.type === 'voice' ? styles.contentVoice : styles.content,
-          entry.type === 'text' && styles.contentText,
-          entry.type === 'photo' && styles.contentPhoto
-        ]}>
-          {entry.type === 'text' ? (
-            // 文本内容
-            <Text
-              style={styles.textContent}
-              numberOfLines={isExpanded ? undefined : 4}
-            >
-              {entry.content}
-            </Text>
-          ) : entry.type === 'photo' && entry.media?.uri ? (
-            // 照片内容 - 自适应宽高比
-            <>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={handleImagePress}
-              >
-                {photoError ? (
-                  <View style={[styles.photoImage, styles.photoMissing]}>
-                    <Ionicons name="image-outline" size={32} color="#A3A3A3" />
-                    <Text style={styles.photoMissingText}>图片已丢失</Text>
-                  </View>
-                ) : (
-                  <Image
-                    ref={thumbnailRef}
-                    source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
-                    style={[
-                      styles.photoImage,
-                      { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight) }
-                    ]}
-                    resizeMode="contain"
-                    testID="photo-image"
-                    onError={() => setPhotoError(true)}
-                  />
-                )}
-              </TouchableOpacity>
-              {entry.content && (
-                <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
+      <View style={[
+        styles.cardShadow,
+        { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
+      ]}>
+        <Pressable
+          testID="entry-card"
+          onPressIn={() => setIsPressed(true)}
+          onPressOut={() => setIsPressed(false)}
+          onPress={handleCardPress}
+          onLongPress={handleLongPress}
+          style={[
+            styles.cardContainer,
+            {
+              backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
+            },
+          ]}
+        >
+          <Animated.View layout={Layout.springify()}>
+            {/* 卡片主内容 */}
+            <View style={[
+              entry.type === 'voice' ? styles.contentVoice : styles.content,
+              entry.type === 'text' && styles.contentText,
+              entry.type === 'photo' && styles.contentPhoto
+            ]}>
+              {entry.type === 'text' ? (
+                // 文本内容
+                <Text
+                  style={styles.textContent}
+                  numberOfLines={isExpanded ? undefined : 4}
+                >
                   {entry.content}
                 </Text>
-              )}
-            </>
-           ) : entry.type === 'voice' ? (
-             entry.recordingStatus === 'recording' ? (
-               <View style={styles.recordingContainer}>
-                 <View style={styles.recordingCompact}>
-                   {/* 左侧：停止按钮 */}
-                   <TouchableOpacity
-                     style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
-                     disabled={isProcessing}
-                     activeOpacity={0.7}
-                     onPress={async () => {
-                       if (isProcessing) return;
-                       setIsProcessing(true);
-                       try {
-                         await onStopRecording?.(entry.id);
-                       } catch (error) {
-                         logger.error('Failed to stop recording:', error);
-                       } finally {
-                         setTimeout(() => setIsProcessing(false), 300);
-                       }
-                     }}
-                   >
-                     <View style={styles.stopIconCompact} />
-                   </TouchableOpacity>
-
-                   {/* 中间：波形 + 文字 */}
-                   <View style={styles.recordingCenter}>
-                     <View style={styles.waveformCompact}>
-                       <WaveformAnimation isRecording={true} color="#F5A68D" />
-                     </View>
-                     <Text style={styles.recordingLabel}>录音中...</Text>
-                   </View>
-
-                   {/* 右侧：时长 */}
-                   <Text style={styles.recordingTimeCompact}>
-                     {formatDuration(entry.recordingDuration || 0)}
-                   </Text>
-                 </View>
-                </View>
-             ) : entry.media ? (
-               <View style={styles.voiceCard}>
-                 {/* 播放行：按钮 + 波形 + 时长 */}
-                 <View style={styles.voicePlayRow}>
-                   {audioMissing ? (
-                     <View style={styles.audioMissingRow}>
-                       <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
-                       <Text style={styles.audioMissingText}>音频文件已丢失</Text>
-                     </View>
-                   ) : (
-                     <>
+              ) : entry.type === 'photo' && entry.media?.uri ? (
+                // 照片内容 - 自适应宽高比
+                <>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={handleImagePress}
+                  >
+                    {photoError ? (
+                      <View style={[styles.photoImage, styles.photoMissing]}>
+                        <Ionicons name="image-outline" size={32} color="#A3A3A3" />
+                        <Text style={styles.photoMissingText}>图片已丢失</Text>
+                      </View>
+                    ) : (
+                      <Image
+                        ref={thumbnailRef}
+                        source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
+                        style={[
+                          styles.photoImage,
+                          { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight) }
+                        ]}
+                        resizeMode="contain"
+                        testID="photo-image"
+                        onError={() => setPhotoError(true)}
+                      />
+                    )}
+                  </TouchableOpacity>
+                  {entry.content && (
+                    <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
+                      {entry.content}
+                    </Text>
+                  )}
+                </>
+               ) : entry.type === 'voice' ? (
+                 entry.recordingStatus === 'recording' ? (
+                   <View style={styles.recordingContainer}>
+                     <View style={styles.recordingCompact}>
+                       {/* 左侧：停止按钮 */}
                        <TouchableOpacity
-                         style={styles.voicePlayBtn}
-                         onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
-                         activeOpacity={0.8}
+                         style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
+                         disabled={isProcessing}
+                         activeOpacity={0.7}
+                         onPress={async () => {
+                           if (isProcessing) return;
+                           setIsProcessing(true);
+                           try {
+                             await onStopRecording?.(entry.id);
+                           } catch (error) {
+                             logger.error('Failed to stop recording:', error);
+                           } finally {
+                             setTimeout(() => setIsProcessing(false), 300);
+                           }
+                         }}
                        >
-                         {isPlayingAudio ? (
-                           <Ionicons name="stop" size={22} color="#FFFFFF" />
-                         ) : (
-                           <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginLeft: 3 }} />
-                         )}
+                         <View style={styles.stopIconCompact} />
                        </TouchableOpacity>
 
-                       <View style={styles.voiceWaveform}>
-                         <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F5A623' : '#C4C4C4'} />
+                       {/* 中间：波形 + 文字 */}
+                       <View style={styles.recordingCenter}>
+                         <View style={styles.waveformCompact}>
+                           <WaveformAnimation isRecording={true} color="#F5A68D" />
+                         </View>
+                         <Text style={styles.recordingLabel}>录音中...</Text>
                        </View>
 
-                       <Text style={styles.voiceDuration}>
-                         {isPlayingAudio
-                           ? formatDuration(Math.floor(playbackPosition / 1000))
-                           : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
-                         }
+                       {/* 右侧：时长 */}
+                       <Text style={styles.recordingTimeCompact}>
+                         {formatDuration(entry.recordingDuration || 0)}
                        </Text>
-                     </>
-                   )}
-                 </View>
+                     </View>
+                    </View>
+                 ) : entry.media ? (
+                   <View style={styles.voiceCard}>
+                     {/* 播放行：按钮 + 波形 + 时长 */}
+                     <View style={styles.voicePlayRow}>
+                       {audioMissing ? (
+                         <View style={styles.audioMissingRow}>
+                           <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
+                           <Text style={styles.audioMissingText}>音频文件已丢失</Text>
+                         </View>
+                       ) : (
+                         <>
+                           <TouchableOpacity
+                             style={styles.voicePlayBtn}
+                             onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
+                             activeOpacity={0.8}
+                           >
+                             {isPlayingAudio ? (
+                               <Ionicons name="stop" size={22} color="#FFFFFF" />
+                             ) : (
+                               <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                             )}
+                           </TouchableOpacity>
 
-                 {/* 转录/描述文字 */}
-                 {(entry.transcription?.text || entry.content) ? (
-                   <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
-                     {entry.transcription?.text || entry.content}
-                   </Text>
-                 ) : null}
-               </View>
-            ) : null
-          ) : null}
+                           <View style={styles.voiceWaveform}>
+                             <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F5A623' : '#C4C4C4'} />
+                           </View>
 
-          {/* 标签（如果有） */}
-          {entry.tags && entry.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag}</Text>
+                           <Text style={styles.voiceDuration}>
+                             {isPlayingAudio
+                               ? formatDuration(Math.floor(playbackPosition / 1000))
+                               : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
+                             }
+                           </Text>
+                         </>
+                       )}
+                     </View>
+
+                     {/* 转录/描述文字 */}
+                     {(entry.transcription?.text || entry.content) ? (
+                       <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
+                         {entry.transcription?.text || entry.content}
+                       </Text>
+                     ) : null}
+                   </View>
+                ) : null
+              ) : null}
+
+              {/* 标签（如果有） */}
+              {entry.tags && entry.tags.length > 0 && (
+                <View style={styles.tagsContainer}>
+                  {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>#{tag}</Text>
+                    </View>
+                  ))}
+                  {!isExpanded && entry.tags.length > 3 && (
+                    <Text style={styles.moreTagsHint}>+{entry.tags.length - 3}</Text>
+                  )}
                 </View>
-              ))}
-              {!isExpanded && entry.tags.length > 3 && (
-                <Text style={styles.moreTagsHint}>+{entry.tags.length - 3}</Text>
+              )}
+
+              {/* 转录文本（如果有） */}
+              {entry.transcription && (
+                <View style={styles.transcriptionContainer}>
+                  <Text style={styles.transcriptionLabel}>转录</Text>
+                  <Text
+                    style={styles.transcriptionText}
+                    numberOfLines={isExpanded ? undefined : 2}
+                  >
+                    {entry.transcription.text}
+                  </Text>
+                </View>
               )}
             </View>
+
+            {/* 展开提示（如果需要） */}
+            {needsExpansion && !isExpanded && (
+              <Text style={styles.expandHint}>点击展开更多</Text>
+            )}
+          </Animated.View>
+
+          {/* 图片查看器 */}
+          {entry.type === 'photo' && entry.media?.uri && (
+            <ImageViewer
+              visible={showImageViewer}
+              imageUri={entry.media.uri}
+              onClose={() => {
+                setShowImageViewer(false);
+                setOriginLayout(null);
+              }}
+              originLayout={originLayout ?? undefined}
+              thumbnailRef={thumbnailRef}
+            />
           )}
-
-          {/* 转录文本（如果有） */}
-          {entry.transcription && (
-            <View style={styles.transcriptionContainer}>
-              <Text style={styles.transcriptionLabel}>转录</Text>
-              <Text
-                style={styles.transcriptionText}
-                numberOfLines={isExpanded ? undefined : 2}
-              >
-                {entry.transcription.text}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* 展开提示（如果需要） */}
-        {needsExpansion && !isExpanded && (
-          <Text style={styles.expandHint}>点击展开更多</Text>
-        )}
-      </Animated.View>
-
-      {/* 图片查看器 */}
-      {entry.type === 'photo' && entry.media?.uri && (
-        <ImageViewer
-          visible={showImageViewer}
-          imageUri={entry.media.uri}
-          onClose={() => {
-            setShowImageViewer(false);
-            setOriginLayout(null);
-          }}
-          originLayout={originLayout ?? undefined}
-          thumbnailRef={thumbnailRef}
-        />
-      )}
-    </Pressable>
-    </View>
+        </Pressable>
+      </View>
+    </Swipeable>
   );
 }
 
