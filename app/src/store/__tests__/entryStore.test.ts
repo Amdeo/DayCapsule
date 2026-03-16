@@ -70,13 +70,28 @@ const resetStore = () =>
     filterDateRange: 'all',
     selectedTags: [],
     loadRetryCount: 0,
+    activeQueryKey: '',
     currentPlayingId: null,
   });
 
 describe('entryStore', () => {
   beforeEach(() => {
     resetStore();
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    (DB.getEntriesPage as jest.Mock).mockResolvedValue([]);
+    (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
+    (DB.addEntry as jest.Mock).mockImplementation((entry) =>
+      Promise.resolve({
+        ...entry,
+        id: 'test-id-1',
+        timestamp: 1700000000000,
+        syncStatus: 'synced',
+      })
+    );
+    (DB.updateEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.searchEntries as jest.Mock).mockResolvedValue([]);
+    (DB.getAllTags as jest.Mock).mockResolvedValue([]);
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────
