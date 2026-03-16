@@ -36,7 +36,7 @@ import * as MediaLibrary from 'expo-media-library';
 
 const DISMISS_THRESHOLD = 80;
 
-type Phase = 'idle' | 'opening' | 'open' | 'closing';
+type Phase = 'idle' | 'opening' | 'open' | 'closing' | 'closing-fade';
 
 export interface OriginLayout {
   x: number;
@@ -50,14 +50,18 @@ interface ImageViewerProps {
   imageUri: string;
   onClose: () => void;
   originLayout?: OriginLayout;
-  thumbnailRef?: React.RefObject<React.ElementRef<typeof Image> | null>;
+  thumbnailRef?: React.RefObject<React.ElementRef<typeof Image>>;
 }
 
 export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnailRef }: ImageViewerProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [showActionSheet, setShowActionSheet] = useState(false);
+  const [phase, setPhase] = useState<Phase>('idle');
   const isMountedRef = useRef(true);
+  const canAnimateBackRef = useRef(Boolean(originLayout));
+  const shouldIgnoreSharedTransitionRef = useRef(false);
+  const prevDimensions = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
 
   // ─── Zoom / pan ────────────────────────────────────────────────────────
   const scale = useSharedValue(1);
@@ -70,27 +74,21 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   // ─── Dismiss ────────────────────────────────────────────────────────────
   const dismissY = useSharedValue(0);
   const dismissScale = useSharedValue(1);
-  const backdropOpacity = useSharedValue(1);
+  const backdropOpacity = useSharedValue(0);
 
   // ─── Pan mode lock (0 = translate image, 1 = dismiss) ──────────────────
   const panMode = useSharedValue<0 | 1>(0);
-
-  // ─── Hero opening animation state machine ────────────────────────────────
-  const [phase, setPhase] = useState<Phase>('idle');
 
   // 英雄覆盖层动画值（position: absolute 坐标）
   const heroLeft = useSharedValue(0);
   const heroTop = useSharedValue(0);
   const heroWidth = useSharedValue(SCREEN_WIDTH);
   const heroHeight = useSharedValue(SCREEN_HEIGHT);
-  const heroOpacity = useSharedValue(1);
-
-  const prevDimensions = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
-  const isRotationAborted = useRef(false);
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      shouldIgnoreSharedTransitionRef.current = true;
       cancelAnimation(scale);
       cancelAnimation(translateX);
       cancelAnimation(translateY);
@@ -101,13 +99,26 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       cancelAnimation(heroTop);
       cancelAnimation(heroWidth);
       cancelAnimation(heroHeight);
-      cancelAnimation(heroOpacity);
     };
   }, []);
 
   // 每次打开时重置所有状态
   useEffect(() => {
     if (visible) {
+      shouldIgnoreSharedTransitionRef.current = false;
+      canAnimateBackRef.current = Boolean(originLayout);
+
+      cancelAnimation(scale);
+      cancelAnimation(translateX);
+      cancelAnimation(translateY);
+      cancelAnimation(dismissY);
+      cancelAnimation(dismissScale);
+      cancelAnimation(backdropOpacity);
+      cancelAnimation(heroLeft);
+      cancelAnimation(heroTop);
+      cancelAnimation(heroWidth);
+      cancelAnimation(heroHeight);
+
       // 重置手势层状态
       scale.value = 1;
       savedScale.value = 1;
@@ -119,7 +130,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       dismissScale.value = 1;
       panMode.value = 0;
       setShowActionSheet(false);
-      isRotationAborted.current = false;
 
       if (originLayout) {
         // 有坐标：初始化英雄图位置，启动 opening 动画
@@ -127,7 +137,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         heroTop.value = originLayout.y;
         heroWidth.value = originLayout.width;
         heroHeight.value = originLayout.height;
-        heroOpacity.value = 1;
         backdropOpacity.value = 0;
         setPhase('opening');
       } else {
@@ -140,20 +149,19 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     }
   }, [visible]);
 
-  // opening 动画：英雄图从缩略图坐标飞入全屏
+  // opening 动画：图片直接显示，无飞入回弹效果
   useEffect(() => {
     if (phase !== 'opening') return;
-    const openingTiming = { duration: 280, easing: Easing.out(Easing.cubic) };
-    heroLeft.value = withTiming(0, openingTiming);
-    heroTop.value = withTiming(0, openingTiming);
-    heroWidth.value = withTiming(SCREEN_WIDTH, openingTiming);
-    heroHeight.value = withTiming(SCREEN_HEIGHT, openingTiming, (finished) => {
-      if (finished) {
-        backdropOpacity.value = 1;   // 飞入完成后遮罩即刻出现
-        runOnJS(setPhase)('open');
-      }
-    });
-    // backdropOpacity 不在飞入期间动画，由完成回调瞬时置 1
+
+    // 图片直接全屏显示，无动画
+    heroLeft.value = 0;
+    heroTop.value = 0;
+    heroWidth.value = SCREEN_WIDTH;
+    heroHeight.value = SCREEN_HEIGHT;
+    runOnJS(setPhase)('open');
+
+    // 背景直接全黑，无动画
+    backdropOpacity.value = 1;
   }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
   const performClose = () => {
@@ -162,50 +170,72 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     }
   };
 
-  const triggerClose = (capturedDismissY: number = 0) => {
+  const startFadeClose = () => {
     setShowActionSheet(false);
     cancelAnimation(dismissY);
+    cancelAnimation(dismissScale);
+    cancelAnimation(heroLeft);
+    cancelAnimation(heroTop);
+    cancelAnimation(heroWidth);
+    cancelAnimation(heroHeight);
+    cancelAnimation(backdropOpacity);
+    dismissY.value = 0;
+    dismissScale.value = 1;
+    setPhase('closing-fade');
+    backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) {
+        runOnJS(performClose)();
+      }
+    });
+  };
+
+  const triggerClose = (capturedDismissY: number = 0) => {
+    if (phase === 'idle' || phase === 'closing' || phase === 'closing-fade') {
+      return;
+    }
+
+    setShowActionSheet(false);
+    cancelAnimation(dismissY);
+    cancelAnimation(dismissScale);
     cancelAnimation(backdropOpacity);
     cancelAnimation(heroLeft);
     cancelAnimation(heroTop);
     cancelAnimation(heroWidth);
     cancelAnimation(heroHeight);
-    cancelAnimation(heroOpacity);
-    // 预设英雄图起点（不启动动画，挂载后再由 useEffect 启动）
-    heroLeft.value = 0;
-    heroTop.value = capturedDismissY;   // 当前图片真实位置
-    heroWidth.value = SCREEN_WIDTH;
-    heroHeight.value = SCREEN_HEIGHT;
-    heroOpacity.value = 1;
-    // 重置手势层（即将隐藏，无视觉影响）
+
+    // 关闭时直接淡出，不要有飞回缩略图的回弹效果
     dismissY.value = 0;
     dismissScale.value = 1;
-    setPhase('closing');
+    startFadeClose();
   };
 
   // closing 阶段动画：在英雄图挂载后（useEffect）执行
   const triggerCloseAnimation = () => {
-    if (!thumbnailRef?.current) {
+    if (!canAnimateBackRef.current || !thumbnailRef?.current) {
       startFadeClose();
       return;
     }
+
     thumbnailRef.current.measureInWindow((x, y, width, height) => {
-      if (!isMountedRef.current || isRotationAborted.current) return;
+      if (!isMountedRef.current || shouldIgnoreSharedTransitionRef.current) {
+        return;
+      }
+
       const isVisible = y + height > 0 && y < SCREEN_HEIGHT;
       if (isVisible) {
+        // 背景慢慢淡出（柔和渐变）
         const closingTiming = {
-          duration: 250,
-          easing: Easing.out(Easing.cubic),
+          duration: 500,
+          easing: Easing.in(Easing.ease),
         };
         heroLeft.value = withTiming(x, closingTiming);
         heroTop.value = withTiming(y, closingTiming);
         heroWidth.value = withTiming(width, closingTiming);
         heroHeight.value = withTiming(height, closingTiming, (finished) => {
-          if (finished) runOnJS(performClose)();
+          if (finished) {
+            runOnJS(performClose)();
+          }
         });
-        // 立即开始淡出，200ms 完成：比 performClose()（t=250ms）早 50ms 变透明
-        // 确保缩略图出现时英雄图已不可见，消除坐标偏差导致的位置跳变
-        heroOpacity.value = withTiming(0, { duration: 200 });
         backdropOpacity.value = withTiming(0, closingTiming);
       } else {
         startFadeClose();
@@ -213,26 +243,15 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     });
   };
 
-  const startFadeClose = () => {
-    backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-      if (finished) runOnJS(performClose)();
-    });
-  };
-
   // closing 动画：英雄图已挂载，安全启动飞回或淡出
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // 原因：triggerCloseAnimation 引用的是 Reanimated shared values（稳定引用）和
-  // thumbnailRef（稳定 ref 对象），仅需在 phase 切换到 'closing' 时执行一次。
   useEffect(() => {
     if (phase !== 'closing') return;
     triggerCloseAnimation();
   }, [phase]);
 
   // 旋转降级处理
-  // - opening/closing 阶段：立即中止动画，降级为淡出关闭
-  // - open 阶段：不处理。设计规格要求将 originLayout 置 null，但该 state 属于父组件，
-  //   ImageViewer 无法直接修改。关闭时 triggerCloseAnimation 会重新 measureInWindow，
-  //   若缩略图已滚出屏幕则自动降级为淡出，是可接受的行为差异。
+  // - opening/closing 阶段：立即中止动画并淡出关闭
+  // - open 阶段：保持查看器打开，但后续关闭强制降级为淡出
   useEffect(() => {
     if (
       prevDimensions.current.width === SCREEN_WIDTH &&
@@ -240,25 +259,20 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     ) {
       return;
     }
+
     prevDimensions.current = { width: SCREEN_WIDTH, height: SCREEN_HEIGHT };
+
     if (phase === 'opening' || phase === 'closing') {
-      isRotationAborted.current = true;
-      cancelAnimation(heroLeft);
-      cancelAnimation(heroTop);
-      cancelAnimation(heroWidth);
-      cancelAnimation(heroHeight);
-      cancelAnimation(heroOpacity);
-      cancelAnimation(backdropOpacity);
-      backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-        // 直接内联淡出逻辑，避免 startFadeClose 的 exhaustive-deps 问题
-        if (finished) runOnJS(performClose)();
-      });
+      shouldIgnoreSharedTransitionRef.current = true;
+      canAnimateBackRef.current = false;
+      startFadeClose();
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // 原因：heroLeft/Top/Width/Height/backdropOpacity 为 Reanimated shared values，
-    // 稳定引用；phase/performClose 在此 effect 生命周期内不会变化；
-    // 仅需响应尺寸变化，刻意排除其他依赖。
-  }, [SCREEN_WIDTH, SCREEN_HEIGHT]);
+
+    if (phase === 'open') {
+      canAnimateBackRef.current = false;
+    }
+  }, [SCREEN_WIDTH, SCREEN_HEIGHT, phase]);
 
   // ─── Double tap: toggle zoom 1x ↔ 2x ──────────────────────────────────
   const doubleTapGesture = Gesture.Tap()
@@ -383,7 +397,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     top: heroTop.value,
     width: heroWidth.value,
     height: heroHeight.value,
-    opacity: heroOpacity.value,
   }));
 
   // ─── Save to album ────────────────────────────────────────────────────
