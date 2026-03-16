@@ -140,14 +140,14 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   // opening 动画：英雄图从缩略图坐标飞入全屏
   useEffect(() => {
     if (phase !== 'opening') return;
-    const springConfig = { damping: 28, stiffness: 300 };
-    heroLeft.value = withSpring(0, springConfig);
-    heroTop.value = withSpring(0, springConfig);
-    heroWidth.value = withSpring(SCREEN_WIDTH, springConfig);
-    heroHeight.value = withSpring(SCREEN_HEIGHT, springConfig, (finished) => {
+    const openingTiming = { duration: 280, easing: Easing.out(Easing.cubic) };
+    heroLeft.value = withTiming(0, openingTiming);
+    heroTop.value = withTiming(0, openingTiming);
+    heroWidth.value = withTiming(SCREEN_WIDTH, openingTiming);
+    heroHeight.value = withTiming(SCREEN_HEIGHT, openingTiming, (finished) => {
       if (finished) runOnJS(setPhase)('open');
     });
-    backdropOpacity.value = withSpring(1, springConfig);
+    backdropOpacity.value = withTiming(1, openingTiming);
   }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
   const performClose = () => {
@@ -371,7 +371,6 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     top: heroTop.value,
     width: heroWidth.value,
     height: heroHeight.value,
-    backgroundColor: '#000000',
   }));
 
   // ─── Save to album ────────────────────────────────────────────────────
