@@ -382,6 +382,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showViewToggle, setShowViewToggle] = useState(false);
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const sectionListRef = useRef<SectionList<Entry, TimeSection>>(null);
 
   // 从共享 store 获取卡片间距设置（无需轮询，自动响应状态变化）
@@ -426,6 +427,16 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   // 处理编辑
   const handleEditEntry = useCallback((entry: Entry) => setEditingEntry(entry), []);
+
+  // 处理滑动开始 - 记录当前打开的卡片ID
+  const handleSwipeStart = useCallback((id: string) => {
+    setOpenSwipeId(id);
+  }, []);
+
+  // 处理滑动关闭 - 清除打开的卡片ID
+  const handleSwipeClose = useCallback(() => {
+    setOpenSwipeId(null);
+  }, []);
 
   // 稳定的 keyExtractor，避免 SectionList 每次渲染重建
   const keyExtractor = useCallback((item: Entry) => {
