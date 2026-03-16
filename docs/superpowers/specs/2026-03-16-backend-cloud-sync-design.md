@@ -51,7 +51,7 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │              Docker Compose 编排                        │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌────────────────┐  │ │
-│  │  │   Nginx     │  │   Express   │  │  PostgreSQL 15 │  │ │
+│  │  │   Nginx     │  │  Go/Gin API │  │  PostgreSQL 15 │  │ │
 │  │  │  (反向代理)  │  │   API 服务   │  │    + 数据卷     │  │ │
 │  │  └─────────────┘  └─────────────┘  └────────────────┘  │ │
 │  └────────────────────────────────────────────────────────┘ │
@@ -122,12 +122,12 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 
 **数据压缩与 Hash 计算详情**:
 
-| 步骤 | 算法 | 说明 |
-|------|------|------|
-| JSON 序列化 | `JSON.stringify` | entries 和 tags 数组 |
-| 压缩 | `gzip` (level 6) | 使用 zlib/pako 库，平衡压缩率和速度 |
-| Hash | `SHA-256` | 对压缩后的二进制数据计算 |
-| 上传数据 | Base64(gzip(JSON)) | 压缩后转 Base64 便于 JSON 传输 |
+| 步骤 | 算法 | 客户端库 | 服务端库 |
+|------|------|----------|----------|
+| JSON 序列化 | `JSON.stringify` | 原生 | encoding/json |
+| 压缩 | `gzip` (level 6) | pako / react-native-gzip | compress/gzip |
+| Hash | `SHA-256` | expo-crypto / crypto-js | crypto/sha256 |
+| 上传数据 | Base64(gzip(JSON)) | 原生 btoa/atob | encoding/base64 |
 
 ### 3.3 图片/语音文件处理策略（V1）
 
@@ -464,7 +464,7 @@ services:
     environment:
       DATABASE_URL: postgres://${DB_USER:-daycapsule}:${DB_PASSWORD:-changeme}@postgres:5432/${DB_NAME:-daycapsule}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars}
-      NODE_ENV: production
+      ENV: production
       PORT: 3000
     depends_on:
       postgres:
@@ -516,11 +516,27 @@ migrate -path /app/migrations -database "$DATABASE_URL" up
 **容器启动时自动迁移**:
 ```dockerfile
 # backend/Dockerfile
+# migrate/migrate 是官方镜像，需要 Docker BuildKit（Docker 18.09+ 默认启用）
 COPY --from=migrate/migrate /usr/local/bin/migrate /usr/local/bin/
 CMD migrate -path /app/migrations -database "$DATABASE_URL" up && /app/server
 ```
 
 **初始迁移文件** (`migrations/20260316000000_initial_schema.up.sql`) 包含第 5 节定义的 schema。
+
+**go.mod 示例**:
+```go
+module github.com/daycapsule/backend
+
+go 1.23
+
+require (
+	github.com/gin-gonic/gin v1.9.1
+	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/lib/pq v1.10.9
+	go.uber.org/zap v1.26.0
+	golang.org/x/crypto v0.18.0
+)
+```
 
 ---
 
@@ -688,11 +704,13 @@ MemoryCapsule/
 │           └── useAutoSync.ts      # 自动同步 Hook
 │
 └── backend/                # 后端服务（与 app/ 同级，独立目录）
-    ├── src/
+    ├── cmd/server/
+    ├── internal/
     ├── migrations/
+    ├── pkg/
     ├── Dockerfile
-    ├── package.json
-    └── tsconfig.json
+    ├── go.mod
+    └── go.sum
 ```
 
 **说明**:
@@ -748,13 +766,17 @@ interface SyncConfig {
    - 迭代次数: 100,000
    - 盐值: 随机 16 字节，与加密数据一起存储
    - 输出: 256-bit (32 字节) 密钥
+   - **客户端库**: `expo-crypto` 或 `react-native-crypto`
 3. **数据加密**: 使用 AES-256-GCM
    - IV: 随机 12 字节
    - 认证标签: 128-bit
    - 密文格式: Base64(盐值 + IV + 密文 + 认证标签)
+   - **客户端库**: `expo-crypto` 或 `react-native-aes-crypto`
 4. **密钥存储**:
    - iOS: 存储在 iOS Keychain (kSecClassGenericPassword)
+     - 库: `react-native-keychain`
    - Android: 存储在 Android Keystore
+     - 库: `react-native-keychain` 或 `expo-secure-store`
    - 绝不存储在 MMKV 或 AsyncStorage
 5. **多设备同步**: 新设备恢复时，用户需手动输入相同密码短语才能解密
 
@@ -787,10 +809,10 @@ interface SyncConfig {
 | 同步冲突 | 显示冲突解决对话框 |
 | 服务端错误 | 提示"服务器繁忙，请稍后重试" |
 
-### 10.2 服务端错误
+### 10.2 服务端错误响应格式
 
-```typescript
-// 统一错误响应格式
+**统一错误响应结构**:
+```json
 {
   "success": false,
   "error": {
@@ -890,6 +912,7 @@ backend/
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.5 | 2026-03-16 | Go 版本审查修复：更新架构图、环境变量、客户端库说明、go.mod 示例 |
 | 1.4 | 2026-03-16 | 技术栈变更：Node.js → Go 1.23 + Gin，更新目录结构、Dockerfile、迁移工具 |
 | 1.3 | 2026-03-16 | 第三轮审查修复：添加 Dockerfile、数据库迁移策略、压缩算法说明、密钥派生细节、唯一约束、修复部署步骤 |
 | 1.2 | 2026-03-16 | 第二轮审查修复：修复 API 结构、添加错误响应、修复 data_json 类型、添加 nginx.conf、明确目录结构、完善密钥管理、添加文件处理策略 |
