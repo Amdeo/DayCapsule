@@ -199,6 +199,25 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 }
 ```
 
+#### POST /auth/refresh
+刷新访问令牌
+
+**请求头**: `Authorization: Bearer <refresh-token>`
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "token": "new-jwt-access-token",
+    "refreshToken": "new-refresh-token",
+    "expiresIn": 604800
+  }
+}
+```
+
+---
+
 #### POST /sync/upload
 上传全量数据
 
@@ -216,9 +235,20 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
   },
   "hash": "sha256-hash",
   "entryCount": 150,
-  "deviceName": "iPhone 15 Pro"
+  "deviceName": "iPhone 15 Pro",
+  "encrypted": false,
+  "encryptionVersion": 0
 }
 ```
+
+**字段说明**:
+- `encrypted`: 数据是否已加密（客户端加密时设为 true）
+- `encryptionVersion`: 加密方案版本（0=未加密，1=AES-256-GCM）
+
+**服务端处理加密数据**:
+- 服务端不解析 `data` 字段内容，直接存储
+- 加密元数据（`encrypted`, `encryptionVersion`）与数据一同存储
+- 下载时原样返回，客户端根据 `encrypted` 字段决定是否解密
 
 **响应**:
 ```json
@@ -248,6 +278,8 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
     },
     "hash": "sha256-hash",
     "entryCount": 150,
+    "encrypted": false,
+    "encryptionVersion": 0,
     "updatedAt": "2026-03-16T10:00:00Z"
   }
 }
@@ -263,6 +295,22 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 {
   "success": true,
   "message": "备份已删除"
+}
+```
+
+#### GET /health
+健康检查端点
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "version": "1.0.0",
+    "timestamp": "2026-03-16T10:00:00Z",
+    "database": "connected"
+  }
 }
 ```
 
@@ -282,38 +330,32 @@ CREATE TABLE users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 设备表（用于多设备管理）
-CREATE TABLE devices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  device_name VARCHAR(255) NOT NULL,
-  last_sync_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 备份数据表
+-- 备份数据表（V1 版本暂不实现 devices 表，单用户单备份）
 CREATE TABLE backups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  data_json JSONB NOT NULL,
-  data_hash VARCHAR(64) NOT NULL,
+  data_json JSONB NOT NULL,           -- 加密时存储密文
+  data_hash VARCHAR(64) NOT NULL,     -- 存储客户端提供的 hash，避免服务端重复计算
   entry_count INTEGER NOT NULL DEFAULT 0,
   device_name VARCHAR(255),
+  encrypted BOOLEAN DEFAULT FALSE,    -- 数据是否加密
+  encryption_version INTEGER DEFAULT 0, -- 加密方案版本
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 索引
 CREATE INDEX idx_backups_user_id ON backups(user_id);
-CREATE INDEX idx_devices_user_id ON devices(user_id);
+-- CREATE INDEX idx_devices_user_id ON devices(user_id);  -- V2 多设备管理时启用
 ```
 
 ### 5.2 实体关系
 
 ```
-users ||--o{ devices : has
 users ||--o| backups : has_one
 ```
+
+**说明**: V1 版本简化为用户-备份一对一关系。`deviceName` 字段存储在 backups 表中仅用于展示。
 
 ---
 
@@ -363,7 +405,7 @@ services:
     container_name: daycapsule-nginx
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:80"
+      - "${PORT:-8080}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
@@ -382,7 +424,7 @@ volumes:
 | `DB_PASSWORD` | changeme | **必须修改** |
 | `DB_NAME` | daycapsule | 数据库名 |
 | `JWT_SECRET` | - | **必须设置**，至少 32 字符 |
-| `PORT` | 3000 | 对外服务端口 |
+| `PORT` | 8080 | 对外服务端口（避免与 API 内部端口冲突） |
 
 ---
 
@@ -456,7 +498,7 @@ interface SyncConfig {
 | 功能 | 处理方式 |
 |------|---------|
 | 本地 SQLite | 保留为主存储，云端为备份 |
-| MMKV 设置 | 保留，云同步设置单独存储 |
+| MMKV 设置 | 保留，云同步设置单独存储在 `sync-settings` namespace |
 | 本地导出备份 | 保留，与云端并行 |
 | 离线使用 | 完全支持，有网时自动同步 |
 | 图片/语音文件 | 仅同步元数据，文件需另行处理（V2）|
@@ -486,6 +528,22 @@ interface SyncConfig {
   }
 }
 ```
+
+### 10.2 服务端错误码枚举
+
+| 错误码 | HTTP 状态码 | 说明 |
+|--------|-------------|------|
+| `INVALID_REQUEST` | 400 | 请求参数无效 |
+| `INVALID_CREDENTIALS` | 401 | 邮箱或密码错误 |
+| `TOKEN_EXPIRED` | 401 | 访问令牌已过期 |
+| `TOKEN_INVALID` | 401 | 访问令牌无效 |
+| `REFRESH_TOKEN_INVALID` | 401 | 刷新令牌无效 |
+| `FORBIDDEN` | 403 | 无权访问该资源 |
+| `USER_NOT_FOUND` | 404 | 用户不存在 |
+| `BACKUP_NOT_FOUND` | 404 | 云端备份不存在 |
+| `RATE_LIMITED` | 429 | 请求过于频繁 |
+| `INTERNAL_ERROR` | 500 | 服务器内部错误 |
+| `SERVICE_UNAVAILABLE` | 503 | 服务暂时不可用 |
 
 ---
 
@@ -535,8 +593,8 @@ backend/
 │   │   └── rateLimiter.ts
 │   ├── models/
 │   │   ├── user.ts
-│   │   ├── device.ts
-│   │   └── backup.ts
+│   │   ├── backup.ts
+│   │   └── device.ts     -- V2 多设备管理时启用
 │   ├── routes/
 │   │   ├── auth.ts
 │   │   └── sync.ts
@@ -556,4 +614,5 @@ backend/
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1 | 2026-03-16 | 修复审查问题：添加加密协议、刷新令牌API、错误码枚举、health端点、修复端口冲突 |
 | 1.0 | 2026-03-16 | 初始版本 |
