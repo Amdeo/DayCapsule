@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   dotsRow: {
     flexDirection: 'row',
     gap: 2,
-    marginTop: 2,
+    marginTop: 1,
   },
   dot: {
     width: 4,
