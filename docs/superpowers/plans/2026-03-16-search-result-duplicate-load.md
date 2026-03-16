@@ -80,7 +80,8 @@ it('旧的首屏请求晚返回时不应覆盖新的筛选结果', async () => {
   expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['new']);
 });
 
-it('applySearchFilters 应复用同一套首屏查询保护', async () => {
+it('applySearchFilters 开启新查询时应重置遗留的 isLoadingMore', async () => {
+  useEntryStore.setState({ isLoadingMore: true });
   (DB.getEntriesPage as jest.Mock).mockResolvedValue([
     { id: '1', type: 'text', content: 'hit', timestamp: 10, syncStatus: 'synced' },
   ]);
@@ -93,6 +94,7 @@ it('applySearchFilters 应复用同一套首屏查询保护', async () => {
   });
 
   expect(useEntryStore.getState().searchQuery).toBe('hit');
+  expect(useEntryStore.getState().isLoadingMore).toBe(false);
   expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['1']);
 });
 
@@ -113,18 +115,20 @@ it('重复返回同一分页结果时只保留一份 id', async () => {
   expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['1', '2']);
 });
 
-it('同一查询下第二次 loadMore 在 isLoadingMore=true 时应直接返回', async () => {
-  const deferred = createDeferred<any[]>();
-  useEntryStore.setState({ entries: [], filteredEntries: [], cursor: 2000, hasMore: true });
-  (DB.getEntriesPage as jest.Mock).mockReturnValue(deferred.promise);
+it('切换到新查询后旧的 isLoadingMore 不应阻塞新的 loadMore', async () => {
+  useEntryStore.setState({ isLoadingMore: true, cursor: 2000, hasMore: true });
+  (DB.getEntriesPage as jest.Mock)
+    .mockResolvedValueOnce([
+      { id: 'fresh', type: 'text', content: 'fresh', timestamp: 1500, syncStatus: 'synced' },
+    ])
+    .mockResolvedValueOnce([
+      { id: 'fresh-2', type: 'text', content: 'fresh-2', timestamp: 1400, syncStatus: 'synced' },
+    ]);
 
-  const firstCall = useEntryStore.getState().loadMore();
-  const secondCall = useEntryStore.getState().loadMore();
+  await useEntryStore.getState().applySearchFilters({ query: 'fresh' });
+  await useEntryStore.getState().loadMore();
 
-  expect(DB.getEntriesPage).toHaveBeenCalledTimes(1);
-
-  deferred.resolve([]);
-  await Promise.all([firstCall, secondCall]);
+  expect(DB.getEntriesPage).toHaveBeenCalledTimes(2);
 });
 
 it('旧查询的分页结果晚返回时不应污染当前查询', async () => {

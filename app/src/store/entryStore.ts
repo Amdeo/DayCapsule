@@ -10,9 +10,7 @@ import { EntryFilters } from '@/src/database/operations';
 import { logger } from '@/src/utils/logger';
 
 const PAGE_SIZE = 20;
-
-// 过滤版本号：防止快速连续调用时旧结果覆盖新结果
-let filterVersion = 0;
+const MAX_LOAD_RETRIES = 5;
 
 /** 从当前过滤状态构建 DB 查询参数 */
 const buildFilters = (state: {
@@ -43,10 +41,54 @@ const buildFilters = (state: {
   return filters;
 };
 
+const buildQueryKey = (state: {
+  searchQuery: string;
+  filterType: string;
+  filterDateRange: string;
+  selectedTags: string[];
+}) =>
+  JSON.stringify({
+    query: state.searchQuery,
+    type: state.filterType,
+    dateRange: state.filterDateRange,
+    tags: [...state.selectedTags].sort((a, b) => a.localeCompare(b)),
+  });
+
+const mergeUniqueById = (prev: Entry[], next: Entry[]): Entry[] => {
+  const seen = new Set(prev.map((entry) => entry.id));
+  const uniqueNext = next.filter((entry) => {
+    if (seen.has(entry.id)) return false;
+    seen.add(entry.id);
+    return true;
+  });
+  return [...prev, ...uniqueNext];
+};
+
+const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => {
+  const cleaned: Entry[] = [];
+
+  for (const entry of page) {
+    if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
+      try {
+        await DB.deleteEntry(entry.id);
+        logger.log('🧹 清理无效录音:', entry.id);
+        continue;
+      } catch {
+        // 如果删除失败，保留原 entry，避免静默丢数据
+      }
+    }
+
+    cleaned.push(entry);
+  }
+
+  return cleaned;
+};
+
 interface EntryStore {
   // 数据
   entries: Entry[];
   filteredEntries: Entry[]; // 保持与 entries 同步，供 Timeline 兼容使用
+  activeQueryKey: string;
   isLoading: boolean;
   isLoadingMore: boolean;
   cursor: number | null;    // 最后一条的 timestamp，用于下一页查询
@@ -101,11 +143,65 @@ interface EntryStore {
   restoreEntries: (entries: Entry[]) => Promise<string[]>;
 }
 
-const MAX_LOAD_RETRIES = 5;
+export const useEntryStore = create<EntryStore>((set, get) => {
+  const executeFirstPageQuery = async (
+    queryKey: string,
+    retryCount: number,
+    options: { allowRetry: boolean; logLabel: string }
+  ): Promise<void> => {
+    try {
+      const filters = buildFilters(get());
+      const page = await DB.getEntriesPage(filters, PAGE_SIZE);
+      const cleaned = await removeBrokenRecordingEntries(page);
 
-export const useEntryStore = create<EntryStore>((set, get) => ({
+      if (get().activeQueryKey !== queryKey) {
+        logger.debug('[entryStore] Ignore stale first-page result:', queryKey);
+        return;
+      }
+
+      set((state) => ({
+        entries: cleaned,
+        filteredEntries: cleaned,
+        cursor: cleaned.at(-1)?.timestamp ?? null,
+        hasMore: page.length === PAGE_SIZE,
+        isLoading: false,
+        isLoadingMore: false,
+        loadRetryCount: retryCount > 0 ? 0 : state.loadRetryCount,
+      }));
+      logger.log('✅ 加载了', cleaned.length, '条记录');
+    } catch (error: any) {
+      logger.error(`Failed to ${options.logLabel}:`, error);
+
+      if (
+        options.allowRetry &&
+        error?.message?.includes('no such table') &&
+        retryCount < MAX_LOAD_RETRIES
+      ) {
+        const nextRetry = retryCount + 1;
+        set({ loadRetryCount: nextRetry });
+        logger.log(`⏳ 数据库表尚未创建，${nextRetry}/${MAX_LOAD_RETRIES} 秒后重试...`);
+
+        setTimeout(() => {
+          if (get().activeQueryKey !== queryKey) return;
+          void executeFirstPageQuery(queryKey, nextRetry, options);
+        }, 500);
+        return;
+      }
+
+      if (get().activeQueryKey === queryKey) {
+        set((state) => ({
+          isLoading: false,
+          isLoadingMore: false,
+          loadRetryCount: options.allowRetry ? 0 : state.loadRetryCount,
+        }));
+      }
+    }
+  };
+
+  return ({
   entries: [],
   filteredEntries: [],
+  activeQueryKey: '',
   isLoading: false,
   isLoadingMore: false,
   cursor: null,
@@ -122,74 +218,40 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
    * 首次加载（重置游标，加载第一页）
    */
   loadEntries: async () => {
-    const { loadRetryCount } = get();
-    set({ isLoading: true, cursor: null, hasMore: true });
-    try {
-      const state = get();
-      const filters = buildFilters(state);
-      const page = await DB.getEntriesPage(filters, PAGE_SIZE);
-
-      // 清理无效录音状态
-      const cleaned: Entry[] = [];
-      for (const entry of page) {
-        if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
-          try {
-            await DB.deleteEntry(entry.id);
-            logger.log('🧹 清理无效录音:', entry.id);
-          } catch {
-            cleaned.push(entry);
-          }
-        } else {
-          cleaned.push(entry);
-        }
-      }
-
-      // 加载成功，重置重试计数
-      if (loadRetryCount > 0) {
-        set({ loadRetryCount: 0 });
-      }
-
-      set({
-        entries: cleaned,
-        filteredEntries: cleaned,
-        cursor: cleaned.at(-1)?.timestamp ?? null,
-        hasMore: page.length === PAGE_SIZE,
-        isLoading: false,
-      });
-      logger.log('✅ 加载了', cleaned.length, '条记录');
-    } catch (error: any) {
-      logger.error('Failed to load entries:', error);
-      if (error?.message?.includes('no such table')) {
-        if (loadRetryCount < MAX_LOAD_RETRIES) {
-          const nextRetry = loadRetryCount + 1;
-          set({ loadRetryCount: nextRetry });
-          logger.log(`⏳ 数据库表尚未创建，${nextRetry}/${MAX_LOAD_RETRIES} 秒后重试...`);
-          setTimeout(() => get().loadEntries(), 500);
-        } else {
-          logger.error('❌ 数据库表加载失败，已达最大重试次数');
-          set({ isLoading: false, loadRetryCount: 0 });
-        }
-      } else {
-        set({ isLoading: false, loadRetryCount: 0 });
-      }
-    }
+    const state = get();
+    const queryKey = buildQueryKey(state);
+    set({
+      activeQueryKey: queryKey,
+      isLoading: true,
+      isLoadingMore: false,
+      cursor: null,
+      hasMore: true,
+    });
+    await executeFirstPageQuery(queryKey, state.loadRetryCount, {
+      allowRetry: true,
+      logLabel: 'load entries',
+    });
   },
 
   /**
    * 加载下一页（追加到 entries 末尾）
    */
   loadMore: async () => {
-    const { cursor, isLoadingMore, hasMore } = get();
+    const { cursor, isLoadingMore, hasMore, activeQueryKey } = get();
     if (isLoadingMore || !hasMore) return;
 
     set({ isLoadingMore: true });
     try {
-      const state = get();
-      const filters = buildFilters(state);
+      const filters = buildFilters(get());
       const page = await DB.getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
 
+      if (get().activeQueryKey !== activeQueryKey) {
+        logger.debug('[entryStore] Ignore stale loadMore result:', activeQueryKey);
+        return;
+      }
+
       set((s) => {
-        const next = [...s.entries, ...page];
+        const next = mergeUniqueById(s.entries, page);
         return {
           entries: next,
           filteredEntries: next,
@@ -200,7 +262,9 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
       });
     } catch (error) {
       logger.error('Failed to load more entries:', error);
-      set({ isLoadingMore: false });
+      if (get().activeQueryKey === activeQueryKey) {
+        set({ isLoadingMore: false });
+      }
     }
   },
 
@@ -335,28 +399,22 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
    * 过滤条件变更：重置游标，重新加载第一页
    */
   applyFilters: async () => {
-    const version = ++filterVersion;
-    set({ isLoading: true, cursor: null, hasMore: true });
+    const state = get();
+    const queryKey = buildQueryKey(state);
+    set({
+      activeQueryKey: queryKey,
+      isLoading: true,
+      isLoadingMore: false,
+      cursor: null,
+      hasMore: true,
+    });
 
-    try {
-      const state = get();
-      const filters = buildFilters(state);
-      const page = await DB.getEntriesPage(filters, PAGE_SIZE);
-
-      if (version !== filterVersion) return;
-
-      set({
-        entries: page,
-        filteredEntries: page,
-        cursor: page.at(-1)?.timestamp ?? null,
-        hasMore: page.length === PAGE_SIZE,
-        isLoading: false,
-      });
-    } catch (error) {
-      logger.error('Failed to apply filters:', error);
-      if (version === filterVersion) set({ isLoading: false });
-    }
+    await executeFirstPageQuery(queryKey, state.loadRetryCount, {
+      allowRetry: false,
+      logLabel: 'apply filters',
+    });
   },
-}));
+  });
+});
 
 export type { Entry };

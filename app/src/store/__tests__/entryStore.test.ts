@@ -34,6 +34,29 @@ import * as DB from '@/src/database/operations';
 
 const PAGE_SIZE = 20;
 
+const makeEntry = (id: string, timestamp: number) => ({
+  id,
+  type: 'text' as const,
+  content: id,
+  timestamp,
+  syncStatus: 'synced' as const,
+});
+
+const makeFullPage = (prefix: string, startTimestamp: number) =>
+  Array.from({ length: PAGE_SIZE }, (_, index) =>
+    makeEntry(`${prefix}-${index}`, startTimestamp - index)
+  );
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 const resetStore = () =>
   useEntryStore.setState({
     entries: [],
@@ -46,13 +69,29 @@ const resetStore = () =>
     filterType: 'all',
     filterDateRange: 'all',
     selectedTags: [],
+    loadRetryCount: 0,
+    activeQueryKey: '',
     currentPlayingId: null,
   });
 
 describe('entryStore', () => {
   beforeEach(() => {
     resetStore();
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    (DB.getEntriesPage as jest.Mock).mockResolvedValue([]);
+    (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
+    (DB.addEntry as jest.Mock).mockImplementation((entry) =>
+      Promise.resolve({
+        ...entry,
+        id: 'test-id-1',
+        timestamp: 1700000000000,
+        syncStatus: 'synced',
+      })
+    );
+    (DB.updateEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.searchEntries as jest.Mock).mockResolvedValue([]);
+    (DB.getAllTags as jest.Mock).mockResolvedValue([]);
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────
@@ -122,6 +161,69 @@ describe('entryStore', () => {
 
       expect(useEntryStore.getState().hasMore).toBe(false);
     });
+
+    it('旧的首屏请求晚返回时不应覆盖新的筛选结果', async () => {
+      const first = createDeferred<any[]>();
+      const second = createDeferred<any[]>();
+
+      (DB.getEntriesPage as jest.Mock)
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise);
+
+      const firstLoad = useEntryStore.getState().loadEntries();
+      const secondLoad = useEntryStore.getState().applySearchFilters({ query: 'second' });
+
+      second.resolve([{ id: 'new', type: 'text', content: 'new', timestamp: 2, syncStatus: 'synced' }]);
+      await secondLoad;
+
+      first.resolve([{ id: 'old', type: 'text', content: 'old', timestamp: 1, syncStatus: 'synced' }]);
+      await firstLoad;
+
+      expect(useEntryStore.getState().searchQuery).toBe('second');
+      expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['new']);
+    });
+
+    it('applySearchFilters 开启新首屏查询时应重置 isLoadingMore 为 false', async () => {
+      useEntryStore.setState({ isLoadingMore: true, cursor: 999, hasMore: true });
+      (DB.getEntriesPage as jest.Mock).mockResolvedValue([
+        makeEntry('1', 10),
+      ]);
+
+      await useEntryStore.getState().applySearchFilters({
+        query: 'hit',
+        type: 'text',
+        dateRange: 'today',
+        tags: ['b', 'a'],
+      });
+
+      expect(useEntryStore.getState().searchQuery).toBe('hit');
+      expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['1']);
+      expect(useEntryStore.getState().isLoadingMore).toBe(false);
+    });
+
+    it('数据库表未就绪的延迟重试在签名过期后应放弃', async () => {
+      jest.useFakeTimers();
+      try {
+        (DB.getEntriesPage as jest.Mock)
+          .mockRejectedValueOnce(new Error('no such table: entries'))
+          .mockResolvedValueOnce([{ id: 'fresh', type: 'text', content: 'fresh', timestamp: 1, syncStatus: 'synced' }])
+          .mockResolvedValueOnce([{ id: 'stale', type: 'text', content: 'stale', timestamp: 0, syncStatus: 'synced' }]);
+
+        const firstLoad = useEntryStore.getState().loadEntries();
+        await Promise.resolve();
+
+        await useEntryStore.getState().applySearchFilters({ query: 'fresh' });
+
+        jest.runOnlyPendingTimers();
+        await Promise.resolve();
+        await Promise.resolve();
+        await firstLoad;
+
+        expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   // ─── loadMore ───────────────────────────────────────────────────────────────
@@ -170,6 +272,77 @@ describe('entryStore', () => {
       await useEntryStore.getState().loadMore();
 
       expect(useEntryStore.getState().hasMore).toBe(false);
+    });
+
+    it('重复返回同一分页结果时只保留一份 id', async () => {
+      const existing = [
+        { id: '1', type: 'text' as const, content: '第一页', timestamp: 2000, syncStatus: 'synced' as const },
+      ];
+      const duplicatePage = [
+        { id: '1', type: 'text' as const, content: '第一页', timestamp: 2000, syncStatus: 'synced' as const },
+        { id: '2', type: 'text' as const, content: '第二页', timestamp: 1000, syncStatus: 'synced' as const },
+      ];
+
+      useEntryStore.setState({ entries: existing, filteredEntries: existing, cursor: 2000, hasMore: true });
+      (DB.getEntriesPage as jest.Mock).mockResolvedValue(duplicatePage);
+
+      await useEntryStore.getState().loadMore();
+
+      expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['1', '2']);
+    });
+
+    it('searchEntries 切换到新查询后首个 loadMore 不应沿用旧查询的分页会话', async () => {
+      const deferred = createDeferred<any[]>();
+      const firstPage = makeFullPage('first', 4000);
+      const freshPage = makeFullPage('fresh', 3000);
+      (DB.getEntriesPage as jest.Mock)
+        .mockResolvedValueOnce(firstPage)
+        .mockReturnValueOnce(deferred.promise)
+        .mockResolvedValueOnce(freshPage)
+        .mockResolvedValueOnce([makeEntry('fresh-more', 2000)]);
+
+      await useEntryStore.getState().applySearchFilters({ query: 'first' });
+      useEntryStore.setState({ cursor: firstPage.at(-1)?.timestamp ?? null, hasMore: true });
+      const staleLoadMore = useEntryStore.getState().loadMore();
+
+      await useEntryStore.getState().searchEntries('fresh');
+      useEntryStore.setState({ cursor: freshPage.at(-1)?.timestamp ?? null, hasMore: true });
+      await useEntryStore.getState().loadMore();
+
+      deferred.resolve([makeEntry('stale-more', 1999)]);
+      await staleLoadMore;
+
+      const ids = useEntryStore.getState().entries.map((entry) => entry.id);
+      expect(DB.getEntriesPage).toHaveBeenCalledTimes(4);
+      expect(ids).toContain('fresh-more');
+      expect(ids).not.toContain('stale-more');
+    });
+
+    it('setFilterType 开启新筛选会话后首个 loadMore 不应沿用旧查询的分页锁', async () => {
+      const firstPage = makeFullPage('first', 5000);
+      const voicePage = makeFullPage('voice', 4000);
+
+      (DB.getEntriesPage as jest.Mock)
+        .mockResolvedValueOnce(firstPage)
+        .mockResolvedValueOnce(voicePage)
+        .mockResolvedValueOnce([makeEntry('voice-more', 3000)]);
+
+      await useEntryStore.getState().applySearchFilters({ query: 'first' });
+      useEntryStore.setState({
+        isLoadingMore: true,
+        cursor: firstPage.at(-1)?.timestamp ?? null,
+        hasMore: true,
+      });
+
+      useEntryStore.getState().setFilterType('voice');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      useEntryStore.setState({ cursor: voicePage.at(-1)?.timestamp ?? null, hasMore: true });
+      await useEntryStore.getState().loadMore();
+
+      expect(DB.getEntriesPage).toHaveBeenCalledTimes(3);
+      expect(useEntryStore.getState().entries.map((entry) => entry.id)).toContain('voice-more');
     });
   });
 
