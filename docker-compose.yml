@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: daycapsule-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-daycapsule}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${DB_NAME:-daycapsule}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-daycapsule} -d ${DB_NAME:-daycapsule}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - daycapsule-network
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: daycapsule-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-daycapsule}:${DB_PASSWORD:-changeme}@postgres:5432/${DB_NAME:-daycapsule}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
+      ENV: production
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - daycapsule-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: daycapsule-nginx
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    networks:
+      - daycapsule-network
+
+volumes:
+  postgres_data:
+
+networks:
+  daycapsule-network:
+    driver: bridge
