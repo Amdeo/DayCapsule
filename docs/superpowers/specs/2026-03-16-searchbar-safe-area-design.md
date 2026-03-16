@@ -69,17 +69,22 @@ paddingTop: 60,  // 硬编码，不适配设备差异
 
 ## 行为对比
 
+修复后 `paddingTop = insets.top`，即搜索栏内容从状态栏底部紧接开始，无额外留白（用户明确选择 N=0）。
+
 | 场景 | 修复前 | 修复后 |
 |------|--------|--------|
-| Android 状态栏 ~28dp | 顶部空白 ≈ 32dp | 顶部空白 ≈ 0dp |
-| iOS 刘海屏 ~44dp | 顶部空白 ≈ 16dp | 顶部空白 ≈ 0dp |
-| iOS 老设备 ~20dp | 顶部空白 ≈ 40dp | 顶部空白 ≈ 0dp |
+| Android 状态栏 ~28dp | 顶部空白 ≈ 32dp | 顶部空白 = 0dp |
+| iOS 刘海屏 ~44dp | 顶部空白 ≈ 16dp | 顶部空白 = 0dp |
+| iOS 老设备 ~20dp | 顶部空白 ≈ 40dp | 顶部空白 = 0dp |
 
 ---
 
 ## 无副作用说明
 
-- 不影响任何其他组件
+- **`SearchBar` 仅在 `Timeline.v2.tsx` 一处被使用**（已全代码库搜索确认），不存在其他调用方
+- **全项目无 `SafeAreaView` 使用**（已全代码库搜索确认），不存在双重安全区叠加风险
+- **应用仅支持竖屏**（`app.json` 中 `orientation: "portrait"`），无需考虑横屏下 `insets.top = 0` 的场景
+- `styles.container` 中仅移除 `paddingTop: 60` 一行，其余所有属性（`flexDirection`、`gap`、`paddingHorizontal`、`paddingVertical`、`backgroundColor`）保持不变
 - `SearchBar` 对外 props 接口不变
 - 无新增依赖
 
