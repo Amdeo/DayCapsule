@@ -33,6 +33,8 @@ import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
 import { ImageViewer, OriginLayout } from './ImageViewer';
+import { Swipeable } from 'react-native-gesture-handler';
+import { Animated as RNAnimated } from 'react-native';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -55,6 +57,14 @@ interface EntryCardProps {
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   cardSpacing?: number;
+
+  // 新增 props
+  /** 当前卡片是否处于展开状态（由父组件控制多卡片收起） */
+  isSwipeOpen?: boolean;
+  /** 当用户开始滑动当前卡片时触发 */
+  onSwipeStart?: (entryId: string) => void;
+  /** 当用户关闭滑动或滑动其他卡片时触发 */
+  onSwipeClose?: () => void;
 }
 
 function EntryCard({
