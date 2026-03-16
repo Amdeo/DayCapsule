@@ -75,6 +75,7 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 └────┬────┘     └──────────────────────────────────────────────┘     └────┬────┘
      │                                                                    │
      │  1. 计算本地数据 hash + 最新时间戳                                  │
+     │     算法: SHA-256(gzip(JSON.stringify(entries)))                   │
      │───────────────────────────────────────────────────────────────────>│
      │                                                                    │
      │  2. GET /sync/status                                               │
@@ -90,6 +91,7 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      ├────────────────────────────────────────────────────────────────────┤
      │                                                                    │
      │  5A. POST /sync/upload (压缩后的全量数据)                            │
+     │      压缩: gzip (level 6)                                          │
      │      注意: 仅上传 entries/tags 元数据，图片/语音文件不上传            │
      │───────────────────────────────────────────────────────────────────>│
      │                                                                    │
@@ -117,6 +119,15 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      │      选项: [使用本地] [使用云端] [合并(简单追加)]                      │
      │                                                                    │
 ```
+
+**数据压缩与 Hash 计算详情**:
+
+| 步骤 | 算法 | 说明 |
+|------|------|------|
+| JSON 序列化 | `JSON.stringify` | entries 和 tags 数组 |
+| 压缩 | `gzip` (level 6) | 使用 zlib/pako 库，平衡压缩率和速度 |
+| Hash | `SHA-256` | 对压缩后的二进制数据计算 |
+| 上传数据 | Base64(gzip(JSON)) | 压缩后转 Base64 便于 JSON 传输 |
 
 ### 3.3 图片/语音文件处理策略（V1）
 
@@ -394,9 +405,9 @@ CREATE TABLE users (
 -- 备份数据表（V1 版本暂不实现 devices 表，单用户单备份）
 CREATE TABLE backups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- UNIQUE: 单用户单备份
   data_json TEXT NOT NULL,            -- 加密时存储密文（Base64），解密后为 JSON
-  data_hash VARCHAR(64) NOT NULL,     -- 存储客户端提供的 hash，避免服务端重复计算
+  data_hash VARCHAR(64) NOT NULL,     -- 存储客户端提供的 hash（SHA-256 of gzip compressed JSON）
   entry_count INTEGER NOT NULL DEFAULT 0,
   device_name VARCHAR(255),
   encrypted BOOLEAN DEFAULT FALSE,    -- 数据是否加密
@@ -451,7 +462,7 @@ services:
     container_name: daycapsule-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${DB_USER:-daycapsule}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-daycapsule}
+      DATABASE_URL: postgres://${DB_USER:-daycapsule}:${DB_PASSWORD:-changeme}@postgres:5432/${DB_NAME:-daycapsule}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars}
       NODE_ENV: production
       PORT: 3000
@@ -459,7 +470,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./logs:/app/logs
+      - ./logs:/app/logs  # 需要手动创建 logs 目录
 
   nginx:
     image: nginx:alpine
@@ -487,7 +498,32 @@ volumes:
 | `JWT_SECRET` | - | **必须设置**，至少 32 字符 |
 | `PORT` | 8080 | 对外服务端口（避免与 API 内部端口冲突） |
 
-### 6.3 nginx.conf
+### 6.3 数据库迁移策略
+
+后端使用 **node-pg-migrate** 管理 PostgreSQL schema 迁移：
+
+```json
+// backend/package.json scripts
+{
+  "migrate": "node-pg-migrate",
+  "migrate:up": "node-pg-migrate up",
+  "migrate:down": "node-pg-migrate down"
+}
+```
+
+**迁移文件命名**: `migrations/YYYYMMDDHHMMSS_<name>.js`
+
+**容器启动时自动迁移**:
+```dockerfile
+# backend/Dockerfile
+CMD npm run migrate:up && npm start
+```
+
+**初始迁移文件** (`migrations/20260316000000_initial_schema.js`) 包含第 5 节定义的 schema。
+
+---
+
+### 6.4 nginx.conf
 
 ```nginx
 events {
@@ -563,11 +599,48 @@ EOF
 
 # 3. 创建 nginx.conf (从上方复制)
 # 4. 创建 docker-compose.yml (从上方复制)
-# 5. 启动服务
+# 5. 创建 backend/ 目录结构和 Dockerfile (从附录 A 复制)
+# 6. 创建日志目录
+mkdir logs
+
+# 7. 启动服务
 docker-compose up -d
 
-# 6. 检查状态
+# 8. 检查状态
 curl http://localhost:8080/health
+```
+
+---
+
+### 6.5 backend/Dockerfile
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Run migrations and start
+CMD ["sh", "-c", "npm run migrate:up && npm start"]
 ```
 
 ---
@@ -576,31 +649,33 @@ curl http://localhost:8080/health
 
 ### 7.1 新增模块
 
-**目录位置**: `app/src/`（项目根目录下）
+**项目根目录结构**:
+```
+MemoryCapsule/
+├── app/                    # React Native 应用代码
+│   └── src/
+│       ├── services/
+│       │   └── syncService.ts      # 云端 API 封装
+│       ├── store/
+│       │   └── syncStore.ts        # 同步状态管理
+│       ├── components/
+│       │   ├── SyncStatusBar.tsx   # 同步状态指示器
+│       │   ├── LoginModal.tsx      # 登录/注册弹窗
+│       │   └── ConflictDialog.tsx  # 冲突解决对话框
+│       └── hooks/
+│           └── useAutoSync.ts      # 自动同步 Hook
+│
+└── backend/                # 后端服务（与 app/ 同级，独立目录）
+    ├── src/
+    ├── migrations/
+    ├── Dockerfile
+    ├── package.json
+    └── tsconfig.json
+```
 
-```
-app/src/
-├── services/
-│   └── syncService.ts      # 云端 API 封装
-├── store/
-│   └── syncStore.ts        # 同步状态管理
-├── components/
-│   ├── SyncStatusBar.tsx   # 同步状态指示器
-│   ├── LoginModal.tsx      # 登录/注册弹窗
-│   └── ConflictDialog.tsx  # 冲突解决对话框
-└── hooks/
-    └── useAutoSync.ts      # 自动同步 Hook
-```
-
-**后端目录位置**: 项目根目录下 `backend/`（与 `app/` 同级）
-
-```
-backend/                    # 独立目录，不依赖 app/ 内的代码
-├── src/
-├── Dockerfile
-├── package.json
-└── tsconfig.json
-```
+**说明**:
+- 前端代码在 `app/src/` 下（按 CLAUDE.md，命令在 `app/` 目录执行）
+- 后端代码在 `backend/` 下（独立目录，不依赖 app/ 内的代码）
 
 ### 7.2 同步策略配置
 
@@ -645,11 +720,21 @@ interface SyncConfig {
 - 数据库连接使用 SSL（如果 PostgreSQL 支持）
 
 **密钥管理方案（V1 简化版）**:
-1. 用户在设置中开启加密，输入密码短语
-2. 客户端使用 PBKDF2 派生 256-bit 密钥
-3. 数据上传前使用 AES-256-GCM 加密，密文 Base64 编码后上传
-4. 新设备恢复时，用户需手动输入相同密码短语才能解密
-5. 密码短语仅存储在本地 Keychain/Keystore，不传输到服务端
+
+1. **密码短语输入**: 用户在设置中开启加密，输入 8-32 字符密码短语
+2. **密钥派生**: 使用 PBKDF2-HMAC-SHA256
+   - 迭代次数: 100,000
+   - 盐值: 随机 16 字节，与加密数据一起存储
+   - 输出: 256-bit (32 字节) 密钥
+3. **数据加密**: 使用 AES-256-GCM
+   - IV: 随机 12 字节
+   - 认证标签: 128-bit
+   - 密文格式: Base64(盐值 + IV + 密文 + 认证标签)
+4. **密钥存储**:
+   - iOS: 存储在 iOS Keychain (kSecClassGenericPassword)
+   - Android: 存储在 Android Keystore
+   - 绝不存储在 MMKV 或 AsyncStorage
+5. **多设备同步**: 新设备恢复时，用户需手动输入相同密码短语才能解密
 
 ### 8.4 访问控制
 - Rate Limiting: 每 IP 100 请求/分钟
@@ -693,7 +778,7 @@ interface SyncConfig {
 }
 ```
 
-### 10.2 服务端错误码枚举
+### 10.3 服务端错误码枚举
 
 | 错误码 | HTTP 状态码 | 说明 |
 |--------|-------------|------|
@@ -758,7 +843,7 @@ backend/
 │   ├── models/
 │   │   ├── user.ts
 │   │   ├── backup.ts
-│   │   └── device.ts     -- V2 多设备管理时启用
+│   │   └── device.ts        # V2 多设备管理时启用
 │   ├── routes/
 │   │   ├── auth.ts
 │   │   └── sync.ts
@@ -769,6 +854,8 @@ backend/
 │   │   ├── hash.ts
 │   │   └── logger.ts
 │   └── index.ts
+├── migrations/               # node-pg-migrate 迁移文件
+│   └── 20260316000000_initial_schema.js
 ├── Dockerfile
 ├── package.json
 └── tsconfig.json
@@ -778,6 +865,7 @@ backend/
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.3 | 2026-03-16 | 第三轮审查修复：添加 Dockerfile、数据库迁移策略、压缩算法说明、密钥派生细节、唯一约束、修复部署步骤 |
 | 1.2 | 2026-03-16 | 第二轮审查修复：修复 API 结构、添加错误响应、修复 data_json 类型、添加 nginx.conf、明确目录结构、完善密钥管理、添加文件处理策略 |
 | 1.1 | 2026-03-16 | 第一轮审查修复：添加加密协议、刷新令牌API、错误码枚举、health端点、修复端口冲突 |
 | 1.0 | 2026-03-16 | 初始版本 |
