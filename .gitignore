@@ -73,6 +73,7 @@ logs/
 *.tmp
 *.temp
 .cache/
+.worktrees/
 
 # React Native specific
 app/android/.gradle/
@@ -95,4 +96,3 @@ app/ios/build/
 media/
 thumbs/
 .serena
-
