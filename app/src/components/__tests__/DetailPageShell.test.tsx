@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text } from 'react-native';
+import renderer, { act } from 'react-test-renderer';
+import { Dimensions, StyleSheet, Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 
 import { DetailPageShell } from '../DetailPageShell';
@@ -41,5 +42,27 @@ describe('DetailPageShell', () => {
     fireEvent.press(getByTestId('detail-page-backdrop'));
 
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses screen height for the page instead of anchoring it to bottom', () => {
+    const screenHeight = Dimensions.get('screen').height;
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <DetailPageShell visible title="帮助" onClose={jest.fn()}>
+          <Text>body</Text>
+        </DetailPageShell>
+      );
+    });
+
+    const page = tree!.root.find((node) => {
+      const style = StyleSheet.flatten(node.props.style);
+      return style?.backgroundColor === '#FFFFFF' && style?.shadowColor === '#000';
+    });
+    const pageStyle = StyleSheet.flatten(page.props.style);
+
+    expect(pageStyle.height).toBe(screenHeight);
+    expect(pageStyle.bottom).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import {
+  Dimensions,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +13,8 @@ import {
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
 
 interface DetailPageShellProps {
   visible: boolean;
@@ -110,7 +113,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   page: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: SCREEN_HEIGHT,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
