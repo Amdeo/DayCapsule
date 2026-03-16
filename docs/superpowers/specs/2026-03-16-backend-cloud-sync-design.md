@@ -63,9 +63,36 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 ## 3. 数据流设计
 
 ### 3.1 同步触发时机
-1. **应用启动时** — 检测网络可用后自动检查
-2. **数据变更后** — 防抖 5 秒后触发
-3. **手动触发** — 用户下拉刷新或点击同步按钮
+
+| 触发条件 | 实现位置 | 具体逻辑 |
+|----------|----------|----------|
+| **应用启动时** | `syncStore.initialize()` | 网络可用后延迟 2 秒执行首次检查（避免启动卡顿） |
+| **数据变更后** | `useAutoSync.ts` Hook | 监听 entryStore 变化，防抖 5 秒后触发同步 |
+| **手动触发** | 下拉刷新 / 同步按钮 | 立即执行，跳过防抖 |
+
+**防抖逻辑实现** (`useAutoSync.ts`):
+```typescript
+// 使用 lodash.debounce 或自定义防抖
+const debouncedSync = useMemo(
+  () => debounce(() => syncStore.syncIfNeeded(), 5000),
+  []
+);
+
+// 监听数据变化
+useEffect(() => {
+  if (syncConfig.enabled && syncConfig.autoSync) {
+    debouncedSync();
+  }
+  // 清理：组件卸载或新的变更时取消之前的防抖
+  return () => debouncedSync.cancel();
+}, [entries.length, lastModified]);
+```
+
+**防抖重置时机**:
+- 新的 entry 添加/修改/删除 → 重置 5 秒计时器
+- 用户手动触发同步 → 立即执行，取消待执行的防抖
+- 网络断开 → 暂停防抖，网络恢复后重新计时
+- 应用进入后台 → 取消防抖，前台恢复后重新评估
 
 ### 3.2 全量替换流程
 
@@ -115,8 +142,15 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      │                        分支 C: 冲突处理                             │
      ├────────────────────────────────────────────────────────────────────┤
      │                                                                    │
-     │  5C. 本地更新时间 > 云端时，显示冲突解决对话框                         │
-     │      选项: [使用本地] [使用云端] [合并(简单追加)]                      │
+     │  5C. 本地更新时间 > 云端时                                           │
+     │      5C1. GET /sync/status 获取云端概要信息                           │
+     │      5C2. 显示冲突对话框，展示对比信息：                               │
+     │          - 本地: X 条 entries, 最新修改: Y                             │
+     │          - 云端: Z 条 entries, 最新修改: W                             │
+     │      5C3. 用户选择:                                                  │
+     │          - [使用本地] → POST /sync/upload (强制覆盖云端)               │
+     │          - [使用云端] → GET /sync/download (覆盖本地)                  │
+     │          - [合并] → 本地追加云端独有 entries, 冲突 entry 取最新         │
      │                                                                    │
 ```
 
@@ -159,9 +193,16 @@ V1 版本**仅同步 entries 和 tags 的元数据**，图片和语音文件**�
 ```json
 {
   "email": "user@example.com",
-  "password": "min8chars"
+  "password": "SecurePass123"
 }
 ```
+
+**密码复杂度要求**:
+- 最小长度: 8 字符
+- 最大长度: 64 字符
+- 必须包含: 至少 1 个大写字母、1 个小写字母、1 个数字
+- 可选: 特殊字符增强安全性
+- 服务端使用 bcrypt 存储（10轮）
 
 **响应**:
 ```json
@@ -179,7 +220,7 @@ V1 版本**仅同步 entries 和 tags 的元数据**，图片和语音文件**�
 ```
 
 **错误响应**:
-- `400 INVALID_REQUEST`: 邮箱格式错误或密码少于8位
+- `400 INVALID_REQUEST`: 邮箱格式错误、密码不符合复杂度要求
 
 ---
 
@@ -521,6 +562,14 @@ COPY --from=migrate/migrate /usr/local/bin/migrate /usr/local/bin/
 CMD migrate -path /app/migrations -database "$DATABASE_URL" up && /app/server
 ```
 
+**迁移失败处理策略**:
+- **迁移成功 (exit 0)**: 继续启动应用
+- **已是最新 (exit 0)**: 继续启动应用
+- **连接失败 (exit 1)**: 容器退出，Docker 会根据 restart 策略重试
+- **迁移错误 (exit 2+)**: 容器退出，需要人工检查迁移脚本
+
+**启动顺序**: postgres → api 等待 healthy → 执行迁移 → 启动服务
+
 **初始迁移文件** (`migrations/20260316000000_initial_schema.up.sql`) 包含第 5 节定义的 schema。
 
 **go.mod 示例**:
@@ -542,6 +591,7 @@ require (
 
 ### 6.4 nginx.conf
 
+**基础配置（HTTP）**:
 ```nginx
 events {
     worker_connections 1024;
@@ -599,7 +649,48 @@ http {
 }
 ```
 
-### 6.4 部署步骤
+**HTTPS 配置（生产环境）**:
+```nginx
+# 方式 1: 使用 Let's Encrypt 证书
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';
+    ssl_prefer_server_ciphers on;
+
+    # HSTS
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    location / {
+        proxy_pass http://api;
+        # ... 其他配置同 HTTP 版本
+    }
+}
+
+# 方式 2: 使用反向代理（如已有 Nginx/CDN 处理 SSL）
+# 保留上方 HTTP 配置，在上一层 Nginx 处理 HTTPS
+```
+
+**证书获取（Let's Encrypt）**:
+```bash
+# 使用 certbot
+certbot certonly --standalone -d your-domain.com
+# 证书路径: /etc/letsencrypt/live/your-domain.com/
+```
+
+---
+
+### 6.5 部署步骤
 
 ```bash
 # 1. 创建目录并进入
@@ -629,7 +720,7 @@ curl http://localhost:8080/health
 
 ---
 
-### 6.5 backend/Dockerfile
+### 6.6 backend/Dockerfile
 
 **多阶段构建**:
 
@@ -739,6 +830,52 @@ interface SyncConfig {
    - ☁️ 使用云端（覆盖本地）
    - 🔀 合并（简单追加，去重）
 
+### 7.4 合并去重逻辑
+
+**合并策略**（当用户选择"合并"时执行）：
+
+```typescript
+// 去重逻辑
+const mergeEntries = (localEntries: Entry[], cloudEntries: Entry[]): Entry[] => {
+  const entryMap = new Map<string, Entry>();
+
+  // 1. 先添加所有本地 entries
+  localEntries.forEach(entry => {
+    entryMap.set(entry.id, entry);
+  });
+
+  // 2. 处理云端 entries
+  cloudEntries.forEach(cloudEntry => {
+    const localEntry = entryMap.get(cloudEntry.id);
+
+    if (!localEntry) {
+      // 本地没有，直接添加
+      entryMap.set(cloudEntry.id, { ...cloudEntry, isLocalFile: false });
+    } else {
+      // 冲突：同一 entry 存在于两端
+      // 策略：取 updatedAt 更新的
+      if (new Date(cloudEntry.updatedAt) > new Date(localEntry.updatedAt)) {
+        // 保留云端版本，但标记文件可能缺失
+        entryMap.set(cloudEntry.id, {
+          ...cloudEntry,
+          isLocalFile: false // 云端版本可能没有本地文件
+        });
+      }
+      // 否则保留本地版本（已存在 map 中）
+    }
+  });
+
+  // 3. 转换为数组，按时间戳排序
+  return Array.from(entryMap.values())
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+};
+```
+
+**去重键**: `entry.id`（UUID，全局唯一）
+
+**文件处理**:
+- 合并后，标记 `isLocalFile: false` 的 entries 需要重新关联本地文件或显示占位符
+
 ---
 
 ## 8. 安全设计
@@ -773,11 +910,19 @@ interface SyncConfig {
    - 密文格式: Base64(盐值 + IV + 密文 + 认证标签)
    - **客户端库**: `expo-crypto` 或 `react-native-aes-crypto`
 4. **密钥存储**:
-   - iOS: 存储在 iOS Keychain (kSecClassGenericPassword)
-     - 库: `react-native-keychain`
-   - Android: 存储在 Android Keystore
-     - 库: `react-native-keychain` 或 `expo-secure-store`
+   - 推荐库: `react-native-keychain` v9+
+     - 与 custom dev client 兼容（项目不使用 Expo Go）
+     - 支持 iOS Keychain 和 Android Keystore
+   - 备选: `expo-secure-store`（如果迁移到 Expo SDK 内置方案）
    - 绝不存储在 MMKV 或 AsyncStorage
+
+**客户端加密库选择**:
+
+| 库 | 用途 | 推荐度 | 备注 |
+|----|------|--------|------|
+| `expo-crypto` | PBKDF2, SHA256 | ⭐⭐⭐ | Expo 官方，支持 custom dev client |
+| `react-native-aes-crypto` | AES-GCM | ⭐⭐⭐ | 原生性能，支持 custom dev client |
+| `react-native-keychain` | 密钥存储 | ⭐⭐⭐ | 标准安全存储方案 |
 5. **多设备同步**: 新设备恢复时，用户需手动输入相同密码短语才能解密
 
 ### 8.4 访问控制
@@ -802,12 +947,34 @@ interface SyncConfig {
 
 ### 10.1 客户端错误
 
-| 场景 | 处理 |
-|------|------|
-| 网络不可用 | 静默失败，记录日志，稍后重试 |
-| 认证过期 | 提示重新登录 |
-| 同步冲突 | 显示冲突解决对话框 |
-| 服务端错误 | 提示"服务器繁忙，请稍后重试" |
+| 场景 | 处理 | 重试策略 |
+|------|------|----------|
+| 网络不可用 | 静默失败，记录日志 | 网络恢复后自动重试（NetInfo 监听） |
+| 请求超时 | 静默失败 | 立即重试 1 次，仍失败则等待下次触发 |
+| 服务端 5xx | 静默失败 | 指数退避：1s, 2s, 4s, 8s, 16s（最多 5 次）|
+| 认证过期 | 提示重新登录 | 不重试，等待用户操作 |
+| 同步冲突 | 显示冲突解决对话框 | 不重试，等待用户决策 |
+| 速率限制 (429) | 静默失败 | 等待 60 秒后重试 |
+
+**指数退避实现**:
+```typescript
+const retryWithBackoff = async (
+  fn: () => Promise<void>,
+  maxRetries = 5,
+  baseDelay = 1000
+) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === maxRetries - 1) throw err;
+      // 指数退避 + 随机抖动（避免惊群效应）
+      const delay = baseDelay * Math.pow(2, i) + Math.random() * 1000;
+      await sleep(delay);
+    }
+  }
+};
+```
 
 ### 10.2 服务端错误响应格式
 
@@ -912,6 +1079,7 @@ backend/
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.6 | 2026-03-16 | 第四轮审查修复：添加迁移失败处理、客户端库推荐、HTTPS配置、密码复杂度、防抖逻辑、重试策略、合并去重逻辑 |
 | 1.5 | 2026-03-16 | Go 版本审查修复：更新架构图、环境变量、客户端库说明、go.mod 示例 |
 | 1.4 | 2026-03-16 | 技术栈变更：Node.js → Go 1.23 + Gin，更新目录结构、Dockerfile、迁移工具 |
 | 1.3 | 2026-03-16 | 第三轮审查修复：添加 Dockerfile、数据库迁移策略、压缩算法说明、密钥派生细节、唯一约束、修复部署步骤 |
