@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { BackupService } from '@/src/services/backupService';
-import SyncService from '@/src/services/syncService';
+import { SyncService } from '@/src/services/syncService';
 import { logger } from '@/src/utils/logger';
 import { DetailPageShell } from './DetailPageShell';
 
