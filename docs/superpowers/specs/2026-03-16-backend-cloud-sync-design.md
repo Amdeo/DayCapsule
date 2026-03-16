@@ -30,9 +30,9 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 
 | 组件 | 选择 | 理由 |
 |------|------|------|
-| 后端框架 | Node.js + Express + TypeScript | 与前端同技术栈，维护成本低 |
+| 后端框架 | Go 1.23 + Gin | 高性能、编译型、部署简单、资源占用低 |
 | 数据库 | PostgreSQL 15 | 稳定可靠，Docker 生态成熟 |
-| 认证 | JWT + bcrypt | 标准方案，无外部依赖 |
+| 认证 | JWT (golang-jwt) + bcrypt | 标准方案，无外部依赖 |
 | 容器编排 | Docker Compose | 用户一键部署 |
 | 反向代理 | Nginx | SSL 终止、静态文件服务 |
 
@@ -500,26 +500,27 @@ volumes:
 
 ### 6.3 数据库迁移策略
 
-后端使用 **node-pg-migrate** 管理 PostgreSQL schema 迁移：
+后端使用 **golang-migrate** 管理 PostgreSQL schema 迁移：
 
-```json
-// backend/package.json scripts
-{
-  "migrate": "node-pg-migrate",
-  "migrate:up": "node-pg-migrate up",
-  "migrate:down": "node-pg-migrate down"
-}
+**迁移命令**:
+```bash
+# 本地开发
+migrate -path migrations -database "postgres://user:pass@localhost:5432/db?sslmode=disable" up
+
+# 容器内（Dockerfile CMD 中）
+migrate -path /app/migrations -database "$DATABASE_URL" up
 ```
 
-**迁移文件命名**: `migrations/YYYYMMDDHHMMSS_<name>.js`
+**迁移文件命名**: `migrations/YYYYMMDDHHMMSS_<name>.up.sql` / `.down.sql`
 
 **容器启动时自动迁移**:
 ```dockerfile
 # backend/Dockerfile
-CMD npm run migrate:up && npm start
+COPY --from=migrate/migrate /usr/local/bin/migrate /usr/local/bin/
+CMD migrate -path /app/migrations -database "$DATABASE_URL" up && /app/server
 ```
 
-**初始迁移文件** (`migrations/20260316000000_initial_schema.js`) 包含第 5 节定义的 schema。
+**初始迁移文件** (`migrations/20260316000000_initial_schema.up.sql`) 包含第 5 节定义的 schema。
 
 ---
 
@@ -614,20 +615,41 @@ curl http://localhost:8080/health
 
 ### 6.5 backend/Dockerfile
 
+**多阶段构建**:
+
 ```dockerfile
-FROM node:20-alpine
+# Build stage
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
 
 # Copy source
 COPY . .
 
-# Build TypeScript
-RUN npm run build
+# Build binary
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+
+# Final stage
+FROM alpine:latest
+
+WORKDIR /app
+
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
+
+# Copy migrate tool
+COPY --from=migrate/migrate /usr/local/bin/migrate /usr/local/bin/
+
+# Copy binary and migrations
+COPY --from=builder /app/server .
+COPY --from=builder /app/migrations ./migrations
 
 # Create logs directory
 RUN mkdir -p logs
@@ -637,10 +659,10 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Run migrations and start
-CMD ["sh", "-c", "npm run migrate:up && npm start"]
+CMD migrate -path /app/migrations -database "$DATABASE_URL" up && ./server
 ```
 
 ---
@@ -799,7 +821,7 @@ interface SyncConfig {
 ## 11. 监控与日志
 
 ### 11.1 服务端日志
-- 使用 winston 记录请求日志
+- 使用 zap 或 slog 记录结构化日志
 - 日志文件挂载到宿主机
 - 保留 30 天日志
 
@@ -829,42 +851,46 @@ interface SyncConfig {
 
 ```
 backend/
-├── src/
-│   ├── config/
-│   │   ├── database.ts
-│   │   └── env.ts
-│   ├── controllers/
-│   │   ├── authController.ts
-│   │   └── syncController.ts
-│   ├── middleware/
-│   │   ├── auth.ts
-│   │   ├── errorHandler.ts
-│   │   └── rateLimiter.ts
-│   ├── models/
-│   │   ├── user.ts
-│   │   ├── backup.ts
-│   │   └── device.ts        # V2 多设备管理时启用
-│   ├── routes/
-│   │   ├── auth.ts
-│   │   └── sync.ts
-│   ├── services/
-│   │   ├── authService.ts
-│   │   └── syncService.ts
-│   ├── utils/
-│   │   ├── hash.ts
-│   │   └── logger.ts
-│   └── index.ts
-├── migrations/               # node-pg-migrate 迁移文件
-│   └── 20260316000000_initial_schema.js
-├── Dockerfile
-├── package.json
-└── tsconfig.json
+├── cmd/
+│   └── server/
+│       └── main.go           # 入口
+├── internal/
+│   ├── config/               # 配置
+│   │   ├── config.go
+│   │   └── database.go
+│   ├── handlers/             # HTTP handlers
+│   │   ├── auth.go
+│   │   └── sync.go
+│   ├── middleware/           # 中间件
+│   │   ├── auth.go
+│   │   ├── error.go
+│   │   └── ratelimit.go
+│   ├── models/               # 数据模型
+│   │   ├── user.go
+│   │   └── backup.go         # device.go V2 启用
+│   ├── repository/           # 数据访问层
+│   │   ├── user_repo.go
+│   │   └── backup_repo.go
+│   └── service/              # 业务逻辑层
+│       ├── auth_service.go
+│       └── sync_service.go
+├── migrations/               # golang-migrate 迁移文件
+│   ├── 20260316000000_initial_schema.up.sql
+│   └── 20260316000000_initial_schema.down.sql
+├── pkg/
+│   └── utils/                # 工具包
+│       ├── hash.go
+│       └── logger.go
+├── go.mod
+├── go.sum
+└── Dockerfile
 ```
 
 ### B. 版本历史
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.4 | 2026-03-16 | 技术栈变更：Node.js → Go 1.23 + Gin，更新目录结构、Dockerfile、迁移工具 |
 | 1.3 | 2026-03-16 | 第三轮审查修复：添加 Dockerfile、数据库迁移策略、压缩算法说明、密钥派生细节、唯一约束、修复部署步骤 |
 | 1.2 | 2026-03-16 | 第二轮审查修复：修复 API 结构、添加错误响应、修复 data_json 类型、添加 nginx.conf、明确目录结构、完善密钥管理、添加文件处理策略 |
 | 1.1 | 2026-03-16 | 第一轮审查修复：添加加密协议、刷新令牌API、错误码枚举、health端点、修复端口冲突 |
