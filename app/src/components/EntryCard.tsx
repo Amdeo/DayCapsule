@@ -97,6 +97,7 @@ function EntryCard({
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [originLayout, setOriginLayout] = useState<OriginLayout | null>(null);
   const thumbnailRef = useRef<React.ElementRef<typeof Image>>(null!);
+  const swipeableRef = useRef<Swipeable>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
@@ -266,6 +267,51 @@ function EntryCard({
         { text: '取消', style: 'cancel' },
         { text: '删除', style: 'destructive', onPress: () => onDelete(entry.id) },
       ]
+    );
+  };
+
+  const renderRightActions = (
+    progress: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>
+  ) => {
+    const trans = dragX.interpolate({
+      inputRange: [-170, 0],
+      outputRange: [0, 170],
+      extrapolate: 'clamp',
+    });
+
+    const handleEditPress = () => {
+      swipeableRef.current?.close();
+      onEdit?.(entry);
+    };
+
+    const handleDeletePress = () => {
+      swipeableRef.current?.close();
+      handleActionDelete();
+    };
+
+    return (
+      <RNAnimated.View style={{ transform: [{ translateX: trans }] }}>
+        <View className="flex-row items-center h-full">
+          <TouchableOpacity
+            className="bg-[#8E8E93] w-[85px] h-full justify-center items-center"
+            onPress={handleEditPress}
+            accessibilityLabel="编辑条目"
+            accessibilityRole="button"
+          >
+            <Text className="text-white text-sm font-medium">编辑</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-[#FF3B30] w-[85px] h-full justify-center items-center"
+            onPress={handleDeletePress}
+            accessibilityLabel="删除条目"
+            accessibilityRole="button"
+          >
+            <Text className="text-white text-sm font-medium">删除</Text>
+          </TouchableOpacity>
+        </View>
+      </RNAnimated.View>
     );
   };
 
