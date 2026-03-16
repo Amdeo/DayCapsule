@@ -22,7 +22,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  withDelay,
   cancelAnimation,
   runOnJS,
   Easing,
@@ -204,9 +203,9 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         heroHeight.value = withTiming(height, closingTiming, (finished) => {
           if (finished) runOnJS(performClose)();
         });
-        // 延迟 170ms 后 80ms 淡出：总计 250ms，与 closingTiming 对齐
-        // 英雄图接近缩略图后再消失，避免 Modal 关闭时的位置跳变
-        heroOpacity.value = withDelay(170, withTiming(0, { duration: 80 }));
+        // 立即开始淡出，200ms 完成：比 performClose()（t=250ms）早 50ms 变透明
+        // 确保缩略图出现时英雄图已不可见，消除坐标偏差导致的位置跳变
+        heroOpacity.value = withTiming(0, { duration: 200 });
         backdropOpacity.value = withTiming(0, closingTiming);
       } else {
         startFadeClose();
