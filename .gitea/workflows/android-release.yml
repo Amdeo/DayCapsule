@@ -27,33 +27,33 @@ jobs:
         shell: bash
 
     steps:
-      - name: Checkout repository
+      - name: 检出仓库
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      - name: Set up Java
+      - name: 设置 Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
+      - name: 设置 Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: ""
           log-accepted-android-sdk-licenses: "false"
 
-      - name: Detect runner architecture
+      - name: 检测运行器架构
         id: arch
         run: echo "arch=$(uname -m)" >> "$GITHUB_OUTPUT"
 
-      - name: Cache Android SDK
+      - name: 缓存 Android SDK
         uses: actions/cache@v3
         with:
           path: |
@@ -64,7 +64,7 @@ jobs:
             ${{ env.ANDROID_HOME }}/platform-tools
           key: android-sdk-${{ runner.os }}-${{ steps.arch.outputs.arch }}-sdk${{ env.ANDROID_PLATFORM }}-bt${{ env.BUILD_TOOLS_VERSION }}-ndk${{ env.NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}
 
-      - name: Install Android SDK packages
+      - name: 安装 Android SDK 组件
         run: |
           # sdkmanager exits before yes, which trips pipefail with SIGPIPE.
           set +o pipefail
@@ -77,25 +77,25 @@ jobs:
             "ndk;${{ env.NDK_VERSION }}" \
             "cmake;${{ env.CMAKE_VERSION }}"
 
-      - name: Install dependencies
+      - name: 安装依赖
         working-directory: app
         run: npm ci
 
-      - name: Typecheck
+      - name: 类型检查
         working-directory: app
         run: npm run typecheck
 
-      - name: Run tests
+      - name: 运行测试
         working-directory: app
         run: npm test -- --runInBand
 
-      - name: Generate Android project
+      - name: 生成 Android 工程
         working-directory: app
         env:
           NODE_ENV: "production"
         run: npx expo prebuild --platform android --non-interactive --clean
 
-      - name: Cache native C++ build (.cxx)
+      - name: 缓存原生 C++ 构建产物（.cxx）
         uses: actions/cache@v3
         with:
           path: app/android/app/.cxx
@@ -103,7 +103,7 @@ jobs:
           restore-keys: |
             native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-
 
-      - name: Show runner resources
+      - name: 显示运行器资源
         if: ${{ inputs.debug }}
         run: |
           echo "=== Architecture ==="
@@ -115,7 +115,7 @@ jobs:
           echo "=== Disk ==="
           df -h
 
-      - name: Configure multi-arch apt sources (arm64)
+      - name: 配置多架构 APT 源（arm64）
         run: |
           arch="$(uname -m)"
           echo "Runner architecture: $arch"
@@ -153,7 +153,7 @@ jobs:
             echo "Skipping arm64 apt source configuration"
           fi
 
-      - name: Install x86_64 dependencies (arm64)
+      - name: 安装 x86_64 依赖（arm64）
         run: |
           arch="$(uname -m)"
           echo "Runner architecture: $arch"
@@ -171,7 +171,7 @@ jobs:
             echo "Skipping arm64 x86_64 dependency installation"
           fi
 
-      - name: Patch SDK CMake and Ninja (arm64)
+      - name: 修补 SDK 的 CMake 和 Ninja（arm64）
         run: |
           arch="$(uname -m)"
           echo "Runner architecture: $arch"
@@ -199,7 +199,7 @@ jobs:
             echo "Skipping arm64 CMake patch"
           fi
 
-      - name: NDK smoke test (arm64)
+      - name: NDK 冒烟测试（arm64）
         if: ${{ inputs.debug }}
         run: |
           arch="$(uname -m)"
@@ -249,7 +249,7 @@ jobs:
             echo "Skipping arm64 NDK smoke test"
           fi
 
-      - name: Cache Gradle dependencies
+      - name: 缓存 Gradle 依赖
         uses: actions/cache@v3
         with:
           path: |
@@ -260,7 +260,7 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Configure Gradle mirrors (China)
+      - name: 配置 Gradle 镜像源（中国）
         run: |
           mkdir -p ~/.gradle/init.d/
           cat > ~/.gradle/init.d/mirrors.init.gradle <<'EOF'
@@ -296,7 +296,7 @@ jobs:
           echo "=== ~/.gradle/init.d/mirrors.init.gradle ==="
           cat ~/.gradle/init.d/mirrors.init.gradle
 
-      - name: Tune Gradle for CI
+      - name: 调整 Gradle 以适配 CI
         working-directory: app/android
         run: |
           sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
@@ -339,7 +339,7 @@ jobs:
             done
           fi
 
-      - name: Build unsigned release APK
+      - name: 构建未签名的 Release APK
         working-directory: app/android
         env:
           NODE_ENV: "production"
@@ -379,7 +379,7 @@ jobs:
             exit $status
           fi
 
-      - name: Upload build diagnostics
+      - name: 上传构建诊断信息
         if: failure()
         continue-on-error: true
         uses: actions/upload-artifact@v3
@@ -394,10 +394,10 @@ jobs:
             !app/android/app/.cxx/**
           if-no-files-found: warn
 
-      - name: Show APK output
+      - name: 显示 APK 输出
         run: ls -lah app/android/app/build/outputs/apk/release
 
-      - name: Publish APK to Gitea Package Registry
+      - name: 发布 APK 到 Gitea 软件包仓库
         run: |
           APK=$(find app/android/app/build/outputs/apk/release -name "*.apk" | head -1)
           VERSION=$(date +%Y%m%d)-${{ github.run_number }}
