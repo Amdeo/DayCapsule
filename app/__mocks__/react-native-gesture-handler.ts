@@ -1,15 +1,15 @@
 import React from 'react';
 import { View } from 'react-native';
 
-export const Swipeable = jest.fn(({ children, renderRightActions }) => {
-  return (
-    <View>
-      {children}
-      {renderRightActions?.(
-        { interpolate: () => 0 } as any,
-        { interpolate: () => 0 } as any
-      )}
-    </View>
+export const Swipeable = jest.fn(({ children, renderRightActions }: any) => {
+  return React.createElement(
+    View,
+    null,
+    children,
+    renderRightActions?.(
+      { interpolate: () => 0 } as any,
+      { interpolate: () => 0 } as any
+    )
   );
 });
 
