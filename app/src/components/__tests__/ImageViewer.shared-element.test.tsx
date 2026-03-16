@@ -67,8 +67,10 @@ describe('ImageViewer shared element', () => {
     jest.clearAllMocks();
   });
 
-  it('uses spring hero opening animation when originLayout is provided', () => {
-    const withSpringSpy = jest.spyOn(Reanimated, 'withSpring');
+  it('opens image directly fullscreen without spring animation when originLayout is provided', () => {
+    // Note: The opening animation was removed - images now open directly fullscreen
+    // without spring/fly-in effects for better perceived performance
+    const withTimingSpy = jest.spyOn(Reanimated, 'withTiming');
 
     act(() => {
       renderer.create(
@@ -81,13 +83,11 @@ describe('ImageViewer shared element', () => {
       );
     });
 
-    expect(withSpringSpy).toHaveBeenCalledWith(
-      0,
-      expect.objectContaining({ damping: 28, stiffness: 300 })
-    );
-    expect(withSpringSpy).toHaveBeenCalledWith(
+    // Opening now uses direct value assignment, not spring animation
+    // Only closing fade uses withTiming
+    expect(withTimingSpy).not.toHaveBeenCalledWith(
       1,
-      expect.objectContaining({ damping: 28, stiffness: 300 })
+      expect.objectContaining({ duration: 250 })
     );
   });
 

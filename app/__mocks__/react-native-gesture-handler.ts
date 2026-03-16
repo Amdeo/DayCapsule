@@ -19,5 +19,35 @@ Object.defineProperty(Swipeable, 'prototype', {
   writable: false,
 });
 
-// 重新导出其他所有导出
-export * from 'react-native-gesture-handler';
+// Mock Gesture API for ImageViewer tests
+const createGesture = () => ({
+  numberOfTaps() { return this; },
+  requireExternalGestureToFail() { return this; },
+  onEnd() { return this; },
+  onStart() { return this; },
+  onUpdate() { return this; },
+  onBegin() { return this; },
+  onFinalize() { return this; },
+  minDuration() { return this; },
+});
+
+export const Gesture = {
+  Tap: createGesture,
+  LongPress: createGesture,
+  Pinch: createGesture,
+  Pan: createGesture,
+  Race: (...gestures: unknown[]) => gestures,
+  Simultaneous: (...gestures: unknown[]) => gestures,
+};
+
+export const GestureDetector = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(View, null, children);
+
+export const GestureHandlerRootView = ({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.ComponentProps<typeof View>['style'];
+}) =>
+  React.createElement(View, { style }, children);
