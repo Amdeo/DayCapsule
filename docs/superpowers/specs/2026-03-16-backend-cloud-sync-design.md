@@ -90,6 +90,7 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      ├────────────────────────────────────────────────────────────────────┤
      │                                                                    │
      │  5A. POST /sync/upload (压缩后的全量数据)                            │
+     │      注意: 仅上传 entries/tags 元数据，图片/语音文件不上传            │
      │───────────────────────────────────────────────────────────────────>│
      │                                                                    │
      │  6A. 存储并返回成功                                                  │
@@ -106,6 +107,7 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      │<───────────────────────────────────────────────────────────────────│
      │                                                                    │
      │  7B. 提示用户确认后替换本地 SQLite                                    │
+     │      图片/语音文件处理: 保留本地文件 + 合并云端元数据                  │
      │                                                                    │
      ├────────────────────────────────────────────────────────────────────┤
      │                        分支 C: 冲突处理                             │
@@ -115,6 +117,23 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
      │      选项: [使用本地] [使用云端] [合并(简单追加)]                      │
      │                                                                    │
 ```
+
+### 3.3 图片/语音文件处理策略（V1）
+
+V1 版本**仅同步 entries 和 tags 的元数据**，图片和语音文件**不同步到云端**。
+
+| 场景 | 处理方式 |
+|------|---------|
+| **上传** | 仅上传 entries JSON（包含图片/语音的文件路径） |
+| **下载恢复** | 合并云端 entries 与本地文件系统 |
+| **文件缺失** | entry 显示占位符"文件仅在原设备可用" |
+
+**文件路径说明**:
+- 云端存储的 `mediaUri` 为本地文件路径（如 `file:///...`）
+- 恢复时保留这些路径，但标记为 `isLocalFile: false`
+- 如果用户在新设备拍摄同路径文件，自动关联
+
+**V2 计划**: 增加文件同步功能（对象存储或 WebDAV）
 
 ---
 
@@ -148,6 +167,11 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 }
 ```
 
+**错误响应**:
+- `400 INVALID_REQUEST`: 邮箱格式错误或密码少于8位
+
+---
+
 #### POST /auth/login
 用户登录
 
@@ -160,6 +184,34 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 ```
 
 **响应**: 同 register
+
+**错误响应**:
+- `400 INVALID_REQUEST`: 邮箱格式错误或密码少于8位
+- `401 INVALID_CREDENTIALS`: 邮箱或密码错误
+
+---
+
+#### POST /auth/refresh
+刷新访问令牌
+
+**请求头**: `Authorization: Bearer <refresh-token>`
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "token": "new-jwt-access-token",
+    "refreshToken": "new-refresh-token",
+    "expiresIn": 604800
+  }
+}
+```
+
+**错误响应**:
+- `401 REFRESH_TOKEN_INVALID`: 刷新令牌无效或过期
+
+---
 
 #### GET /auth/me
 获取当前用户信息
@@ -177,6 +229,12 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
   }
 }
 ```
+
+**错误响应**:
+- `401 TOKEN_EXPIRED` / `TOKEN_INVALID`: 认证失败
+- `404 USER_NOT_FOUND`: 用户不存在
+
+---
 
 ### 4.2 同步相关
 
@@ -199,27 +257,15 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 }
 ```
 
-#### POST /auth/refresh
-刷新访问令牌
-
-**请求头**: `Authorization: Bearer <refresh-token>`
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "token": "new-jwt-access-token",
-    "refreshToken": "new-refresh-token",
-    "expiresIn": 604800
-  }
-}
-```
+**错误响应**:
+- `401 TOKEN_EXPIRED` / `TOKEN_INVALID`: 认证失败
 
 ---
 
 #### POST /sync/upload
 上传全量数据
+
+**请求体限制**: 最大 50MB（可通过 nginx 配置调整）
 
 **请求头**:
 - `Authorization: Bearer <token>`
@@ -261,6 +307,10 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 }
 ```
 
+**错误响应**:
+- `400 INVALID_REQUEST`: 请求格式错误或数据大小超过限制
+- `401 TOKEN_EXPIRED` / `TOKEN_INVALID`: 认证失败
+
 #### GET /sync/download
 下载全量数据
 
@@ -285,6 +335,12 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
 }
 ```
 
+**错误响应**:
+- `401 TOKEN_EXPIRED` / `TOKEN_INVALID`: 认证失败
+- `404 BACKUP_NOT_FOUND`: 云端备份不存在
+
+---
+
 #### DELETE /sync/backup
 删除云端备份
 
@@ -297,6 +353,11 @@ DayCapsule 当前为纯本地应用，使用 SQLite 存储 entries、MMKV 存储
   "message": "备份已删除"
 }
 ```
+
+**错误响应**:
+- `401 TOKEN_EXPIRED` / `TOKEN_INVALID`: 认证失败
+
+---
 
 #### GET /health
 健康检查端点
@@ -334,7 +395,7 @@ CREATE TABLE users (
 CREATE TABLE backups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  data_json JSONB NOT NULL,           -- 加密时存储密文
+  data_json TEXT NOT NULL,            -- 加密时存储密文（Base64），解密后为 JSON
   data_hash VARCHAR(64) NOT NULL,     -- 存储客户端提供的 hash，避免服务端重复计算
   entry_count INTEGER NOT NULL DEFAULT 0,
   device_name VARCHAR(255),
@@ -426,14 +487,99 @@ volumes:
 | `JWT_SECRET` | - | **必须设置**，至少 32 字符 |
 | `PORT` | 8080 | 对外服务端口（避免与 API 内部端口冲突） |
 
+### 6.3 nginx.conf
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    keepalive_timeout 65;
+
+    # Gzip compression
+    gzip on;
+    gzip_types application/json;
+
+    upstream api {
+        server api:3000;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        # Health check (no auth required)
+        location /health {
+            proxy_pass http://api/health;
+            proxy_http_version 1.1;
+        }
+
+        # API routes
+        location / {
+            proxy_pass http://api;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Increase body size for upload endpoint (50MB)
+            client_max_body_size 50M;
+
+            # Timeout settings
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+    }
+}
+```
+
+### 6.4 部署步骤
+
+```bash
+# 1. 创建目录并进入
+mkdir daycapsule-server && cd daycapsule-server
+
+# 2. 创建环境变量文件
+cat > .env << 'EOF'
+DB_USER=daycapsule
+DB_PASSWORD=your-secure-password
+DB_NAME=daycapsule
+JWT_SECRET=your-jwt-secret-min-32-characters
+PORT=8080
+EOF
+
+# 3. 创建 nginx.conf (从上方复制)
+# 4. 创建 docker-compose.yml (从上方复制)
+# 5. 启动服务
+docker-compose up -d
+
+# 6. 检查状态
+curl http://localhost:8080/health
+```
+
 ---
 
 ## 7. 客户端集成
 
 ### 7.1 新增模块
 
+**目录位置**: `app/src/`（项目根目录下）
+
 ```
-src/
+app/src/
 ├── services/
 │   └── syncService.ts      # 云端 API 封装
 ├── store/
@@ -444,6 +590,16 @@ src/
 │   └── ConflictDialog.tsx  # 冲突解决对话框
 └── hooks/
     └── useAutoSync.ts      # 自动同步 Hook
+```
+
+**后端目录位置**: 项目根目录下 `backend/`（与 `app/` 同级）
+
+```
+backend/                    # 独立目录，不依赖 app/ 内的代码
+├── src/
+├── Dockerfile
+├── package.json
+└── tsconfig.json
 ```
 
 ### 7.2 同步策略配置
@@ -484,8 +640,16 @@ interface SyncConfig {
 
 ### 8.3 数据安全
 - 云端数据可选 AES-256-GCM 加密
-- 加密密钥由用户设置，服务端不存储
+- 加密密钥由用户设置，**服务端不存储**
+- 多设备密钥同步：用户需在新设备输入相同密钥（可设计为设置密码短语）
 - 数据库连接使用 SSL（如果 PostgreSQL 支持）
+
+**密钥管理方案（V1 简化版）**:
+1. 用户在设置中开启加密，输入密码短语
+2. 客户端使用 PBKDF2 派生 256-bit 密钥
+3. 数据上传前使用 AES-256-GCM 加密，密文 Base64 编码后上传
+4. 新设备恢复时，用户需手动输入相同密码短语才能解密
+5. 密码短语仅存储在本地 Keychain/Keystore，不传输到服务端
 
 ### 8.4 访问控制
 - Rate Limiting: 每 IP 100 请求/分钟
@@ -614,5 +778,6 @@ backend/
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| 1.1 | 2026-03-16 | 修复审查问题：添加加密协议、刷新令牌API、错误码枚举、health端点、修复端口冲突 |
+| 1.2 | 2026-03-16 | 第二轮审查修复：修复 API 结构、添加错误响应、修复 data_json 类型、添加 nginx.conf、明确目录结构、完善密钥管理、添加文件处理策略 |
+| 1.1 | 2026-03-16 | 第一轮审查修复：添加加密协议、刷新令牌API、错误码枚举、health端点、修复端口冲突 |
 | 1.0 | 2026-03-16 | 初始版本 |
