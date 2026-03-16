@@ -3,7 +3,7 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Modal,
   Dimensions,
 } from 'react-native';
 import Animated, {
@@ -98,7 +97,6 @@ function EntryCard({
   const [originLayout, setOriginLayout] = useState<OriginLayout | null>(null);
   const thumbnailRef = useRef<React.ElementRef<typeof Image>>(null!);
   const swipeableRef = useRef<Swipeable>(null);
-  const [showActionSheet, setShowActionSheet] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
 
@@ -244,22 +242,12 @@ function EntryCard({
     [entry.content, entry.tags]
   );
 
-  // 处理长按菜单
+  // 长按仅触发卡片展开，不再弹出 ActionSheet
   const handleLongPress = () => {
-    if (entry.recordingStatus === 'recording') {
-      Alert.alert('提示', '录音进行中，请先停止录音', [{ text: '知道了', style: 'cancel' }]);
-      return;
-    }
-    setShowActionSheet(true);
-  };
-
-  const handleActionEdit = () => {
-    setShowActionSheet(false);
-    onEdit?.(entry);
+    setIsExpanded(true);
   };
 
   const handleActionDelete = () => {
-    setShowActionSheet(false);
     Alert.alert(
       '确认删除',
       '确定要删除这条记录吗？此操作无法撤销。',
@@ -571,68 +559,6 @@ function EntryCard({
           thumbnailRef={thumbnailRef}
         />
       )}
-
-      {/* 长按操作面板 */}
-      <Modal
-        visible={showActionSheet}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowActionSheet(false)}
-      >
-        <Pressable style={styles.actionSheetBackdrop} onPress={() => setShowActionSheet(false)}>
-          <Pressable style={styles.actionSheet} onPress={() => {}}>
-            {/* 拖动条 */}
-            <View style={styles.actionSheetHandle} />
-
-            {/* 类型标识 */}
-            <View style={styles.actionSheetHeader}>
-              <View style={[styles.actionSheetTypeBadge, { backgroundColor: getBorderColor() + '20' }]}>
-                <Ionicons
-                  name={entry.type === 'text' ? 'document-text' : entry.type === 'photo' ? 'image' : 'mic'}
-                  size={14}
-                  color={getBorderColor()}
-                />
-                <Text style={[styles.actionSheetTypeText, { color: getBorderColor() }]}>
-                  {entry.type === 'text' ? '文字记录' : entry.type === 'photo' ? '照片记录' : '语音记录'}
-                </Text>
-              </View>
-              <Text style={styles.actionSheetTime}>
-                {new Date(entry.timestamp).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </Text>
-            </View>
-
-            {/* 操作按钮 */}
-            {onEdit && (
-              <TouchableOpacity style={styles.actionSheetButton} onPress={handleActionEdit} activeOpacity={0.7}>
-                <View style={styles.actionSheetButtonIcon}>
-                  <Ionicons name="pencil" size={20} color="#6A89CC" />
-                </View>
-                <Text style={styles.actionSheetButtonText}>编辑</Text>
-                <Ionicons name="chevron-forward" size={16} color="#D1D1D1" />
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.actionSheetDivider} />
-
-            <TouchableOpacity style={styles.actionSheetButton} onPress={handleActionDelete} activeOpacity={0.7}>
-              <View style={[styles.actionSheetButtonIcon, styles.actionSheetDeleteIcon]}>
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
-              </View>
-              <Text style={[styles.actionSheetButtonText, styles.actionSheetDeleteText]}>删除</Text>
-              <Ionicons name="chevron-forward" size={16} color="#D1D1D1" />
-            </TouchableOpacity>
-
-            {/* 取消 */}
-            <TouchableOpacity
-              style={styles.actionSheetCancel}
-              onPress={() => setShowActionSheet(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.actionSheetCancelText}>取消</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </Pressable>
     </View>
   );
@@ -872,94 +798,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#1A1A1A',
     letterSpacing: 0.2,
-  },
-  actionSheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  actionSheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 16,
-    paddingBottom: 36,
-    paddingTop: 12,
-  },
-  actionSheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E5E5',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  actionSheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  actionSheetTypeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  actionSheetTypeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  actionSheetTime: {
-    fontSize: 12,
-    color: '#A3A3A3',
-  },
-  actionSheetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    gap: 14,
-  },
-  actionSheetButtonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F0F4FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionSheetDeleteIcon: {
-    backgroundColor: '#FEF2F2',
-  },
-  actionSheetButtonText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1A1A1A',
-  },
-  actionSheetDeleteText: {
-    color: '#EF4444',
-  },
-  actionSheetDivider: {
-    height: 1,
-    backgroundColor: '#F5F5F5',
-    marginHorizontal: 4,
-  },
-  actionSheetCancel: {
-    marginTop: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-  },
-  actionSheetCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#737373',
   },
   audioMissingRow: {
     flexDirection: 'row',
