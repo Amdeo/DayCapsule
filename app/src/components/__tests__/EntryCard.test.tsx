@@ -79,22 +79,41 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-// 模拟 Swipeable 并渲染右滑按钮
+jest.mock('../EntryActionSheet', () => {
+  const React = require('react');
+  const { View, Text, TouchableOpacity } = require('react-native');
+  return {
+    EntryActionSheet: ({ visible, onEdit, onDelete, onClose }: any) => {
+      if (!visible) return null;
+      return (
+        <View testID="entry-action-sheet">
+          <TouchableOpacity testID="action-sheet-edit" onPress={() => { onEdit(); onClose(); }}>
+            <Text>编辑</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="action-sheet-delete" onPress={() => { onDelete(); onClose(); }}>
+            <Text>删除</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="action-sheet-cancel" onPress={onClose}>
+            <Text>取消</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    },
+  };
+});
+
+// 模拟 Swipeable 并透传滑动回调
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View } = require('react-native');
 
-  const Swipeable = React.forwardRef(({ children, renderRightActions, ...props }: any, ref) => {
+  const Swipeable = React.forwardRef(({ children, onSwipeableOpen, onSwipeableWillOpen }: any, ref) => {
     React.useImperativeHandle(ref, () => ({
       close: jest.fn(),
     }));
 
     return (
-      <View testID="swipeable" {...props}>
-        {renderRightActions && renderRightActions(
-          { interpolate: () => ({}) },
-          { interpolate: () => ({}) }
-        )}
+      <View testID="swipeable" onSwipeableOpen={onSwipeableOpen} onSwipeableWillOpen={onSwipeableWillOpen}>
         {children}
       </View>
     );
@@ -108,7 +127,7 @@ jest.mock('react-native-gesture-handler', () => {
 // ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -135,31 +154,116 @@ const longTextEntry: Entry = {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('EntryCard swipe actions', () => {
-  it('renders edit and delete buttons', () => {
-    const { getByLabelText } = render(
-      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
-    );
-    expect(getByLabelText('编辑条目')).toBeTruthy();
-    expect(getByLabelText('删除条目')).toBeTruthy();
+  beforeEach(() => {
+    jest.useFakeTimers();
   });
 
-  it('calls onEdit when edit button pressed', () => {
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it('does not show action sheet by default', () => {
+    const { queryByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+  });
+
+  it('shows action sheet only after the delayed post-swipe timing', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
+  });
+
+  it('also triggers the delayed action sheet from onSwipeableWillOpen', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableWillOpen('right');
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
+  });
+
+  it('marks the card active immediately when swipe trigger starts', () => {
+    const onActionSheetOpen = jest.fn();
+    const { getByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} onActionSheetOpen={onActionSheetOpen} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableWillOpen('right');
+    });
+
+    expect(onActionSheetOpen).toHaveBeenCalledWith(mockEntry.id);
+  });
+
+  it('calls onEdit when edit is pressed in action sheet', () => {
     const onEdit = jest.fn();
-    const { getByLabelText } = render(
+    const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={jest.fn()} onEdit={onEdit} />
     );
-    fireEvent.press(getByLabelText('编辑条目'));
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+    fireEvent.press(getByTestId('action-sheet-edit'));
+
     expect(onEdit).toHaveBeenCalledWith(mockEntry);
   });
 
-  it('calls onDelete when delete button pressed', () => {
+  it('calls onDelete when delete is confirmed in action sheet', () => {
     const onDelete = jest.fn();
-    const { getByLabelText } = render(
+    const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={onDelete} />
     );
-    fireEvent.press(getByLabelText('删除条目'));
-    // 删除按钮会触发 Alert，这里只验证按钮存在且可点击
-    expect(getByLabelText('删除条目')).toBeTruthy();
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+    fireEvent.press(getByTestId('action-sheet-delete'));
+
+    expect(onDelete).toHaveBeenCalledWith(mockEntry.id);
+  });
+
+  it('closes action sheet when cancel is pressed', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+    fireEvent.press(getByTestId('action-sheet-cancel'));
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
   });
 });
 

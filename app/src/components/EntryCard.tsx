@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import Animated, {
   Layout,
+  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
@@ -33,10 +34,13 @@ import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
 import { ImageViewer, OriginLayout } from './ImageViewer';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Animated as RNAnimated } from 'react-native';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
+import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_RESTING_TRANSLATE_X = -28;
+const CARD_SHIFT_DURATION = 160;
+const ACTION_SHEET_OPEN_DELAY = 100;
 
 // 卡片内容宽度（考虑边距）
 const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
@@ -56,14 +60,8 @@ interface EntryCardProps {
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   cardSpacing?: number;
-
-  // 新增 props
-  /** 当前卡片是否处于展开状态（由父组件控制多卡片收起） */
-  isSwipeOpen?: boolean;
-  /** 当用户开始滑动当前卡片时触发 */
-  onSwipeStart?: (entryId: string) => void;
-  /** 当用户关闭滑动或滑动其他卡片时触发 */
-  onSwipeClose?: (entryId: string) => void;
+  isActionSheetActive?: boolean;
+  onActionSheetOpen?: (entryId: string) => void;
 }
 
 function EntryCard({
@@ -74,10 +72,10 @@ function EntryCard({
   onResumeRecording,
   onStopRecording,
   cardSpacing = 12,
-  isSwipeOpen,
-  onSwipeStart,
-  onSwipeClose,
+  isActionSheetActive,
+  onActionSheetOpen,
 }: EntryCardProps) {
+  type CardInteractionState = 'idle' | 'cardShifted' | 'sheetOpen' | 'closing';
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const photoHeight = useSettingsStore((s) => s.photoHeight);
   const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
@@ -102,9 +100,18 @@ function EntryCard({
   const swipeableRef = useRef<Swipeable>(null);
   const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
+  const openSheetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetCardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardTranslateX = useSharedValue(0);
 
   // 红点闪烁动画
   const redDotOpacity = useSharedValue(1);
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: cardTranslateX.value }],
+  }));
 
   useEffect(() => {
     if (entry.recordingStatus === 'recording') {
@@ -147,12 +154,23 @@ function EntryCard({
       .catch(() => {});
   }, [entry.id]);
 
-  // 监听 isSwipeOpen 变化，当其他卡片打开时关闭当前卡片的滑动
   useEffect(() => {
-    if (!isSwipeOpen && swipeableRef.current) {
-      swipeableRef.current.close();
+    if (isActionSheetActive === false && interactionState !== 'idle' && interactionState !== 'closing') {
+      logger.log('[EntryCard] inactive while non-idle, closing current interaction', entry.id, interactionState);
+      closeActionSheetAndResetCard();
     }
-  }, [isSwipeOpen]);
+  }, [entry.id, interactionState, isActionSheetActive]);
+
+  useEffect(() => {
+    return () => {
+      if (openSheetTimeoutRef.current) {
+        clearTimeout(openSheetTimeoutRef.current);
+      }
+      if (resetCardTimeoutRef.current) {
+        clearTimeout(resetCardTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 停止音频播放
   const handleStopAudio = async () => {
@@ -257,61 +275,82 @@ function EntryCard({
     setIsExpanded(true);
   };
 
-  const handleActionDelete = () => {
-    Alert.alert(
-      '确认删除',
-      '确定要删除这条记录吗？此操作无法撤销。',
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: () => onDelete(entry.id) },
-      ]
-    );
+  const clearOpenSheetTimeout = () => {
+    if (openSheetTimeoutRef.current) {
+      clearTimeout(openSheetTimeoutRef.current);
+      openSheetTimeoutRef.current = null;
+    }
   };
 
-  const renderRightActions = (
-    progress: RNAnimated.AnimatedInterpolation<number>,
-    dragX: RNAnimated.AnimatedInterpolation<number>
-  ) => {
-    const trans = dragX.interpolate({
-      inputRange: [-170, 0],
-      outputRange: [0, 170],
-      extrapolate: 'clamp',
+  const clearResetCardTimeout = () => {
+    if (resetCardTimeoutRef.current) {
+      clearTimeout(resetCardTimeoutRef.current);
+      resetCardTimeoutRef.current = null;
+    }
+  };
+
+  const shiftCardToRestingPosition = () => {
+    cardTranslateX.value = withTiming(CARD_RESTING_TRANSLATE_X, {
+      duration: CARD_SHIFT_DURATION,
+      easing: Easing.out(Easing.cubic),
+    });
+  };
+
+  const resetCardPosition = () => {
+    cardTranslateX.value = withTiming(0, {
+      duration: CARD_SHIFT_DURATION,
+      easing: Easing.out(Easing.cubic),
+    });
+  };
+
+  const closeActionSheetAndResetCard = () => {
+    clearOpenSheetTimeout();
+    clearResetCardTimeout();
+    logger.log('[EntryCard] closing action sheet and resetting card', entry.id, interactionState);
+    setInteractionState('closing');
+    setShowActionSheet(false);
+    resetCardTimeoutRef.current = setTimeout(() => {
+      logger.log('[EntryCard] reset card position complete', entry.id);
+      resetCardPosition();
+      setInteractionState('idle');
+      resetCardTimeoutRef.current = null;
+    }, ENTRY_ACTION_SHEET_EXIT_DURATION);
+  };
+
+  const handleSwipeTrigger = (phase: 'willOpen' | 'open', direction?: 'left' | 'right') => {
+    logger.log('[EntryCard] swipe trigger', {
+      entryId: entry.id,
+      phase,
+      direction,
+      interactionState,
+      showActionSheet,
     });
 
-    const handleEditPress = () => {
-      swipeableRef.current?.close();
-      onEdit?.(entry);
-    };
+    if (direction && direction !== 'right') {
+      logger.log('[EntryCard] ignore non-left swipe direction', entry.id, direction);
+      return;
+    }
 
-    const handleDeletePress = () => {
-      swipeableRef.current?.close();
-      handleActionDelete();
-    };
+    if (interactionState !== 'idle' || showActionSheet) {
+      logger.log('[EntryCard] ignore duplicate swipe trigger', entry.id, interactionState);
+      return;
+    }
 
-    return (
-      <RNAnimated.View style={{ transform: [{ translateX: trans }] }}>
-        <View className="flex-row items-center h-full">
-          <TouchableOpacity
-            className="bg-[#8E8E93] w-[85px] h-full justify-center items-center"
-            onPress={handleEditPress}
-            accessibilityLabel="编辑条目"
-            accessibilityRole="button"
-          >
-            <Text className="text-white text-sm font-medium">编辑</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="bg-[#FF3B30] w-[85px] h-full justify-center items-center"
-            onPress={handleDeletePress}
-            accessibilityLabel="删除条目"
-            accessibilityRole="button"
-          >
-            <Text className="text-white text-sm font-medium">删除</Text>
-          </TouchableOpacity>
-        </View>
-      </RNAnimated.View>
-    );
+    clearOpenSheetTimeout();
+    clearResetCardTimeout();
+    swipeableRef.current?.close();
+    onActionSheetOpen?.(entry.id);
+    setInteractionState('cardShifted');
+    shiftCardToRestingPosition();
+    openSheetTimeoutRef.current = setTimeout(() => {
+      logger.log('[EntryCard] opening action sheet after delay', entry.id);
+      setShowActionSheet(true);
+      setInteractionState('sheetOpen');
+      openSheetTimeoutRef.current = null;
+    }, ACTION_SHEET_OPEN_DELAY);
   };
+
+  const renderRightActions = () => <View style={{ width: 96 }} />;
 
   // 处理卡片点击 - 根据类型执行不同操作
   const handleCardPress = () => {
@@ -376,36 +415,37 @@ function EntryCard({
     <Swipeable
       ref={swipeableRef}
       renderRightActions={renderRightActions}
-      friction={2}
+      friction={1.2}
       leftThreshold={40}
-      rightThreshold={40}
+      rightThreshold={24}
       overshootRight={false}
       dragOffsetFromRightEdge={10}
-      onSwipeableWillOpen={() => {
-        onSwipeStart?.(entry.id);
-      }}
-      onSwipeableWillClose={() => {
-        onSwipeClose?.(entry.id);
-      }}
+      onSwipeableWillOpen={(direction) => handleSwipeTrigger('willOpen', direction)}
+      onSwipeableOpen={(direction) => handleSwipeTrigger('open', direction)}
     >
-      <Animated.View style={[
-        styles.cardShadow,
-        { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
-      ]}>
-        <Pressable
-          testID="entry-card"
-          onPressIn={() => setIsPressed(true)}
-          onPressOut={() => setIsPressed(false)}
-          onPress={handleCardPress}
-          onLongPress={handleLongPress}
+      <>
+        <Animated.View
+          testID="entry-card-container"
           style={[
-            styles.cardContainer,
-            {
-              backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
-            },
+            styles.cardShadow,
+            cardAnimatedStyle,
+            { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
           ]}
         >
-          <Animated.View layout={Layout.springify()}>
+          <Pressable
+            testID="entry-card"
+            onPressIn={() => setIsPressed(true)}
+            onPressOut={() => setIsPressed(false)}
+            onPress={handleCardPress}
+            onLongPress={handleLongPress}
+            style={[
+              styles.cardContainer,
+              {
+                backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
+              },
+            ]}
+          >
+            <Animated.View layout={Layout.springify()}>
             {/* 卡片主内容 */}
             <View style={[
               entry.type === 'voice' ? styles.contentVoice : styles.content,
@@ -569,23 +609,38 @@ function EntryCard({
             {needsExpansion && !isExpanded && (
               <Text style={styles.expandHint}>点击展开更多</Text>
             )}
-          </Animated.View>
+            </Animated.View>
 
-          {/* 图片查看器 */}
-          {entry.type === 'photo' && entry.media?.uri && (
-            <ImageViewer
-              visible={showImageViewer}
-              imageUri={entry.media.uri}
-              onClose={() => {
-                setShowImageViewer(false);
-                setOriginLayout(null);
-              }}
-              originLayout={originLayout ?? undefined}
-              thumbnailRef={thumbnailRef}
-            />
-          )}
-        </Pressable>
-      </Animated.View>
+            {/* 图片查看器 */}
+            {entry.type === 'photo' && entry.media?.uri && (
+              <ImageViewer
+                visible={showImageViewer}
+                imageUri={entry.media.uri}
+                onClose={() => {
+                  setShowImageViewer(false);
+                  setOriginLayout(null);
+                }}
+                originLayout={originLayout ?? undefined}
+                thumbnailRef={thumbnailRef}
+              />
+            )}
+          </Pressable>
+        </Animated.View>
+
+        <EntryActionSheet
+          visible={showActionSheet}
+          entryType={entry.type}
+          onEdit={() => {
+            onEdit?.(entry);
+            closeActionSheetAndResetCard();
+          }}
+          onDelete={() => {
+            onDelete(entry.id);
+            closeActionSheetAndResetCard();
+          }}
+          onClose={closeActionSheetAndResetCard}
+        />
+      </>
     </Swipeable>
   );
 }

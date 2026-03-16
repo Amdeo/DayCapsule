@@ -79,22 +79,46 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock('../EntryActionSheet', () => {
+  const React = require('react');
+  const { View, Text, TouchableOpacity } = require('react-native');
+  return {
+    EntryActionSheet: ({ visible, onEdit, onDelete, onClose }: any) => {
+      if (!visible) return null;
+      return (
+        <View testID="entry-action-sheet">
+          <TouchableOpacity testID="action-sheet-edit" onPress={() => { onEdit(); onClose(); }}>
+            <Text>编辑</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="action-sheet-delete" onPress={() => { onDelete(); onClose(); }}>
+            <Text>删除</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="action-sheet-cancel" onPress={onClose}>
+            <Text>取消</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    },
+  };
+});
+
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  const Swipeable = React.forwardRef(({ children, renderRightActions, ...props }: any, ref) => {
+  const Swipeable = React.forwardRef(({ children, onSwipeableOpen, onSwipeableWillOpen, ...props }: any, ref) => {
     React.useImperativeHandle(ref, () => ({
       close: jest.fn(),
     }));
 
     return (
-      <View testID="swipeable" {...props}>
+      <View
+        testID="swipeable"
+        onSwipeableOpen={onSwipeableOpen}
+        onSwipeableWillOpen={onSwipeableWillOpen}
+        {...props}
+      >
         {children}
-        {renderRightActions?.(
-          { interpolate: () => 0 } as any,
-          { interpolate: () => 0 } as any
-        )}
       </View>
     );
   });
@@ -107,7 +131,7 @@ jest.mock('react-native-gesture-handler', () => {
 // ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as FileSystem from 'expo-file-system';
 import { VoiceService } from '@/src/services/voiceService';
 import { EntryCard } from '../EntryCard';
@@ -252,15 +276,15 @@ describe('EntryCard — 媒体文件丢失', () => {
     ).toBeNull();
   });
 
-  it('用 Swipeable 包裹卡片内容并透传滑动回调', () => {
-    const onSwipeStart = jest.fn();
-    const onSwipeClose = jest.fn();
-    const { getByTestId } = render(
+  it('用 Swipeable 包裹卡片内容并在滑动打开后显示底部操作面板', () => {
+    jest.useFakeTimers();
+
+    const onActionSheetOpen = jest.fn();
+    const { getByTestId, queryByTestId } = render(
       <EntryCard
         entry={textEntry}
         onDelete={jest.fn()}
-        onSwipeStart={onSwipeStart}
-        onSwipeClose={onSwipeClose}
+        onActionSheetOpen={onActionSheetOpen}
       />
     );
 
@@ -268,51 +292,87 @@ describe('EntryCard — 媒体文件丢失', () => {
 
     expect(swipeable).toBeTruthy();
     expect(getByTestId('entry-card')).toBeTruthy();
-    expect(swipeable.props.friction).toBe(2);
+    expect(swipeable.props.friction).toBe(1.2);
     expect(swipeable.props.leftThreshold).toBe(40);
-    expect(swipeable.props.rightThreshold).toBe(40);
+    expect(swipeable.props.rightThreshold).toBe(24);
     expect(swipeable.props.overshootRight).toBe(false);
     expect(swipeable.props.dragOffsetFromRightEdge).toBe(10);
+    expect(typeof swipeable.props.renderRightActions).toBe('function');
 
-    swipeable.props.onSwipeableWillOpen();
-    expect(onSwipeStart).toHaveBeenCalledWith(textEntry.id);
+    act(() => {
+      swipeable.props.onSwipeableOpen('right');
+    });
 
-    swipeable.props.onSwipeableWillClose();
-    expect(onSwipeClose).toHaveBeenCalled();
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+    expect(onActionSheetOpen).toHaveBeenCalledWith(textEntry.id);
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
+    jest.useRealTimers();
   });
 
-  it('图片丢失时滑动按钮应正确渲染', () => {
+  it('图片丢失时左滑后仍应显示底部操作面板', () => {
+    jest.useFakeTimers();
+
     const onDelete = jest.fn();
-    const { getByTestId, getByText } = render(
+    const { getByTestId, queryByTestId } = render(
       <EntryCard entry={photoEntry} onDelete={onDelete} />
     );
 
     // 模拟图片加载失败
     fireEvent(getByTestId('photo-image'), 'error');
 
-    // Swipeable 应该渲染
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
     expect(getByTestId('swipeable')).toBeTruthy();
 
-    // 滑动按钮（编辑和删除）应该存在
-    expect(getByText('编辑')).toBeTruthy();
-    expect(getByText('删除')).toBeTruthy();
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
+    expect(getByTestId('action-sheet-edit')).toBeTruthy();
+    expect(getByTestId('action-sheet-delete')).toBeTruthy();
+    jest.useRealTimers();
   });
 
-  it('音频丢失时滑动按钮应正确渲染', async () => {
+  it('音频丢失时左滑后仍应显示底部操作面板', async () => {
+    jest.useFakeTimers();
+
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
 
     const onDelete = jest.fn();
-    const { findByText, getByTestId } = render(
+    const { findByText, getByTestId, queryByTestId } = render(
       <EntryCard entry={voiceEntry} onDelete={onDelete} />
     );
 
     // 等待音频丢失提示出现
     await findByText('音频文件已丢失');
 
-    // Swipeable 应该渲染
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
     expect(getByTestId('swipeable')).toBeTruthy();
 
-    // 滑动按钮（编辑和删除）应该存在
-    expect(getByTestId('swipeable').children.length).toBeGreaterThan(0);
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
+    expect(getByTestId('action-sheet-edit')).toBeTruthy();
+    expect(getByTestId('action-sheet-delete')).toBeTruthy();
+    jest.useRealTimers();
   });
 });
