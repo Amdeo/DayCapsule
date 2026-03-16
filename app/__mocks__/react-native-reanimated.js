@@ -14,6 +14,15 @@ const noop = () => {};
 const identity = (fn) => fn;
 const noopAnimated = (value) => value;
 
+function createLayoutAnimation() {
+  return {
+    duration: () => createLayoutAnimation(),
+    delay: () => createLayoutAnimation(),
+    springify: () => createLayoutAnimation(),
+    easing: () => createLayoutAnimation(),
+  };
+}
+
 // Animated component wrappers
 function createAnimatedComponent(Component) {
   return Component;
@@ -107,23 +116,25 @@ module.exports = {
   ColorSpace: { RGB: 0, HSV: 1 },
 
   // Layout animations
-  Layout: {},
-  FadeIn: { duration: () => ({}) },
-  FadeOut: { duration: () => ({}) },
-  SlideInRight: {},
-  SlideOutRight: {},
-  ZoomIn: {},
-  ZoomOut: {},
-  BounceIn: {},
-  BounceOut: {},
-  LightSpeedInRight: {},
-  LightSpeedOutRight: {},
-  FlipInEasyX: {},
-  FlipOutEasyX: {},
-  StretchInX: {},
-  StretchOutX: {},
-  FadeInRight: {},
-  FadeOutLeft: {},
+  Layout: createLayoutAnimation(),
+  LinearTransition: createLayoutAnimation(),
+  FadeIn: createLayoutAnimation(),
+  FadeOut: createLayoutAnimation(),
+  SlideInRight: createLayoutAnimation(),
+  SlideOutRight: createLayoutAnimation(),
+  SlideInUp: createLayoutAnimation(),
+  ZoomIn: createLayoutAnimation(),
+  ZoomOut: createLayoutAnimation(),
+  BounceIn: createLayoutAnimation(),
+  BounceOut: createLayoutAnimation(),
+  LightSpeedInRight: createLayoutAnimation(),
+  LightSpeedOutRight: createLayoutAnimation(),
+  FlipInEasyX: createLayoutAnimation(),
+  FlipOutEasyX: createLayoutAnimation(),
+  StretchInX: createLayoutAnimation(),
+  StretchOutX: createLayoutAnimation(),
+  FadeInRight: createLayoutAnimation(),
+  FadeOutLeft: createLayoutAnimation(),
   Keyframe: class { constructor() {} duration() { return this; } delay() { return this; } },
 
   // Misc

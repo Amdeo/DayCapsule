@@ -2,11 +2,10 @@
  * 帮助与反馈页面
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity, Linking, Dimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { DetailPageShell } from './DetailPageShell';
 
 interface HelpPageProps {
   visible: boolean;
@@ -66,104 +65,33 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function HelpPage({ visible, onClose }: HelpPageProps) {
-  const insets = useSafeAreaInsets();
-  const [shouldRender, setShouldRender] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true);
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
-      const t = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(t);
-    }
-  }, [visible]);
-
-  if (!shouldRender) return null;
-
   return (
-    <Modal visible={shouldRender} transparent animationType="none" onRequestClose={onClose}>
-      <View style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-          {isAnimating && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(200)}
-              style={styles.backdrop}
-              pointerEvents="none"
-            />
-          )}
-        </Pressable>
-
-        {isAnimating && (
-          <Animated.View
-            entering={SlideInRight.duration(300).springify()}
-            exiting={SlideOutRight.duration(250)}
-            style={styles.page}
-          >
-            <View style={{ flex: 1 }} onStartShouldSetResponder={() => true}>
-              <View style={styles.header}>
-                <Pressable onPress={onClose} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
-                </Pressable>
-                <Text style={styles.headerTitle}>帮助与反馈</Text>
-                <View style={{ width: 40 }} />
-              </View>
-
-              <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                <Text style={styles.sectionTitle}>常见问题</Text>
-                <View style={styles.faqList}>
-                  {FAQ.map((item, i) => (
-                    <FaqItem key={i} q={item.q} a={item.a} />
-                  ))}
-                </View>
-
-                <Text style={styles.sectionTitle}>联系我们</Text>
-                <View style={styles.contactCard}>
-                  <Text style={styles.contactText}>
-                    如果您遇到问题或有功能建议，欢迎通过以下方式联系我们：
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.contactButton}
-                    onPress={() => Linking.openURL('mailto:support@memorycapsule.app')}
-                  >
-                    <Ionicons name="mail-outline" size={18} color="#6A89CC" />
-                    <Text style={styles.contactButtonText}>发送反馈邮件</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={{ height: 40 + insets.bottom }} />
-              </ScrollView>
-            </View>
-          </Animated.View>
-        )}
+    <DetailPageShell visible={visible} title="帮助与反馈" onClose={onClose}>
+      <Text style={styles.sectionTitle}>常见问题</Text>
+      <View style={styles.faqList}>
+        {FAQ.map((item, i) => (
+          <FaqItem key={i} q={item.q} a={item.a} />
+        ))}
       </View>
-    </Modal>
+
+      <Text style={styles.sectionTitle}>联系我们</Text>
+      <View style={styles.contactCard}>
+        <Text style={styles.contactText}>
+          如果您遇到问题或有功能建议，欢迎通过以下方式联系我们：
+        </Text>
+        <TouchableOpacity
+          style={styles.contactButton}
+          onPress={() => Linking.openURL('mailto:support@memorycapsule.app')}
+        >
+          <Ionicons name="mail-outline" size={18} color="#6A89CC" />
+          <Text style={styles.contactButtonText}>发送反馈邮件</Text>
+        </TouchableOpacity>
+      </View>
+    </DetailPageShell>
   );
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  page: {
-    position: 'absolute', left: 0, right: 0, top: 0,
-    height: SCREEN_HEIGHT,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000', shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: '#E5E5E5',
-  },
-  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#4A4A4A' },
-  content: { flex: 1, paddingHorizontal: 20 },
   sectionTitle: {
     fontSize: 13, fontWeight: '700', color: '#A3A3A3',
     marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,

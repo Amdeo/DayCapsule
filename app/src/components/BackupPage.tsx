@@ -3,15 +3,14 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity, Share, Alert, Dimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Share, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '@/src/services/syncService';
 import { logger } from '@/src/utils/logger';
+import { DetailPageShell } from './DetailPageShell';
 
 interface BackupPageProps {
   visible: boolean;
@@ -34,10 +33,7 @@ function formatLastBackupTime(ts: number | null): string {
 }
 
 export function BackupPage({ visible, onClose }: BackupPageProps) {
-  const insets = useSafeAreaInsets();
   const { entries, restoreEntries, updateEntry } = useEntryStore();
-  const [shouldRender, setShouldRender] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -54,17 +50,11 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
 
   useEffect(() => {
     if (visible) {
-      setShouldRender(true);
-      setIsAnimating(true);
       getStorageStats().then((s) => {
         const mb = s.totalSize / (1024 * 1024);
         setUsedSpace(mb < 0.1 ? '< 0.1 MB' : `${mb.toFixed(1)} MB`);
       }).catch(() => setUsedSpace('未知'));
       refreshBackupInfo();
-    } else {
-      setIsAnimating(false);
-      const t = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(t);
     }
   }, [visible, refreshBackupInfo]);
 
@@ -141,180 +131,124 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
     }
   };
 
-  if (!shouldRender) return null;
-
   return (
-    <Modal visible={shouldRender} transparent animationType="none" onRequestClose={onClose}>
-      <View style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-          {isAnimating && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(200)}
-              style={styles.backdrop}
-              pointerEvents="none"
-            />
-          )}
-        </Pressable>
-
-        {isAnimating && (
-          <Animated.View
-            entering={SlideInRight.duration(300).springify()}
-            exiting={SlideOutRight.duration(250)}
-            style={styles.page}
-          >
-            <View style={{ flex: 1 }} onStartShouldSetResponder={() => true}>
-              <View style={styles.header}>
-                <Pressable onPress={onClose} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
-                </Pressable>
-                <Text style={styles.headerTitle}>备份与同步</Text>
-                <View style={{ width: 40 }} />
-              </View>
-
-              <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* 本地存储状态 */}
-                <Text style={styles.sectionTitle}>本地存储</Text>
-                <View style={styles.infoCard}>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>存储位置</Text>
-                    <Text style={styles.rowValue}>设备本地</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>已用空间</Text>
-                    <Text style={styles.rowValue}>{usedSpace}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>记录总数</Text>
-                    <Text style={styles.rowValue}>{entries.length} 条</Text>
-                  </View>
-                  <View style={[styles.row, { borderBottomWidth: 0 }]}>
-                    <Text style={styles.rowLabel}>上次备份</Text>
-                    <Text style={styles.rowValue}>{formatLastBackupTime(lastBackupTime)}</Text>
-                  </View>
-                </View>
-
-                {/* 本地备份 */}
-                <Text style={styles.sectionTitle}>本地备份</Text>
-                <View style={styles.actionCard}>
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="download-outline" size={24} color="#6A89CC" />
-                  </View>
-                  <View style={styles.actionContent}>
-                    <Text style={styles.actionTitle}>导出为 ZIP</Text>
-                    <Text style={styles.actionSubtitle}>
-                      将所有记录和媒体文件打包为 ZIP，可保存到文件 App 或通过邮件发送
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.actionButton, isExporting && styles.actionButtonDisabled]}
-                    onPress={handleExport}
-                    disabled={isExporting}
-                  >
-                    <Text style={styles.actionButtonText}>{isExporting ? '导出中...' : '导出'}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* 备份历史 */}
-                {backupFiles.length > 0 && (
-                  <>
-                    <Text style={styles.sectionTitle}>备份历史</Text>
-                    <View style={styles.infoCard}>
-                      {backupFiles.map((f, idx) => (
-                        <View
-                          key={f.uri}
-                          style={[styles.row, idx === backupFiles.length - 1 && { borderBottomWidth: 0 }]}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.rowValue}>{formatBackupName(f.name)}</Text>
-                            {f.sizeBytes !== undefined && (
-                              <Text style={styles.rowLabel}>
-                                {f.sizeBytes < 1024
-                                  ? `${f.sizeBytes} B`
-                                  : `${(f.sizeBytes / 1024).toFixed(1)} KB`}
-                              </Text>
-                            )}
-                          </View>
-                          <TouchableOpacity onPress={() => handleShareBackup(f.uri)}>
-                            <Ionicons name="share-outline" size={20} color="#6A89CC" />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {/* 导入备份 */}
-                <Text style={styles.sectionTitle}>导入备份</Text>
-                <View style={styles.actionCard}>
-                  <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
-                    <Ionicons name="cloud-upload-outline" size={24} color="#F5A623" />
-                  </View>
-                  <View style={styles.actionContent}>
-                    <Text style={styles.actionTitle}>从文件导入</Text>
-                    <Text style={styles.actionSubtitle}>
-                      选择之前导出的 JSON 备份文件，恢复记录（已存在的记录将跳过）
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#F5A623' }, isImporting && styles.actionButtonDisabled]}
-                    onPress={handleImport}
-                    disabled={isImporting}
-                  >
-                    <Text style={styles.actionButtonText}>{isImporting ? '导入中...' : '导入'}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* iCloud 同步说明 */}
-                <Text style={styles.sectionTitle}>iCloud 同步</Text>
-                <View style={styles.iCloudCard}>
-                  <View style={styles.iCloudHeader}>
-                    <Ionicons
-                      name="cloud-done-outline"
-                      size={24}
-                      color={iCloudAvailable ? '#6A89CC' : '#D1D1D1'}
-                    />
-                    <Text style={[styles.iCloudTitle, !iCloudAvailable && { color: '#D1D1D1' }]}>
-                      {iCloudAvailable ? 'iCloud Drive 可用' : '仅限 iOS 设备'}
-                    </Text>
-                  </View>
-                  <Text style={styles.iCloudText}>
-                    备份文件保存在应用的 Documents 目录。在 iOS 上，前往{' '}
-                    <Text style={styles.iCloudHighlight}>设置 → Apple ID → iCloud → iCloud Drive</Text>
-                    {' '}并开启 MemoryCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
-                  </Text>
-                </View>
-
-                <View style={{ height: 40 + insets.bottom }} />
-              </ScrollView>
-            </View>
-          </Animated.View>
-        )}
+    <DetailPageShell visible={visible} title="备份与同步" onClose={onClose}>
+      {/* 本地存储状态 */}
+      <Text style={styles.sectionTitle}>本地存储</Text>
+      <View style={styles.infoCard}>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>存储位置</Text>
+          <Text style={styles.rowValue}>设备本地</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>已用空间</Text>
+          <Text style={styles.rowValue}>{usedSpace}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>记录总数</Text>
+          <Text style={styles.rowValue}>{entries.length} 条</Text>
+        </View>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <Text style={styles.rowLabel}>上次备份</Text>
+          <Text style={styles.rowValue}>{formatLastBackupTime(lastBackupTime)}</Text>
+        </View>
       </View>
-    </Modal>
+
+      {/* 本地备份 */}
+      <Text style={styles.sectionTitle}>本地备份</Text>
+      <View style={styles.actionCard}>
+        <View style={styles.actionIcon}>
+          <Ionicons name="download-outline" size={24} color="#6A89CC" />
+        </View>
+        <View style={styles.actionContent}>
+          <Text style={styles.actionTitle}>导出为 ZIP</Text>
+          <Text style={styles.actionSubtitle}>
+            将所有记录和媒体文件打包为 ZIP，可保存到文件 App 或通过邮件发送
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.actionButton, isExporting && styles.actionButtonDisabled]}
+          onPress={handleExport}
+          disabled={isExporting}
+        >
+          <Text style={styles.actionButtonText}>{isExporting ? '导出中...' : '导出'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 备份历史 */}
+      {backupFiles.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>备份历史</Text>
+          <View style={styles.infoCard}>
+            {backupFiles.map((f, idx) => (
+              <View
+                key={f.uri}
+                style={[styles.row, idx === backupFiles.length - 1 && { borderBottomWidth: 0 }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowValue}>{formatBackupName(f.name)}</Text>
+                  {f.sizeBytes !== undefined && (
+                    <Text style={styles.rowLabel}>
+                      {f.sizeBytes < 1024
+                        ? `${f.sizeBytes} B`
+                        : `${(f.sizeBytes / 1024).toFixed(1)} KB`}
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity onPress={() => handleShareBackup(f.uri)}>
+                  <Ionicons name="share-outline" size={20} color="#6A89CC" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* 导入备份 */}
+      <Text style={styles.sectionTitle}>导入备份</Text>
+      <View style={styles.actionCard}>
+        <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+          <Ionicons name="cloud-upload-outline" size={24} color="#F5A623" />
+        </View>
+        <View style={styles.actionContent}>
+          <Text style={styles.actionTitle}>从文件导入</Text>
+          <Text style={styles.actionSubtitle}>
+            选择之前导出的 JSON 备份文件，恢复记录（已存在的记录将跳过）
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#F5A623' }, isImporting && styles.actionButtonDisabled]}
+          onPress={handleImport}
+          disabled={isImporting}
+        >
+          <Text style={styles.actionButtonText}>{isImporting ? '导入中...' : '导入'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* iCloud 同步说明 */}
+      <Text style={styles.sectionTitle}>iCloud 同步</Text>
+      <View style={styles.iCloudCard}>
+        <View style={styles.iCloudHeader}>
+          <Ionicons
+            name="cloud-done-outline"
+            size={24}
+            color={iCloudAvailable ? '#6A89CC' : '#D1D1D1'}
+          />
+          <Text style={[styles.iCloudTitle, !iCloudAvailable && { color: '#D1D1D1' }]}>
+            {iCloudAvailable ? 'iCloud Drive 可用' : '仅限 iOS 设备'}
+          </Text>
+        </View>
+        <Text style={styles.iCloudText}>
+          备份文件保存在应用的 Documents 目录。在 iOS 上，前往{' '}
+          <Text style={styles.iCloudHighlight}>设置 → Apple ID → iCloud → iCloud Drive</Text>
+          {' '}并开启 MemoryCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
+        </Text>
+      </View>
+    </DetailPageShell>
   );
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  page: {
-    position: 'absolute', left: 0, right: 0, top: 0,
-    height: SCREEN_HEIGHT,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000', shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: '#E5E5E5',
-  },
-  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#4A4A4A' },
-  content: { flex: 1, paddingHorizontal: 20 },
   sectionTitle: {
     fontSize: 13, fontWeight: '700', color: '#A3A3A3',
     marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,

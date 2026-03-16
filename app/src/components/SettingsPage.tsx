@@ -8,15 +8,11 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   Pressable,
-  ScrollView,
   Switch,
   Alert,
-  Dimensions,
+  Share,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import {
@@ -27,7 +23,7 @@ import {
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { NotificationService } from '@/src/services/notificationService';
-import { Share } from 'react-native';
+import { DetailPageShell } from './DetailPageShell';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -54,10 +50,7 @@ const PHOTO_HEIGHT_PREVIEW_HEIGHTS: Record<PhotoHeightPreset, number> = {
 };
 
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
-  const insets = useSafeAreaInsets();
   const { entries } = useEntryStore();
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [shouldRender, setShouldRender] = useState(false);
 
   // 从共享 store 获取设置
   const {
@@ -112,14 +105,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   }, [visible]);
 
   useEffect(() => {
-    if (visible) {
-      setShouldRender(true);
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
-      const timer = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(timer);
-    }
+    if (!visible) return;
   }, [visible]);
 
   // 推送通知：请求权限并调度/取消每日提醒
@@ -158,8 +144,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     photoCount: entries.filter((e) => e.type === 'photo').length,
     voiceCount: entries.filter((e) => e.type === 'voice').length,
   }), [entries]);
-
-  if (!shouldRender) return null;
 
   const handleClearCache = () => {
     Alert.alert(
@@ -237,160 +221,111 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   };
 
   return (
-    <Modal
-      visible={shouldRender}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        {/* 半透明背景 */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-          {isAnimating && (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(200)}
-              style={styles.backdrop}
-              pointerEvents="none"
+    <DetailPageShell visible={visible} title="设置" onClose={onClose}>
+      {/* 通知设置 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>通知</Text>
+        <SettingItem
+          icon="notifications"
+          title="推送通知"
+          subtitle="接收提醒和更新"
+          rightComponent={
+            <Switch
+              value={notifications}
+              onValueChange={handleNotifications}
+              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+              thumbColor="#FFFFFF"
             />
-          )}
-        </Pressable>
-
-        {/* 页面内容 */}
-        {isAnimating && (
-          <Animated.View
-            entering={SlideInRight.duration(300).springify()}
-            exiting={SlideOutRight.duration(250)}
-            style={styles.page}
-          >
-            <View
-              style={{ flex: 1 }}
-              onStartShouldSetResponder={() => true}
-              onResponderRelease={() => {}}
-            >
-              {/* 头部 */}
-              <View style={styles.header}>
-                <Pressable onPress={onClose} style={styles.backButton}>
-                  <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
-                </Pressable>
-                <Text style={styles.headerTitle}>设置</Text>
-                <View style={{ width: 40 }} />
-              </View>
-
-              {/* 内容区域 */}
-              <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* 通知设置 */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>通知</Text>
-                  <SettingItem
-                    icon="notifications"
-                    title="推送通知"
-                    subtitle="接收提醒和更新"
-                    rightComponent={
-                      <Switch
-                        value={notifications}
-                        onValueChange={handleNotifications}
-                        trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-                        thumbColor="#FFFFFF"
-                      />
-                    }
-                  />
-                </View>
-
-                {/* 数据设置 */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>数据</Text>
-                  <SettingItem
-                    icon="cloud-upload"
-                    title="自动备份"
-                    subtitle="进入后台时自动保存到本地"
-                    rightComponent={
-                      <Switch
-                        value={autoBackup}
-                        onValueChange={handleAutoBackup}
-                        trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-                        thumbColor="#FFFFFF"
-                      />
-                    }
-                  />
-                  <SettingItem
-                    icon="image"
-                    title="高质量照片"
-                    subtitle="保存原始质量照片"
-                    rightComponent={
-                      <Switch
-                        value={highQualityPhotos}
-                        onValueChange={handleHighQualityPhotos}
-                        trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-                        thumbColor="#FFFFFF"
-                      />
-                    }
-                  />
-                  <CardSpacingSelector
-                    value={cardSpacing}
-                    onChange={handleCardSpacing}
-                  />
-                  <PhotoHeightSelector
-                    value={photoHeight}
-                    onChange={handlePhotoHeight}
-                  />
-                  <SettingButton
-                    icon="download"
-                    title="导出数据"
-                    subtitle="导出所有记录"
-                    onPress={handleExportData}
-                  />
-                  <SettingButton
-                    icon="trash"
-                    title="清除缓存"
-                    subtitle="释放存储空间"
-                    onPress={handleClearCache}
-                  />
-                </View>
-
-                {/* 存储信息 */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>存储</Text>
-                  <View style={styles.storageInfo}>
-                    <View style={styles.storageRow}>
-                      <Text style={styles.storageLabel}>已用空间</Text>
-                      <Text style={styles.storageValue}>{usedSpace}</Text>
-                    </View>
-                    <View style={styles.storageRow}>
-                      <Text style={styles.storageLabel}>记录数量</Text>
-                      <Text style={styles.storageValue}>{entries.length} 条</Text>
-                    </View>
-                    <View style={styles.storageRow}>
-                      <Text style={styles.storageLabel}>照片数量</Text>
-                      <Text style={styles.storageValue}>{photoCount} 张</Text>
-                    </View>
-                    <View style={styles.storageRow}>
-                      <Text style={styles.storageLabel}>语音数量</Text>
-                      <Text style={styles.storageValue}>{voiceCount} 条</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* 其他设置 */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>其他</Text>
-                  <SettingButton
-                    icon="refresh"
-                    title="重置设置"
-                    subtitle="恢复默认设置"
-                    onPress={handleResetSettings}
-                    danger
-                  />
-                </View>
-
-                {/* 底部间距 */}
-                <View style={{ height: 40 + insets.bottom }} />
-              </ScrollView>
-            </View>
-          </Animated.View>
-        )}
+          }
+        />
       </View>
-    </Modal>
+
+      {/* 数据设置 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>数据</Text>
+        <SettingItem
+          icon="cloud-upload"
+          title="自动备份"
+          subtitle="进入后台时自动保存到本地"
+          rightComponent={
+            <Switch
+              value={autoBackup}
+              onValueChange={handleAutoBackup}
+              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
+        <SettingItem
+          icon="image"
+          title="高质量照片"
+          subtitle="保存原始质量照片"
+          rightComponent={
+            <Switch
+              value={highQualityPhotos}
+              onValueChange={handleHighQualityPhotos}
+              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
+        <CardSpacingSelector
+          value={cardSpacing}
+          onChange={handleCardSpacing}
+        />
+        <PhotoHeightSelector
+          value={photoHeight}
+          onChange={handlePhotoHeight}
+        />
+        <SettingButton
+          icon="download"
+          title="导出数据"
+          subtitle="导出所有记录"
+          onPress={handleExportData}
+        />
+        <SettingButton
+          icon="trash"
+          title="清除缓存"
+          subtitle="释放存储空间"
+          onPress={handleClearCache}
+        />
+      </View>
+
+      {/* 存储信息 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>存储</Text>
+        <View style={styles.storageInfo}>
+          <View style={styles.storageRow}>
+            <Text style={styles.storageLabel}>已用空间</Text>
+            <Text style={styles.storageValue}>{usedSpace}</Text>
+          </View>
+          <View style={styles.storageRow}>
+            <Text style={styles.storageLabel}>记录数量</Text>
+            <Text style={styles.storageValue}>{entries.length} 条</Text>
+          </View>
+          <View style={styles.storageRow}>
+            <Text style={styles.storageLabel}>照片数量</Text>
+            <Text style={styles.storageValue}>{photoCount} 张</Text>
+          </View>
+          <View style={styles.storageRow}>
+            <Text style={styles.storageLabel}>语音数量</Text>
+            <Text style={styles.storageValue}>{voiceCount} 条</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 其他设置 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>其他</Text>
+        <SettingButton
+          icon="refresh"
+          title="重置设置"
+          subtitle="恢复默认设置"
+          onPress={handleResetSettings}
+          danger
+        />
+      </View>
+    </DetailPageShell>
   );
 }
 
@@ -673,55 +608,7 @@ function SettingButton({
   );
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  page: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: SCREEN_HEIGHT,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   section: {
     marginTop: 24,
   },
