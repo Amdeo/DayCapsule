@@ -81,11 +81,11 @@ const FAN_OPTIONS = [
 ];
 ```
 
-**关联常量自动更新：**
-- `OPTION_ICON_HALF = OPTION_SIZE / 2`（依赖 `OPTION_SIZE`，自动变为 28）
+**关联常量：**
+- `OPTION_ICON_HALF`：现有代码已写作 `OPTION_SIZE / 2` 表达式，修改 `OPTION_SIZE` 后无需单独修改此行
 - `hitTest` 角度边界（`-40, 0, 40`）与距离无关，无需修改
 
-**图标尺寸：** `FanOptionButton` 中 `<Ionicons size={22} />` 可同步增大到 `24`，与按钮尺寸更协调。
+**图标尺寸（必改）：** `FanOptionButton` 中 `<Ionicons size={22} />` 同步改为 `size={24}`，与增大后的按钮尺寸协调。
 
 ---
 
@@ -95,5 +95,5 @@ const FAN_OPTIONS = [
 2. 长按 300ms 扇形展开时，气泡消失，不与花瓣按钮重叠
 3. 扇形关闭后，若仍是首次（`lastAddType === null`），气泡重新出现
 4. 花瓣按钮比之前明显更远离主 FAB（约 120dp 处）
-5. 花瓣按钮尺寸比之前稍大（56px）
+5. 花瓣按钮尺寸比之前稍大（56px），图标从 22 增大到 24
 6. 命中检测正常工作，拖动到各选项能正确高亮和触发

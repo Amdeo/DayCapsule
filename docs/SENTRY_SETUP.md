@@ -41,15 +41,13 @@ https://abc123def456@o123456.ingest.sentry.io/7890123
 
 ```env
 # Sentry 错误监控
-SENTRY_DSN=https://your-actual-dsn@sentry.io/project-id
+EXPO_PUBLIC_SENTRY_DSN=https://your-actual-dsn@sentry.io/project-id
 
 # 应用配置
-APP_ENV=development
-API_URL=http://localhost:3000
+EXPO_PUBLIC_APP_ENV=development
 
 # 功能开关
-ENABLE_ANALYTICS=false
-ENABLE_CRASH_REPORTING=false  # 开发环境建议关闭
+EXPO_PUBLIC_ENABLE_CRASH_REPORTING=false  # 开发环境建议关闭
 
 # 调试选项
 DEBUG_MODE=true
@@ -61,15 +59,13 @@ DEBUG_MODE=true
 
 ```env
 # Sentry 错误监控
-SENTRY_DSN=https://your-actual-dsn@sentry.io/project-id
+EXPO_PUBLIC_SENTRY_DSN=https://your-actual-dsn@sentry.io/project-id
 
 # 应用配置
-APP_ENV=production
-API_URL=https://api.memorycapsule.com
+EXPO_PUBLIC_APP_ENV=production
 
 # 功能开关
-ENABLE_ANALYTICS=true
-ENABLE_CRASH_REPORTING=true  # 生产环境启用
+EXPO_PUBLIC_ENABLE_CRASH_REPORTING=true  # 生产环境启用
 
 # 调试选项
 DEBUG_MODE=false
@@ -119,7 +115,7 @@ npx @sentry/wizard --integration reactNative
 
 ```typescript
 Sentry.init({
-  dsn: SENTRY_DSN,
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   tracesSampleRate: __DEV__ ? 1.0 : 0.2, // 调整这里
 });
 ```
@@ -139,7 +135,7 @@ Sentry.init({
 
 ### 环境区分
 
-Sentry 会根据 `APP_ENV` 环境变量区分不同环境:
+Sentry 会根据 `EXPO_PUBLIC_APP_ENV` 环境变量区分不同环境:
 - `development` - 开发环境
 - `staging` - 预发布环境
 - `production` - 生产环境
@@ -227,7 +223,7 @@ Sentry.addBreadcrumb({
 
 ```typescript
 Sentry.init({
-  dsn: SENTRY_DSN,
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   beforeSend(event) {
     // 移除敏感信息
     if (event.request?.headers) {
@@ -243,15 +239,15 @@ Sentry.init({
 ### 问题 1: 错误未上报到 Sentry
 
 **检查清单**:
-1. ✅ `SENTRY_DSN` 是否正确配置
-2. ✅ `ENABLE_CRASH_REPORTING` 是否为 `true`
+1. ✅ `EXPO_PUBLIC_SENTRY_DSN` 是否正确配置
+2. ✅ `EXPO_PUBLIC_ENABLE_CRASH_REPORTING` 是否为 `true`
 3. ✅ 网络连接是否正常
 4. ✅ 是否在生产模式下运行 (`__DEV__` 为 `false`)
 
 **调试方法**:
 ```typescript
 Sentry.init({
-  dsn: SENTRY_DSN,
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   debug: true, // 启用调试日志
 });
 ```
@@ -261,7 +257,7 @@ Sentry.init({
 **解决方案**:
 在 `.env` 中设置:
 ```env
-ENABLE_CRASH_REPORTING=false
+EXPO_PUBLIC_ENABLE_CRASH_REPORTING=false
 ```
 
 ### 问题 3: Sentry 配额用完
