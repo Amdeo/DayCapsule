@@ -252,7 +252,7 @@ interface EntryMarkerProps {
   onStopRecording?: (id: string) => void;
   isSwipeOpen: boolean;
   onSwipeStart: (id: string) => void;
-  onSwipeClose: () => void;
+  onSwipeClose: (id: string) => void;
   isLast: boolean;
   cardSpacing: number;
 }
@@ -442,9 +442,9 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     setOpenSwipeId(id);
   }, []);
 
-  // 处理滑动关闭 - 清除打开的卡片ID
-  const handleSwipeClose = useCallback(() => {
-    setOpenSwipeId(null);
+  // 处理滑动关闭 - 清除打开的卡片ID（使用函数式更新避免状态竞争）
+  const handleSwipeClose = useCallback((id: string) => {
+    setOpenSwipeId(prev => prev === id ? null : prev);
   }, []);
 
   // 稳定的 keyExtractor，避免 SectionList 每次渲染重建

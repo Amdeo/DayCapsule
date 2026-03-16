@@ -63,7 +63,7 @@ interface EntryCardProps {
   /** 当用户开始滑动当前卡片时触发 */
   onSwipeStart?: (entryId: string) => void;
   /** 当用户关闭滑动或滑动其他卡片时触发 */
-  onSwipeClose?: () => void;
+  onSwipeClose?: (entryId: string) => void;
 }
 
 function EntryCard({
@@ -385,7 +385,7 @@ function EntryCard({
         onSwipeStart?.(entry.id);
       }}
       onSwipeableWillClose={() => {
-        onSwipeClose?.();
+        onSwipeClose?.(entry.id);
       }}
     >
       <Animated.View style={[
