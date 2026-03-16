@@ -49,7 +49,7 @@ heroOpacity.value = withTiming(0, { duration: 200 });
 
 - 位置动画（`heroLeft/Top/Width/Height` withTiming 250ms）不变
 - `backdropOpacity` 动画不变
-- `withDelay` import 保留（不做清理）
+- `withDelay` import 可移除（变更后文件内无其他调用点）
 - `triggerClose` 中 `heroOpacity.value = 1` 重置不变
 - `startFadeClose` 降级路径不变
 
