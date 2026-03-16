@@ -35,11 +35,13 @@ heroOpacity.value = withTiming(0, { duration: 200 });
 | 时间点 | 改前 | 改后 |
 |--------|------|------|
 | t=0ms | 位置动画开始，heroOpacity=1 | 位置动画开始，heroOpacity 开始淡出 |
-| t=170ms | heroOpacity 开始淡出 | heroOpacity ≈ 0.32（逐渐透明） |
-| t=200ms | heroOpacity ≈ 0.37 | heroOpacity = 0（已完全透明）|
+| t=170ms | heroOpacity 开始淡出，opacity=1 | heroOpacity = 0.15（线性插值 1−170/200） |
+| t=200ms | heroOpacity = 0.625（已运行 30/80ms） | heroOpacity = 0（已完全透明）|
 | t=250ms | heroOpacity=0，performClose() | performClose()，英雄图已透明 50ms |
 
 改后英雄图提前 50ms 变透明，`performClose()` 触发时缩略图出现无视觉对比参照，跳变不可见。
+
+> 注意：t=200ms 到 t=250ms 之间，英雄图已透明但 `backdropOpacity` 仍有约 20% 残留（250ms 线性淡出）。这段 50ms 的"无图片内容"状态是设计预期——黑色遮罩继续淡出，Modal 随后关闭，不视为 bug。
 
 ---
 
