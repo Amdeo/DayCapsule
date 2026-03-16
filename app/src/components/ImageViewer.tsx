@@ -22,6 +22,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withDelay,
   cancelAnimation,
   runOnJS,
   Easing,
@@ -83,6 +84,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
   const heroTop = useSharedValue(0);
   const heroWidth = useSharedValue(SCREEN_WIDTH);
   const heroHeight = useSharedValue(SCREEN_HEIGHT);
+  const heroOpacity = useSharedValue(1);
 
   const prevDimensions = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const isRotationAborted = useRef(false);
@@ -100,6 +102,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       cancelAnimation(heroTop);
       cancelAnimation(heroWidth);
       cancelAnimation(heroHeight);
+      cancelAnimation(heroOpacity);
     };
   }, []);
 
@@ -125,6 +128,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         heroTop.value = originLayout.y;
         heroWidth.value = originLayout.width;
         heroHeight.value = originLayout.height;
+        heroOpacity.value = 1;
         backdropOpacity.value = 0;
         setPhase('opening');
       } else {
@@ -145,9 +149,12 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     heroTop.value = withTiming(0, openingTiming);
     heroWidth.value = withTiming(SCREEN_WIDTH, openingTiming);
     heroHeight.value = withTiming(SCREEN_HEIGHT, openingTiming, (finished) => {
-      if (finished) runOnJS(setPhase)('open');
+      if (finished) {
+        backdropOpacity.value = 1;   // 飞入完成后遮罩即刻出现
+        runOnJS(setPhase)('open');
+      }
     });
-    backdropOpacity.value = withTiming(1, openingTiming);
+    // backdropOpacity 不在飞入期间动画，由完成回调瞬时置 1
   }, [phase, SCREEN_WIDTH, SCREEN_HEIGHT]);
 
   const performClose = () => {
@@ -164,11 +171,13 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     cancelAnimation(heroTop);
     cancelAnimation(heroWidth);
     cancelAnimation(heroHeight);
+    cancelAnimation(heroOpacity);
     // 预设英雄图起点（不启动动画，挂载后再由 useEffect 启动）
     heroLeft.value = 0;
     heroTop.value = capturedDismissY;   // 当前图片真实位置
     heroWidth.value = SCREEN_WIDTH;
     heroHeight.value = SCREEN_HEIGHT;
+    heroOpacity.value = 1;
     // 重置手势层（即将隐藏，无视觉影响）
     dismissY.value = 0;
     dismissScale.value = 1;
@@ -195,6 +204,9 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         heroHeight.value = withTiming(height, closingTiming, (finished) => {
           if (finished) runOnJS(performClose)();
         });
+        // 延迟 170ms 后 80ms 淡出：总计 250ms，与 closingTiming 对齐
+        // 英雄图接近缩略图后再消失，避免 Modal 关闭时的位置跳变
+        heroOpacity.value = withDelay(170, withTiming(0, { duration: 80 }));
         backdropOpacity.value = withTiming(0, closingTiming);
       } else {
         startFadeClose();
@@ -236,6 +248,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       cancelAnimation(heroTop);
       cancelAnimation(heroWidth);
       cancelAnimation(heroHeight);
+      cancelAnimation(heroOpacity);
       cancelAnimation(backdropOpacity);
       backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
         // 直接内联淡出逻辑，避免 startFadeClose 的 exhaustive-deps 问题
@@ -371,6 +384,7 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     top: heroTop.value,
     width: heroWidth.value,
     height: heroHeight.value,
+    opacity: heroOpacity.value,
   }));
 
   // ─── Save to album ────────────────────────────────────────────────────
