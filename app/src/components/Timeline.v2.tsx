@@ -250,6 +250,9 @@ interface EntryMarkerProps {
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
+  isSwipeOpen: boolean;
+  onSwipeStart: (id: string) => void;
+  onSwipeClose: () => void;
   isLast: boolean;
   cardSpacing: number;
 }
@@ -261,6 +264,9 @@ const EntryMarker = React.memo(function EntryMarker({
   onPauseRecording,
   onResumeRecording,
   onStopRecording,
+  isSwipeOpen,
+  onSwipeStart,
+  onSwipeClose,
   isLast,
   cardSpacing,
 }: EntryMarkerProps) {
@@ -327,6 +333,9 @@ const EntryMarker = React.memo(function EntryMarker({
         onPauseRecording={onPauseRecording}
         onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
+        isSwipeOpen={isSwipeOpen}
+        onSwipeStart={onSwipeStart}
+        onSwipeClose={onSwipeClose}
         cardSpacing={cardSpacing}
       />
     </Animated.View>
@@ -513,11 +522,14 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         onPauseRecording={onPauseRecording}
         onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
+        isSwipeOpen={openSwipeId === item.id}
+        onSwipeStart={handleSwipeStart}
+        onSwipeClose={handleSwipeClose}
         isLast={isLast}
         cardSpacing={cardSpacing}
       />
     );
-  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, cardSpacing]);
+  }, [deleteEntry, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording, openSwipeId, handleSwipeStart, handleSwipeClose, cardSpacing]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
