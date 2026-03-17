@@ -13,7 +13,6 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import Animated, {
   FadeInRight,
@@ -38,7 +37,6 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_RESTING_TRANSLATE_X = -28;
 const CARD_SHIFT_DURATION = 160;
 const ACTION_SHEET_OPEN_DELAY = 100;
@@ -466,7 +464,7 @@ function EntryCard({
                   {entry.content}
                 </Text>
               ) : entry.type === 'photo' && entry.media?.uri ? (
-                // 照片内容 - 自适应宽高比
+                // 照片内容 - 固定高度居中裁剪
                 <>
                   <TouchableOpacity
                     activeOpacity={0.9}
