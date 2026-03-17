@@ -269,6 +269,19 @@ const EntryMarker = React.memo(function EntryMarker({
   enterDelay = 0,
 }: EntryMarkerProps) {
   const timelineLeft = 40;
+  const fadeOpacity = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      RNAnimated.timing(fadeOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }, enterDelay);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 根据类型获取圆点颜色
   const getDotColor = () => {
@@ -289,12 +302,12 @@ const EntryMarker = React.memo(function EntryMarker({
   };
 
   return (
-    <Animated.View
-      entering={FadeIn.duration(250).delay(enterDelay)}
-      exiting={FadeOut.duration(200)}
-      layout={LinearTransition.duration(200)}
-      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative', opacity: 0 }}
-    >
+    <RNAnimated.View style={{ opacity: fadeOpacity }}>
+      <Animated.View
+        exiting={FadeOut.duration(200)}
+        layout={LinearTransition.duration(200)}
+        style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
+      >
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
       <View
         style={{
@@ -335,7 +348,8 @@ const EntryMarker = React.memo(function EntryMarker({
         onActionSheetOpen={onActionSheetOpen}
         cardSpacing={cardSpacing}
       />
-    </Animated.View>
+      </Animated.View>
+    </RNAnimated.View>
   );
 });
 
