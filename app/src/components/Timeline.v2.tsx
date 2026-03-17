@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent, SectionList, ActivityIndicator } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
 import { EntryCard } from './EntryCard';
@@ -252,7 +252,6 @@ interface EntryMarkerProps {
   onActionSheetOpen: (id: string) => void;
   isLast: boolean;
   cardSpacing: number;
-  enterDelay?: number;
 }
 
 const EntryMarker = React.memo(function EntryMarker({
@@ -266,22 +265,8 @@ const EntryMarker = React.memo(function EntryMarker({
   onActionSheetOpen,
   isLast,
   cardSpacing,
-  enterDelay = 0,
 }: EntryMarkerProps) {
   const timelineLeft = 40;
-  const fadeOpacity = useRef(new RNAnimated.Value(0)).current;
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      RNAnimated.timing(fadeOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    }, enterDelay);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // 根据类型获取圆点颜色
   const getDotColor = () => {
@@ -302,12 +287,9 @@ const EntryMarker = React.memo(function EntryMarker({
   };
 
   return (
-    <RNAnimated.View style={{ opacity: fadeOpacity }}>
-      <Animated.View
-        exiting={FadeOut.duration(200)}
-        layout={LinearTransition.duration(200)}
-        style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
-      >
+    <View
+      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
+    >
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
       <View
         style={{
@@ -348,8 +330,7 @@ const EntryMarker = React.memo(function EntryMarker({
         onActionSheetOpen={onActionSheetOpen}
         cardSpacing={cardSpacing}
       />
-      </Animated.View>
-    </RNAnimated.View>
+    </View>
   );
 });
 
@@ -458,7 +439,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [displayMode, setDisplayMode] = useState<ViewMode>('list');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [animationEpoch, setAnimationEpoch] = useState(0);
   const skipTransitionRef = useRef(false);
   const isInitialMountRef = useRef(true);
   const [showViewToggle, setShowViewToggle] = useState(false);
@@ -478,7 +458,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
   const displayEntries = hasFilters ? filteredEntries : entries;
 
-  // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 卡片入场
+  // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 直接渲染卡片
   useEffect(() => {
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
@@ -491,7 +471,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     setIsTransitioning(true);
     const timer = setTimeout(() => {
       setDisplayMode(viewMode);
-      setAnimationEpoch(e => e + 1);
       setIsTransitioning(false);
     }, 600);
     return () => clearTimeout(timer);
@@ -502,18 +481,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     if (displayMode === 'monthly') return generateMonthlySections(displayEntries);
     return generateTimeSections(displayEntries);
   }, [displayEntries, displayMode]);
-
-  // 记录每个 entry 的全局位置，用于计算卡片入场 stagger delay
-  const globalIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    let i = 0;
-    for (const section of sections) {
-      for (const entry of section.data) {
-        map.set(entry.id, i++);
-      }
-    }
-    return map;
-  }, [sections]);
 
   // 检查是否有记录
   const hasEntries = displayEntries.length > 0;
@@ -547,10 +514,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     setActiveActionSheetId(id);
   }, []);
 
-  // 稳定的 keyExtractor，避免 SectionList 每次渲染重建
-  const keyExtractor = useCallback((item: Entry) => {
-    return `${item.id}-${animationEpoch}`;
-  }, [animationEpoch]);
+  // 稳定的 keyExtractor，避免视图切换时整批卸载重建
+  const keyExtractor = useCallback((item: Entry) => item.id, []);
 
   // 处理滚动事件
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -614,8 +579,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 渲染列表项
   const renderItem = useCallback(({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
     const isLast = index === section.data.length - 1;
-    const globalIndex = globalIndexMap.get(item.id) ?? 0;
-    const enterDelay = Math.min(globalIndex, 10) * 80;
     return (
       <EntryMarker
         entry={item}
@@ -628,10 +591,9 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         onActionSheetOpen={handleActionSheetOpen}
         isLast={isLast}
         cardSpacing={cardSpacing}
-        enterDelay={enterDelay}
       />
     );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
+  }, [activeActionSheetId, cardSpacing, deleteEntry, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
