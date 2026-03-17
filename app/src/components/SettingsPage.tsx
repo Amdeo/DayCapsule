@@ -11,7 +11,6 @@ import {
   Pressable,
   Switch,
   Alert,
-  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
@@ -168,40 +167,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     );
   };
 
-  const handleExportData = async () => {
-    try {
-      const exportData = {
-        exportedAt: new Date().toISOString(),
-        version: '1.0.0',
-        entries: entries.map((e) => ({
-          id: e.id,
-          type: e.type,
-          content: e.content,
-          tags: e.tags,
-          timestamp: e.timestamp,
-          editedAt: e.editedAt,
-          syncStatus: e.syncStatus,
-          media: e.media ? {
-            uri: e.media.uri,
-            mimeType: e.media.mimeType,
-            size: e.media.size,
-            duration: e.media.duration,
-            thumbnail: e.media.thumbnail,
-          } : undefined,
-          transcription: e.transcription,
-          recordingStatus: e.recordingStatus,
-          recordingDuration: e.recordingDuration,
-        })),
-      };
-      await Share.share({
-        message: JSON.stringify(exportData, null, 2),
-        title: 'MemoryCapsule 数据导出',
-      });
-    } catch {
-      Alert.alert('导出失败', '无法导出数据，请重试');
-    }
-  };
-
   const handleResetSettings = () => {
     Alert.alert(
       '重置设置',
@@ -276,12 +241,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         <PhotoHeightSelector
           value={photoHeight}
           onChange={handlePhotoHeight}
-        />
-        <SettingButton
-          icon="download"
-          title="导出数据"
-          subtitle="导出所有记录"
-          onPress={handleExportData}
         />
         <SettingButton
           icon="trash"
