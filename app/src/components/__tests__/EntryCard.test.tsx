@@ -2,6 +2,15 @@
  * EntryCard — 滑动操作测试
  */
 
+const mockFadeInRight = {
+  duration: jest.fn(function duration() {
+    return this;
+  }),
+  delay: jest.fn(function delay() {
+    return this;
+  }),
+};
+
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('@/src/store/entryStore', () => ({
@@ -54,6 +63,7 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');
   Reanimated.default.call = () => {};
+  Reanimated.FadeInRight = mockFadeInRight;
   return Reanimated;
 });
 
@@ -156,6 +166,8 @@ const longTextEntry: Entry = {
 describe('EntryCard swipe actions', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockFadeInRight.duration.mockClear();
+    mockFadeInRight.delay.mockClear();
   });
 
   afterEach(() => {
@@ -264,6 +276,19 @@ describe('EntryCard swipe actions', () => {
     fireEvent.press(getByTestId('action-sheet-cancel'));
 
     expect(queryByTestId('entry-action-sheet')).toBeNull();
+  });
+
+  it('applies FadeInRight entering with the provided delay and no exiting animation', () => {
+    const screen = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} enterDelay={120} />
+    );
+
+    const contentAnimatedView = screen.UNSAFE_root.findAll((node: any) => node.props?.layout != null)[0];
+
+    expect(contentAnimatedView.props.entering).toBeDefined();
+    expect(contentAnimatedView.props.exiting).toBeUndefined();
+    expect(mockFadeInRight.duration).toHaveBeenCalledWith(expect.any(Number));
+    expect(mockFadeInRight.delay).toHaveBeenCalledWith(120);
   });
 });
 
