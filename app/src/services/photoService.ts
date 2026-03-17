@@ -173,7 +173,9 @@ export class PhotoService {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: options?.allowsEditing ?? false,
+        allowsMultipleSelection: true,
+        selectionLimit: 9,
+        allowsEditing: false,
         quality: options?.quality ?? 0.95,
       });
 
