@@ -154,6 +154,6 @@ describe('Timeline view mode switching', () => {
     const screen = render(<Timeline />);
 
     expect(screen.getByTestId('mock-entry-card-entry-1').props.children).toBe('entry-1:0');
-    expect(screen.getByTestId('mock-entry-card-entry-2').props.children).toBe('entry-2:50');
+    expect(screen.getByTestId('mock-entry-card-entry-2').props.children).toBe('entry-2:90');
   });
 });

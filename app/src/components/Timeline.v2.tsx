@@ -595,7 +595,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     const isLast = index === section.data.length - 1;
     const globalIndex = globalIndexMap.get(item.id) ?? 0;
     const staggerIndex = Math.min(globalIndex, 8);
-    const enterDelay = staggerIndex * 50;
+    const enterDelay = staggerIndex * 90;
     return (
       <EntryMarker
         entry={item}

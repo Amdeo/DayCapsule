@@ -449,7 +449,7 @@ function EntryCard({
             ]}
           >
             <Animated.View
-              entering={FadeInRight.duration(220).delay(enterDelay)}
+              entering={FadeInRight.duration(360).delay(enterDelay)}
               layout={Layout.springify()}
             >
             {/* 卡片主内容 */}
