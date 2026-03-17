@@ -380,4 +380,18 @@ describe('EntryCard photo edge-to-edge', () => {
     expect(flatStyle.borderBottomLeftRadius).toBe(0);
     expect(flatStyle.borderBottomRightRadius).toBe(0);
   });
+
+  it('有 tags 的图片卡片：tags 容器有水平内边距 14', () => {
+    const photoWithTags: Entry = {
+      ...photoEntry,
+      id: 'photo-3',
+      content: '',
+      tags: ['风景', '旅行'],
+    };
+    render(<EntryCard entry={photoWithTags} onDelete={jest.fn()} />);
+    // 验证 photo-tags-container 存在且有 paddingHorizontal: 14
+    const tagsContainer = screen.getByTestId('photo-tags-container');
+    const containerStyle = StyleSheet.flatten(tagsContainer.props.style);
+    expect(containerStyle.paddingHorizontal).toBe(14);
+  });
 });

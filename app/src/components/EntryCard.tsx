@@ -600,7 +600,10 @@ function EntryCard({
 
               {/* 标签（如果有） */}
               {entry.tags && entry.tags.length > 0 && (
-                <View style={styles.tagsContainer}>
+                <View
+                  testID={entry.type === 'photo' ? 'photo-tags-container' : undefined}
+                  style={entry.type === 'photo' ? styles.photoTagsContainer : styles.tagsContainer}
+                >
                   {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
                     <View key={index} style={styles.tag}>
                       <Text style={styles.tagText}>#{tag}</Text>
@@ -685,7 +688,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   contentPhoto: {
-    borderRadius: 12,
+    padding: 0,
+    gap: 0,
   },
   contentVoice: {
     padding: 0,
@@ -698,7 +702,6 @@ const styles = StyleSheet.create({
   },
   photoImage: {
     width: '100%',
-    borderRadius: 12,
     backgroundColor: '#ECE7E0',
   },
   photoMissing: {
@@ -712,10 +715,12 @@ const styles = StyleSheet.create({
     color: '#A3A3A3',
   },
   photoCaption: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
     fontSize: 14,
     lineHeight: 20,
     color: '#525252',
-    marginTop: 8,
   },
   tag: {
     backgroundColor: '#F9731620',
@@ -854,6 +859,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 4,
+  },
+  photoTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 0,
+    paddingBottom: 12,
   },
   // 新语音卡片样式
   voiceCard: {
