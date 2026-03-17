@@ -249,7 +249,7 @@ function EntryCard({
   const getCardBgColor = () => {
     switch (entry.type) {
       case 'text':  return '#F7F5FC'; // 淡紫
-      case 'photo': return '#EEF8FA'; // 淡青
+      case 'photo': return '#F7F4EF'; // 中性浅暖灰
       case 'voice': return '#FFF8EE'; // 淡橙
       default:      return '#FFFFFF';
     }
@@ -258,7 +258,7 @@ function EntryCard({
   const getCardPressedColor = () => {
     switch (entry.type) {
       case 'text':  return '#EDE8F7';
-      case 'photo': return '#E3F4F7';
+      case 'photo': return '#EEE7DE';
       case 'voice': return '#FFF0DC';
       default:      return '#F5F5F5';
     }
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
   photoImage: {
     width: '100%',
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#ECE7E0',
   },
   photoMissing: {
     minHeight: 200,

@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
@@ -11,6 +11,7 @@ import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '../services/syncService';
 import { logger } from '@/src/utils/logger';
 import { DetailPageShell } from './DetailPageShell';
+import { BackupExportSheet } from './BackupExportSheet';
 
 interface BackupPageProps {
   visible: boolean;
@@ -18,6 +19,7 @@ interface BackupPageProps {
 }
 
 type BackupFile = { name: string; uri: string; sizeBytes?: number };
+type ExportTarget = { name: string; uri: string } | null;
 
 function formatBackupName(name: string): string {
   // backup_2026-02-24T12-00-00-000Z.json → 2026-02-24 12:00
@@ -32,13 +34,20 @@ function formatLastBackupTime(ts: number | null): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+function getFileNameFromUri(uri: string): string {
+  return uri.split('/').pop() ?? 'backup.zip';
+}
+
 export function BackupPage({ visible, onClose }: BackupPageProps) {
   const { entries, restoreEntries, updateEntry } = useEntryStore();
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSavingToFiles, setIsSavingToFiles] = useState(false);
   const [backupFiles, setBackupFiles] = useState<BackupFile[]>([]);
   const [lastBackupTime, setLastBackupTime] = useState<number | null>(null);
+  const [exportTarget, setExportTarget] = useState<ExportTarget>(null);
+  const [showExportSheet, setShowExportSheet] = useState(false);
   const iCloudAvailable = SyncService.isICloudAvailable();
 
   const refreshBackupInfo = useCallback(async () => {
@@ -63,7 +72,8 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
     try {
       const uri = await BackupService.createBackup(entries);
       await refreshBackupInfo();
-      await Share.share({ url: uri, title: 'MemoryCapsule 备份' });
+      setExportTarget({ name: getFileNameFromUri(uri), uri });
+      setShowExportSheet(true);
     } catch {
       Alert.alert('导出失败', '无法导出数据，请重试');
     } finally {
@@ -71,11 +81,36 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
     }
   };
 
-  const handleShareBackup = async (uri: string) => {
+  const handleOpenExportSheet = (target: { name: string; uri: string }) => {
+    setExportTarget(target);
+    setShowExportSheet(true);
+  };
+
+  const handleCloseExportSheet = () => {
+    setShowExportSheet(false);
+    setExportTarget(null);
+  };
+
+  const handleSaveToFiles = async () => {
+    if (!exportTarget) return;
+
+    setIsSavingToFiles(true);
     try {
-      await Share.share({ url: uri, title: 'MemoryCapsule 备份' });
+      const result = await BackupService.saveBackupToUserDirectory(
+        exportTarget.uri,
+        exportTarget.name
+      );
+      if (result.canceled) {
+        return;
+      }
+      if (result.saved && result.fileName) {
+        Alert.alert('保存成功', `备份已保存为 ${result.fileName}`);
+        handleCloseExportSheet();
+      }
     } catch {
-      Alert.alert('分享失败', '无法分享该备份文件');
+      Alert.alert('保存失败', '无法将备份保存到所选目录，请重试');
+    } finally {
+      setIsSavingToFiles(false);
     }
   };
 
@@ -195,7 +230,10 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
                     </Text>
                   )}
                 </View>
-                <TouchableOpacity onPress={() => handleShareBackup(f.uri)}>
+                <TouchableOpacity
+                  testID={`backup-history-share-${f.uri}`}
+                  onPress={() => handleOpenExportSheet({ name: f.name, uri: f.uri })}
+                >
                   <Ionicons name="share-outline" size={20} color="#6A89CC" />
                 </TouchableOpacity>
               </View>
@@ -244,6 +282,13 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
           {' '}并开启 MemoryCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
         </Text>
       </View>
+
+      <BackupExportSheet
+        visible={showExportSheet}
+        fileName={exportTarget?.name ?? ''}
+        onSaveToFiles={handleSaveToFiles}
+        onClose={handleCloseExportSheet}
+      />
     </DetailPageShell>
   );
 }

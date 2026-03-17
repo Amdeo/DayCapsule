@@ -1,7 +1,9 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { BackupPage } from '../BackupPage';
+import { BackupService } from '@/src/services/backupService';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -35,11 +37,16 @@ jest.mock('@/src/services/backupService', () => ({
       { name: 'backup_2026-03-16T12-00-00-000Z.zip', uri: 'file:///c.zip', sizeBytes: 1000 },
     ]),
     getLastBackupTime: jest.fn().mockResolvedValue(1_710_000_000_000),
-    createBackup: jest.fn(),
+    createBackup: jest.fn().mockResolvedValue('file:///exports/latest.zip'),
+    saveBackupToUserDirectory: jest.fn().mockResolvedValue({
+      saved: true,
+      canceled: false,
+      fileName: 'latest.zip',
+    }),
   },
 }));
 
-jest.mock('@/src/services/syncService', () => ({
+jest.mock('../../services/syncService', () => ({
   SyncService: {
     isICloudAvailable: jest.fn(() => false),
     pickAndParseBackup: jest.fn(),
@@ -52,14 +59,59 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 describe('BackupPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+  });
+
   it('renders backup history and bottom iCloud section when backups exist', async () => {
-    const { getByText } = render(
-      <BackupPage visible onClose={jest.fn()} />
-    );
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
 
     await waitFor(() => {
       expect(getByText('备份历史')).toBeTruthy();
       expect(getByText('iCloud 同步')).toBeTruthy();
+    });
+  });
+
+  it('creates a backup and opens the save-only export sheet', async () => {
+    const { getByText, findByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+
+    await findByText('保存到文件');
+
+    expect(BackupService.createBackup).toHaveBeenCalled();
+  });
+
+  it('saves the export target to user files', async () => {
+    const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(BackupService.saveBackupToUserDirectory).toHaveBeenCalledWith(
+        'file:///exports/latest.zip',
+        'latest.zip'
+      );
+    });
+  });
+
+  it('routes backup history actions through the same save-only export sheet', async () => {
+    const { findByTestId, findByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(await findByTestId('backup-history-share-file:///a.zip'));
+    await findByText('保存到文件');
+  });
+
+  it('shows a success alert after saving to files', async () => {
+    const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('保存成功', '备份已保存为 latest.zip');
     });
   });
 });

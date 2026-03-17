@@ -5,6 +5,12 @@
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
+jest.mock('react-native', () => ({
+  Platform: {
+    OS: 'android',
+  },
+}));
+
 const mockZipInstance = {
   file: jest.fn(),
   generateAsync: jest.fn().mockResolvedValue('bW9ja3ppcA=='),
@@ -20,6 +26,12 @@ jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn(),
   readDirectoryAsync: jest.fn(),
   deleteAsync: jest.fn().mockResolvedValue(undefined),
+  getContentUriAsync: jest.fn(),
+  StorageAccessFramework: {
+    requestDirectoryPermissionsAsync: jest.fn(),
+    createFileAsync: jest.fn(),
+    writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
+  },
   EncodingType: { UTF8: 'utf8', Base64: 'base64' },
 }));
 
@@ -42,6 +54,7 @@ jest.mock('@/src/services/voiceService', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { BackupService } from '../backupService';
 import { Entry } from '@/src/types/entry';
 
@@ -64,9 +77,18 @@ const BACKUP_DIR = 'file:///app/backups/';
 describe('BackupService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (Platform as { OS: string }).OS = 'android';
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
     (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue([]);
     (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue('base64media');
+    (FileSystem.getContentUriAsync as jest.Mock).mockResolvedValue('content://backup.zip');
+    (FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+      directoryUri: 'content://tree/primary:Download',
+    });
+    (FileSystem.StorageAccessFramework.createFileAsync as jest.Mock).mockResolvedValue(
+      'content://document/primary:Download/backup.zip'
+    );
   });
 
   // ── createBackup ────────────────────────────────────────────────────────────
@@ -269,6 +291,105 @@ describe('BackupService', () => {
       const { Storage } = require('@/src/utils/storage');
       Storage.getString.mockResolvedValue(String(Date.now() - 1000));
       await expect(BackupService.shouldBackup()).resolves.toBe(false);
+    });
+  });
+
+  describe('android export helpers', () => {
+    it('Android 上应将 file URI 转换为 content URI', async () => {
+      await expect(
+        BackupService.getAndroidShareableUri('file:///app/backups/a.zip')
+      ).resolves.toBe('content://backup.zip');
+
+      expect(FileSystem.getContentUriAsync).toHaveBeenCalledWith('file:///app/backups/a.zip');
+    });
+
+    it('非 Android 平台应直接返回原始 URI', async () => {
+      (Platform as { OS: string }).OS = 'ios';
+
+      await expect(
+        BackupService.getAndroidShareableUri('file:///app/backups/a.zip')
+      ).resolves.toBe('file:///app/backups/a.zip');
+
+      expect(FileSystem.getContentUriAsync).not.toHaveBeenCalled();
+    });
+
+    it('保存到用户目录时应创建 SAF 文件并写入 ZIP 内容', async () => {
+      const result = await BackupService.saveBackupToUserDirectory(
+        'file:///app/backups/backup_2026-03-17.zip',
+        'backup_2026-03-17.zip'
+      );
+
+      expect(FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync).toHaveBeenCalled();
+      expect(FileSystem.StorageAccessFramework.createFileAsync).toHaveBeenCalledWith(
+        'content://tree/primary:Download',
+        'backup_2026-03-17',
+        'application/zip'
+      );
+      expect(FileSystem.readAsStringAsync).toHaveBeenCalledWith(
+        'file:///app/backups/backup_2026-03-17.zip',
+        { encoding: 'base64' }
+      );
+      expect(FileSystem.StorageAccessFramework.writeAsStringAsync).toHaveBeenCalledWith(
+        'content://document/primary:Download/backup.zip',
+        'base64media',
+        { encoding: 'base64' }
+      );
+      expect(result).toEqual({
+        canceled: false,
+        fileName: 'backup_2026-03-17.zip',
+        saved: true,
+      });
+    });
+
+    it('用户取消目录选择时不应写入文件', async () => {
+      (FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync as jest.Mock).mockResolvedValue(
+        {
+          granted: false,
+          directoryUri: null,
+        }
+      );
+
+      const result = await BackupService.saveBackupToUserDirectory(
+        'file:///app/backups/backup_2026-03-17.zip',
+        'backup_2026-03-17.zip'
+      );
+
+      expect(FileSystem.StorageAccessFramework.createFileAsync).not.toHaveBeenCalled();
+      expect(FileSystem.StorageAccessFramework.writeAsStringAsync).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        canceled: true,
+        fileName: null,
+        saved: false,
+      });
+    });
+
+    it('同名文件冲突时应自动追加序号后缀', async () => {
+      (FileSystem.StorageAccessFramework.createFileAsync as jest.Mock)
+        .mockRejectedValueOnce(new Error('File already exists'))
+        .mockResolvedValueOnce('content://document/primary:Download/backup_2026-03-17 (1).zip');
+
+      const result = await BackupService.saveBackupToUserDirectory(
+        'file:///app/backups/backup_2026-03-17.zip',
+        'backup_2026-03-17.zip'
+      );
+
+      expect(FileSystem.StorageAccessFramework.createFileAsync).toHaveBeenNthCalledWith(
+        1,
+        'content://tree/primary:Download',
+        'backup_2026-03-17',
+        'application/zip'
+      );
+      expect(FileSystem.StorageAccessFramework.createFileAsync).toHaveBeenNthCalledWith(
+        2,
+        'content://tree/primary:Download',
+        'backup_2026-03-17 (1)',
+        'application/zip'
+      );
+      expect(result).toEqual({
+        canceled: false,
+        fileName: 'backup_2026-03-17 (1).zip',
+        saved: true,
+      });
     });
   });
 });

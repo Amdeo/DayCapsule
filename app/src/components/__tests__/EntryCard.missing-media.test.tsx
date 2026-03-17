@@ -168,6 +168,10 @@ const textEntry: Entry = {
   syncStatus: 'synced',
 };
 
+const PHOTO_CARD_BG = '#F7F4EF';
+const PHOTO_CARD_BG_PRESSED = '#EEE7DE';
+const PHOTO_IMAGE_BG = '#ECE7E0';
+
 const longTextEntry: Entry = {
   id: 't2',
   type: 'text',
@@ -211,6 +215,42 @@ describe('EntryCard — 媒体文件丢失', () => {
     fireEvent.press(getByTestId('entry-card'));
 
     expect(getByTestId('image-viewer')).toBeTruthy();
+  });
+
+  it('图片卡片默认应使用统一后的中性背景', () => {
+    const { getByTestId } = render(
+      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByTestId('entry-card-container')).toHaveStyle({
+      backgroundColor: PHOTO_CARD_BG,
+    });
+  });
+
+  it('图片卡片按下时应切换到更深一档的中性背景', () => {
+    const { getByTestId } = render(
+      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent(getByTestId('entry-card'), 'pressIn');
+    expect(getByTestId('entry-card-container')).toHaveStyle({
+      backgroundColor: PHOTO_CARD_BG_PRESSED,
+    });
+
+    fireEvent(getByTestId('entry-card'), 'pressOut');
+    expect(getByTestId('entry-card-container')).toHaveStyle({
+      backgroundColor: PHOTO_CARD_BG,
+    });
+  });
+
+  it('图片区域默认背景应使用统一的中性浅灰', () => {
+    const { getByTestId } = render(
+      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByTestId('photo-image')).toHaveStyle({
+      backgroundColor: PHOTO_IMAGE_BG,
+    });
   });
 
   // ── 音频丢失 ──────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
+import { Platform } from 'react-native';
 import { Entry } from '@/src/types/entry';
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
@@ -16,6 +17,7 @@ const BACKUP_DIR = `${FileSystem.documentDirectory}backups/`;
 const LAST_BACKUP_KEY = 'backup:lastTime';
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 小时
 const MAX_BACKUPS = 7;
+const MAX_SAVE_NAME_ATTEMPTS = 50;
 
 export interface BackupManifest {
   version: string;
@@ -26,7 +28,40 @@ export interface BackupManifest {
   dataSize: number;       // data.json 的字节长度（完整性校验用）
 }
 
+export interface SaveBackupResult {
+  saved: boolean;
+  canceled: boolean;
+  fileName: string | null;
+}
+
 export class BackupService {
+  private static splitFileName(fileName: string): { baseName: string; extension: string } {
+    const dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex <= 0) {
+      return { baseName: fileName, extension: '' };
+    }
+    return {
+      baseName: fileName.slice(0, dotIndex),
+      extension: fileName.slice(dotIndex),
+    };
+  }
+
+  private static buildCandidateFileName(fileName: string, attempt: number): string {
+    if (attempt === 0) {
+      return fileName;
+    }
+    const { baseName, extension } = this.splitFileName(fileName);
+    return `${baseName} (${attempt})${extension}`;
+  }
+
+  private static isFileAlreadyExistsError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    const message = error.message.toLowerCase();
+    return message.includes('exists') || message.includes('already');
+  }
+
   /** 确保备份根目录存在 */
   static async ensureBackupDir(): Promise<void> {
     const info = await FileSystem.getInfoAsync(BACKUP_DIR);
@@ -150,6 +185,55 @@ export class BackupService {
     const last = await this.getLastBackupTime();
     if (!last) return true;
     return Date.now() - last > BACKUP_INTERVAL_MS;
+  }
+
+  /** 将内部 file:// URI 转为 Android 可分享的 content:// URI */
+  static async getAndroidShareableUri(fileUri: string): Promise<string> {
+    if (Platform.OS !== 'android') {
+      return fileUri;
+    }
+    return FileSystem.getContentUriAsync(fileUri);
+  }
+
+  /** 将备份保存到用户选择的目录（Android SAF） */
+  static async saveBackupToUserDirectory(
+    fileUri: string,
+    fileName: string
+  ): Promise<SaveBackupResult> {
+    const permissions =
+      await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+    if (!permissions.granted || !permissions.directoryUri) {
+      return { saved: false, canceled: true, fileName: null };
+    }
+
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    for (let attempt = 0; attempt < MAX_SAVE_NAME_ATTEMPTS; attempt += 1) {
+      const candidateName = this.buildCandidateFileName(fileName, attempt);
+      const { baseName } = this.splitFileName(candidateName);
+
+      try {
+        const targetUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          baseName,
+          'application/zip'
+        );
+        await FileSystem.StorageAccessFramework.writeAsStringAsync(targetUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        return { saved: true, canceled: false, fileName: candidateName };
+      } catch (error) {
+        if (this.isFileAlreadyExistsError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error('无法在所选目录创建备份文件，请更换目录后重试');
   }
 
   /** 保留最近 keep 个备份，删除旧文件（兼容旧版文件夹格式） */
