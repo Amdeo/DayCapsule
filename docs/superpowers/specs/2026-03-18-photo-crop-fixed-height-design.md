@@ -65,6 +65,14 @@ photoImage: {
 },
 ```
 
+### 4. `photoMissing` 占位 View 加固定高度内联样式
+
+`photoMissing` 当前由 `styles.photoMissing` 的 `minHeight: 200` 控制高度，与档位设置无关。需同步改为跟随 `maxPhotoHeight`：
+
+```tsx
+<View style={[styles.photoImage, styles.photoMissing, photoImageRadius, { height: maxPhotoHeight }]}>
+```
+
 ---
 
 ## 不变的部分
@@ -73,7 +81,6 @@ photoImage: {
 - `photoHeight` 设置和 UI 保持不变
 - 动态圆角（`hasPhotoFooter` / `photoImageRadius`）逻辑保持不变
 - edge-to-edge 宽度（`contentPhoto: { padding: 0, gap: 0 }`）保持不变
-- `photoMissing` 占位 View 高度已使用 `maxPhotoHeight`（通过 `calculateImageHeight` fallback），改动后直接使用 `maxPhotoHeight`，行为不变
 
 ---
 
