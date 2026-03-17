@@ -70,7 +70,7 @@ const TYPE_CONFIG: Record<LastAddType, { icon: string; color: string; label: str
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 1, overshootClamping: true };
 
 interface FABMenuProps {
-  onSelect: (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => void;
+  onSelect: (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => void;
   shouldHide?: boolean;
   onRevealRequest?: () => void;
 }
@@ -139,13 +139,12 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
     if (type === 'camera') {
       try {
         const photo = await PhotoService.takePhoto();
-        if (photo) onSelectRef.current('photo', photo);
+        if (photo) onSelectRef.current('photo', [photo]);
       } catch { /* 用户取消 */ }
     } else if (type === 'photo') {
       try {
         const result = await PhotoService.pickPhotoFromLibrary();
-        const photo = result[0];
-        if (photo) onSelectRef.current('photo', photo);
+        if (result.length > 0) onSelectRef.current('photo', result);
       } catch { /* 用户取消 */ }
     } else {
       onSelectRef.current(type as 'text' | 'voice');

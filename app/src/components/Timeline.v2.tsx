@@ -433,7 +433,7 @@ function EmptyState() {
  * 时间轴主组件
  */
 interface TimelineProps {
-  onQuickAdd?: (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => void;
+  onQuickAdd?: (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => void;
   onMenuPress?: () => void;
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;

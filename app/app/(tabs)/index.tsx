@@ -33,21 +33,20 @@ export interface PhotoSelectDeps {
 }
 
 export async function handlePhotoSelectForTest(
-  result: import('@/src/services/photoService').PhotoResult,
+  results: import('@/src/services/photoService').PhotoResult[],
   deps: PhotoSelectDeps
 ): Promise<void> {
-  const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const savedPhoto = await deps.savePhotoToStorage(
-    result.uri,
-    fileId,
-    'medium',
-    result.aspectRatio
-  );
-  await deps.addEntry({
-    type: 'photo',
-    content: '',
-    syncStatus: 'pending',
-    media: [{
+  const mediaList: import('@/src/types/entry').MediaInfo[] = [];
+  for (const result of results) {
+    const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const savedPhoto = await deps.savePhotoToStorage(
+      result.uri,
+      fileId,
+      'medium',
+      result.aspectRatio
+    );
+
+    mediaList.push({
       uri: savedPhoto.originalUri,
       mimeType: 'image/jpeg',
       size: 0,
@@ -59,7 +58,14 @@ export async function handlePhotoSelectForTest(
         createdAt: Date.now(),
         modifiedAt: Date.now(),
       },
-    }],
+    });
+  }
+
+  await deps.addEntry({
+    type: 'photo',
+    content: '',
+    syncStatus: 'pending',
+    media: mediaList,
   });
 }
 
@@ -132,15 +138,15 @@ export default function HomeScreen() {
     }, 100);
   }, [updateRecordingDuration]);
 
-  const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photoResult?: PhotoResult) => {
+  const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => {
     switch (type) {
       case 'text':
         setShowTextEditor(true);
         break;
 
       case 'photo':
-        if (photoResult) {
-          await handlePhotoSelect(photoResult);
+        if (photos && photos.length > 0) {
+          await handlePhotoSelectArr(photos);
         }
         break;
 
@@ -249,9 +255,9 @@ export default function HomeScreen() {
     }
   }, [addEntry]);
 
-  const handlePhotoSelect = useCallback(async (result: PhotoResult) => {
+  const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
-      await handlePhotoSelectForTest(result, {
+      await handlePhotoSelectForTest(results, {
         savePhotoToStorage: PhotoService.savePhotoToStorage.bind(PhotoService),
         addEntry,
       });

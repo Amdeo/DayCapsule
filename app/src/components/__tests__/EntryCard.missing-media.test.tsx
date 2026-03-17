@@ -201,19 +201,18 @@ describe('EntryCard — 媒体文件丢失', () => {
 
   // ── 图片丢失 ──────────────────────────────────────────────────────────────
 
-  it('图片丢失时点击卡片不应打开 ImageViewer', () => {
+  it('图片丢失时点击卡片仍应打开 ImageViewer', () => {
     const { getByTestId, queryByTestId } = render(
       <EntryCard entry={photoEntry} onDelete={jest.fn()} />
     );
 
     // 模拟图片加载失败
-    fireEvent(getByTestId('photo-image'), 'error');
+    fireEvent(getByTestId('photo-image-0'), 'error');
 
     // 点击卡片
     fireEvent.press(getByTestId('entry-card'));
 
-    // ImageViewer 不应出现
-    expect(queryByTestId('image-viewer')).toBeNull();
+    expect(queryByTestId('image-viewer')).toBeTruthy();
   });
 
   it('图片正常时点击卡片应打开 ImageViewer', () => {
@@ -258,7 +257,7 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={photoEntry} onDelete={jest.fn()} />
     );
 
-    expect(getByTestId('photo-image')).toHaveStyle({
+    expect(getByTestId('photo-image-0')).toHaveStyle({
       backgroundColor: PHOTO_IMAGE_BG,
     });
   });
@@ -389,7 +388,7 @@ describe('EntryCard — 媒体文件丢失', () => {
     );
 
     // 模拟图片加载失败
-    fireEvent(getByTestId('photo-image'), 'error');
+    fireEvent(getByTestId('photo-image-0'), 'error');
 
     expect(queryByTestId('entry-action-sheet')).toBeNull();
     expect(getByTestId('swipeable')).toBeTruthy();

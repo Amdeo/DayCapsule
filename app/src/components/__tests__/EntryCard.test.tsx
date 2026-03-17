@@ -346,7 +346,7 @@ describe('EntryCard photo edge-to-edge', () => {
 
   it('纯图片卡片：图片四角圆角为 10', () => {
     render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-    const img = screen.getByTestId('photo-image');
+    const img = screen.getByTestId('photo-image-0');
     expect(img.props.style).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ borderRadius: 10 }),
@@ -361,7 +361,7 @@ describe('EntryCard photo edge-to-edge', () => {
 
   it('有 caption 的图片卡片：图片底部圆角为 0', () => {
     render(<EntryCard entry={photoWithCaption} onDelete={jest.fn()} />);
-    const img = screen.getByTestId('photo-image');
+    const img = screen.getByTestId('photo-image-0');
     const flatStyle = StyleSheet.flatten(img.props.style);
     expect(flatStyle.borderBottomLeftRadius).toBe(0);
     expect(flatStyle.borderBottomRightRadius).toBe(0);
@@ -375,7 +375,7 @@ describe('EntryCard photo edge-to-edge', () => {
       tags: ['风景'],
     };
     render(<EntryCard entry={photoWithTagsOnly} onDelete={jest.fn()} />);
-    const img = screen.getByTestId('photo-image');
+    const img = screen.getByTestId('photo-image-0');
     const flatStyle = StyleSheet.flatten(img.props.style);
     expect(flatStyle.borderBottomLeftRadius).toBe(0);
     expect(flatStyle.borderBottomRightRadius).toBe(0);
@@ -411,13 +411,13 @@ describe('EntryCard photo edge-to-edge', () => {
   describe('照片固定高度裁剪显示', () => {
     it('图片使用 resizeMode cover', () => {
       render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      const img = screen.getByTestId('photo-image');
+      const img = screen.getByTestId('photo-image-0');
       expect(img.props.resizeMode).toBe('cover');
     });
 
     it('图片高度等于档位值（default=280）', () => {
       render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      const img = screen.getByTestId('photo-image');
+      const img = screen.getByTestId('photo-image-0');
       const flatStyle = StyleSheet.flatten(img.props.style);
       expect(flatStyle.height).toBe(280);
     });
@@ -427,7 +427,7 @@ describe('EntryCard photo edge-to-edge', () => {
         (selector: (s: any) => any) => selector({ photoHeight: 'compact' })
       );
       render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      const img = screen.getByTestId('photo-image');
+      const img = screen.getByTestId('photo-image-0');
       const flatStyle = StyleSheet.flatten(img.props.style);
       expect(flatStyle.height).toBe(200);
       jest.restoreAllMocks();
@@ -438,18 +438,17 @@ describe('EntryCard photo edge-to-edge', () => {
         (selector: (s: any) => any) => selector({ photoHeight: 'large' })
       );
       render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      const img = screen.getByTestId('photo-image');
+      const img = screen.getByTestId('photo-image-0');
       const flatStyle = StyleSheet.flatten(img.props.style);
       expect(flatStyle.height).toBe(400);
       jest.restoreAllMocks();
     });
 
     it('photoMissing 高度等于档位值（default=280）', () => {
-      // 先拿 photo-image（此时 photoError=false，Image 存在），
-      // 再触发 error 使组件切换到 photoMissing 状态
+      // PhotoGrid 集成后，error 状态下 SinglePhoto 仍使用 testID="photo-image-0"
       const { getByTestId } = render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      fireEvent(getByTestId('photo-image'), 'error');
-      const missingView = getByTestId('photo-missing');
+      fireEvent(getByTestId('photo-image-0'), 'error');
+      const missingView = getByTestId('photo-image-0');
       const flatStyle = StyleSheet.flatten(missingView.props.style);
       expect(flatStyle.height).toBe(280);
     });

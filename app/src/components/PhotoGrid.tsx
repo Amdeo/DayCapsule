@@ -4,17 +4,23 @@
  */
 
 import React, { useState } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 
 const GAP = 3;
 const MAX_DISPLAY = 8;
 
+type PhotoImageRadiusStyle = {
+  borderRadius?: number;
+  borderBottomLeftRadius?: number;
+  borderBottomRightRadius?: number;
+};
+
 interface PhotoGridProps {
   photos: MediaInfo[];
   maxPhotoHeight: number;
-  photoImageRadius: ViewStyle;
+  photoImageRadius: PhotoImageRadiusStyle;
   onPhotoPress?: (index: number) => void;
 }
 
@@ -74,7 +80,7 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
 interface SinglePhotoProps {
   photo: MediaInfo;
   maxPhotoHeight: number;
-  photoImageRadius: ViewStyle;
+  photoImageRadius: PhotoImageRadiusStyle;
   onPress: () => void;
 }
 
@@ -95,7 +101,7 @@ function SinglePhoto({ photo, maxPhotoHeight, photoImageRadius, onPress }: Singl
       <Image
         testID="photo-image-0"
         source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
-        style={[{ width: '100%', height: maxPhotoHeight }, photoImageRadius]}
+        style={[{ width: '100%', height: maxPhotoHeight, backgroundColor: '#ECE7E0' }, photoImageRadius]}
         resizeMode="cover"
         onError={() => setError(true)}
       />

@@ -10,8 +10,6 @@ import {
   TouchableOpacity,
   Pressable,
   StyleSheet,
-  Image,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import Animated, {
@@ -29,13 +27,13 @@ import { Entry } from '@/src/types/entry';
 import { useEntryStore } from '@/src/store/entryStore';
 import * as FileSystem from 'expo-file-system';
 import { VoiceService } from '@/src/services/voiceService';
-import { PhotoService } from '@/src/services/photoService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
-import { ImageViewer, OriginLayout } from './ImageViewer';
+import { ImageViewer } from './ImageViewer';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
+import { PhotoGrid } from './PhotoGrid';
 
 const CARD_RESTING_TRANSLATE_X = -28;
 const CARD_SHIFT_DURATION = 160;
@@ -87,10 +85,7 @@ function EntryCard({
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
-  const [originLayout, setOriginLayout] = useState<OriginLayout | null>(null);
-  const thumbnailRef = useRef<React.ElementRef<typeof Image>>(null!);
   const swipeableRef = useRef<Swipeable>(null);
-  const [photoError, setPhotoError] = useState(false);
   const [audioMissing, setAudioMissing] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
@@ -133,16 +128,6 @@ function EntryCard({
     if (!uri) return;
     FileSystem.getInfoAsync(uri)
       .then(info => { if (!info.exists) setAudioMissing(true); })
-      .catch(() => {});
-  }, [entry.id]);
-
-  useEffect(() => {
-    setPhotoError(false);
-    if (entry.type !== 'photo') return;
-    const uri = entry.media?.[0]?.uri;
-    if (!uri) return;
-    FileSystem.getInfoAsync(uri)
-      .then(info => { if (!info.exists) setPhotoError(true); })
       .catch(() => {});
   }, [entry.id]);
 
@@ -373,15 +358,7 @@ function EntryCard({
       case 'photo':
         // 图片记录：点击打开图片查看器
         logger.log('图片记录，打开图片查看器');
-        if (photoError) return;
-        if (thumbnailRef.current) {
-          thumbnailRef.current.measureInWindow((x, y, width, height) => {
-            setOriginLayout({ x, y, width, height });
-            setShowImageViewer(true);
-          });
-        } else {
-          setShowImageViewer(true);
-        }
+        setShowImageViewer(true);
         break;
 
       case 'voice':
@@ -400,16 +377,8 @@ function EntryCard({
 
   // 处理图片点击（阻止事件冒泡）
   const handleImagePress = () => {
-    if (photoError) return;
     logger.log('图片被点击，打开查看器');
-    if (thumbnailRef.current) {
-      thumbnailRef.current.measureInWindow((x, y, width, height) => {
-        setOriginLayout({ x, y, width, height });
-        setShowImageViewer(true);
-      });
-    } else {
-      setShowImageViewer(true);
-    }
+    setShowImageViewer(true);
   };
 
   return (
@@ -463,33 +432,14 @@ function EntryCard({
                 >
                   {entry.content}
                 </Text>
-              ) : entry.type === 'photo' && entry.media?.[0]?.uri ? (
-                // 照片内容 - 固定高度居中裁剪
+              ) : entry.type === 'photo' && entry.media && entry.media.length > 0 ? (
                 <>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={handleImagePress}
-                  >
-                    {photoError ? (
-                      <View testID="photo-missing" style={[styles.photoImage, styles.photoMissing, photoImageRadius, { height: maxPhotoHeight }]}>
-                        <Ionicons name="image-outline" size={32} color="#A3A3A3" />
-                        <Text style={styles.photoMissingText}>图片已丢失</Text>
-                      </View>
-                    ) : (
-                      <Image
-                        ref={thumbnailRef}
-                        source={{ uri: PhotoService.resolvePhotoUri(entry.media?.[0]?.thumbnail || entry.media![0].uri) }}
-                        style={[
-                          styles.photoImage,
-                          photoImageRadius,
-                          { height: maxPhotoHeight }
-                        ]}
-                        resizeMode="cover"
-                        testID="photo-image"
-                        onError={() => setPhotoError(true)}
-                      />
-                    )}
-                  </TouchableOpacity>
+                  <PhotoGrid
+                    photos={entry.media}
+                    maxPhotoHeight={maxPhotoHeight}
+                    photoImageRadius={photoImageRadius}
+                    onPhotoPress={() => handleImagePress()}
+                  />
                   {entry.content && (
                     <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
                       {entry.content}
@@ -625,10 +575,7 @@ function EntryCard({
                 imageUri={entry.media[0].uri}
                 onClose={() => {
                   setShowImageViewer(false);
-                  setOriginLayout(null);
                 }}
-                originLayout={originLayout ?? undefined}
-                thumbnailRef={thumbnailRef}
               />
             )}
           </Pressable>
@@ -682,20 +629,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     color: '#1A1A1A',
     letterSpacing: 0.3,
-  },
-  photoImage: {
-    width: '100%',
-    backgroundColor: '#ECE7E0',
-    overflow: 'hidden', // 对 photoMissing(View) 的圆角裁剪生效；Image 的裁剪由 resizeMode 控制
-  },
-  photoMissing: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  photoMissingText: {
-    fontSize: 13,
-    color: '#A3A3A3',
   },
   photoCaption: {
     paddingHorizontal: 14,

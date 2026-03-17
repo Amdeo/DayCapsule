@@ -111,7 +111,7 @@ describe('handlePhotoSelectForTest', () => {
       savePhotoToStorage: jest.fn().mockRejectedValue(new Error('disk full')),
     });
 
-    await expect(handlePhotoSelectForTest(PHOTO_RESULT, deps)).rejects.toThrow('disk full');
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('disk full');
 
     expect(deps.addEntry).not.toHaveBeenCalled();
   });
@@ -119,7 +119,7 @@ describe('handlePhotoSelectForTest', () => {
   it('addEntry 收到持久化 URI，不含 content:// 前缀', async () => {
     const deps = makeDeps();
 
-    await handlePhotoSelectForTest(PHOTO_RESULT, deps);
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
     expect(deps.addEntry).toHaveBeenCalledTimes(1);
     const callArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
@@ -131,7 +131,7 @@ describe('handlePhotoSelectForTest', () => {
   it('addEntry 只被调用一次（无 updateEntry 第二步）', async () => {
     const deps = makeDeps();
 
-    await handlePhotoSelectForTest(PHOTO_RESULT, deps);
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
     expect(deps.addEntry).toHaveBeenCalledTimes(1);
   });
@@ -139,10 +139,30 @@ describe('handlePhotoSelectForTest', () => {
   it('savePhotoToStorage 接收临时 URI，addEntry 不使用临时 URI', async () => {
     const deps = makeDeps();
 
-    await handlePhotoSelectForTest(PHOTO_RESULT, deps);
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
     expect((deps.savePhotoToStorage as jest.Mock).mock.calls[0][0]).toBe(PHOTO_RESULT.uri);
     const addCallArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
     expect(addCallArg.media?.[0]?.uri).not.toBe(PHOTO_RESULT.uri);
+  });
+
+  it('single photo: addEntry receives media array of length 1', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+    expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(1);
+    const call = (deps.addEntry as jest.Mock).mock.calls[0][0];
+    expect(call.media).toHaveLength(1);
+    expect(call.media[0].uri).toBe(PERSISTENT_URI);
+  });
+
+  it('3 photos: addEntry receives media array of length 3, save called 3 times', async () => {
+    const deps = makeDeps();
+    const results = [PHOTO_RESULT, PHOTO_RESULT, PHOTO_RESULT];
+
+    await handlePhotoSelectForTest(results, deps);
+    expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(3);
+    const call = (deps.addEntry as jest.Mock).mock.calls[0][0];
+    expect(call.media).toHaveLength(3);
   });
 });
