@@ -252,7 +252,7 @@ function EntryCard({
   const getCardBgColor = () => {
     switch (entry.type) {
       case 'text':  return '#F7F5FC'; // 淡紫
-      case 'photo': return '#F7F4EF'; // 中性浅暖灰
+      case 'photo': return '#EEF8FA'; // 淡青，弱化照片类型主色
       case 'voice': return '#FFF8EE'; // 淡橙
       default:      return '#FFFFFF';
     }
@@ -261,7 +261,7 @@ function EntryCard({
   const getCardPressedColor = () => {
     switch (entry.type) {
       case 'text':  return '#EDE8F7';
-      case 'photo': return '#EEE7DE';
+      case 'photo': return '#E0F3F6';
       case 'voice': return '#FFF0DC';
       default:      return '#F5F5F5';
     }

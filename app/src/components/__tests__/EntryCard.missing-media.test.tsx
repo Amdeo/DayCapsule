@@ -168,8 +168,8 @@ const textEntry: Entry = {
   syncStatus: 'synced',
 };
 
-const PHOTO_CARD_BG = '#F7F4EF';
-const PHOTO_CARD_BG_PRESSED = '#EEE7DE';
+const PHOTO_CARD_BG = '#EEF8FA';
+const PHOTO_CARD_BG_PRESSED = '#E0F3F6';
 const PHOTO_IMAGE_BG = '#ECE7E0';
 
 const longTextEntry: Entry = {
