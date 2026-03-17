@@ -251,18 +251,18 @@ function EntryCard({
 
   const getCardBgColor = () => {
     switch (entry.type) {
-      case 'text':  return '#F7F5FC'; // 淡紫
-      case 'photo': return '#EEF8FA'; // 淡青，弱化照片类型主色
-      case 'voice': return '#FFF8EE'; // 淡橙
+      case 'text':  return '#E0D9F5'; // 淡紫
+      case 'photo': return '#CCE9EF'; // 淡青，弱化照片类型主色
+      case 'voice': return '#FCE8C0'; // 淡橙
       default:      return '#FFFFFF';
     }
   };
 
   const getCardPressedColor = () => {
     switch (entry.type) {
-      case 'text':  return '#EDE8F7';
-      case 'photo': return '#E0F3F6';
-      case 'voice': return '#FFF0DC';
+      case 'text':  return '#D4CBF2';
+      case 'photo': return '#BDDEE5';
+      case 'voice': return '#F8DFB0';
       default:      return '#F5F5F5';
     }
   };
