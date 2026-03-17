@@ -657,8 +657,6 @@ const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
   },
   content: {
     padding: 20,
