@@ -252,6 +252,7 @@ interface EntryMarkerProps {
   onActionSheetOpen: (id: string) => void;
   isLast: boolean;
   cardSpacing: number;
+  enterDelay?: number;
 }
 
 const EntryMarker = React.memo(function EntryMarker({
@@ -265,6 +266,7 @@ const EntryMarker = React.memo(function EntryMarker({
   onActionSheetOpen,
   isLast,
   cardSpacing,
+  enterDelay = 0,
 }: EntryMarkerProps) {
   const timelineLeft = 40;
 
@@ -329,6 +331,7 @@ const EntryMarker = React.memo(function EntryMarker({
         isActionSheetActive={isActionSheetActive}
         onActionSheetOpen={onActionSheetOpen}
         cardSpacing={cardSpacing}
+        enterDelay={enterDelay}
       />
     </View>
   );
@@ -482,6 +485,17 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     return generateTimeSections(displayEntries);
   }, [displayEntries, displayMode]);
 
+  const globalIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    let i = 0;
+    for (const section of sections) {
+      for (const entry of section.data) {
+        map.set(entry.id, i++);
+      }
+    }
+    return map;
+  }, [sections]);
+
   // 检查是否有记录
   const hasEntries = displayEntries.length > 0;
 
@@ -579,6 +593,9 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 渲染列表项
   const renderItem = useCallback(({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
     const isLast = index === section.data.length - 1;
+    const globalIndex = globalIndexMap.get(item.id) ?? 0;
+    const staggerIndex = Math.min(globalIndex, 8);
+    const enterDelay = staggerIndex * 50;
     return (
       <EntryMarker
         entry={item}
@@ -591,9 +608,10 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         onActionSheetOpen={handleActionSheetOpen}
         isLast={isLast}
         cardSpacing={cardSpacing}
+        enterDelay={enterDelay}
       />
     );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
+  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
