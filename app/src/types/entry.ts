@@ -11,7 +11,7 @@ export interface Entry {
   tags?: string[];
 
   // 多媒体扩展字段
-  media?: MediaInfo;
+  media?: MediaInfo[];  // photos: 1–9 items; voice: always 1 item
 
   // 语音转文字
   transcription?: TranscriptionInfo;

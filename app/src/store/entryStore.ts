@@ -341,7 +341,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     get().updateEntry(id, {
       recordingStatus: 'completed',
       recordingDuration: Math.floor(duration / 1000),
-      media: { uri, mimeType: 'audio/m4a', size: 0, duration },
+      media: [{ uri, mimeType: 'audio/m4a', size: 0, duration }],
     }),
 
   setSearchQuery: (query) => {

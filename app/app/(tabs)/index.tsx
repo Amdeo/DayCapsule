@@ -97,11 +97,11 @@ export default function HomeScreen() {
       try {
         const entries = useEntryStore.getState().entries;
         const voiceEntries = entries
-          .filter((e) => e.type === 'voice' && e.media?.uri)
+          .filter((e) => e.type === 'voice' && e.media?.[0]?.uri)
           .slice(0, 3);
 
         for (const entry of voiceEntries) {
-          await VoiceService.preloadAudio(entry.media!.uri).catch((err) => {
+          await VoiceService.preloadAudio(entry.media![0].uri).catch((err) => {
             logger.warn('[HomeScreen] Failed to preload audio:', entry.id, err);
           });
         }
@@ -152,7 +152,7 @@ export default function HomeScreen() {
             syncStatus: 'pending',
             recordingStatus: 'recording',
             recordingDuration: 0,
-            media: { uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 },
+            media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
           });
 
           const entries = useEntryStore.getState().entries;

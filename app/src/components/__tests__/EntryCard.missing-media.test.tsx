@@ -146,7 +146,7 @@ const photoEntry: Entry = {
   tags: [],
   timestamp: 1700000000000,
   syncStatus: 'synced',
-  media: { uri: 'file:///missing.jpg', mimeType: 'image/jpeg', size: 0 },
+  media: [{ uri: 'file:///missing.jpg', mimeType: 'image/jpeg', size: 0 }],
 };
 
 const voiceEntry: Entry = {
@@ -156,7 +156,17 @@ const voiceEntry: Entry = {
   tags: [],
   timestamp: 1700000000000,
   syncStatus: 'synced',
-  media: { uri: 'file:///missing.m4a', mimeType: 'audio/m4a', size: 0, duration: 3000 },
+  media: [{ uri: 'file:///missing.m4a', mimeType: 'audio/m4a', size: 0, duration: 3000 }],
+};
+
+const voiceEntryWithEmptyMedia: Entry = {
+  id: 'v2',
+  type: 'voice',
+  content: '',
+  tags: [],
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+  media: [],
 };
 
 const textEntry: Entry = {
@@ -288,6 +298,22 @@ describe('EntryCard — 媒体文件丢失', () => {
     await waitFor(() => {
       expect(queryByText('音频文件已丢失')).toBeNull();
     });
+  });
+
+  it('语音卡片应显示首个媒体项的时长', () => {
+    const { getByText } = render(
+      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByText('00:03')).toBeTruthy();
+  });
+
+  it('语音记录的 media 为空数组时不应渲染语音播放器', () => {
+    const { queryByText } = render(
+      <EntryCard entry={voiceEntryWithEmptyMedia} onDelete={jest.fn()} />
+    );
+
+    expect(queryByText('00:00')).toBeNull();
   });
 
   it('长按卡片时应展开内容且不显示旧的 ActionSheet 时间文案', () => {

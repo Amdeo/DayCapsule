@@ -330,12 +330,12 @@ describe('EntryCard photo edge-to-edge', () => {
     content: '',
     timestamp: Date.now(),
     syncStatus: 'synced',
-    media: {
+    media: [{
       uri: 'file://photo.jpg',
       mimeType: 'image/jpeg',
       size: 1000,
       metadata: { aspectRatio: 1.5, createdAt: Date.now(), modifiedAt: Date.now() },
-    },
+    }],
   };
 
   const photoWithCaption: Entry = {

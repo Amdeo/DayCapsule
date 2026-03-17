@@ -129,7 +129,7 @@ function EntryCard({
   // 挂载时检查音频文件是否存在
   useEffect(() => {
     if (entry.type !== 'voice') return;
-    const uri = entry.media?.uri || entry.content;
+    const uri = entry.media?.[0]?.uri || entry.content;
     if (!uri) return;
     FileSystem.getInfoAsync(uri)
       .then(info => { if (!info.exists) setAudioMissing(true); })
@@ -139,7 +139,7 @@ function EntryCard({
   useEffect(() => {
     setPhotoError(false);
     if (entry.type !== 'photo') return;
-    const uri = entry.media?.uri;
+    const uri = entry.media?.[0]?.uri;
     if (!uri) return;
     FileSystem.getInfoAsync(uri)
       .then(info => { if (!info.exists) setPhotoError(true); })
@@ -179,7 +179,7 @@ function EntryCard({
 
   // 处理音频播放
   const handlePlayAudio = async () => {
-    const uri = entry.media?.uri || entry.content;
+    const uri = entry.media?.[0]?.uri || entry.content;
 
     // 检查文件是否存在
     try {
@@ -387,7 +387,7 @@ function EntryCard({
       case 'voice':
         // 语音记录：点击播放
         if (audioMissing) return;
-        if (entry.media && !isPlayingAudio) {
+        if (entry.media && entry.media.length > 0 && !isPlayingAudio) {
           logger.log('语音记录，触发播放');
           handlePlayAudio();
         }
@@ -463,7 +463,7 @@ function EntryCard({
                 >
                   {entry.content}
                 </Text>
-              ) : entry.type === 'photo' && entry.media?.uri ? (
+              ) : entry.type === 'photo' && entry.media?.[0]?.uri ? (
                 // 照片内容 - 固定高度居中裁剪
                 <>
                   <TouchableOpacity
@@ -478,7 +478,7 @@ function EntryCard({
                     ) : (
                       <Image
                         ref={thumbnailRef}
-                        source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
+                        source={{ uri: PhotoService.resolvePhotoUri(entry.media?.[0]?.thumbnail || entry.media![0].uri) }}
                         style={[
                           styles.photoImage,
                           photoImageRadius,
@@ -534,7 +534,7 @@ function EntryCard({
                        </Text>
                      </View>
                     </View>
-                 ) : entry.media ? (
+                 ) : entry.media && entry.media.length > 0 ? (
                    <View style={styles.voiceCard}>
                      {/* 播放行：按钮 + 波形 + 时长 */}
                      <View style={styles.voicePlayRow}>
@@ -564,7 +564,7 @@ function EntryCard({
                            <Text style={styles.voiceDuration}>
                              {isPlayingAudio
                                ? formatDuration(Math.floor(playbackPosition / 1000))
-                               : formatDuration(entry.media.duration ? Math.floor(entry.media.duration / 1000) : 0)
+                               : formatDuration(entry.media[0].duration ? Math.floor(entry.media[0].duration / 1000) : 0)
                              }
                            </Text>
                          </>
@@ -619,10 +619,10 @@ function EntryCard({
             </View>
 
             {/* 图片查看器 */}
-            {entry.type === 'photo' && entry.media?.uri && (
+            {entry.type === 'photo' && entry.media?.[0]?.uri && (
               <ImageViewer
                 visible={showImageViewer}
-                imageUri={entry.media.uri}
+                imageUri={entry.media[0].uri}
                 onClose={() => {
                   setShowImageViewer(false);
                   setOriginLayout(null);
