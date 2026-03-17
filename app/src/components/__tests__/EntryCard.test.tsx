@@ -137,7 +137,8 @@ jest.mock('react-native-gesture-handler', () => {
 // ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
@@ -319,5 +320,49 @@ describe('EntryCard long press behavior', () => {
 
     // 长按后不应该出现 ActionSheet 特有的选项文本（如 "取消"）
     expect(queryByText('取消')).toBeNull();
+  });
+});
+
+describe('EntryCard photo edge-to-edge', () => {
+  const photoEntry: Entry = {
+    id: 'photo-1',
+    type: 'photo',
+    content: '',
+    timestamp: Date.now(),
+    syncStatus: 'synced',
+    media: {
+      uri: 'file://photo.jpg',
+      mimeType: 'image/jpeg',
+      size: 1000,
+      metadata: { aspectRatio: 1.5, createdAt: Date.now(), modifiedAt: Date.now() },
+    },
+  };
+
+  const photoWithCaption: Entry = {
+    ...photoEntry,
+    id: 'photo-2',
+    content: '今天拍的风景',
+  };
+
+  it('纯图片卡片：图片四角圆角为 10', () => {
+    render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+    const img = screen.getByTestId('photo-image');
+    expect(img.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ borderRadius: 10 }),
+      ])
+    );
+    // 底部不应被覆盖为 0
+    const flatStyle = StyleSheet.flatten(img.props.style);
+    expect(flatStyle.borderBottomLeftRadius).not.toBe(0);
+    expect(flatStyle.borderBottomRightRadius).not.toBe(0);
+  });
+
+  it('有 caption 的图片卡片：图片底部圆角为 0', () => {
+    render(<EntryCard entry={photoWithCaption} onDelete={jest.fn()} />);
+    const img = screen.getByTestId('photo-image');
+    const flatStyle = StyleSheet.flatten(img.props.style);
+    expect(flatStyle.borderBottomLeftRadius).toBe(0);
+    expect(flatStyle.borderBottomRightRadius).toBe(0);
   });
 });

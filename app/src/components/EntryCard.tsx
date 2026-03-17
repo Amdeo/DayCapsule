@@ -273,6 +273,15 @@ function EntryCard({
     }
   };
 
+  // 照片卡片是否有底部内容（决定图片圆角）
+  const hasPhotoFooter = entry.type === 'photo'
+    ? !!(entry.content || (entry.tags && entry.tags.length > 0))
+    : false;
+
+  const photoImageRadius = hasPhotoFooter
+    ? { borderRadius: 10, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
+    : { borderRadius: 10 };
+
   // 判断是否需要展开
   const needsExpansion = useMemo(
     () => entry.content.length > 150 || (entry.tags != null && entry.tags.length > 3),
@@ -479,7 +488,7 @@ function EntryCard({
                     onPress={handleImagePress}
                   >
                     {photoError ? (
-                      <View style={[styles.photoImage, styles.photoMissing]}>
+                      <View style={[styles.photoImage, styles.photoMissing, photoImageRadius]}>
                         <Ionicons name="image-outline" size={32} color="#A3A3A3" />
                         <Text style={styles.photoMissingText}>图片已丢失</Text>
                       </View>
@@ -489,7 +498,8 @@ function EntryCard({
                         source={{ uri: PhotoService.resolvePhotoUri(entry.media?.thumbnail || entry.media.uri) }}
                         style={[
                           styles.photoImage,
-                          { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight) }
+                          photoImageRadius,
+                          { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight, getPhotoCardWidth()) }
                         ]}
                         resizeMode="contain"
                         testID="photo-image"
