@@ -352,14 +352,29 @@ describe('EntryCard photo edge-to-edge', () => {
         expect.objectContaining({ borderRadius: 10 }),
       ])
     );
-    // 底部不应被覆盖为 0
+    // 验证 borderRadius 为 10，底部不被明确设为 0
     const flatStyle = StyleSheet.flatten(img.props.style);
-    expect(flatStyle.borderBottomLeftRadius).not.toBe(0);
-    expect(flatStyle.borderBottomRightRadius).not.toBe(0);
+    expect(flatStyle.borderRadius).toBe(10);
+    expect(flatStyle.borderBottomLeftRadius).toBeUndefined();
+    expect(flatStyle.borderBottomRightRadius).toBeUndefined();
   });
 
   it('有 caption 的图片卡片：图片底部圆角为 0', () => {
     render(<EntryCard entry={photoWithCaption} onDelete={jest.fn()} />);
+    const img = screen.getByTestId('photo-image');
+    const flatStyle = StyleSheet.flatten(img.props.style);
+    expect(flatStyle.borderBottomLeftRadius).toBe(0);
+    expect(flatStyle.borderBottomRightRadius).toBe(0);
+  });
+
+  it('仅有 tags 的图片卡片：图片底部圆角为 0', () => {
+    const photoWithTagsOnly: Entry = {
+      ...photoEntry,
+      id: 'photo-tags-only',
+      content: '',
+      tags: ['风景'],
+    };
+    render(<EntryCard entry={photoWithTagsOnly} onDelete={jest.fn()} />);
     const img = screen.getByTestId('photo-image');
     const flatStyle = StyleSheet.flatten(img.props.style);
     expect(flatStyle.borderBottomLeftRadius).toBe(0);
