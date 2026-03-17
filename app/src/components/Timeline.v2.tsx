@@ -293,7 +293,7 @@ const EntryMarker = React.memo(function EntryMarker({
       entering={FadeIn.duration(250).delay(enterDelay)}
       exiting={FadeOut.duration(200)}
       layout={LinearTransition.duration(200)}
-      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
+      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative', opacity: 0 }}
     >
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
       <View
