@@ -43,9 +43,6 @@ const CARD_RESTING_TRANSLATE_X = -28;
 const CARD_SHIFT_DURATION = 160;
 const ACTION_SHEET_OPEN_DELAY = 100;
 
-// 卡片内容宽度（考虑边距）
-const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
-
 
 interface EntryCardProps {
   entry: Entry;
@@ -691,10 +688,9 @@ const styles = StyleSheet.create({
   photoImage: {
     width: '100%',
     backgroundColor: '#ECE7E0',
-    overflow: 'hidden',
+    overflow: 'hidden', // 对 photoMissing(View) 的圆角裁剪生效；Image 的裁剪由 resizeMode 控制
   },
   photoMissing: {
-    minHeight: 200,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
