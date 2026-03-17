@@ -11,14 +11,27 @@ import { logger } from '@/src/utils/logger';
  * 将数据库行转换为 Entry 对象
  */
 const rowToEntry = (row: any): Entry => {
-  // 解析媒体元数据
-  let metadata = undefined;
-  if (row.media_metadata) {
+  let media: import('@/src/types/entry').MediaInfo[] | undefined = undefined;
+  if (row.media_json) {
     try {
-      metadata = JSON.parse(row.media_metadata);
+      media = JSON.parse(row.media_json);
     } catch {
-      metadata = undefined;
+      media = undefined;
     }
+  } else if (row.media_uri) {
+    // 向后兼容旧行（media_json 迁移前）
+    let metadata = undefined;
+    if (row.media_metadata) {
+      try { metadata = JSON.parse(row.media_metadata); } catch { /* ignore */ }
+    }
+    media = [{
+      uri: row.media_uri,
+      mimeType: row.media_type || 'audio/m4a',
+      size: 0,
+      duration: row.media_duration,
+      thumbnail: row.media_thumbnail,
+      metadata,
+    }];
   }
 
   return {
@@ -27,14 +40,7 @@ const rowToEntry = (row: any): Entry => {
     content: row.content,
     timestamp: row.timestamp,
     tags: row.tags ? JSON.parse(row.tags) : undefined,
-    media: row.media_uri ? {
-      uri: row.media_uri,
-      mimeType: row.media_type || 'audio/m4a',
-      size: 0,
-      duration: row.media_duration,
-      thumbnail: row.media_thumbnail,
-      metadata: metadata,
-    } : undefined,
+    media,
     recordingStatus: row.recording_status,
     recordingDuration: row.recording_duration,
     syncStatus: 'synced',
@@ -110,6 +116,11 @@ const getTableColumns = async (db: ReturnType<typeof getDatabase>): Promise<Set<
   return cachedColumnNames;
 };
 
+/** Called by migration after adding media_json column to force cache refresh */
+export const invalidateColumnCache = (): void => {
+  cachedColumnNames = null;
+};
+
 /**
  * 添加新记录
  * 兼容旧表结构：如果 media_thumbnail/media_metadata 列不存在则使用旧语句
@@ -122,12 +133,29 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
 
     // 获取表列信息
     const columns = await getTableColumns(db);
+    const hasMediaJson = columns.has('media_json');
     const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
 
-    if (hasMediaColumns) {
+    if (hasMediaJson) {
+      const mediaJson = entry.media ? JSON.stringify(entry.media) : null;
+      await db.runAsync(
+        `INSERT INTO entries (
+          id, type, content, timestamp, tags,
+          media_json,
+          recording_status, recording_duration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id, entry.type, entry.content, timestamp,
+          entry.tags ? JSON.stringify(entry.tags) : null,
+          mediaJson,
+          entry.recordingStatus || null, entry.recordingDuration || null,
+        ]
+      );
+    } else if (hasMediaColumns) {
       // 序列化媒体元数据
-      const mediaMetadata = entry.media?.metadata
-        ? JSON.stringify(entry.media.metadata)
+      const firstMedia = Array.isArray(entry.media) ? entry.media[0] : entry.media as any;
+      const mediaMetadata = firstMedia?.metadata
+        ? JSON.stringify(firstMedia.metadata)
         : null;
 
       await db.runAsync(
@@ -142,10 +170,10 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           entry.content,
           timestamp,
           entry.tags ? JSON.stringify(entry.tags) : null,
-          entry.media?.uri || null,
-          entry.media?.mimeType || null,
-          entry.media?.duration || null,
-          entry.media?.thumbnail || null,
+          firstMedia?.uri || null,
+          firstMedia?.mimeType || null,
+          firstMedia?.duration || null,
+          firstMedia?.thumbnail || null,
           mediaMetadata,
           entry.recordingStatus || null,
           entry.recordingDuration || null,
@@ -153,6 +181,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       );
     } else {
       // 旧表结构：不使用新列
+      const firstMedia = Array.isArray(entry.media) ? entry.media[0] : entry.media as any;
       await db.runAsync(
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
@@ -165,9 +194,9 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           entry.content,
           timestamp,
           entry.tags ? JSON.stringify(entry.tags) : null,
-          entry.media?.uri || null,
-          entry.media?.mimeType || null,
-          entry.media?.duration || null,
+          firstMedia?.uri || null,
+          firstMedia?.mimeType || null,
+          firstMedia?.duration || null,
           entry.recordingStatus || null,
           entry.recordingDuration || null,
         ]
@@ -214,23 +243,23 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
       values.push(JSON.stringify(updates.tags));
     }
     if (updates.media !== undefined) {
-      if (hasMediaColumns) {
+      if (columns.has('media_json')) {
+        fields.push('media_json = ?');
+        values.push(JSON.stringify(updates.media));
+      } else if (hasMediaColumns) {
+        const m = Array.isArray(updates.media) ? updates.media[0] : updates.media as any;
         fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?', 'media_thumbnail = ?', 'media_metadata = ?');
         values.push(
-          updates.media.uri,
-          updates.media.mimeType,
-          updates.media.duration,
-          updates.media.thumbnail || null,
-          updates.media.metadata ? JSON.stringify(updates.media.metadata) : null
+          m?.uri ?? null,
+          m?.mimeType ?? null,
+          m?.duration ?? null,
+          m?.thumbnail ?? null,
+          m?.metadata ? JSON.stringify(m.metadata) : null
         );
       } else {
-        // 旧表结构：不更新新列
+        const m = Array.isArray(updates.media) ? updates.media[0] : updates.media as any;
         fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
-        values.push(
-          updates.media.uri,
-          updates.media.mimeType,
-          updates.media.duration
-        );
+        values.push(m?.uri ?? null, m?.mimeType ?? null, m?.duration ?? null);
       }
     }
     if (updates.recordingStatus !== undefined) {
@@ -445,23 +474,40 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   const insertedIds: string[] = [];
   let failed = 0;
 
+  // 在循环外获取列信息，避免重复查询
+  const columns = await getTableColumns(db);
+  const hasMediaJson = columns.has('media_json');
+
   for (const e of entries) {
     try {
       // 使用事务保证单条记录的原子性
       await db.withTransactionAsync(async () => {
         await db.runAsync(
-          `INSERT OR IGNORE INTO entries
-             (id, type, content, timestamp, tags, media_uri, media_type,
-              media_duration, recording_status, recording_duration, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            e.id, e.type, e.content, e.timestamp,
-            e.tags ? JSON.stringify(e.tags) : null,
-            e.media?.uri ?? null, e.media?.mimeType ?? null,
-            e.media?.duration ?? null,
-            e.recordingStatus ?? null, e.recordingDuration ?? null,
-            e.timestamp, e.editedAt ?? e.timestamp,
-          ]
+          hasMediaJson
+            ? `INSERT OR IGNORE INTO entries
+                 (id, type, content, timestamp, tags, media_json,
+                  recording_status, recording_duration, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            : `INSERT OR IGNORE INTO entries
+                 (id, type, content, timestamp, tags, media_uri, media_type,
+                  media_duration, recording_status, recording_duration, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          hasMediaJson
+            ? [
+                e.id, e.type, e.content, e.timestamp,
+                e.tags ? JSON.stringify(e.tags) : null,
+                e.media ? JSON.stringify(e.media) : null,
+                e.recordingStatus ?? null, e.recordingDuration ?? null,
+                e.timestamp, e.editedAt ?? e.timestamp,
+              ]
+            : [
+                e.id, e.type, e.content, e.timestamp,
+                e.tags ? JSON.stringify(e.tags) : null,
+                e.media?.[0]?.uri ?? null, e.media?.[0]?.mimeType ?? null,
+                e.media?.[0]?.duration ?? null,
+                e.recordingStatus ?? null, e.recordingDuration ?? null,
+                e.timestamp, e.editedAt ?? e.timestamp,
+              ]
         );
 
         // 检查实际插入的行数

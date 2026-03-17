@@ -9,6 +9,7 @@ import * as DB from './operations';
 import { Entry } from '@/src/types/entry';
 import { getDatabase } from './sqlite';
 import { logger } from '@/src/utils/logger';
+import { invalidateColumnCache } from './operations';
 
 const migrationStore = createMMKV({ id: 'migration' });
 
@@ -244,5 +245,61 @@ export const migrateMediaMetadataColumns = async (): Promise<void> => {
     logger.log('✅ 媒体元数据列迁移完成');
   } catch (error) {
     logger.error('❌ 媒体元数据列迁移失败:', error);
+  }
+};
+
+/**
+ * Add media_json column and migrate existing media_uri rows to JSON array
+ * Idempotent: skips if already migrated
+ */
+export const migrateToMediaJson = async (): Promise<void> => {
+  if (migrationStore.getString('media_json_migrated') === 'true') return;
+
+  const db = getDatabase();
+  try {
+    // Add column if not exists
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    if (!tableInfo.some(col => col.name === 'media_json')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN media_json TEXT`);
+      logger.log('✅ 添加 media_json 列');
+    }
+
+    // Migrate existing media_uri rows to JSON array
+    const rows = await db.getAllAsync<{
+      id: string;
+      media_uri: string | null;
+      media_type: string | null;
+      media_duration: number | null;
+      media_thumbnail: string | null;
+      media_metadata: string | null;
+    }>(`SELECT id, media_uri, media_type, media_duration, media_thumbnail, media_metadata
+        FROM entries WHERE media_uri IS NOT NULL AND media_json IS NULL`);
+
+    for (const row of rows) {
+      let metadata = undefined;
+      if (row.media_metadata) {
+        try { metadata = JSON.parse(row.media_metadata); } catch { /* ignore */ }
+      }
+      const mediaItem = {
+        uri: row.media_uri!,
+        mimeType: row.media_type ?? 'image/jpeg',
+        size: 0,
+        duration: row.media_duration ?? undefined,
+        thumbnail: row.media_thumbnail ?? undefined,
+        metadata,
+      };
+      await db.runAsync(
+        `UPDATE entries SET media_json = ? WHERE id = ?`,
+        [JSON.stringify([mediaItem]), row.id]
+      );
+    }
+
+    // Invalidate column cache so operations.ts picks up the new column
+    invalidateColumnCache();
+
+    migrationStore.set('media_json_migrated', 'true');
+    logger.log('✅ media_json 迁移完成，共处理', rows.length, '条记录');
+  } catch (error) {
+    logger.error('❌ media_json 迁移失败:', error);
   }
 };

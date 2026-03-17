@@ -16,7 +16,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { initializeFileSystem } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { initDatabase } from '@/src/database/sqlite';
-import { migrateFromAsyncStorage, migrateTagsToNormalized, migrateMediaMetadataColumns } from '@/src/database/migration';
+import { migrateFromAsyncStorage, migrateTagsToNormalized, migrateMediaMetadataColumns, migrateToMediaJson } from '@/src/database/migration';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { logger } from '@/src/utils/logger';
 import { BackupService } from '@/src/services/backupService';
@@ -98,6 +98,10 @@ export default function RootLayout() {
         // 媒体元数据列迁移（幂等，已迁移则跳过）
         await migrateMediaMetadataColumns();
         logger.log('✅ 媒体元数据列迁移完成');
+
+        // media_json 列迁移（幂等，已迁移则跳过）
+        await migrateToMediaJson();
+        logger.log('✅ media_json 列迁移完成');
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
         Alert.alert(
