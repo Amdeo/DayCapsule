@@ -84,7 +84,7 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
     const thisMonth = entries.filter((e) => e.timestamp >= monthStart).length;
 
     const totalVoiceDuration =
-      voiceEntries.reduce((sum, e) => sum + (e.media?.duration || 0), 0) / 1000;
+      voiceEntries.reduce((sum, e) => sum + (e.media?.[0]?.duration || 0), 0) / 1000;
 
     // 标签频率
     const tagCounts: Record<string, number> = {};

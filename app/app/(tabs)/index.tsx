@@ -47,7 +47,7 @@ export async function handlePhotoSelectForTest(
     type: 'photo',
     content: '',
     syncStatus: 'pending',
-    media: {
+    media: [{
       uri: savedPhoto.originalUri,
       mimeType: 'image/jpeg',
       size: 0,
@@ -59,7 +59,7 @@ export async function handlePhotoSelectForTest(
         createdAt: Date.now(),
         modifiedAt: Date.now(),
       },
-    },
+    }],
   });
 }
 

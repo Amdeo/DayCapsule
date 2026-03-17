@@ -123,9 +123,9 @@ describe('handlePhotoSelectForTest', () => {
 
     expect(deps.addEntry).toHaveBeenCalledTimes(1);
     const callArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
-    expect(callArg.media.uri).toBe(PERSISTENT_URI);
-    expect(callArg.media.uri).not.toContain('content://');
-    expect(callArg.media.uri).not.toContain('cache');
+    expect(callArg.media?.[0]?.uri).toBe(PERSISTENT_URI);
+    expect(callArg.media?.[0]?.uri).not.toContain('content://');
+    expect(callArg.media?.[0]?.uri).not.toContain('cache');
   });
 
   it('addEntry 只被调用一次（无 updateEntry 第二步）', async () => {
@@ -143,6 +143,6 @@ describe('handlePhotoSelectForTest', () => {
 
     expect((deps.savePhotoToStorage as jest.Mock).mock.calls[0][0]).toBe(PHOTO_RESULT.uri);
     const addCallArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
-    expect(addCallArg.media.uri).not.toBe(PHOTO_RESULT.uri);
+    expect(addCallArg.media?.[0]?.uri).not.toBe(PHOTO_RESULT.uri);
   });
 });

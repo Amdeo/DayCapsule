@@ -90,12 +90,12 @@ export class BackupService {
       entries.map(async (e) => {
         let mediaExport: Record<string, unknown> | undefined;
 
-        if (e.media?.uri) {
+        if (e.media?.[0]?.uri) {
           try {
             const resolvedUri =
               e.type === 'voice'
-                ? VoiceService.resolveAudioUri(e.media.uri)
-                : PhotoService.resolvePhotoUri(e.media.uri);
+                ? VoiceService.resolveAudioUri(e.media?.[0]?.uri)
+                : PhotoService.resolvePhotoUri(e.media?.[0]?.uri);
 
             const fileInfo = await FileSystem.getInfoAsync(resolvedUri);
             if (fileInfo.exists) {
@@ -107,16 +107,22 @@ export class BackupService {
               mediaFiles.push(fname);
 
               mediaExport = {
-                mimeType: e.media.mimeType,
-                size: e.media.size,
-                duration: e.media.duration,
+                mimeType: e.media?.[0]?.mimeType,
+                size: e.media?.[0]?.size,
+                duration: e.media?.[0]?.duration,
                 relativeUri: `media/${fname}`,
               };
             } else {
-              mediaExport = { mimeType: e.media.mimeType, size: e.media.size };
+              mediaExport = {
+                mimeType: e.media?.[0]?.mimeType,
+                size: e.media?.[0]?.size,
+              };
             }
           } catch {
-            mediaExport = { mimeType: e.media.mimeType, size: e.media.size };
+            mediaExport = {
+              mimeType: e.media?.[0]?.mimeType,
+              size: e.media?.[0]?.size,
+            };
           }
         }
 

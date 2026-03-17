@@ -80,9 +80,9 @@ export const migrateFromAsyncStorage = async (): Promise<{
               oldEntry.content,
               oldEntry.timestamp,
               oldEntry.tags ? JSON.stringify(oldEntry.tags) : null,
-              oldEntry.media?.uri || null,
-              oldEntry.media?.mimeType || null,
-              oldEntry.media?.duration || null,
+              oldEntry.media?.[0]?.uri || null,
+              oldEntry.media?.[0]?.mimeType || null,
+              oldEntry.media?.[0]?.duration || null,
               oldEntry.recordingStatus || null,
               oldEntry.recordingDuration || null,
             ]

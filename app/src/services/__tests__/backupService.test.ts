@@ -120,7 +120,7 @@ describe('BackupService', () => {
       const entry = makeEntry({
         id: 'v1',
         type: 'voice',
-        media: { uri: 'file:///app/media/voice/original/voice_v1.m4a', mimeType: 'audio/m4a', size: 1024, duration: 5000 },
+        media: [{ uri: 'file:///app/media/voice/original/voice_v1.m4a', mimeType: 'audio/m4a', size: 1024, duration: 5000 }],
       });
 
       await BackupService.createBackup([entry]);
@@ -145,7 +145,7 @@ describe('BackupService', () => {
 
       const entry = makeEntry({
         type: 'photo',
-        media: { uri: 'file:///app/media/photos/original/missing.jpg', mimeType: 'image/jpeg', size: 0 },
+        media: [{ uri: 'file:///app/media/photos/original/missing.jpg', mimeType: 'image/jpeg', size: 0 }],
       });
 
       await BackupService.createBackup([entry]);
