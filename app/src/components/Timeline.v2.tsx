@@ -341,6 +341,11 @@ const DotsLoader: React.FC = () => {
   const dot1 = useRef(new RNAnimated.Value(0)).current;
   const dot2 = useRef(new RNAnimated.Value(0)).current;
   const dot3 = useRef(new RNAnimated.Value(0)).current;
+  const loaderDots = [
+    { key: 'text', color: '#A491D3', translateY: dot1 },
+    { key: 'photo', color: '#77C9D4', translateY: dot2 },
+    { key: 'voice', color: '#F5A623', translateY: dot3 },
+  ];
 
   useEffect(() => {
     const makeBounce = (anim: RNAnimated.Value) =>
@@ -377,16 +382,23 @@ const DotsLoader: React.FC = () => {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B7355',
     marginHorizontal: 3,
   };
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot1 }] }]} />
-        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot2 }] }]} />
-        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot3 }] }]} />
+        {loaderDots.map((dot) => (
+          <RNAnimated.View
+            key={dot.key}
+            testID={`loader-dot-${dot.key}`}
+            style={[
+              dotStyle,
+              { backgroundColor: dot.color },
+              { transform: [{ translateY: dot.translateY }] },
+            ]}
+          />
+        ))}
       </View>
     </View>
   );

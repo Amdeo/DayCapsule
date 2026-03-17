@@ -156,4 +156,15 @@ describe('Timeline view mode switching', () => {
     expect(screen.getByTestId('mock-entry-card-entry-1').props.children).toBe('entry-1:0');
     expect(screen.getByTestId('mock-entry-card-entry-2').props.children).toBe('entry-2:90');
   });
+
+  it('renders themed loader dots during view transitions', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
+    fireEvent.press(screen.getByText('按月'));
+
+    expect(screen.getByTestId('loader-dot-text')).toHaveStyle({ backgroundColor: '#A491D3' });
+    expect(screen.getByTestId('loader-dot-photo')).toHaveStyle({ backgroundColor: '#77C9D4' });
+    expect(screen.getByTestId('loader-dot-voice')).toHaveStyle({ backgroundColor: '#F5A623' });
+  });
 });

@@ -284,10 +284,10 @@ describe('EntryCard swipe actions', () => {
       <EntryCard entry={mockEntry} onDelete={jest.fn()} enterDelay={120} />
     );
 
-    const contentAnimatedView = screen.UNSAFE_root.findAll((node: any) => node.props?.layout != null)[0];
+    const outerCard = screen.getByTestId('entry-card-container');
 
-    expect(contentAnimatedView.props.entering).toBeDefined();
-    expect(contentAnimatedView.props.exiting).toBeUndefined();
+    expect(outerCard.props.entering).toBeDefined();
+    expect(outerCard.props.exiting).toBeUndefined();
     expect((ReanimatedModule as any).__mockFadeInRight.duration).toHaveBeenCalledWith(expect.any(Number));
     expect((ReanimatedModule as any).__mockFadeInRight.delay).toHaveBeenCalledWith(120);
   });
