@@ -252,6 +252,7 @@ interface EntryMarkerProps {
   onActionSheetOpen: (id: string) => void;
   isLast: boolean;
   cardSpacing: number;
+  enterDelay?: number;
 }
 
 const EntryMarker = React.memo(function EntryMarker({
@@ -265,6 +266,7 @@ const EntryMarker = React.memo(function EntryMarker({
   onActionSheetOpen,
   isLast,
   cardSpacing,
+  enterDelay = 0,
 }: EntryMarkerProps) {
   const timelineLeft = 40;
 
@@ -288,6 +290,7 @@ const EntryMarker = React.memo(function EntryMarker({
 
   return (
     <Animated.View
+      entering={FadeIn.duration(250).delay(enterDelay)}
       exiting={FadeOut.duration(200)}
       layout={LinearTransition.duration(200)}
       style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
@@ -335,6 +338,61 @@ const EntryMarker = React.memo(function EntryMarker({
     </Animated.View>
   );
 });
+
+const DotsLoader: React.FC = () => {
+  const dot1 = useRef(new RNAnimated.Value(0)).current;
+  const dot2 = useRef(new RNAnimated.Value(0)).current;
+  const dot3 = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    const makeBounce = (anim: RNAnimated.Value) =>
+      RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(anim, { toValue: -8, duration: 200, useNativeDriver: true }),
+          RNAnimated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ])
+      );
+
+    const a1 = makeBounce(dot1);
+    let t2: ReturnType<typeof setTimeout>;
+    let t3: ReturnType<typeof setTimeout>;
+    let a2: RNAnimated.CompositeAnimation;
+    let a3: RNAnimated.CompositeAnimation;
+
+    a1.start();
+    t2 = setTimeout(() => { a2 = makeBounce(dot2); a2.start(); }, 150);
+    t3 = setTimeout(() => { a3 = makeBounce(dot3); a3.start(); }, 300);
+
+    return () => {
+      a1.stop();
+      clearTimeout(t2);
+      clearTimeout(t3);
+      if (a2) a2.stop();
+      if (a3) a3.stop();
+      dot1.setValue(0);
+      dot2.setValue(0);
+      dot3.setValue(0);
+    };
+  }, [dot1, dot2, dot3]);
+
+  const dotStyle = {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#8B7355',
+    marginHorizontal: 3,
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot1 }] }]} />
+        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot2 }] }]} />
+        <RNAnimated.View style={[dotStyle, { transform: [{ translateY: dot3 }] }]} />
+      </View>
+    </View>
+  );
+};
 
 /**
  * 空状态组件
@@ -385,8 +443,10 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [displayMode, setDisplayMode] = useState<ViewMode>('list');
-  const fadeAnim = useRef(new RNAnimated.Value(1)).current;
-  const skipNextTransition = useRef(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [animationEpoch, setAnimationEpoch] = useState(0);
+  const skipTransitionRef = useRef(false);
+  const isInitialMountRef = useRef(true);
   const [showViewToggle, setShowViewToggle] = useState(false);
   const [activeActionSheetId, setActiveActionSheetId] = useState<string | null>(null);
   const sectionListRef = useRef<SectionList<Entry, TimeSection>>(null);
@@ -404,34 +464,42 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
   const displayEntries = hasFilters ? filteredEntries : entries;
 
-  // 视图切换淡出→更新→淡入
+  // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 卡片入场
   useEffect(() => {
-    if (displayMode === viewMode) return;
-    if (skipNextTransition.current) {
-      skipNextTransition.current = false;
-      setDisplayMode(viewMode);
-      fadeAnim.setValue(1);
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
       return;
     }
-    RNAnimated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 150,
-      useNativeDriver: true,
-    }).start(() => {
+    if (skipTransitionRef.current) {
+      skipTransitionRef.current = false;
+      return;
+    }
+    setIsTransitioning(true);
+    const timer = setTimeout(() => {
       setDisplayMode(viewMode);
-      RNAnimated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    });
-  }, [viewMode, displayMode]);
+      setAnimationEpoch(e => e + 1);
+      setIsTransitioning(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [viewMode]);
 
   // 生成时间分组数据
   const sections = useMemo(() => {
     if (displayMode === 'monthly') return generateMonthlySections(displayEntries);
     return generateTimeSections(displayEntries);
   }, [displayEntries, displayMode]);
+
+  // 记录每个 entry 的全局位置，用于计算卡片入场 stagger delay
+  const globalIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    let i = 0;
+    for (const section of sections) {
+      for (const entry of section.data) {
+        map.set(entry.id, i++);
+      }
+    }
+    return map;
+  }, [sections]);
 
   // 检查是否有记录
   const hasEntries = displayEntries.length > 0;
@@ -451,8 +519,9 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 切换视图模式面板：收起时若非列表模式则重置回列表
   const handleToggleViewMode = () => {
     if (showViewToggle && viewMode !== 'list') {
-      skipNextTransition.current = true;
+      skipTransitionRef.current = true;
       setViewMode('list');
+      setDisplayMode('list');
     }
     setShowViewToggle(v => !v);
   };
@@ -466,8 +535,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   // 稳定的 keyExtractor，避免 SectionList 每次渲染重建
   const keyExtractor = useCallback((item: Entry) => {
-    return item.id;
-  }, []);
+    return `${item.id}-${animationEpoch}`;
+  }, [animationEpoch]);
 
   // 处理滚动事件
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -531,6 +600,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   // 渲染列表项
   const renderItem = useCallback(({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
     const isLast = index === section.data.length - 1;
+    const globalIndex = globalIndexMap.get(item.id) ?? 0;
+    const enterDelay = Math.min(globalIndex, 10) * 80;
     return (
       <EntryMarker
         entry={item}
@@ -543,9 +614,10 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         onActionSheetOpen={handleActionSheetOpen}
         isLast={isLast}
         cardSpacing={cardSpacing}
+        enterDelay={enterDelay}
       />
     );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
+  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
@@ -596,51 +668,50 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         />
       )}
 
-      <RNAnimated.View style={{ flex: 1, opacity: fadeAnim }}>
-        {displayMode === 'calendar' ? (
-          <CalendarView entries={displayEntries} />
-        ) : !hasEntries ? (
-          <EmptyState />
-        ) : (
-          <View style={{ flex: 1, position: 'relative' }}>
-            {/* 连续的时间线 - 仅列表模式显示 */}
-            <View
-              style={{
-                position: 'absolute',
-                left: timelineLeft,
-                top: 0,
-                bottom: 0,
-                width: 2,
-                backgroundColor: '#E5E5E5',
-                zIndex: 0,
-              }}
-            />
-
-            <SectionList<Entry, TimeSection>
-              ref={sectionListRef}
-              sections={sections}
-              renderItem={renderItem}
-              renderSectionHeader={renderSectionHeader}
-              stickySectionHeadersEnabled={true}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              showsVerticalScrollIndicator={false}
-              onEndReached={() => { if (hasMore) loadMore(); }}
-              onEndReachedThreshold={0.3}
-              ListFooterComponent={isLoadingMore ? (
-                <ActivityIndicator size="small" color="#8B7355" style={{ paddingVertical: 16 }} />
-              ) : null}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              updateCellsBatchingPeriod={50}
-              initialNumToRender={10}
-              windowSize={21}
-            />
-          </View>
-        )}
-      </RNAnimated.View>
+      {isTransitioning ? (
+        <DotsLoader />
+      ) : displayMode === 'calendar' ? (
+        <CalendarView entries={displayEntries} />
+      ) : !hasEntries ? (
+        <EmptyState />
+      ) : (
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* 连续的时间线 - 仅列表模式显示 */}
+          <View
+            style={{
+              position: 'absolute',
+              left: timelineLeft,
+              top: 0,
+              bottom: 0,
+              width: 2,
+              backgroundColor: '#E5E5E5',
+              zIndex: 0,
+            }}
+          />
+          <SectionList<Entry, TimeSection>
+            ref={sectionListRef}
+            sections={sections}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            stickySectionHeadersEnabled={true}
+            keyExtractor={keyExtractor}
+            contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+            onEndReached={() => { if (hasMore) loadMore(); }}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={isLoadingMore ? (
+              <ActivityIndicator size="small" color="#8B7355" style={{ paddingVertical: 16 }} />
+            ) : null}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={21}
+          />
+        </View>
+      )}
 
       {/* 编辑器模态框 */}
       <EntryEditor
