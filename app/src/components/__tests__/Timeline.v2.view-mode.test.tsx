@@ -92,10 +92,14 @@ jest.mock('../SearchBar', () => ({
 }));
 
 jest.mock('../EntryCard', () => ({
-  EntryCard: ({ entry }: { entry: { id: string } }) => {
+  EntryCard: ({ entry, enterDelay = -1 }: { entry: { id: string }; enterDelay?: number }) => {
     const React = require('react');
     const { Text } = require('react-native');
-    return <Text testID="mock-entry-card">{entry.id}</Text>;
+    return (
+      <Text testID={`mock-entry-card-${entry.id}`}>
+        {`${entry.id}:${enterDelay}`}
+      </Text>
+    );
   },
 }));
 
@@ -143,6 +147,13 @@ describe('Timeline view mode switching', () => {
       jest.advanceTimersByTime(600);
     });
 
-    expect(screen.getAllByTestId('mock-entry-card')).toHaveLength(2);
+    expect(screen.getAllByTestId(/mock-entry-card-/)).toHaveLength(2);
+  });
+
+  it('passes staggered enter delays to entry cards', () => {
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('mock-entry-card-entry-1').props.children).toBe('entry-1:0');
+    expect(screen.getByTestId('mock-entry-card-entry-2').props.children).toBe('entry-2:50');
   });
 });
