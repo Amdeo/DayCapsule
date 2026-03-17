@@ -2,15 +2,6 @@
  * EntryCard — 滑动操作测试
  */
 
-const mockFadeInRight = {
-  duration: jest.fn(function duration() {
-    return this;
-  }),
-  delay: jest.fn(function delay() {
-    return this;
-  }),
-};
-
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('@/src/store/entryStore', () => ({
@@ -61,9 +52,18 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
+  const Reanimated = jest.requireActual('../../../__mocks__/react-native-reanimated.js');
+  const mockFadeInRight = {
+    duration: jest.fn(function duration() {
+      return this;
+    }),
+    delay: jest.fn(function delay() {
+      return this;
+    }),
+  };
   Reanimated.default.call = () => {};
   Reanimated.FadeInRight = mockFadeInRight;
+  Reanimated.__mockFadeInRight = mockFadeInRight;
   return Reanimated;
 });
 
@@ -138,6 +138,7 @@ jest.mock('react-native-gesture-handler', () => {
 
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import * as ReanimatedModule from 'react-native-reanimated';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -166,8 +167,8 @@ const longTextEntry: Entry = {
 describe('EntryCard swipe actions', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockFadeInRight.duration.mockClear();
-    mockFadeInRight.delay.mockClear();
+    (ReanimatedModule as any).__mockFadeInRight.duration.mockClear();
+    (ReanimatedModule as any).__mockFadeInRight.delay.mockClear();
   });
 
   afterEach(() => {
@@ -287,8 +288,8 @@ describe('EntryCard swipe actions', () => {
 
     expect(contentAnimatedView.props.entering).toBeDefined();
     expect(contentAnimatedView.props.exiting).toBeUndefined();
-    expect(mockFadeInRight.duration).toHaveBeenCalledWith(expect.any(Number));
-    expect(mockFadeInRight.delay).toHaveBeenCalledWith(120);
+    expect((ReanimatedModule as any).__mockFadeInRight.duration).toHaveBeenCalledWith(expect.any(Number));
+    expect((ReanimatedModule as any).__mockFadeInRight.delay).toHaveBeenCalledWith(120);
   });
 });
 

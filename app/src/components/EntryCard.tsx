@@ -16,6 +16,7 @@ import {
   Dimensions,
 } from 'react-native';
 import Animated, {
+  FadeInRight,
   Layout,
   useAnimatedStyle,
   useSharedValue,
@@ -60,6 +61,7 @@ interface EntryCardProps {
   onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   cardSpacing?: number;
+  enterDelay?: number;
   isActionSheetActive?: boolean;
   onActionSheetOpen?: (entryId: string) => void;
 }
@@ -72,6 +74,7 @@ function EntryCard({
   onResumeRecording,
   onStopRecording,
   cardSpacing = 12,
+  enterDelay = 0,
   isActionSheetActive,
   onActionSheetOpen,
 }: EntryCardProps) {
@@ -445,7 +448,10 @@ function EntryCard({
               },
             ]}
           >
-            <Animated.View layout={Layout.springify()}>
+            <Animated.View
+              entering={FadeInRight.duration(220).delay(enterDelay)}
+              layout={Layout.springify()}
+            >
             {/* 卡片主内容 */}
             <View style={[
               entry.type === 'voice' ? styles.contentVoice : styles.content,
