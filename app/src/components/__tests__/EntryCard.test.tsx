@@ -407,4 +407,51 @@ describe('EntryCard photo edge-to-edge', () => {
     render(<EntryCard entry={textWithTags} onDelete={jest.fn()} />);
     expect(screen.queryByTestId('photo-tags-container')).toBeNull();
   });
+
+  describe('照片固定高度裁剪显示', () => {
+    it('图片使用 resizeMode cover', () => {
+      render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+      const img = screen.getByTestId('photo-image');
+      expect(img.props.resizeMode).toBe('cover');
+    });
+
+    it('图片高度等于档位值（default=280）', () => {
+      render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+      const img = screen.getByTestId('photo-image');
+      const flatStyle = StyleSheet.flatten(img.props.style);
+      expect(flatStyle.height).toBe(280);
+    });
+
+    it('compact 档位图片高度为 200', () => {
+      jest.spyOn(require('@/src/store/settingsStore'), 'useSettingsStore').mockImplementation(
+        (selector: (s: any) => any) => selector({ photoHeight: 'compact' })
+      );
+      render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+      const img = screen.getByTestId('photo-image');
+      const flatStyle = StyleSheet.flatten(img.props.style);
+      expect(flatStyle.height).toBe(200);
+      jest.restoreAllMocks();
+    });
+
+    it('large 档位图片高度为 400', () => {
+      jest.spyOn(require('@/src/store/settingsStore'), 'useSettingsStore').mockImplementation(
+        (selector: (s: any) => any) => selector({ photoHeight: 'large' })
+      );
+      render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+      const img = screen.getByTestId('photo-image');
+      const flatStyle = StyleSheet.flatten(img.props.style);
+      expect(flatStyle.height).toBe(400);
+      jest.restoreAllMocks();
+    });
+
+    it('photoMissing 高度等于档位值（default=280）', () => {
+      // 先拿 photo-image（此时 photoError=false，Image 存在），
+      // 再触发 error 使组件切换到 photoMissing 状态
+      const { getByTestId } = render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+      fireEvent(getByTestId('photo-image'), 'error');
+      const missingView = getByTestId('photo-missing');
+      const flatStyle = StyleSheet.flatten(missingView.props.style);
+      expect(flatStyle.height).toBe(280);
+    });
+  });
 });

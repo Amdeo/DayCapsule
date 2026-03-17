@@ -46,18 +46,6 @@ const ACTION_SHEET_OPEN_DELAY = 100;
 // 卡片内容宽度（考虑边距）
 const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
 
-// 照片卡片图片宽度：屏幕宽 - EntryMarker 左右 padding(64+24)
-const getPhotoCardWidth = () => SCREEN_WIDTH - 88;
-
-// 计算图片高度，保持宽高比，最大高度由设置决定
-const calculateImageHeight = (
-  aspectRatio: number | undefined,
-  maxHeight: number,
-  contentWidth: number = getCardContentWidth()
-): number => {
-  if (!aspectRatio || aspectRatio <= 0) return Math.min(200, maxHeight);
-  return Math.min(contentWidth / aspectRatio, maxHeight);
-};
 
 interface EntryCardProps {
   entry: Entry;
@@ -488,7 +476,7 @@ function EntryCard({
                     onPress={handleImagePress}
                   >
                     {photoError ? (
-                      <View style={[styles.photoImage, styles.photoMissing, photoImageRadius]}>
+                      <View testID="photo-missing" style={[styles.photoImage, styles.photoMissing, photoImageRadius, { height: maxPhotoHeight }]}>
                         <Ionicons name="image-outline" size={32} color="#A3A3A3" />
                         <Text style={styles.photoMissingText}>图片已丢失</Text>
                       </View>
@@ -499,9 +487,9 @@ function EntryCard({
                         style={[
                           styles.photoImage,
                           photoImageRadius,
-                          { height: calculateImageHeight(entry.media?.metadata?.aspectRatio, maxPhotoHeight, getPhotoCardWidth()) }
+                          { height: maxPhotoHeight }
                         ]}
-                        resizeMode="contain"
+                        resizeMode="cover"
                         testID="photo-image"
                         onError={() => setPhotoError(true)}
                       />
@@ -703,6 +691,7 @@ const styles = StyleSheet.create({
   photoImage: {
     width: '100%',
     backgroundColor: '#ECE7E0',
+    overflow: 'hidden',
   },
   photoMissing: {
     minHeight: 200,
