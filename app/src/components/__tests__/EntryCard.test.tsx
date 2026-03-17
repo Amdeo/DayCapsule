@@ -394,4 +394,17 @@ describe('EntryCard photo edge-to-edge', () => {
     const containerStyle = StyleSheet.flatten(tagsContainer.props.style);
     expect(containerStyle.paddingHorizontal).toBe(14);
   });
+
+  it('文本卡片：tags 不使用 photo-tags-container', () => {
+    const textWithTags: Entry = {
+      id: 'text-1',
+      type: 'text',
+      content: '今天的事',
+      timestamp: Date.now(),
+      syncStatus: 'synced',
+      tags: ['日记'],
+    };
+    render(<EntryCard entry={textWithTags} onDelete={jest.fn()} />);
+    expect(screen.queryByTestId('photo-tags-container')).toBeNull();
+  });
 });
