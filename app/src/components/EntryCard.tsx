@@ -652,13 +652,13 @@ function EntryCard({
 
 const styles = StyleSheet.create({
   cardShadow: {
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(139, 115, 85, 0.15)',
     elevation: 0,
   },
   cardContainer: {
-    borderRadius: 16,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   content: {
