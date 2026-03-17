@@ -18,20 +18,6 @@ const rowToEntry = (row: any): Entry => {
     } catch {
       media = undefined;
     }
-  } else if (row.media_uri) {
-    // 向后兼容旧行（media_json 迁移前）
-    let metadata = undefined;
-    if (row.media_metadata) {
-      try { metadata = JSON.parse(row.media_metadata); } catch { /* ignore */ }
-    }
-    media = [{
-      uri: row.media_uri,
-      mimeType: row.media_type || 'audio/m4a',
-      size: 0,
-      duration: row.media_duration,
-      thumbnail: row.media_thumbnail,
-      metadata,
-    }];
   }
 
   return {
