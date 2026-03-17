@@ -16,12 +16,11 @@ import { formatDateLabel } from '../utils/timeUtils';
 import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarView } from './CalendarView';
-import { StatsView } from './StatsView';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 import { FABMenu } from './FABMenu';
 import { PhotoResult } from '../services/photoService';
 
-type ViewMode = 'list' | 'monthly' | 'calendar' | 'stats';
+type ViewMode = 'list' | 'monthly' | 'calendar';
 
 /**
  * 时间分组配置
@@ -106,7 +105,6 @@ const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
   { mode: 'list', icon: 'list', label: '列表' },
   { mode: 'monthly', icon: 'layers', label: '按月' },
   { mode: 'calendar', icon: 'calendar', label: '日历' },
-  { mode: 'stats', icon: 'bar-chart', label: '统计' },
 ];
 
 function ViewModeToggle({
@@ -572,8 +570,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
       {viewMode === 'calendar' ? (
         <CalendarView entries={displayEntries} />
-      ) : viewMode === 'stats' ? (
-        <StatsView entries={entries} />
       ) : !hasEntries ? (
         <EmptyState />
       ) : (
