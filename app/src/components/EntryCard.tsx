@@ -46,11 +46,17 @@ const ACTION_SHEET_OPEN_DELAY = 100;
 // 卡片内容宽度（考虑边距）
 const getCardContentWidth = () => SCREEN_WIDTH - 40; // 20px padding on each side
 
+// 照片卡片图片宽度：屏幕宽 - EntryMarker 左右 padding(64+24)
+const getPhotoCardWidth = () => SCREEN_WIDTH - 88;
+
 // 计算图片高度，保持宽高比，最大高度由设置决定
-const calculateImageHeight = (aspectRatio: number | undefined, maxHeight: number): number => {
+const calculateImageHeight = (
+  aspectRatio: number | undefined,
+  maxHeight: number,
+  contentWidth: number = getCardContentWidth()
+): number => {
   if (!aspectRatio || aspectRatio <= 0) return Math.min(200, maxHeight);
-  const calculatedHeight = getCardContentWidth() / aspectRatio;
-  return Math.min(calculatedHeight, maxHeight);
+  return Math.min(contentWidth / aspectRatio, maxHeight);
 };
 
 interface EntryCardProps {
