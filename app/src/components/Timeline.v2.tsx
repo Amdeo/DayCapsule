@@ -288,9 +288,9 @@ const EntryMarker = React.memo(function EntryMarker({
 
   return (
     <Animated.View
-      entering={FadeIn.springify()}
+      entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
-      layout={LinearTransition.springify()}
+      layout={LinearTransition.duration(200)}
       style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
     >
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
@@ -575,7 +575,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       ) : (
         <View style={{ flex: 1, position: 'relative' }}>
           {/* 连续的时间线 - 仅列表模式显示 */}
-          {viewMode === 'list' && <View
+          <View
             style={{
               position: 'absolute',
               left: timelineLeft,
@@ -585,7 +585,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
               backgroundColor: '#E5E5E5',
               zIndex: 0,
             }}
-          />}
+          />
 
           <SectionList<Entry, TimeSection>
             ref={sectionListRef}
