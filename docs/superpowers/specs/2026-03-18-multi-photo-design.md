@@ -16,11 +16,11 @@
 | `app/src/types/entry.ts` | 修改 | `media` 字段改为数组 |
 | `app/src/database/migration.ts` | 修改 | 新增 `media_json` 迁移函数 |
 | `app/src/database/sqlite.ts` | 修改 | 调用新迁移 |
-| `app/src/database/operations.ts` | 修改 | 读写改用 `media_json` |
+| `app/src/database/operations.ts` | 修改 | 读写改用 `media_json`（含 `restoreEntries`）|
 | `app/src/services/photoService.ts` | 修改 | 开启多选 |
 | `app/src/components/PhotoGrid.tsx` | 新增 | 自适应网格组件 |
 | `app/src/components/EntryCard.tsx` | 修改 | 使用 PhotoGrid，更新所有 media 访问 |
-| `app/app/(tabs)/index.tsx` | 修改 | 处理多张照片创建 entry |
+| `app/app/(tabs)/index.tsx` | 修改 | 处理多张照片创建 entry（含 `handlePhotoSelectForTest`）|
 | `app/src/components/FABMenu.tsx` | 修改 | 传递完整 PhotoResult[] |
 
 ---
@@ -129,6 +129,10 @@ const mediaJson = entry.media ? JSON.stringify(entry.media) : null;
 
 > 旧列 `media_uri` 等不再写入，保留为 NULL（结构兼容，不影响查询）。
 
+**`restoreEntries` 函数**（约第 443–490 行）同样需要更新：将 `e.media?.uri`、`e.media?.mimeType` 等单对象访问改为 `e.media?.[0]?.uri`，写入时使用 `media_json` 而非旧独立列。
+
+**`cachedColumnNames` 缓存失效**：`operations.ts` 用模块级变量 `cachedColumnNames` 缓存 PRAGMA 结果。迁移新增 `media_json` 列后，必须在迁移函数末尾调用 `invalidateColumnCache()` 或等效方式将缓存置为 `null`，让 `getTableColumns` 下次重新加载，否则 `columns.has('media_json')` 的判断永远不成立。
+
 ---
 
 ## 三、PhotoService 多选
@@ -180,10 +184,12 @@ const cellSize = (containerWidth - GAP * (numCols - 1)) / numCols;
 ### 4.3 组件接口
 
 ```ts
+import { ViewStyle } from 'react-native';
+
 interface PhotoGridProps {
-  photos: MediaInfo[];        // 照片列表
-  maxPhotoHeight: number;     // 单张全宽时的固定高度（来自档位设置）
-  photoImageRadius: object;   // 动态圆角（来自 EntryCard）
+  photos: MediaInfo[];           // 照片列表
+  maxPhotoHeight: number;        // 单张全宽时的固定高度（来自档位设置）
+  photoImageRadius: ViewStyle;   // 动态圆角对象，如 { borderRadius: 10 } 或 { borderRadius: 10, borderBottomLeftRadius: 0, ... }
   onPhotoPress?: (index: number) => void;
 }
 ```
@@ -214,6 +220,9 @@ interface PhotoGridProps {
 
 ### 6.1 FABMenu
 
+`onSelect` 类型从 `(type, photo?: PhotoResult)` 改为 `(type, photos?: PhotoResult[])`。
+
+**`photo` 分支**（相册选择）：
 ```ts
 // 改前
 const photo = result[0];
@@ -223,11 +232,24 @@ if (photo) onSelectRef.current('photo', photo);
 if (result.length > 0) onSelectRef.current('photo', result);
 ```
 
-`onSelect` 类型从 `(type, photo?: PhotoResult)` 改为 `(type, photos?: PhotoResult[])`。
+**`camera` 分支**（拍照）：拍照返回单张，包装成数组后传出：
+```ts
+// 改前
+const photo = await PhotoService.takePhoto();
+if (photo) onSelectRef.current('photo', photo);
+
+// 改后
+const photo = await PhotoService.takePhoto();
+if (photo) onSelectRef.current('photo', [photo]);
+```
 
 ### 6.2 index.tsx
 
-`handlePhotoSelect` 改为接收 `PhotoResult[]`，对每张图片执行压缩和保存，最终合并成 `MediaInfo[]` 创建 entry：
+**`handlePhotoSelect`** 和 **`handlePhotoSelectForTest`** 均改为接收 `PhotoResult[]`，对每张图片执行压缩和保存，最终合并成 `MediaInfo[]` 创建 entry。
+
+`PhotoSelectDeps.addEntry` 中的 `media` 字段类型随之改为 `MediaInfo[]`。
+
+`index.tsx` 第 100、104 行语音预加载处 `entry.media?.uri` 改为 `entry.media?.[0]?.uri`。
 
 ```ts
 const handlePhotoSelect = async (results: PhotoResult[]) => {
@@ -254,4 +276,6 @@ const handlePhotoSelect = async (results: PhotoResult[]) => {
 | 9 张照片 | 显示 8 张 + 第 9 格 `+1` |
 | media 迁移 | 旧 media_uri 行读取正常 |
 | 语音 entry | `entry.media?.[0]?.uri` 正常访问 |
-| 现有测试 | 全部通过，无回归 |
+| 备份恢复含多图 entry | `restoreEntries` 正确写入 `media_json`，读取后 `entry.media` 为数组 |
+| 语音 entry 预加载 | `entry.media?.[0]?.uri` 正常访问 |
+| 现有测试 | 全部通过，无回归（测试中 mock 数据更新为数组形式）|
