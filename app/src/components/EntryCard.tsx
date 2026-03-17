@@ -429,6 +429,8 @@ function EntryCard({
       <>
         <Animated.View
           testID="entry-card-container"
+          entering={FadeInRight.duration(360).delay(enterDelay)}
+          layout={Layout.springify()}
           style={[
             styles.cardShadow,
             cardAnimatedStyle,
@@ -448,10 +450,7 @@ function EntryCard({
               },
             ]}
           >
-            <Animated.View
-              entering={FadeInRight.duration(360).delay(enterDelay)}
-              layout={Layout.springify()}
-            >
+            <View>
             {/* 卡片主内容 */}
             <View style={[
               entry.type === 'voice' ? styles.contentVoice : styles.content,
@@ -615,7 +614,7 @@ function EntryCard({
             {needsExpansion && !isExpanded && (
               <Text style={styles.expandHint}>点击展开更多</Text>
             )}
-            </Animated.View>
+            </View>
 
             {/* 图片查看器 */}
             {entry.type === 'photo' && entry.media?.uri && (
@@ -654,10 +653,12 @@ function EntryCard({
 const styles = StyleSheet.create({
   cardShadow: {
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 115, 85, 0.15)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
     elevation: 3,
   },
   cardContainer: {
