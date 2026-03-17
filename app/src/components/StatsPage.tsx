@@ -164,7 +164,6 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
         <View style={styles.infoCard}>
           <View style={styles.barChart}>
             {stats.months.map((m, i) => {
-              const heightPct = (m.count / stats.maxCount) * 100;
               return (
                 <View key={i} style={styles.barItem}>
                   {m.count > 0 && (
@@ -174,7 +173,7 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
                     <View
                       style={[
                         styles.barFill,
-                        { height: `${Math.max(heightPct, 4)}%` },
+                        { height: Math.max((m.count / stats.maxCount) * 88, 4) },
                       ]}
                     />
                   </View>
@@ -260,7 +259,7 @@ const styles = StyleSheet.create({
   barItem: {
     flex: 1,
     alignItems: 'center',
-    height: '100%',
+    height: 88,
     justifyContent: 'flex-end',
   },
   barCount: {
