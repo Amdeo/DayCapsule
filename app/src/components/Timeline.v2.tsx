@@ -20,7 +20,7 @@ import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 import { FABMenu } from './FABMenu';
 import { PhotoResult } from '../services/photoService';
 
-type ViewMode = 'list' | 'monthly' | 'calendar';
+type ViewMode = 'list' | 'calendar';
 
 /**
  * 时间分组配置
@@ -72,34 +72,10 @@ function generateTimeSections(
 }
 
 /**
- * 按月分组（月份列表视图）
- */
-function generateMonthlySections(entries: Entry[]): TimeSection[] {
-  const sections: TimeSection[] = [];
-  let currentKey = '';
-  let currentSection: TimeSection | null = null;
-
-  entries.forEach((entry) => {
-    const d = new Date(entry.timestamp);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
-    if (key !== currentKey) {
-      if (currentSection) sections.push(currentSection);
-      currentSection = { title: label, timestamp: entry.timestamp, data: [] };
-      currentKey = key;
-    }
-    currentSection!.data.push(entry);
-  });
-  if (currentSection) sections.push(currentSection);
-  return sections;
-}
-
-/**
  * 视图模式切换 Tab
  */
 const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
   { mode: 'list', icon: 'list', label: '列表' },
-  { mode: 'monthly', icon: 'layers', label: '按月' },
   { mode: 'calendar', icon: 'calendar', label: '日历' },
 ];
 
@@ -479,7 +455,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   // 生成时间分组数据
   const sections = useMemo(() => {
-    if (displayMode === 'monthly') return generateMonthlySections(displayEntries);
     return generateTimeSections(displayEntries);
   }, [displayEntries, displayMode]);
 
