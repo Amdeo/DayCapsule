@@ -115,7 +115,7 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
       fabTranslateY.value = withTiming(PEEK_TRANSLATE_Y, { duration: 200 });
       isHiddenRef.current = true;
     } else {
-      fabTranslateY.value = withSpring(0, { damping: 15, stiffness: 250, overshootClamping: false });
+      fabTranslateY.value = withTiming(0, { duration: 200 });
       isHiddenRef.current = false;
     }
   }, [fabTranslateY, isExpandedRef, shouldHide]);

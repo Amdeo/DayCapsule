@@ -113,4 +113,29 @@ describe('FABMenu peek-hide', () => {
     const textCount = allTexts.filter((t: unknown) => t === '文字').length;
     expect(textCount).toBe(1);
   });
+
+  it('uses withTiming (not withSpring) to reveal the FAB when shouldHide becomes false', () => {
+    const onSelect = jest.fn();
+    const withTimingSpy = jest.spyOn(Reanimated, 'withTiming');
+    const withSpringSpy = jest.spyOn(Reanimated, 'withSpring');
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} shouldHide />);
+    });
+
+    withTimingSpy.mockClear();
+    withSpringSpy.mockClear();
+
+    act(() => {
+      tree!.update(<FABMenu onSelect={onSelect} shouldHide={false} />);
+    });
+
+    expect(withTimingSpy).toHaveBeenCalledWith(0, expect.objectContaining({ duration: 200 }));
+    expect(withSpringSpy).not.toHaveBeenCalled();
+
+    withTimingSpy.mockRestore();
+    withSpringSpy.mockRestore();
+  });
 });
