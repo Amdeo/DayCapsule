@@ -9,11 +9,12 @@ const FIXED_NOW = new Date('2026-03-19T12:00:00+08:00');
 const OriginalDate = Date;
 
 beforeAll(() => {
-  jest.spyOn(global, 'Date').mockImplementation((arg?: any) => {
-    if (arg === undefined) return new OriginalDate(FIXED_NOW);
-    return new OriginalDate(arg);
+  const dateSpy = jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
+    if (args.length === 0) return new OriginalDate(FIXED_NOW);
+    return new OriginalDate(...args as [any]);
   });
-  (global.Date as any).now = () => FIXED_NOW.getTime();
+  // 把静态方法挂回 mock，确保 Date.now() 可用
+  (dateSpy as any).now = () => FIXED_NOW.getTime();
 });
 
 afterAll(() => {
