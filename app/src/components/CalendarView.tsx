@@ -48,6 +48,33 @@ export function CalendarView({ entries }: CalendarViewProps) {
     return map;
   }, [entries]);
 
+  // 当月所有记录（按时间倒序）
+  const monthEntries = useMemo(() => {
+    return entries
+      .filter((e) => {
+        const d = new Date(e.timestamp);
+        return d.getFullYear() === year && d.getMonth() === month;
+      })
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }, [entries, year, month]);
+
+  // 按日分组（用于全月显示）
+  const monthDayGroups = useMemo(() => {
+    const groups: { dateKey: string; label: string; entries: Entry[] }[] = [];
+    let currentKey = '';
+    for (const entry of monthEntries) {
+      const d = new Date(entry.timestamp);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const label = `${d.getMonth() + 1}月${d.getDate()}日`;
+      if (key !== currentKey) {
+        groups.push({ dateKey: key, label, entries: [] });
+        currentKey = key;
+      }
+      groups[groups.length - 1].entries.push(entry);
+    }
+    return groups;
+  }, [monthEntries]);
+
   // 生成日历格子（含前置空格）
   const calendarDays = useMemo(() => {
     const firstWeekday = new Date(year, month, 1).getDay();
@@ -66,8 +93,14 @@ export function CalendarView({ entries }: CalendarViewProps) {
     [selectedKey, entryMap]
   );
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const prevMonth = () => {
+    setSelectedKey(null);
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+  const nextMonth = () => {
+    setSelectedKey(null);
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
 
   const handleDayPress = (day: number) => {
     const key = `${year}-${month}-${day}`;
@@ -111,6 +144,7 @@ export function CalendarView({ entries }: CalendarViewProps) {
           const hasEntries = dayEntries.length > 0;
           const isToday = key === todayKey;
           const isSelected = key === selectedKey;
+          const isOtherSelected = selectedKey !== null && key !== selectedKey;
 
           return (
             <TouchableOpacity
@@ -143,6 +177,7 @@ export function CalendarView({ entries }: CalendarViewProps) {
                         style={[
                           styles.dot,
                           { backgroundColor: isSelected ? '#FFFFFF' : TYPE_COLOR[type] },
+                          isOtherSelected && { opacity: 0.3 },
                         ]}
                       />
                     );
@@ -154,36 +189,65 @@ export function CalendarView({ entries }: CalendarViewProps) {
         })}
       </View>
 
-      {/* 选中日期的记录列表 */}
-      {selectedKey && (
-        <View style={styles.dayDetail}>
-          <Text style={styles.dayDetailTitle}>
-            {selectedEntries.length > 0
-              ? `${selectedEntries.length} 条记录`
-              : '当天无记录'}
-          </Text>
-          {selectedEntries
+      {/* 内容区标题 */}
+      <View style={styles.contentHeader}>
+        <Text style={styles.contentTitle}>
+          {selectedKey
+            ? (() => {
+                const d = new Date(selectedEntries[0]?.timestamp ?? Date.now());
+                return `${d.getMonth() + 1}月${d.getDate()}日 · ${selectedEntries.length} 条`;
+              })()
+            : `全月 · ${monthEntries.length} 条`}
+        </Text>
+        {selectedKey && (
+          <TouchableOpacity
+            testID="calendar-deselect-btn"
+            onPress={() => setSelectedKey(null)}
+            style={styles.deselectBtn}
+          >
+            <Text style={styles.deselectText}>✕ 取消</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* 内容列表 */}
+      {selectedKey ? (
+        // 单日模式：直接渲染当天记录行
+        selectedEntries.length === 0 ? (
+          <Text style={styles.emptyText}>当天无记录</Text>
+        ) : (
+          selectedEntries
             .sort((a, b) => b.timestamp - a.timestamp)
             .map((entry) => (
               <View key={entry.id} style={styles.entryRow}>
-                <View
-                  style={[
-                    styles.entryTypeDot,
-                    { backgroundColor: TYPE_COLOR[entry.type] },
-                  ]}
-                />
+                <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
                 <Text style={styles.entryTime}>
-                  {new Date(entry.timestamp).toLocaleTimeString('zh-CN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </Text>
-                <Text style={styles.entryContent} numberOfLines={1}>
-                  {entry.content}
-                </Text>
+                <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
               </View>
-            ))}
-        </View>
+            ))
+        )
+      ) : (
+        // 全月模式：按日分组渲染
+        monthEntries.length === 0 ? (
+          <Text style={styles.emptyText}>本月暂无记录</Text>
+        ) : (
+          monthDayGroups.map((group) => (
+            <View key={group.dateKey}>
+              <Text style={styles.dayGroupLabel}>{group.label}</Text>
+              {group.entries.map((entry) => (
+                <View key={entry.id} style={styles.entryRow}>
+                  <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
+                  <Text style={styles.entryTime}>
+                    {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
+                </View>
+              ))}
+            </View>
+          ))
+        )
       )}
     </ScrollView>
   );
@@ -303,5 +367,42 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#4A4A4A',
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  contentTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4A4A4A',
+  },
+  deselectBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+  },
+  deselectText: {
+    fontSize: 12,
+    color: '#A3A3A3',
+  },
+  dayGroupLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A3A3A3',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#A3A3A3',
+    textAlign: 'center',
+    marginTop: 24,
   },
 });
