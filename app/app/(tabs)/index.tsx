@@ -17,6 +17,7 @@ import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
+import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -94,6 +95,7 @@ export default function HomeScreen() {
     // 并行加载设置和条目数据
     Promise.all([
       useSettingsStore.getState().loadSettings(),
+      useCommonTagsStore.getState().loadCommonTags(),
       loadEntries(),
     ]).catch(() => {});
 

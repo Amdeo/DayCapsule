@@ -30,6 +30,14 @@ jest.mock('@/src/store/settingsStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/commonTagsStore', () => ({
+  useCommonTagsStore: {
+    getState: () => ({
+      loadCommonTags: jest.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: {
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
