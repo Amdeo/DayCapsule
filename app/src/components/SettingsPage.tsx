@@ -23,6 +23,7 @@ import { getStorageStats } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { NotificationService } from '@/src/services/notificationService';
 import { DetailPageShell } from './DetailPageShell';
+import { TagManagementPage } from './TagManagementPage';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -70,6 +71,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   // 存储统计
   const [usedSpace, setUsedSpace] = useState('计算中...');
+  const [showTagMgmt, setShowTagMgmt] = useState(false);
 
   // 加载设置（首次挂载时）
   useEffect(() => {
@@ -277,6 +279,12 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>其他</Text>
         <SettingButton
+          icon="pricetag"
+          title="常用标签管理"
+          subtitle="自定义快速选择的标签"
+          onPress={() => setShowTagMgmt(true)}
+        />
+        <SettingButton
           icon="refresh"
           title="重置设置"
           subtitle="恢复默认设置"
@@ -284,6 +292,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           danger
         />
       </View>
+      <TagManagementPage visible={showTagMgmt} onClose={() => setShowTagMgmt(false)} />
     </DetailPageShell>
   );
 }
