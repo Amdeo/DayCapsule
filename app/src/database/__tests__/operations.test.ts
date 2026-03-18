@@ -7,6 +7,7 @@ const mockDb = {
   getAllAsync: jest.fn(),
   getFirstAsync: jest.fn(),
   runAsync: jest.fn(),
+  withTransactionAsync: jest.fn(),
 };
 
 jest.mock('@/src/database/sqlite', () => ({
@@ -31,11 +32,18 @@ import {
   getEntriesCount,
   getAllTags,
   getEntriesPage,
+  restoreEntries,
+  invalidateColumnCache,
 } from '../operations';
 
 describe('database/operations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateColumnCache();
+    mockDb.getAllAsync.mockResolvedValue([]);
+    mockDb.getFirstAsync.mockResolvedValue(undefined);
+    mockDb.runAsync.mockResolvedValue(undefined);
+    mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
   });
 
   // ─── getAllEntries ───────────────────────────────────────────────────────────
@@ -206,9 +214,8 @@ describe('database/operations', () => {
         tags: ['工作', '重要'],
       });
 
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
 
       expect(pendingTagWrites).toHaveLength(2);
       expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO tags'))).toBe(true);
@@ -285,6 +292,48 @@ describe('database/operations', () => {
 
       const count = await getEntriesCount();
       expect(count).toBe(0);
+    });
+  });
+
+  // ─── restoreEntries ─────────────────────────────────────────────────────────
+
+  describe('restoreEntries', () => {
+    it('应该在单个事务中恢复多条记录，并在单条失败后继续处理后续记录', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+
+      mockDb.runAsync.mockImplementation(async (sql: string, params?: any[]) => {
+        if (sql.includes('INSERT OR IGNORE INTO entries') && params?.[0] === '2') {
+          throw new Error('insert failed');
+        }
+        return undefined;
+      });
+
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce({ changes: 1 })
+        .mockResolvedValueOnce({ changes: 1 });
+
+      const result = await restoreEntries([
+        { id: '1', type: 'text', content: 'first', timestamp: 1, syncStatus: 'synced' },
+        { id: '2', type: 'text', content: 'second', timestamp: 2, syncStatus: 'synced' },
+        { id: '3', type: 'text', content: 'third', timestamp: 3, syncStatus: 'synced' },
+      ]);
+
+      const insertCalls = mockDb.runAsync.mock.calls.filter(
+        ([sql]: any[]) => typeof sql === 'string' && sql.includes('INSERT OR IGNORE INTO entries')
+      );
+
+      expect(mockDb.withTransactionAsync).toHaveBeenCalledTimes(1);
+      expect(insertCalls).toHaveLength(3);
+      expect(mockDb.getFirstAsync).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(['1', '3']);
     });
   });
 });

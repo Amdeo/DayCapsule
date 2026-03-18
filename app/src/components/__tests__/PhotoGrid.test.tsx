@@ -15,6 +15,7 @@ jest.mock('@expo/vector-icons', () => {
 
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { Dimensions } from 'react-native';
 import { PhotoGrid } from '../PhotoGrid';
 import { MediaInfo } from '@/src/types/entry';
 
@@ -64,5 +65,18 @@ describe('PhotoGrid', () => {
     expect(screen.queryByTestId('photo-cell-7')).toBeNull();
     expect(screen.getByTestId('photo-overflow')).toBeTruthy();
     expect(screen.getByText('+2')).toBeTruthy();
+  });
+
+  it('首帧渲染时应使用窗口宽度估算网格尺寸', () => {
+    const windowWidth = Dimensions.get('window').width;
+    render(
+      <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
+    );
+
+    const expectedCellSize = (windowWidth - 3) / 2;
+    expect(screen.getByTestId('photo-cell-0').children[0].props.style).toEqual({
+      width: expectedCellSize,
+      height: expectedCellSize,
+    });
   });
 });

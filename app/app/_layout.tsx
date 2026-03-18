@@ -123,8 +123,10 @@ export default function RootLayout() {
       appStateRef.current = nextState;
 
       if (prev !== 'background' && nextState === 'background') {
-        const autoBackup = await Storage.getString('settings:autoBackup');
-        const shouldBackup = await BackupService.shouldBackup();
+        const [autoBackup, shouldBackup] = await Promise.all([
+          Storage.getString('settings:autoBackup'),
+          BackupService.shouldBackup(),
+        ]);
         if (autoBackup === 'true' && shouldBackup) {
           const entries = useEntryStore.getState().entries;
           await BackupService.createBackup(entries).catch((e) =>

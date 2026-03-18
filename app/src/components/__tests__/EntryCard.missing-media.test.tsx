@@ -134,6 +134,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as FileSystem from 'expo-file-system';
 import { VoiceService } from '@/src/services/voiceService';
+import { Alert } from 'react-native';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -197,6 +198,11 @@ describe('EntryCard — 媒体文件丢失', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   // ── 图片丢失 ──────────────────────────────────────────────────────────────
@@ -231,7 +237,7 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={photoEntry} onDelete={jest.fn()} />
     );
 
-    expect(getByTestId('entry-card-container')).toHaveStyle({
+    expect(getByTestId('entry-card')).toHaveStyle({
       backgroundColor: PHOTO_CARD_BG,
     });
   });
@@ -242,12 +248,12 @@ describe('EntryCard — 媒体文件丢失', () => {
     );
 
     fireEvent(getByTestId('entry-card'), 'pressIn');
-    expect(getByTestId('entry-card-container')).toHaveStyle({
+    expect(getByTestId('entry-card')).toHaveStyle({
       backgroundColor: PHOTO_CARD_BG_PRESSED,
     });
 
     fireEvent(getByTestId('entry-card'), 'pressOut');
-    expect(getByTestId('entry-card-container')).toHaveStyle({
+    expect(getByTestId('entry-card')).toHaveStyle({
       backgroundColor: PHOTO_CARD_BG,
     });
   });
@@ -264,12 +270,22 @@ describe('EntryCard — 媒体文件丢失', () => {
 
   // ── 音频丢失 ──────────────────────────────────────────────────────────────
 
-  it('音频文件不存在时应显示"音频文件已丢失"提示', async () => {
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
-
-    const { findByText } = render(
+  it('语音卡片渲染时不应预检音频文件是否存在', () => {
+    render(
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
+
+    expect(FileSystem.getInfoAsync).not.toHaveBeenCalled();
+  });
+
+  it('音频文件不存在时点击播放后应显示"音频文件已丢失"提示', async () => {
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
+
+    const { findByText, getByTestId } = render(
+      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('entry-card'));
 
     expect(await findByText('音频文件已丢失')).toBeTruthy();
   });
@@ -281,18 +297,18 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
 
-    await findByText('音频文件已丢失');
     fireEvent.press(getByTestId('entry-card'));
+    await findByText('音频文件已丢失');
 
     expect(VoiceService.playAudio).not.toHaveBeenCalled();
   });
 
   it('音频文件存在时不应显示丢失提示', async () => {
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: true });
-
-    const { queryByText } = render(
+    const { queryByText, getByTestId } = render(
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
+
+    fireEvent.press(getByTestId('entry-card'));
 
     await waitFor(() => {
       expect(queryByText('音频文件已丢失')).toBeNull();
@@ -419,7 +435,7 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={voiceEntry} onDelete={onDelete} />
     );
 
-    // 等待音频丢失提示出现
+    fireEvent.press(getByTestId('entry-card'));
     await findByText('音频文件已丢失');
 
     expect(queryByTestId('entry-action-sheet')).toBeNull();

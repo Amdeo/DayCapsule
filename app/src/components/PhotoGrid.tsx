@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Image, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 
@@ -25,7 +25,7 @@ interface PhotoGridProps {
 }
 
 export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPress }: PhotoGridProps) {
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
 
   if (!photos || photos.length === 0) return null;
 

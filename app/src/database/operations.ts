@@ -466,10 +466,9 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   const columns = await getTableColumns(db);
   const hasMediaJson = columns.has('media_json');
 
-  for (const e of entries) {
-    try {
-      // 使用事务保证单条记录的原子性
-      await db.withTransactionAsync(async () => {
+  await db.withTransactionAsync(async () => {
+    for (const e of entries) {
+      try {
         await db.runAsync(
           hasMediaJson
             ? `INSERT OR IGNORE INTO entries
@@ -509,12 +508,12 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
           await upsertEntryTags(db, e.id, e.tags ?? []);
           insertedIds.push(e.id);
         }
-      });
-    } catch (error) {
-      failed++;
-      logger.warn(`[restoreEntries] 恢复记录失败: ${e.id}`, error);
+      } catch (error) {
+        failed++;
+        logger.warn(`[restoreEntries] 恢复记录失败: ${e.id}`, error);
+      }
     }
-  }
+  });
 
   if (failed > 0) {
     logger.warn(`[restoreEntries] ${failed} 条记录恢复失败`);

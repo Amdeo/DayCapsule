@@ -122,16 +122,6 @@ function EntryCard({
     };
   }, [entry.recordingStatus]);
 
-  // 挂载时检查音频文件是否存在
-  useEffect(() => {
-    if (entry.type !== 'voice') return;
-    const uri = entry.media?.[0]?.uri || entry.content;
-    if (!uri) return;
-    FileSystem.getInfoAsync(uri)
-      .then(info => { if (!info.exists) setAudioMissing(true); })
-      .catch(() => {});
-  }, [entry.id]);
-
   useEffect(() => {
     if (isActionSheetActive === false && interactionState !== 'idle' && interactionState !== 'closing') {
       logger.log('[EntryCard] inactive while non-idle, closing current interaction', entry.id, interactionState);
@@ -171,6 +161,7 @@ function EntryCard({
     try {
       const fileInfo = await FileSystem.getInfoAsync(uri);
       if (!fileInfo.exists) {
+        setAudioMissing(true);
         Alert.alert(
           '文件不存在',
           '音频文件已丢失或被删除，无法播放。',
@@ -178,6 +169,7 @@ function EntryCard({
         );
         return;
       }
+      setAudioMissing(false);
     } catch {
       // getInfoAsync 本身失败时降级到播放，让 VoiceService 处理错误
     }
@@ -360,7 +352,6 @@ function EntryCard({
 
       case 'voice':
         // 语音记录：点击播放
-        if (audioMissing) return;
         if (entry.media && entry.media.length > 0 && !isPlayingAudio) {
           logger.log('语音记录，触发播放');
           handlePlayAudio();
@@ -392,7 +383,7 @@ function EntryCard({
           style={[
             styles.cardShadow,
             cardAnimatedStyle,
-            { backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(), marginBottom: cardSpacing },
+            { marginBottom: cardSpacing },
           ]}
         >
           <Pressable

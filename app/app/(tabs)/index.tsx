@@ -132,9 +132,13 @@ export default function HomeScreen() {
   }, []);
 
   const startRecordingTimer = useCallback((entryId: string) => {
+    let lastDuration = 0;
     recordingTimerRef.current = setInterval(async () => {
       const duration = await VoiceService.getRecordingDuration();
-      updateRecordingDuration(entryId, duration);
+      if (duration !== lastDuration) {
+        lastDuration = duration;
+        updateRecordingDuration(entryId, duration);
+      }
     }, 100);
   }, [updateRecordingDuration]);
 

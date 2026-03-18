@@ -6,7 +6,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera } from 'expo-camera';
-import * as FileSystem from 'expo-file-system/legacy';
 import {
   COMPRESSION_PRESETS,
   STORAGE_QUOTA,
@@ -17,6 +16,7 @@ import {
   generateUniqueFilename,
   deleteFile,
   getFileInfo,
+  copyFile,
 } from '@/src/utils/fileSystem';
 import { MediaError } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -43,6 +43,8 @@ export interface CompressedPhoto {
   compressed: {
     uri: string;
     size: number;
+    width: number;
+    height: number;
   };
   ratio: number;
   quality: 'low' | 'medium' | 'high';
@@ -233,6 +235,8 @@ export class PhotoService {
         compressed: {
           uri: result.uri,
           size: compressedSize,
+          width: result.width,
+          height: result.height,
         },
         ratio,
         quality,
@@ -292,44 +296,31 @@ export class PhotoService {
         );
       }
 
-      // 获取图片真实元数据
-      const metadata = await this.getPhotoMetadata(sourceUri);
-      const width = metadata.width;
-      const height = metadata.height;
-      // 优先使用传入的 aspectRatio，否则从实际尺寸计算
-      const finalAspectRatio = aspectRatio || (height > 0 ? width / height : 1);
-
       // 压缩照片（原图质量压缩）
       const compressed = await this.compressPhoto(sourceUri, quality);
+      const width = compressed.compressed.width;
+      const height = compressed.compressed.height;
+      // 优先使用传入的 aspectRatio，否则从实际尺寸计算
+      const finalAspectRatio = aspectRatio || (height > 0 ? width / height : 1);
 
       // 生成缩略图（保持比例，限制宽度）
       const thumbnailUri = await this.generateThumbnail(compressed.compressed.uri);
 
       // 保存原图到存储
       const filename = generateUniqueFilename(entryId, 'photo', 'jpg');
-      const targetUri = `${MEDIA_PATHS.photoOriginal}${filename}`;
-
-      // 确保目录存在
-      const dirInfo = await FileSystem.getInfoAsync(MEDIA_PATHS.photoOriginal);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(MEDIA_PATHS.photoOriginal, {
-          intermediates: true,
-        });
-      }
-
-      // 复制压缩后的文件作为原图
-      await FileSystem.copyAsync({
-        from: compressed.compressed.uri,
-        to: targetUri,
-      });
+      const targetUri = await copyFile(
+        compressed.compressed.uri,
+        MEDIA_PATHS.photoOriginal,
+        filename
+      );
 
       // 保存缩略图
       const thumbnailFilename = generateUniqueFilename(entryId, 'thumb', 'jpg');
-      const targetThumbnailUri = `${MEDIA_PATHS.photoOriginal}${thumbnailFilename}`;
-      await FileSystem.copyAsync({
-        from: thumbnailUri,
-        to: targetThumbnailUri,
-      });
+      const targetThumbnailUri = await copyFile(
+        thumbnailUri,
+        MEDIA_PATHS.photoOriginal,
+        thumbnailFilename
+      );
 
       // 清理临时文件
       await deleteFile(compressed.compressed.uri);
