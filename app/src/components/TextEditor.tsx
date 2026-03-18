@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { suggestTags } from '@/src/services/tagSuggestionService';
+import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 
 interface TextEditorProps {
   visible: boolean;
@@ -39,6 +40,19 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
       const parts = prev.split(',').map((t) => t.trim()).filter(Boolean);
       if (parts.includes(tag)) return prev;
       return parts.length > 0 ? `${parts.join(', ')}, ${tag}` : tag;
+    });
+  }, []);
+
+  const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
+
+  useEffect(() => {
+    if (!tagsLoaded) loadCommonTags();
+  }, [tagsLoaded, loadCommonTags]);
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    setTagsInput((prev) => {
+      const parts = prev.split(',').map((t) => t.trim()).filter(Boolean);
+      return parts.filter((t) => t !== tag).join(', ');
     });
   }, []);
 
@@ -106,6 +120,25 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
 
             <View style={styles.section}>
               <Text style={styles.label}>标签</Text>
+              {commonTags.length > 0 && (
+                <View style={styles.commonTagsRow}>
+                  {commonTags.map((tag) => {
+                    const currentTags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+                    const selected = currentTags.includes(tag);
+                    return (
+                      <TouchableOpacity
+                        key={tag}
+                        style={[styles.commonChip, selected && styles.commonChipSelected]}
+                        onPress={() => selected ? handleRemoveTag(tag) : handleAddSuggestion(tag)}
+                      >
+                        <Text style={[styles.commonChipText, selected && styles.commonChipTextSelected]}>
+                          {tag}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
               <TextInput
                 style={styles.input}
                 value={tagsInput}
@@ -343,5 +376,30 @@ const styles = StyleSheet.create({
   },
   saveButtonTextDisabled: {
     color: '#A3A3A3',
+  },
+  commonTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginBottom: 10,
+  },
+  commonChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#E0DAFA',
+  },
+  commonChipSelected: {
+    backgroundColor: '#A491D3',
+    borderColor: '#A491D3',
+  },
+  commonChipText: {
+    fontSize: 13,
+    color: '#6A5ACD',
+  },
+  commonChipTextSelected: {
+    color: '#FFFFFF',
   },
 });
