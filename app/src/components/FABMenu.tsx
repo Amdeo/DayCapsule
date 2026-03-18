@@ -60,11 +60,11 @@ function hitTest(dx: number, dy: number): number {
 }
 
 // 各 LastAddType 的外观
-const TYPE_CONFIG: Record<LastAddType, { icon: string; color: string; label: string }> = {
-  text:   { icon: 'create-outline', color: '#A491D3', label: '文字' },
-  camera: { icon: 'camera',         color: '#77C9D4', label: '拍照' },
-  photo:  { icon: 'images',         color: '#57B8C8', label: '相册' },
-  voice:  { icon: 'mic-outline',    color: '#F5A623', label: '语音' },
+const TYPE_CONFIG: Record<LastAddType, { icon: string; color: string }> = {
+  text:   { icon: 'create-outline', color: '#A491D3' },
+  camera: { icon: 'camera',         color: '#77C9D4' },
+  photo:  { icon: 'images',         color: '#57B8C8' },
+  voice:  { icon: 'mic-outline',    color: '#F5A623' },
 };
 
 const SPRING_CONFIG = { damping: 20, stiffness: 200, mass: 1, overshootClamping: true };
@@ -237,7 +237,6 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
   const fabConfig = lastAddType ? TYPE_CONFIG[lastAddType] : null;
   const fabBgColor = fabConfig?.color ?? '#6A89CC';
   const fabIcon = fabConfig?.icon ?? 'add';
-  const fabLabel = fabConfig?.label ?? null;
 
   // 遮罩动画（backgroundColor 已含 alpha=0.4，opacity 仅做淡入淡出）
   const backdropAnimatedStyle = useAnimatedStyle(() => ({
@@ -285,13 +284,6 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
             <View style={styles.tipBubble}>
               <Text style={styles.tipText}>长按选择记录类型</Text>
               <View style={styles.tipArrow} />
-            </View>
-          )}
-
-          {/* 记忆标签 */}
-          {fabLabel !== null && (
-            <View style={styles.labelContainer}>
-              <Text style={styles.labelText}>{fabLabel}</Text>
             </View>
           )}
         </View>
@@ -406,18 +398,6 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
     borderTopColor: 'rgba(50,50,50,0.88)',
-  },
-  labelContainer: {
-    marginTop: 5,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  labelText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#4A4A4A',
   },
   optionsOverlay: {
     position: 'absolute',

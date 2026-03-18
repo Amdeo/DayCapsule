@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { PanResponder } from 'react-native';
+import { PanResponder, Text } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 import { FABMenu } from '../FABMenu';
@@ -96,5 +96,21 @@ describe('FABMenu peek-hide', () => {
     expect(onSelect).not.toHaveBeenCalled();
 
     panResponderCreateSpy.mockRestore();
+  });
+
+  it('does not render a label text below the main FAB button when a type is selected', () => {
+    const onSelect = jest.fn();
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const allTexts = tree!.root
+      .findAllByType(Text)
+      .map((n: any) => n.props.children);
+
+    const textCount = allTexts.filter((t: unknown) => t === '文字').length;
+    expect(textCount).toBe(1);
   });
 });
