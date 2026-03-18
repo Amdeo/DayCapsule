@@ -430,7 +430,7 @@ interface TimelineProps {
 
 export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording }: TimelineProps) {
   const {
-    entries, deleteEntry, searchQuery, filteredEntries, updateEntry,
+    entries, deleteEntry, searchQuery, updateEntry,
     filterType, filterDateRange, selectedTags,
     setSearchQuery, setFilterType, setFilterDateRange, toggleTag, clearTags,
     loadMore, isLoadingMore, hasMore,
@@ -459,7 +459,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
 
   // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
   const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
-  const displayEntries = hasFilters ? filteredEntries : entries;
+  const displayEntries = entries;
 
   // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 直接渲染卡片
   useEffect(() => {

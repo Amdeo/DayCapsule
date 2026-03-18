@@ -87,7 +87,6 @@ const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => 
 interface EntryStore {
   // 数据
   entries: Entry[];
-  filteredEntries: Entry[]; // 保持与 entries 同步，供 Timeline 兼容使用
   activeQueryKey: string;
   isLoading: boolean;
   isLoadingMore: boolean;
@@ -161,7 +160,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
       set((state) => ({
         entries: cleaned,
-        filteredEntries: cleaned,
         cursor: cleaned.at(-1)?.timestamp ?? null,
         hasMore: page.length === PAGE_SIZE,
         isLoading: false,
@@ -200,7 +198,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
   return ({
   entries: [],
-  filteredEntries: [],
   activeQueryKey: '',
   isLoading: false,
   isLoadingMore: false,
@@ -254,7 +251,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         const next = mergeUniqueById(s.entries, page);
         return {
           entries: next,
-          filteredEntries: next,
           cursor: page.at(-1)?.timestamp ?? s.cursor,
           hasMore: page.length === PAGE_SIZE,
           isLoadingMore: false,
@@ -278,7 +274,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       const newEntry = await DB.addEntry(entry);
       set((s) => ({
         entries: [newEntry, ...s.entries],
-        filteredEntries: [newEntry, ...s.filteredEntries],
       }));
       logger.log('✅ 添加记录:', newEntry.id);
     } catch (error) {
@@ -295,7 +290,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       await DB.updateEntry(id, updates);
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...updates } : e));
-      set((s) => ({ entries: patch(s.entries), filteredEntries: patch(s.filteredEntries) }));
+      set((s) => ({ entries: patch(s.entries) }));
       logger.log('✅ 更新记录:', id);
     } catch (error) {
       logger.error('Failed to update entry:', error);
@@ -310,7 +305,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     try {
       await DB.deleteEntry(id);
       const remove = (arr: Entry[]) => arr.filter((e) => e.id !== id);
-      set((s) => ({ entries: remove(s.entries), filteredEntries: remove(s.filteredEntries) }));
+      set((s) => ({ entries: remove(s.entries) }));
       logger.log('✅ 删除记录:', id);
     } catch (error) {
       logger.error('Failed to delete entry:', error);
@@ -334,7 +329,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   updateRecordingDuration: (id, duration) => {
     const patch = (arr: Entry[]) =>
       arr.map((e) => (e.id === id ? { ...e, recordingDuration: duration } : e));
-    set((s) => ({ entries: patch(s.entries), filteredEntries: patch(s.filteredEntries) }));
+    set((s) => ({ entries: patch(s.entries) }));
   },
 
   completeRecording: async (id, uri, duration) =>

@@ -4,7 +4,6 @@
  */
 
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system/legacy';
 import {
   AUDIO_PRESETS,
   STORAGE_QUOTA,
@@ -15,6 +14,7 @@ import {
   generateUniqueFilename,
   deleteFile,
   getFileInfo,
+  copyFile,
 } from '@/src/utils/fileSystem';
 import { MediaError, AudioCompressionOptions } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -686,21 +686,7 @@ export class VoiceService {
 
       // 保存到存储
       const filename = generateUniqueFilename(entryId, 'voice', 'm4a');
-      const targetUri = `${MEDIA_PATHS.voiceOriginal}${filename}`;
-
-      // 确保目录存在
-      const dirInfo = await FileSystem.getInfoAsync(MEDIA_PATHS.voiceOriginal);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(MEDIA_PATHS.voiceOriginal, {
-          intermediates: true,
-        });
-      }
-
-      // 复制文件
-      await FileSystem.copyAsync({
-        from: sourceUri,
-        to: targetUri,
-      });
+      const targetUri = await copyFile(sourceUri, MEDIA_PATHS.voiceOriginal, filename);
 
       return targetUri;
     } catch (error) {

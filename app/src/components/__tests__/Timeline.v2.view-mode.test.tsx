@@ -41,7 +41,6 @@ let mockFilterDateRange = 'all';
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
     entries: mockEntries,
-    filteredEntries: [],
     searchQuery: mockSearchQuery,
     filterType: mockFilterType,
     filterDateRange: mockFilterDateRange,

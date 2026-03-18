@@ -60,7 +60,6 @@ function createDeferred<T>() {
 const resetStore = () =>
   useEntryStore.setState({
     entries: [],
-    filteredEntries: [],
     isLoading: false,
     isLoadingMore: false,
     cursor: null,
@@ -237,7 +236,7 @@ describe('entryStore', () => {
         { id: '2', type: 'text' as const, content: '第二页', timestamp: 1000, syncStatus: 'synced' as const },
       ];
 
-      useEntryStore.setState({ entries: firstPage, filteredEntries: firstPage, cursor: 2000, hasMore: true });
+      useEntryStore.setState({ entries: firstPage, cursor: 2000, hasMore: true });
       (DB.getEntriesPage as jest.Mock).mockResolvedValue(secondPage);
 
       await useEntryStore.getState().loadMore();
@@ -283,7 +282,7 @@ describe('entryStore', () => {
         { id: '2', type: 'text' as const, content: '第二页', timestamp: 1000, syncStatus: 'synced' as const },
       ];
 
-      useEntryStore.setState({ entries: existing, filteredEntries: existing, cursor: 2000, hasMore: true });
+      useEntryStore.setState({ entries: existing, cursor: 2000, hasMore: true });
       (DB.getEntriesPage as jest.Mock).mockResolvedValue(duplicatePage);
 
       await useEntryStore.getState().loadMore();
@@ -380,10 +379,6 @@ describe('entryStore', () => {
     it('应该从 store 中删除指定记录', async () => {
       useEntryStore.setState({
         entries: [
-          { id: '1', type: 'text', content: '记录1', timestamp: 1700000000000, syncStatus: 'synced' },
-          { id: '2', type: 'text', content: '记录2', timestamp: 1700000000001, syncStatus: 'synced' },
-        ],
-        filteredEntries: [
           { id: '1', type: 'text', content: '记录1', timestamp: 1700000000000, syncStatus: 'synced' },
           { id: '2', type: 'text', content: '记录2', timestamp: 1700000000001, syncStatus: 'synced' },
         ],
