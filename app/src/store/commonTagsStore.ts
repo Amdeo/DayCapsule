@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Storage } from '@/src/utils/storage';
+import { logger } from '@/src/utils/logger';
 
 const STORAGE_KEY = 'common_tags';
 const MAX_TAGS = 20;
@@ -23,8 +24,13 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
   isLoaded: false,
 
   loadCommonTags: async () => {
-    const stored = await Storage.getObject<string[]>(STORAGE_KEY);
-    set({ tags: stored ?? DEFAULT_COMMON_TAGS, isLoaded: true });
+    try {
+      const stored = await Storage.getObject<string[]>(STORAGE_KEY);
+      set({ tags: stored ?? DEFAULT_COMMON_TAGS, isLoaded: true });
+    } catch (error) {
+      logger.error('Failed to load common tags:', error);
+      set({ tags: DEFAULT_COMMON_TAGS, isLoaded: true });
+    }
   },
 
   addCommonTag: async (tag: string) => {
@@ -32,17 +38,29 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
     if (current.includes(tag) || current.length >= MAX_TAGS) return;
     const next = [...current, tag];
     set({ tags: next });
-    await Storage.setObject(STORAGE_KEY, next);
+    try {
+      await Storage.setObject(STORAGE_KEY, next);
+    } catch (error) {
+      logger.error('Failed to save common tags after add:', error);
+    }
   },
 
   removeCommonTag: async (tag: string) => {
     const next = get().tags.filter((t) => t !== tag);
     set({ tags: next });
-    await Storage.setObject(STORAGE_KEY, next);
+    try {
+      await Storage.setObject(STORAGE_KEY, next);
+    } catch (error) {
+      logger.error('Failed to save common tags after remove:', error);
+    }
   },
 
   resetToDefaults: async () => {
     set({ tags: DEFAULT_COMMON_TAGS });
-    await Storage.setObject(STORAGE_KEY, DEFAULT_COMMON_TAGS);
+    try {
+      await Storage.setObject(STORAGE_KEY, DEFAULT_COMMON_TAGS);
+    } catch (error) {
+      logger.error('Failed to save common tags after reset:', error);
+    }
   },
 }));

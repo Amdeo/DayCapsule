@@ -35,6 +35,13 @@ describe('loadCommonTags', () => {
     await useCommonTagsStore.getState().loadCommonTags();
     expect(useCommonTagsStore.getState().tags).toEqual(['旅行', '美食']);
   });
+
+  it('falls back to defaults when storage throws', async () => {
+    Storage.getObject.mockRejectedValue(new Error('storage error'));
+    await useCommonTagsStore.getState().loadCommonTags();
+    expect(useCommonTagsStore.getState().tags).toEqual(DEFAULTS);
+    expect(useCommonTagsStore.getState().isLoaded).toBe(true);
+  });
 });
 
 describe('addCommonTag', () => {
