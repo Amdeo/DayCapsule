@@ -404,6 +404,7 @@ const styles = StyleSheet.create({
   },
   tagChipCommon: {
     backgroundColor: '#FAFAFA',
+    borderWidth: 1,
     borderColor: '#E5E5E5',
   },
   tagChipCommonText: {
