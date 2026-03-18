@@ -194,8 +194,8 @@ export function CalendarView({ entries }: CalendarViewProps) {
         <Text style={styles.contentTitle}>
           {selectedKey
             ? (() => {
-                const d = new Date(selectedEntries[0]?.timestamp ?? Date.now());
-                return `${d.getMonth() + 1}月${d.getDate()}日 · ${selectedEntries.length} 条`;
+                const [, m, dd] = selectedKey!.split('-').map(Number);
+                return `${m + 1}月${dd}日 · ${selectedEntries.length} 条`;
               })()
             : `全月 · ${monthEntries.length} 条`}
         </Text>
@@ -216,7 +216,7 @@ export function CalendarView({ entries }: CalendarViewProps) {
         selectedEntries.length === 0 ? (
           <Text style={styles.emptyText}>当天无记录</Text>
         ) : (
-          selectedEntries
+          [...selectedEntries]
             .sort((a, b) => b.timestamp - a.timestamp)
             .map((entry) => (
               <View key={entry.id} style={styles.entryRow}>
@@ -326,24 +326,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-  },
-  dayDetail: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  dayDetailTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4A4A4A',
-    marginBottom: 12,
   },
   entryRow: {
     flexDirection: 'row',
