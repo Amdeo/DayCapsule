@@ -68,6 +68,8 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
 
   if (!visible || !entry) return null;
 
+  const currentTagsList = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+
   const handleSave = () => {
     const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
     onSave(entry.id, content, tags);
@@ -136,8 +138,7 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
               {commonTags.length > 0 && (
                 <View style={styles.commonTagsRow}>
                   {commonTags.map((tag) => {
-                    const currentTags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
-                    const selected = currentTags.includes(tag);
+                    const selected = currentTagsList.includes(tag);
                     return (
                       <TouchableOpacity
                         key={tag}

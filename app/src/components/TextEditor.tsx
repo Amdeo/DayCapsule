@@ -76,6 +76,8 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
     return null;
   }
 
+  const currentTagsList = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+
   return (
     <Modal
       visible={visible}
@@ -123,8 +125,7 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
               {commonTags.length > 0 && (
                 <View style={styles.commonTagsRow}>
                   {commonTags.map((tag) => {
-                    const currentTags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
-                    const selected = currentTags.includes(tag);
+                    const selected = currentTagsList.includes(tag);
                     return (
                       <TouchableOpacity
                         key={tag}
