@@ -19,6 +19,7 @@ import {
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
+import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 
 interface SearchOverlayProps {
   visible: boolean;
@@ -45,6 +46,15 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
   const [localDate, setLocalDate] = useState<DateRange>('all');
   const [localTags, setLocalTags] = useState<string[]>([]);
   const [allTagsList, setAllTagsList] = useState<string[]>([]);
+
+  const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
+
+  useEffect(() => {
+    if (!tagsLoaded) loadCommonTags();
+  }, [tagsLoaded, loadCommonTags]);
+
+  // 常用标签中尚未出现在已使用标签列表里的部分
+  const extraCommonTags = commonTags.filter((t) => !allTagsList.includes(t));
 
   // 打开时同步当前筛选状态
   useEffect(() => {
@@ -206,7 +216,7 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
                   </TouchableOpacity>
                 )}
               </View>
-              {allTagsList.length === 0 ? (
+              {allTagsList.length === 0 && extraCommonTags.length === 0 ? (
                 <Text style={styles.emptyTagsHint}>暂无标签，在编辑记录时添加</Text>
               ) : (
                 <View style={styles.chips}>
@@ -222,6 +232,23 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
                           <Ionicons name="checkmark" size={13} color="#FFFFFF" style={{ marginRight: 3 }} />
                         )}
                         <Text style={[styles.tagChipText, selected && styles.activeText]}>
+                          #{tag}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  {extraCommonTags.map((tag) => {
+                    const selected = localTags.includes(tag);
+                    return (
+                      <Pressable
+                        key={tag}
+                        style={[styles.tagChip, styles.tagChipCommon, selected && styles.tagChipActive]}
+                        onPress={() => handleToggleTag(tag)}
+                      >
+                        {selected && (
+                          <Ionicons name="checkmark" size={13} color="#FFFFFF" style={{ marginRight: 3 }} />
+                        )}
+                        <Text style={[styles.tagChipText, styles.tagChipCommonText, selected && styles.activeText]}>
                           #{tag}
                         </Text>
                       </Pressable>
@@ -374,6 +401,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#C0C0C0',
     fontStyle: 'italic',
+  },
+  tagChipCommon: {
+    backgroundColor: '#FAFAFA',
+    borderColor: '#E5E5E5',
+  },
+  tagChipCommonText: {
+    color: '#A3A3A3',
   },
   resetButton: {
     flexDirection: 'row',
