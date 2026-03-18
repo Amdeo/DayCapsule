@@ -12,6 +12,7 @@ import { SyncService } from '../services/syncService';
 import { logger } from '@/src/utils/logger';
 import { DetailPageShell } from './DetailPageShell';
 import { BackupExportSheet } from './BackupExportSheet';
+import { formatDetailedTime } from '@/src/utils/timeUtils';
 
 interface BackupPageProps {
   visible: boolean;
@@ -30,8 +31,7 @@ function formatBackupName(name: string): string {
 
 function formatLastBackupTime(ts: number | null): string {
   if (!ts) return '从未备份';
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return formatDetailedTime(ts);
 }
 
 function getFileNameFromUri(uri: string): string {

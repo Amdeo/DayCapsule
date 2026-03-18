@@ -113,10 +113,7 @@ export async function copyFile(
  */
 export async function deleteFile(uri: string): Promise<void> {
   try {
-    const info = await FileSystem.getInfoAsync(uri);
-    if (info.exists) {
-      await FileSystem.deleteAsync(uri, { idempotent: true });
-    }
+    await FileSystem.deleteAsync(uri, { idempotent: true });
   } catch (error) {
     logger.error('Failed to delete file:', error);
     // 不抛出错误，删除失败不应该中断流程

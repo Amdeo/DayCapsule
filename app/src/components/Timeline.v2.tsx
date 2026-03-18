@@ -12,7 +12,7 @@ import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
 import { SearchOverlay } from './SearchOverlay';
 import { EntryEditor } from './EntryEditor';
-import { formatDateLabel } from '../utils/timeUtils';
+import { formatDateLabel, formatHHMM } from '../utils/timeUtils';
 import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarView } from './CalendarView';
@@ -41,10 +41,7 @@ function generateTimeSections(
   let currentDateLabel = '';
   let currentSection: TimeSection | null = null;
 
-  // 按时间倒序排序
-  const sortedEntries = [...entries].sort((a, b) => b.timestamp - a.timestamp);
-
-  sortedEntries.forEach((entry, index) => {
+  entries.forEach((entry) => {
     const dateLabel = formatDateLabel(entry.timestamp);
 
     // 如果日期标签变化，创建一个新的分组
@@ -78,12 +75,11 @@ function generateTimeSections(
  * 按月分组（月份列表视图）
  */
 function generateMonthlySections(entries: Entry[]): TimeSection[] {
-  const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
   const sections: TimeSection[] = [];
   let currentKey = '';
   let currentSection: TimeSection | null = null;
 
-  sorted.forEach((entry) => {
+  entries.forEach((entry) => {
     const d = new Date(entry.timestamp);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     const label = `${d.getFullYear()}年${d.getMonth() + 1}月`;
@@ -280,14 +276,6 @@ const EntryMarker = React.memo(function EntryMarker({
     }
   };
 
-  // 格式化为时分
-  const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
-
   return (
     <View
       style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
@@ -316,7 +304,7 @@ const EntryMarker = React.memo(function EntryMarker({
       {/* 时间文本 - 与卡片开头对齐，颜色和圆点一致 */}
       <View style={{ marginBottom: 8 }}>
         <Text style={{ fontSize: 12, color: getDotColor(), fontWeight: '500' }}>
-          {formatTime(entry.timestamp)}
+          {formatHHMM(entry.timestamp)}
         </Text>
       </View>
 
@@ -444,7 +432,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const {
     entries, deleteEntry, searchQuery, filteredEntries, updateEntry,
     filterType, filterDateRange, selectedTags,
-    setSearchQuery, setFilterType, setFilterDateRange, clearTags,
+    setSearchQuery, setFilterType, setFilterDateRange, toggleTag, clearTags,
     loadMore, isLoadingMore, hasMore,
   } = useEntryStore();
   const insets = useSafeAreaInsets();
@@ -453,12 +441,12 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [displayMode, setDisplayMode] = useState<ViewMode>('list');
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const skipTransitionRef = useRef(false);
   const isInitialMountRef = useRef(true);
   const [showViewToggle, setShowViewToggle] = useState(false);
   const [activeActionSheetId, setActiveActionSheetId] = useState<string | null>(null);
   const sectionListRef = useRef<SectionList<Entry, TimeSection>>(null);
+  const isTransitioning = viewMode !== displayMode;
 
   // 从共享 store 获取卡片间距设置（无需轮询，自动响应状态变化）
   const { cardSpacing: cardSpacingKey } = useSettingsStore();
@@ -483,10 +471,8 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       skipTransitionRef.current = false;
       return;
     }
-    setIsTransitioning(true);
     const timer = setTimeout(() => {
       setDisplayMode(viewMode);
-      setIsTransitioning(false);
     }, 600);
     return () => clearTimeout(timer);
   }, [viewMode]);
@@ -663,7 +649,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
           onClearQuery={() => setSearchQuery('')}
           onClearType={() => setFilterType('all')}
           onClearDate={() => setFilterDateRange('all')}
-          onClearTag={(tag) => clearTags()}
+          onClearTag={(tag) => toggleTag(tag)}
           onClearAll={() => {
             setSearchQuery('');
             setFilterType('all');
@@ -800,7 +786,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 function ActiveFiltersBar({
   searchQuery, filterType, filterDateRange, selectedTags,
-  resultCount, onClearQuery, onClearType, onClearDate, onClearAll, onOpenSearch,
+  resultCount, onClearQuery, onClearType, onClearDate, onClearTag, onClearAll, onOpenSearch,
 }: ActiveFiltersBarProps) {
   return (
     <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={filterBarStyles.container}>
@@ -849,7 +835,7 @@ function ActiveFiltersBar({
         {selectedTags.map((tag) => (
           <View key={tag} style={filterBarStyles.chip}>
             <Text style={filterBarStyles.chipText}>#{tag}</Text>
-            <TouchableOpacity onPress={onClearAll} hitSlop={6}>
+            <TouchableOpacity onPress={() => onClearTag(tag)} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
             </TouchableOpacity>
           </View>

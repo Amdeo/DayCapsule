@@ -185,8 +185,9 @@ export function formatDetailedTime(timestamp: number): string {
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
 
-  return `${year}/${month}/${day} ${hours}:${minutes}`;
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 /**
@@ -324,4 +325,19 @@ export function getMonthStats(
   }
 
   return stats;
+}
+
+/** 将秒数格式化为 MM:SS 字符串（如 "03:42"） */
+export function formatMMSS(totalSeconds: number): string {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = Math.floor(totalSeconds % 60);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/** 将时间戳格式化为 HH:mm 字符串（如 "09:05"） */
+export function formatHHMM(timestamp: number): string {
+  const date = new Date(timestamp);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }

@@ -34,6 +34,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
 import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
 import { PhotoGrid } from './PhotoGrid';
+import { formatMMSS } from '@/src/utils/timeUtils';
 
 const CARD_RESTING_TRANSLATE_X = -28;
 const CARD_SHIFT_DURATION = 160;
@@ -207,11 +208,7 @@ function EntryCard({
   };
 
   // 格式化录音时长
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const formatDuration = (seconds: number) => formatMMSS(seconds);
 
   // 根据类型获取左边框颜色
   const getBorderColor = () => {
@@ -375,12 +372,6 @@ function EntryCard({
     }
   };
 
-  // 处理图片点击（阻止事件冒泡）
-  const handleImagePress = () => {
-    logger.log('图片被点击，打开查看器');
-    setShowImageViewer(true);
-  };
-
   return (
     <Swipeable
       ref={swipeableRef}
@@ -438,7 +429,7 @@ function EntryCard({
                     photos={entry.media}
                     maxPhotoHeight={maxPhotoHeight}
                     photoImageRadius={photoImageRadius}
-                    onPhotoPress={() => handleImagePress()}
+                    onPhotoPress={() => setShowImageViewer(true)}
                   />
                   {entry.content && (
                     <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>

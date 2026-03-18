@@ -43,14 +43,16 @@ const upsertEntryTags = async (
   tags: string[]
 ): Promise<void> => {
   await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [entryId]);
-  for (const name of tags) {
-    await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name]);
-    await db.runAsync(
-      `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
-       SELECT ?, id FROM tags WHERE name = ?`,
-      [entryId, name]
-    );
-  }
+  await Promise.all(
+    tags.map(async (name) => {
+      await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name]);
+      await db.runAsync(
+        `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
+         SELECT ?, id FROM tags WHERE name = ?`,
+        [entryId, name]
+      );
+    })
+  );
 };
 
 /**

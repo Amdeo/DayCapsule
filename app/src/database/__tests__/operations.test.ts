@@ -186,6 +186,43 @@ describe('database/operations', () => {
       expect(sqls.some((s) => s.includes('INSERT OR IGNORE INTO tags'))).toBe(true);
       expect(sqls.some((s) => s.includes('entry_tags'))).toBe(true);
     });
+
+    it('有多个 tags 时应并发发起每个 tag 的首个 SQL，再继续关联写入', async () => {
+      const pendingTagWrites: Array<{ sql: string; resolve: () => void }> = [];
+
+      mockDb.getAllAsync.mockResolvedValue([{ name: 'id' }, { name: 'type' }, { name: 'content' }, { name: 'timestamp' }, { name: 'tags' }]);
+      mockDb.runAsync.mockImplementation((sql: string) => {
+        if (sql.includes('INSERT OR IGNORE INTO tags') || sql.includes('INSERT OR IGNORE INTO entry_tags')) {
+          return new Promise<void>((resolve) => {
+            pendingTagWrites.push({ sql, resolve });
+          });
+        }
+        return Promise.resolve(undefined);
+      });
+
+      const addEntryPromise = addEntry({
+        type: 'text' as const,
+        content: '并发标签',
+        tags: ['工作', '重要'],
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(pendingTagWrites).toHaveLength(2);
+      expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO tags'))).toBe(true);
+
+      pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(pendingTagWrites).toHaveLength(2);
+      expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO entry_tags'))).toBe(true);
+
+      pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
+      await addEntryPromise;
+    });
   });
 
   // ─── deleteEntry ────────────────────────────────────────────────────────────

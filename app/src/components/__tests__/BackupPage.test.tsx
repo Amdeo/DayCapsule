@@ -70,6 +70,7 @@ describe('BackupPage', () => {
     await waitFor(() => {
       expect(getByText('备份历史')).toBeTruthy();
       expect(getByText('iCloud 同步')).toBeTruthy();
+      expect(getByText('2024-03-10 00:00:00')).toBeTruthy();
     });
   });
 

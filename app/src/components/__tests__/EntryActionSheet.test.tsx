@@ -91,7 +91,7 @@ describe('EntryActionSheet', () => {
     });
   });
 
-  it('calls onEdit and onClose when edit is pressed', () => {
+  it('calls onEdit without triggering onClose when edit is pressed', () => {
     const onEdit = jest.fn();
     const onClose = jest.fn();
     const { getByTestId } = render(
@@ -101,7 +101,7 @@ describe('EntryActionSheet', () => {
     fireEvent.press(getByTestId('action-sheet-edit'));
 
     expect(onEdit).toHaveBeenCalledTimes(1);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('shows confirmation view when delete is pressed', () => {

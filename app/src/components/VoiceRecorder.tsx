@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { VoiceService } from '@/src/services/voiceService';
 import WaveformAnimation from './WaveformAnimation';
 import { logger } from '@/src/utils/logger';
+import { formatMMSS } from '@/src/utils/timeUtils';
 
 interface VoiceRecorderProps {
   visible: boolean;
@@ -115,9 +116,6 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
     setDuration(0);
   };
 
-  const formatTime = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
   return (
     <Modal
       visible={visible}
@@ -157,7 +155,7 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
             ) : isRecording ? (
               /* ── 录音中 ── */
               <View style={styles.recordingContainer}>
-                <Text style={styles.timer}>{formatTime(duration)}</Text>
+                <Text style={styles.timer}>{formatMMSS(duration)}</Text>
                 <View style={styles.waveformBox}>
                   <WaveformAnimation
                     isRecording={!isPaused}
@@ -175,7 +173,7 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
                   <Ionicons name="checkmark" size={36} color="#FFFFFF" />
                 </View>
                 <Text style={styles.doneTitle}>录音完成</Text>
-                <Text style={styles.doneDuration}>{formatTime(duration)}</Text>
+                <Text style={styles.doneDuration}>{formatMMSS(duration)}</Text>
               </View>
             )}
           </View>

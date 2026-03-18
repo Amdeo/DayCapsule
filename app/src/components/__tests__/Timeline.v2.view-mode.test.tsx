@@ -8,12 +8,18 @@ import { SectionList } from 'react-native';
 import { Timeline } from '../Timeline.v2';
 import { Entry } from '@/src/types/entry';
 
+const mockToggleTag = jest.fn();
+const mockClearTags = jest.fn();
+const mockSetSearchQuery = jest.fn();
+const mockSetFilterType = jest.fn();
+const mockSetFilterDateRange = jest.fn();
+
 const mockEntries: Entry[] = [
   {
     id: 'entry-1',
     type: 'text',
     content: '第一条',
-    tags: [],
+    tags: ['旅行'],
     timestamp: new Date('2026-03-17T09:00:00+08:00').getTime(),
     syncStatus: 'synced',
   },
@@ -22,25 +28,31 @@ const mockEntries: Entry[] = [
     type: 'photo',
     content: '第二条',
     tags: [],
-    timestamp: new Date('2026-03-16T10:00:00+08:00').getTime(),
+    timestamp: new Date('2026-03-18T10:00:00+08:00').getTime(),
     syncStatus: 'synced',
   },
 ];
+
+let mockSelectedTags: string[] = [];
+let mockSearchQuery = '';
+let mockFilterType = 'all';
+let mockFilterDateRange = 'all';
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
     entries: mockEntries,
     filteredEntries: [],
-    searchQuery: '',
-    filterType: 'all',
-    filterDateRange: 'all',
-    selectedTags: [],
+    searchQuery: mockSearchQuery,
+    filterType: mockFilterType,
+    filterDateRange: mockFilterDateRange,
+    selectedTags: mockSelectedTags,
     deleteEntry: jest.fn(),
     updateEntry: jest.fn(),
-    setSearchQuery: jest.fn(),
-    setFilterType: jest.fn(),
-    setFilterDateRange: jest.fn(),
-    clearTags: jest.fn(),
+    setSearchQuery: mockSetSearchQuery,
+    setFilterType: mockSetFilterType,
+    setFilterDateRange: mockSetFilterDateRange,
+    toggleTag: mockToggleTag,
+    clearTags: mockClearTags,
     loadMore: jest.fn(),
     isLoadingMore: false,
     hasMore: false,
@@ -106,6 +118,11 @@ jest.mock('../EntryCard', () => ({
 describe('Timeline view mode switching', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockSelectedTags = [];
+    mockSearchQuery = '';
+    mockFilterType = 'all';
+    mockFilterDateRange = 'all';
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -166,5 +183,15 @@ describe('Timeline view mode switching', () => {
     expect(screen.getByTestId('loader-dot-text')).toHaveStyle({ backgroundColor: '#A491D3' });
     expect(screen.getByTestId('loader-dot-photo')).toHaveStyle({ backgroundColor: '#77C9D4' });
     expect(screen.getByTestId('loader-dot-voice')).toHaveStyle({ backgroundColor: '#F5A623' });
+  });
+
+  it('clears only the pressed tag chip instead of clearing all tags', () => {
+    mockSelectedTags = ['旅行'];
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByText('close'));
+
+    expect(mockToggleTag).toHaveBeenCalledWith('旅行');
+    expect(mockClearTags).not.toHaveBeenCalled();
   });
 });

@@ -173,7 +173,6 @@ export function EntryActionSheet({
                     style={styles.optionRow}
                     onPress={() => {
                       onEdit();
-                      onClose();
                     }}
                   >
                     <Ionicons name="pencil-outline" size={20} color="#8E8E93" />
