@@ -12,6 +12,7 @@ import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
 import { SearchOverlay } from './SearchOverlay';
 import { EntryEditor } from './EntryEditor';
+import { TextEntryDetailPage } from './TextEntryDetailPage';
 import { formatDateLabel, formatHHMM } from '../utils/timeUtils';
 import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -216,6 +217,7 @@ const TimelineHeader = React.memo(function TimelineHeader({ title, timestamp }: 
 interface EntryMarkerProps {
   entry: Entry;
   onDeleteEntry: (id: string) => void;
+  onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
@@ -230,6 +232,7 @@ interface EntryMarkerProps {
 const EntryMarker = React.memo(function EntryMarker({
   entry,
   onDeleteEntry,
+  onViewEntry,
   onEditEntry,
   onPauseRecording,
   onResumeRecording,
@@ -288,6 +291,7 @@ const EntryMarker = React.memo(function EntryMarker({
       <EntryCard
         entry={entry}
         onDelete={onDeleteEntry}
+        onView={onViewEntry}
         onEdit={onEditEntry}
         onPauseRecording={onPauseRecording}
         onResumeRecording={onResumeRecording}
@@ -412,6 +416,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     loadMore, isLoadingMore, hasMore,
   } = useEntryStore();
   const insets = useSafeAreaInsets();
+  const [viewingEntry, setViewingEntry] = useState<Entry | null>(null);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -494,7 +499,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     setShowViewToggle(v => !v);
   };
 
-  // 处理编辑
+  const handleViewEntry = useCallback((entry: Entry) => {
+    if (entry.type !== 'text') return;
+    setViewingEntry(entry);
+  }, []);
+
   const handleEditEntry = useCallback((entry: Entry) => setEditingEntry(entry), []);
 
   const handleActionSheetOpen = useCallback((id: string) => {
@@ -570,10 +579,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
     const staggerIndex = Math.min(globalIndex, 8);
     const enterDelay = staggerIndex * 90;
     return (
-      <EntryMarker
-        entry={item}
-        onDeleteEntry={deleteEntry}
-        onEditEntry={handleEditEntry}
+        <EntryMarker
+          entry={item}
+          onDeleteEntry={deleteEntry}
+          onViewEntry={handleViewEntry}
+          onEditEntry={handleEditEntry}
         onPauseRecording={onPauseRecording}
         onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
@@ -584,7 +594,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         enterDelay={enterDelay}
       />
     );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, onPauseRecording, onResumeRecording, onStopRecording]);
+  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, handleViewEntry, onPauseRecording, onResumeRecording, onStopRecording]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
@@ -638,7 +648,17 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       {isTransitioning ? (
         <DotsLoader />
       ) : displayMode === 'calendar' ? (
-        <CalendarView entries={displayEntries} />
+        <CalendarView
+          entries={displayEntries}
+          onDeleteEntry={deleteEntry}
+          onViewEntry={handleViewEntry}
+          onEditEntry={handleEditEntry}
+          onPauseRecording={onPauseRecording}
+          onResumeRecording={onResumeRecording}
+          onStopRecording={onStopRecording}
+          activeActionSheetId={activeActionSheetId}
+          onActionSheetOpen={handleActionSheetOpen}
+        />
       ) : !hasEntries ? (
         <EmptyState />
       ) : (
@@ -681,6 +701,16 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       )}
 
       {/* 编辑器模态框 */}
+      <TextEntryDetailPage
+        visible={viewingEntry !== null}
+        entry={viewingEntry}
+        onClose={() => setViewingEntry(null)}
+        onEdit={(entry) => {
+          setViewingEntry(null);
+          setEditingEntry(entry);
+        }}
+      />
+
       <EntryEditor
         visible={editingEntry !== null}
         entry={editingEntry}
@@ -725,7 +755,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
       )}
 
       {/* FAB 浮动操作按钮（搜索界面时隐藏）- 花瓣展开动画 */}
-      {!showSearchOverlay && (
+      {!showSearchOverlay && displayMode === 'list' && (
         <FABMenu
           onSelect={onQuickAdd ?? (() => {})}
           shouldHide={fabShouldHide}

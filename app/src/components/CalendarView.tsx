@@ -13,9 +13,20 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
+import { useSettingsStore } from '@/src/store/settingsStore';
+import { CalendarTimelineItem } from './CalendarTimelineItem';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CalendarViewProps {
   entries: Entry[];
+  onDeleteEntry?: (id: string) => void;
+  onViewEntry?: (entry: Entry) => void;
+  onEditEntry?: (entry: Entry) => void;
+  onPauseRecording?: (id: string) => void;
+  onResumeRecording?: (id: string) => void;
+  onStopRecording?: (id: string) => void;
+  activeActionSheetId?: string | null;
+  onActionSheetOpen?: (id: string) => void;
 }
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -26,7 +37,17 @@ const TYPE_COLOR: Record<string, string> = {
   voice: '#FF9F43',
 };
 
-export function CalendarView({ entries }: CalendarViewProps) {
+export function CalendarView({
+  entries,
+  onDeleteEntry,
+  onViewEntry,
+  onEditEntry,
+  onPauseRecording,
+  onResumeRecording,
+  onStopRecording,
+  activeActionSheetId,
+  onActionSheetOpen,
+}: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -35,6 +56,8 @@ export function CalendarView({ entries }: CalendarViewProps) {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  const calendarDensity = useSettingsStore((s) => s.calendarDensity);
+  const insets = useSafeAreaInsets();
 
   // 按日期分组 entries
   const entryMap = useMemo(() => {
@@ -107,11 +130,32 @@ export function CalendarView({ entries }: CalendarViewProps) {
     setSelectedKey((prev) => (prev === key ? null : key));
   };
 
+  const renderTimelineItems = (items: Entry[]) => (
+    <View style={styles.timelineGroup}>
+      <View style={styles.timelineLine} />
+      {items.map((entry) => (
+        <CalendarTimelineItem
+          key={entry.id}
+          entry={entry}
+          density={calendarDensity}
+          onDeleteEntry={onDeleteEntry}
+          onViewEntry={onViewEntry}
+          onEditEntry={onEditEntry}
+          onPauseRecording={onPauseRecording}
+          onResumeRecording={onResumeRecording}
+          onStopRecording={onStopRecording}
+          isActionSheetActive={activeActionSheetId === entry.id}
+          onActionSheetOpen={onActionSheetOpen}
+        />
+      ))}
+    </View>
+  );
+
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
     >
       {/* 月份导航 */}
       <View style={styles.header}>
@@ -189,6 +233,8 @@ export function CalendarView({ entries }: CalendarViewProps) {
         })}
       </View>
 
+      <View style={styles.sectionDivider} />
+
       {/* 内容区标题 */}
       <View style={styles.contentHeader}>
         <Text style={styles.contentTitle}>
@@ -212,39 +258,21 @@ export function CalendarView({ entries }: CalendarViewProps) {
 
       {/* 内容列表 */}
       {selectedKey ? (
-        // 单日模式：直接渲染当天记录行
+        // 单日模式：完整时间轴卡片
         selectedEntries.length === 0 ? (
           <Text style={styles.emptyText}>当天无记录</Text>
         ) : (
-          [...selectedEntries]
-            .sort((a, b) => b.timestamp - a.timestamp)
-            .map((entry) => (
-              <View key={entry.id} style={styles.entryRow}>
-                <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
-                <Text style={styles.entryTime}>
-                  {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
-              </View>
-            ))
+          renderTimelineItems([...selectedEntries].sort((a, b) => b.timestamp - a.timestamp))
         )
       ) : (
-        // 全月模式：按日分组渲染
+        // 全月模式：按日分组渲染完整时间轴卡片
         monthEntries.length === 0 ? (
           <Text style={styles.emptyText}>本月暂无记录</Text>
         ) : (
           monthDayGroups.map((group) => (
             <View key={group.dateKey}>
               <Text style={styles.dayGroupLabel}>{group.label}</Text>
-              {group.entries.map((entry) => (
-                <View key={entry.id} style={styles.entryRow}>
-                  <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
-                  <Text style={styles.entryTime}>
-                    {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
-                </View>
-              ))}
+              {renderTimelineItems(group.entries)}
             </View>
           ))
         )
@@ -255,7 +283,7 @@ export function CalendarView({ entries }: CalendarViewProps) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAF8F5' },
-  content: { paddingBottom: 120 },
+  content: { paddingBottom: 24 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -279,7 +307,7 @@ const styles = StyleSheet.create({
   weekRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   weekday: {
     flex: 1,
@@ -293,14 +321,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 12,
+    paddingBottom: 4,
   },
   dayCell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    marginVertical: 2,
+    marginVertical: 1,
   },
   dayCellSelected: {
     backgroundColor: '#6A89CC',
@@ -320,43 +349,26 @@ const styles = StyleSheet.create({
   dotsRow: {
     flexDirection: 'row',
     gap: 2,
-    marginTop: 1,
+    marginTop: 2,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
   },
-  entryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    gap: 8,
-  },
-  entryTypeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  entryTime: {
-    fontSize: 12,
-    color: '#A3A3A3',
-    width: 44,
-  },
-  entryContent: {
-    flex: 1,
-    fontSize: 14,
-    color: '#4A4A4A',
-  },
   contentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 8,
     marginHorizontal: 16,
     marginBottom: 8,
+  },
+  sectionDivider: {
+    height: 1,
+    marginTop: 10,
+    marginHorizontal: 16,
+    backgroundColor: '#E7DED3',
   },
   contentTitle: {
     fontSize: 14,
@@ -375,16 +387,29 @@ const styles = StyleSheet.create({
   },
   dayGroupLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#A3A3A3',
+    fontWeight: '700',
+    color: '#968878',
     marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 4,
+    marginTop: 14,
+    marginBottom: 6,
   },
   emptyText: {
     fontSize: 14,
     color: '#A3A3A3',
     textAlign: 'center',
     marginTop: 24,
+  },
+  timelineGroup: {
+    position: 'relative',
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 40,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: '#E7DED3',
   },
 });

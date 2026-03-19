@@ -9,7 +9,7 @@ jest.mock('@/src/store/entryStore', () => ({
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: (selector: (s: any) => any) => selector({ photoHeight: 'default' }),
+  useSettingsStore: (selector: (s: any) => any) => selector({ photoHeight: 'default', calendarDensity: 'default' }),
   PHOTO_HEIGHT_VALUES: { compact: 200, default: 280, large: 400 },
 }));
 
@@ -205,7 +205,7 @@ describe('EntryCard swipe actions', () => {
     expect(getByTestId('entry-action-sheet')).toBeTruthy();
   });
 
-  it('also triggers the delayed action sheet from onSwipeableWillOpen', () => {
+  it('triggers the delayed action sheet from onSwipeableWillOpen', () => {
     const { getByTestId, queryByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={jest.fn()} />
     );
@@ -223,7 +223,7 @@ describe('EntryCard swipe actions', () => {
     expect(getByTestId('entry-action-sheet')).toBeTruthy();
   });
 
-  it('marks the card active immediately when swipe trigger starts', () => {
+  it('marks the card active as soon as swipe starts opening', () => {
     const onActionSheetOpen = jest.fn();
     const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={jest.fn()} onActionSheetOpen={onActionSheetOpen} />
@@ -291,6 +291,19 @@ describe('EntryCard swipe actions', () => {
     expect(outerCard.props.exiting).toBeUndefined();
     expect((ReanimatedModule as any).__mockFadeInRight.duration).toHaveBeenCalledWith(expect.any(Number));
     expect((ReanimatedModule as any).__mockFadeInRight.delay).toHaveBeenCalledWith(120);
+  });
+
+  it('uses onView for text card press instead of onEdit', () => {
+    const onView = jest.fn();
+    const onEdit = jest.fn();
+    const { getByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} onView={onView} onEdit={onEdit} />
+    );
+
+    fireEvent.press(getByTestId('entry-card'));
+
+    expect(onView).toHaveBeenCalledWith(mockEntry);
+    expect(onEdit).not.toHaveBeenCalled();
   });
 });
 
@@ -452,5 +465,172 @@ describe('EntryCard photo edge-to-edge', () => {
       const flatStyle = StyleSheet.flatten(missingView.props.style);
       expect(flatStyle.height).toBe(280);
     });
+  });
+});
+
+describe('EntryCard calendar variant', () => {
+  const calendarPhotoSingle: Entry = {
+    id: 'calendar-photo-single',
+    type: 'photo',
+    content: '',
+    timestamp: Date.now(),
+    syncStatus: 'synced',
+    media: [{
+      uri: 'file://calendar-single.jpg',
+      mimeType: 'image/jpeg',
+      size: 1200,
+      metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+    }],
+  };
+
+  const calendarPhotoMulti: Entry = {
+    id: 'calendar-photo-multi',
+    type: 'photo',
+    content: '',
+    timestamp: Date.now(),
+    syncStatus: 'synced',
+    media: [
+      {
+        uri: 'file://calendar-multi-1.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+      {
+        uri: 'file://calendar-multi-2.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+      {
+        uri: 'file://calendar-multi-3.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+      {
+        uri: 'file://calendar-multi-4.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+    ],
+  };
+
+  const calendarVoice: Entry = {
+    id: 'calendar-voice',
+    type: 'voice',
+    content: '',
+    timestamp: Date.now(),
+    syncStatus: 'synced',
+    media: [{
+      uri: 'file://calendar-voice.m4a',
+      mimeType: 'audio/m4a',
+      size: 2048,
+      duration: 120000,
+      metadata: { createdAt: Date.now(), modifiedAt: Date.now() },
+    }],
+    transcription: {
+      text: '语音转录内容',
+      language: 'zh-CN',
+      confidence: 0.98,
+      model: 'local',
+      duration: 200,
+    },
+  };
+
+  it('calendar 单图照片使用单图布局', () => {
+    render(
+      <EntryCard
+        entry={calendarPhotoSingle}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-photo-card-layout-single-calendar-photo-single')).toBeTruthy();
+    expect(screen.getByTestId('calendar-card-shell-calendar-photo-single')).toBeTruthy();
+  });
+
+  it('calendar 多图照片使用主图加侧露结构布局', () => {
+    render(
+      <EntryCard
+        entry={calendarPhotoMulti}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-photo-card-layout-multi-calendar-photo-multi')).toBeTruthy();
+    expect(screen.getByText('+1')).toBeTruthy();
+  });
+
+  it('calendar 无照片资源时展示专用空状态', () => {
+    render(
+      <EntryCard
+        entry={{
+          ...calendarPhotoSingle,
+          id: 'calendar-photo-empty',
+          media: [],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-card-shell-calendar-photo-empty')).toBeTruthy();
+  });
+
+  it('calendar 语音卡暴露播放按钮测试标记', () => {
+    render(
+      <EntryCard
+        entry={calendarVoice}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-card-shell-calendar-voice')).toBeTruthy();
+    expect(screen.getByTestId('calendar-voice-play-button-calendar-voice')).toBeTruthy();
+    expect(screen.getAllByText('语音转录内容').length).toBeGreaterThan(0);
+  });
+
+  it('calendar 文本卡使用专用文案层级', () => {
+    render(
+      <EntryCard
+        entry={{
+          id: 'calendar-text',
+          type: 'text',
+          content: '不是旧卡片的缩小版，而是日历里的记忆便签。',
+          timestamp: Date.now(),
+          syncStatus: 'synced',
+          tags: ['想法', '记录'],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-card-shell-calendar-text')).toBeTruthy();
+    expect(screen.getByText('不是旧卡片的缩小版，而是日历里的记忆便签。')).toBeTruthy();
+    expect(screen.getByText('#想法')).toBeTruthy();
+  });
+
+  it('calendar 录音中语音卡暴露录音状态测试标记', () => {
+    render(
+      <EntryCard
+        entry={{
+          ...calendarVoice,
+          id: 'calendar-recording',
+          recordingStatus: 'recording',
+          recordingDuration: 8,
+          transcription: undefined,
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-recording-status-calendar-recording')).toBeTruthy();
   });
 });

@@ -23,6 +23,8 @@ export const PHOTO_HEIGHT_VALUES: Record<PhotoHeightPreset, number> = {
   large:   400,
 };
 
+export type CalendarDensity = 'comfortable' | 'default' | 'compact';
+
 export type LastAddType = 'text' | 'camera' | 'photo' | 'voice';
 
 interface SettingsState {
@@ -32,6 +34,7 @@ interface SettingsState {
   highQualityPhotos: boolean;
   cardSpacing: CardSpacing;
   photoHeight: PhotoHeightPreset;
+  calendarDensity: CalendarDensity;
   lastAddType: LastAddType | null;
 
   // 加载状态
@@ -46,6 +49,7 @@ interface SettingsState {
   setHighQualityPhotos: (value: boolean) => Promise<void>;
   setCardSpacing: (value: CardSpacing) => Promise<void>;
   setPhotoHeight: (value: PhotoHeightPreset) => Promise<void>;
+  setCalendarDensity: (value: CalendarDensity) => Promise<void>;
   setLastAddType: (value: LastAddType) => Promise<void>;
 
   // 重置设置
@@ -58,6 +62,7 @@ const SETTINGS_KEYS = {
   highQualityPhotos: 'settings:highQualityPhotos',
   cardSpacing:       'settings:cardSpacing',
   photoHeight:       'settings:photoHeight',
+  calendarDensity:   'settings:calendarDensity',
   lastAddType:       'settings:lastAddType',
 };
 
@@ -67,6 +72,7 @@ const DEFAULT_SETTINGS = {
   highQualityPhotos: true,
   cardSpacing: 'default' as CardSpacing,
   photoHeight: 'default' as PhotoHeightPreset,
+  calendarDensity: 'default' as CalendarDensity,
   lastAddType: null as LastAddType | null,
 };
 
@@ -76,12 +82,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const [notif, backup, hq, spacing, ph, lat] = await Promise.all([
+      const [notif, backup, hq, spacing, ph, density, lat] = await Promise.all([
         Storage.getString(SETTINGS_KEYS.notifications),
         Storage.getString(SETTINGS_KEYS.autoBackup),
         Storage.getString(SETTINGS_KEYS.highQualityPhotos),
         Storage.getString(SETTINGS_KEYS.cardSpacing),
         Storage.getString(SETTINGS_KEYS.photoHeight),
+        Storage.getString(SETTINGS_KEYS.calendarDensity),
         Storage.getString(SETTINGS_KEYS.lastAddType),
       ]);
 
@@ -92,6 +99,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       const validPhotoHeight = (value: string | null): PhotoHeightPreset => {
         if (value === 'compact' || value === 'large') return value;
+        return 'default';
+      };
+
+      const validCalendarDensity = (value: string | null): CalendarDensity => {
+        if (value === 'comfortable' || value === 'compact') return value;
         return 'default';
       };
 
@@ -106,6 +118,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         highQualityPhotos: hq === null ? DEFAULT_SETTINGS.highQualityPhotos : hq === 'true',
         cardSpacing: spacing === null ? DEFAULT_SETTINGS.cardSpacing : validSpacing(spacing),
         photoHeight: ph === null ? DEFAULT_SETTINGS.photoHeight : validPhotoHeight(ph),
+        calendarDensity: density === null ? DEFAULT_SETTINGS.calendarDensity : validCalendarDensity(density),
         lastAddType: validLastAddType(lat),
         isLoaded: true,
       });
@@ -140,6 +153,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ photoHeight: value });
   },
 
+  setCalendarDensity: async (value) => {
+    await Storage.setString(SETTINGS_KEYS.calendarDensity, value);
+    set({ calendarDensity: value });
+  },
+
   setLastAddType: async (value) => {
     await Storage.setString(SETTINGS_KEYS.lastAddType, value);
     set({ lastAddType: value });
@@ -152,6 +170,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       Storage.delete(SETTINGS_KEYS.highQualityPhotos),
       Storage.delete(SETTINGS_KEYS.cardSpacing),
       Storage.delete(SETTINGS_KEYS.photoHeight),
+      Storage.delete(SETTINGS_KEYS.calendarDensity),
       Storage.delete(SETTINGS_KEYS.lastAddType),
     ]);
     set({ ...DEFAULT_SETTINGS });

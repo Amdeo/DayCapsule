@@ -36,6 +36,12 @@ let mockSelectedTags: string[] = [];
 let mockSearchQuery = '';
 let mockFilterType = 'all';
 let mockFilterDateRange = 'all';
+const mockDeleteEntry = jest.fn();
+const mockUpdateEntry = jest.fn();
+const mockLoadMore = jest.fn();
+const mockCalendarView = jest.fn(() => null);
+const mockEntryEditor = jest.fn(() => null);
+const mockTextEntryDetailPage = jest.fn(() => null);
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -44,22 +50,22 @@ jest.mock('@/src/store/entryStore', () => ({
     filterType: mockFilterType,
     filterDateRange: mockFilterDateRange,
     selectedTags: mockSelectedTags,
-    deleteEntry: jest.fn(),
-    updateEntry: jest.fn(),
+    deleteEntry: mockDeleteEntry,
+    updateEntry: mockUpdateEntry,
     setSearchQuery: mockSetSearchQuery,
     setFilterType: mockSetFilterType,
     setFilterDateRange: mockSetFilterDateRange,
     toggleTag: mockToggleTag,
     clearTags: mockClearTags,
-    loadMore: jest.fn(),
+    loadMore: mockLoadMore,
     isLoadingMore: false,
     hasMore: false,
   }),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: () => ({ cardSpacing: 'default' }),
-  SPACING_VALUES: { compact: 8, default: 12, large: 16 },
+  useSettingsStore: () => ({ cardSpacing: 'default', calendarDensity: 'default' }),
+  SPACING_VALUES: { compact: 8, default: 12, loose: 16 },
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -78,11 +84,15 @@ jest.mock('../SearchOverlay', () => ({
 }));
 
 jest.mock('../EntryEditor', () => ({
-  EntryEditor: () => null,
+  EntryEditor: (props: unknown) => mockEntryEditor(props),
+}));
+
+jest.mock('../TextEntryDetailPage', () => ({
+  TextEntryDetailPage: (props: unknown) => mockTextEntryDetailPage(props),
 }));
 
 jest.mock('../CalendarView', () => ({
-  CalendarView: () => null,
+  CalendarView: (props: unknown) => mockCalendarView(props),
 }));
 
 jest.mock('../FABMenu', () => ({
@@ -102,13 +112,21 @@ jest.mock('../SearchBar', () => ({
 }));
 
 jest.mock('../EntryCard', () => ({
-  EntryCard: ({ entry, enterDelay = -1 }: { entry: { id: string }; enterDelay?: number }) => {
+  EntryCard: ({
+    entry,
+    enterDelay = -1,
+    onView,
+  }: {
+    entry: { id: string };
+    enterDelay?: number;
+    onView?: (entry: { id: string }) => void;
+  }) => {
     const React = require('react');
-    const { Text } = require('react-native');
+    const { Text, Pressable } = require('react-native');
     return (
-      <Text testID={`mock-entry-card-${entry.id}`}>
-        {`${entry.id}:${enterDelay}`}
-      </Text>
+      <Pressable testID={`mock-entry-card-${entry.id}`} onPress={() => onView?.(entry)}>
+        <Text>{`${entry.id}:${enterDelay}`}</Text>
+      </Pressable>
     );
   },
 }));
@@ -121,6 +139,8 @@ describe('Timeline view mode switching', () => {
     mockFilterType = 'all';
     mockFilterDateRange = 'all';
     jest.clearAllMocks();
+    mockEntryEditor.mockImplementation(() => null);
+    mockTextEntryDetailPage.mockImplementation(() => null);
   });
 
   afterEach(() => {
@@ -133,8 +153,8 @@ describe('Timeline view mode switching', () => {
   it('passes staggered enter delays to entry cards', () => {
     const screen = render(<Timeline />);
 
-    expect(screen.getByTestId('mock-entry-card-entry-1').props.children).toBe('entry-1:0');
-    expect(screen.getByTestId('mock-entry-card-entry-2').props.children).toBe('entry-2:90');
+    expect(screen.getByText('entry-1:0')).toBeTruthy();
+    expect(screen.getByText('entry-2:90')).toBeTruthy();
   });
 
   it('renders themed loader dots during view transitions', () => {
@@ -156,5 +176,64 @@ describe('Timeline view mode switching', () => {
 
     expect(mockToggleTag).toHaveBeenCalledWith('旅行');
     expect(mockClearTags).not.toHaveBeenCalled();
+  });
+
+  it('passes full record interactions into CalendarView', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
+    fireEvent.press(screen.getByText('日历'));
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(mockCalendarView).toHaveBeenCalled();
+
+    const latestProps = mockCalendarView.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+
+    expect(latestProps.entries).toBe(mockEntries);
+    expect(latestProps.onDeleteEntry).toBe(mockDeleteEntry);
+    expect(latestProps.onEditEntry).toBeInstanceOf(Function);
+    expect(latestProps.onPauseRecording).toBeUndefined();
+    expect(latestProps.onResumeRecording).toBeUndefined();
+    expect(latestProps.onStopRecording).toBeUndefined();
+    expect(latestProps.activeActionSheetId).toBeNull();
+    expect(latestProps.onActionSheetOpen).toBeInstanceOf(Function);
+  });
+
+  it('opens text entries in a detail page instead of the editor on card press', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('mock-entry-card-entry-1'));
+
+    const latestDetailProps = mockTextEntryDetailPage.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(latestDetailProps.visible).toBe(true);
+    expect(latestDetailProps.entry).toMatchObject({ id: 'entry-1' });
+
+    const latestEditorProps = mockEntryEditor.mock.calls.at(-1)?.[0] as Record<string, unknown> | undefined;
+    expect(latestEditorProps?.visible ?? false).toBe(false);
+  });
+
+  it('opens the editor from the detail page edit action', () => {
+    mockTextEntryDetailPage.mockImplementation(({ visible, entry, onEdit }: any) => {
+      if (!visible || !entry) return null;
+      const React = require('react');
+      const { Pressable, Text } = require('react-native');
+      return (
+        <Pressable testID="mock-text-detail-edit" onPress={() => onEdit(entry)}>
+          <Text>编辑详情</Text>
+        </Pressable>
+      );
+    });
+
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('mock-entry-card-entry-1'));
+    fireEvent.press(screen.getByTestId('mock-text-detail-edit'));
+
+    const latestEditorProps = mockEntryEditor.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(latestEditorProps.visible).toBe(true);
+    expect(latestEditorProps.entry).toMatchObject({ id: 'entry-1' });
   });
 });

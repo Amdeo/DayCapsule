@@ -18,9 +18,10 @@ const WAVE_COUNT = 50;
 const BAR_WIDTH = 2;
 const BAR_GAP = 1;
 const BAR_RADIUS = 1;
-const MIN_HEIGHT = 4;
-const MAX_HEIGHT = 24;
+const MIN_HEIGHT = 3;
+const MAX_HEIGHT = 18;
 const CONTAINER_HEIGHT = 28;
+const BASE_WAVE = [4, 6, 9, 7, 5, 8, 11, 8, 6, 10, 7, 5];
 
 // 每个 bar 自管理 useSharedValue，避免在父组件循环中调用 Hook（违反 Rules of Hooks）
 interface WaveBarProps {
@@ -29,12 +30,14 @@ interface WaveBarProps {
 }
 
 const WaveBar = React.memo(function WaveBar({ isRecording, color }: WaveBarProps) {
-  const height = useSharedValue(MIN_HEIGHT);
+  const barIndex = React.useRef(Math.floor(Math.random() * BASE_WAVE.length)).current;
+  const baseHeight = BASE_WAVE[barIndex];
+  const height = useSharedValue(baseHeight);
 
   useEffect(() => {
     if (isRecording) {
-      const randomDuration = 100 + Math.random() * 100;
-      const randomHeight = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
+      const randomDuration = 160 + Math.random() * 140;
+      const randomHeight = Math.min(MAX_HEIGHT, baseHeight + 3 + Math.random() * 6);
       height.value = withRepeat(
         withTiming(randomHeight, {
           duration: randomDuration,
@@ -45,15 +48,15 @@ const WaveBar = React.memo(function WaveBar({ isRecording, color }: WaveBarProps
       );
     } else {
       cancelAnimation(height);
-      height.value = withTiming(MIN_HEIGHT, {
-        duration: 200,
+      height.value = withTiming(baseHeight, {
+        duration: 220,
         easing: Easing.out(Easing.ease),
       });
     }
     return () => {
       cancelAnimation(height);
     };
-  }, [isRecording]);
+  }, [baseHeight, isRecording]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: height.value,

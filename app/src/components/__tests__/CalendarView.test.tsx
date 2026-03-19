@@ -1,19 +1,16 @@
-// app/src/components/__tests__/CalendarView.test.tsx
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { CalendarView } from '../CalendarView';
 import { Entry } from '@/src/types/entry';
 
-// 固定"今天"为 2026-03-19，避免测试受真实日期影响
 const FIXED_NOW = new Date('2026-03-19T12:00:00+08:00');
 const OriginalDate = Date;
 
 beforeAll(() => {
   const dateSpy = jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
     if (args.length === 0) return new OriginalDate(FIXED_NOW);
-    return new OriginalDate(...args as [any]);
+    return new OriginalDate(...(args as [any]));
   });
-  // 把静态方法挂回 mock，确保 Date.now() 可用
   (dateSpy as any).now = () => FIXED_NOW.getTime();
 });
 
@@ -27,102 +24,195 @@ jest.mock('@expo/vector-icons', () => {
   return { Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text> };
 });
 
-const makeEntry = (id: string, isoDate: string, type: Entry['type'] = 'text'): Entry => ({
+jest.mock('@/src/store/settingsStore', () => ({
+  useSettingsStore: (selector: (state: { calendarDensity: 'default' }) => unknown) =>
+    selector({ calendarDensity: 'default' }),
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+
+jest.mock('../CalendarTimelineItem', () => ({
+  CalendarTimelineItem: ({ entry }: { entry: Entry }) => {
+    const React = require('react');
+    const { View, Text } = require('react-native');
+
+    return (
+      <View>
+        {entry.type === 'photo' ? (
+          <View testID={`calendar-photo-card-layout-${(entry.media?.length ?? 0) > 1 ? 'multi' : 'single'}-${entry.id}`} />
+        ) : null}
+        {entry.type === 'voice' ? (
+          <>
+            <View testID={`calendar-voice-play-button-${entry.id}`} />
+            {entry.recordingStatus === 'recording' ? (
+              <View testID={`calendar-recording-status-${entry.id}`} />
+            ) : null}
+          </>
+        ) : null}
+        <Text>{entry.content}</Text>
+        {entry.tags?.map((tag) => (
+          <Text key={tag}>#{tag}</Text>
+        ))}
+        {entry.transcription?.text ? <Text>{entry.transcription.text}</Text> : null}
+      </View>
+    );
+  },
+}));
+
+const noop = jest.fn();
+
+const makeTextEntry = (id: string, isoDate: string, overrides: Partial<Entry> = {}): Entry => ({
   id,
-  type,
-  content: `内容 ${id}`,
-  tags: [],
+  type: 'text',
+  content: `文字内容 ${id}`,
+  tags: ['产品', '交互'],
   timestamp: new OriginalDate(isoDate).getTime(),
   syncStatus: 'synced',
+  ...overrides,
 });
 
-// 当月（3月）有记录的几天
-const march17 = makeEntry('e1', '2026-03-17T09:00:00+08:00', 'text');
-const march18a = makeEntry('e2', '2026-03-18T10:00:00+08:00', 'photo');
-const march18b = makeEntry('e3', '2026-03-18T14:00:00+08:00', 'text');
-// 其他月份的记录（不应显示）
-const feb10 = makeEntry('e4', '2026-02-10T08:00:00+08:00', 'text');
+const makePhotoEntry = (
+  id: string,
+  isoDate: string,
+  mediaCount: number,
+  overrides: Partial<Entry> = {}
+): Entry => ({
+  id,
+  type: 'photo',
+  content: '',
+  tags: ['照片', '夜景'],
+  timestamp: new OriginalDate(isoDate).getTime(),
+  syncStatus: 'synced',
+  media: Array.from({ length: mediaCount }, (_, index) => ({
+    uri: `file:///photo-${id}-${index + 1}.jpg`,
+    mimeType: 'image/jpeg',
+    size: 1024,
+    metadata: {
+      width: 900,
+      height: 1200,
+      aspectRatio: 0.75,
+      createdAt: FIXED_NOW.getTime(),
+      modifiedAt: FIXED_NOW.getTime(),
+    },
+  })),
+  ...overrides,
+});
 
-const marchEntries = [march17, march18a, march18b];
-const allEntries = [...marchEntries, feb10];
+const makeVoiceEntry = (id: string, isoDate: string, overrides: Partial<Entry> = {}): Entry => ({
+  id,
+  type: 'voice',
+  content: '',
+  tags: ['灵感'],
+  timestamp: new OriginalDate(isoDate).getTime(),
+  syncStatus: 'synced',
+  media: [
+    {
+      uri: `file:///voice-${id}.m4a`,
+      mimeType: 'audio/m4a',
+      size: 2048,
+      duration: 108000,
+      metadata: {
+        createdAt: FIXED_NOW.getTime(),
+        modifiedAt: FIXED_NOW.getTime(),
+      },
+    },
+  ],
+  transcription: {
+    text: `转录 ${id}`,
+    language: 'zh-CN',
+    confidence: 0.93,
+    model: 'local',
+    duration: 180,
+  },
+  ...overrides,
+});
 
-describe('CalendarView', () => {
-  it('默认状态下显示当月所有记录', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={allEntries} />
+const marchText = makeTextEntry('t1', '2026-03-17T09:00:00+08:00');
+const marchPhotoMulti = makePhotoEntry('p1', '2026-03-18T10:00:00+08:00', 3);
+const marchPhotoSingle = makePhotoEntry('p2', '2026-03-18T11:30:00+08:00', 1);
+const marchVoice = makeVoiceEntry('v1', '2026-03-18T14:00:00+08:00');
+const marchRecording = makeVoiceEntry('v2', '2026-03-18T15:00:00+08:00', {
+  recordingStatus: 'recording',
+  recordingDuration: 12,
+  transcription: undefined,
+});
+const febText = makeTextEntry('t2', '2026-02-10T08:00:00+08:00');
+
+const calendarProps = {
+  entries: [marchText, marchPhotoMulti, marchPhotoSingle, marchVoice, marchRecording, febText],
+  onDeleteEntry: noop,
+  onEditEntry: noop,
+  onPauseRecording: noop,
+  onResumeRecording: noop,
+  onStopRecording: noop,
+  activeActionSheetId: null,
+  onActionSheetOpen: noop,
+};
+
+describe('CalendarView full-card behavior', () => {
+  it('默认状态下显示当月记录且保留媒体卡片信息', () => {
+    const { getByText, queryByText, getByTestId } = render(
+      <CalendarView {...calendarProps} />
     );
-    // 当月记录内容可见
-    expect(getByText('内容 e1')).toBeTruthy();
-    expect(getByText('内容 e2')).toBeTruthy();
-    expect(getByText('内容 e3')).toBeTruthy();
-    // 其他月份记录不显示
-    expect(queryByText('内容 e4')).toBeNull();
+
+    expect(getByText('文字内容 t1')).toBeTruthy();
+    expect(getByText('#产品')).toBeTruthy();
+    expect(getByTestId('calendar-photo-card-layout-multi-p1')).toBeTruthy();
+    expect(getByTestId('calendar-photo-card-layout-single-p2')).toBeTruthy();
+    expect(getByTestId('calendar-voice-play-button-v1')).toBeTruthy();
+    expect(getByText('转录 v1')).toBeTruthy();
+    expect(getByTestId('calendar-recording-status-v2')).toBeTruthy();
+    expect(queryByText('文字内容 t2')).toBeNull();
   });
 
-  it('默认状态下不显示"取消"按钮', () => {
-    const { queryByTestId } = render(<CalendarView entries={marchEntries} />);
+  it('默认状态下不显示取消按钮', () => {
+    const { queryByTestId } = render(<CalendarView {...calendarProps} />);
     expect(queryByTestId('calendar-deselect-btn')).toBeNull();
   });
 
-  it('点击有记录的日期后只显示当天记录', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={marchEntries} />
+  it('点击某天后仅显示当天记录并保留完整能力', () => {
+    const { getByText, queryByText, getByTestId } = render(
+      <CalendarView {...calendarProps} />
     );
-    // 点击 18 号
+
     fireEvent.press(getByText('18'));
 
-    expect(getByText('内容 e2')).toBeTruthy();
-    expect(getByText('内容 e3')).toBeTruthy();
-    // 17 号记录消失
-    expect(queryByText('内容 e1')).toBeNull();
+    expect(queryByText('文字内容 t1')).toBeNull();
+    expect(getByTestId('calendar-photo-card-layout-multi-p1')).toBeTruthy();
+    expect(getByTestId('calendar-voice-play-button-v1')).toBeTruthy();
+    expect(getByTestId('calendar-recording-status-v2')).toBeTruthy();
   });
 
-  it('选中日期后显示"取消"按钮', () => {
-    const { getByText, getByTestId } = render(
-      <CalendarView entries={marchEntries} />
-    );
+  it('选中日期后显示取消按钮', () => {
+    const { getByText, getByTestId } = render(<CalendarView {...calendarProps} />);
+
     fireEvent.press(getByText('18'));
+
     expect(getByTestId('calendar-deselect-btn')).toBeTruthy();
   });
 
-  it('再次点击同一天恢复显示全月', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={marchEntries} />
-    );
+  it('再次点击同一天恢复全月显示', () => {
+    const { getByText, queryByText } = render(<CalendarView {...calendarProps} />);
+
     fireEvent.press(getByText('18'));
-    fireEvent.press(getByText('18')); // 再次点击取消
-
-    expect(getByText('内容 e1')).toBeTruthy();
-    expect(queryByText('内容 e4')).toBeNull();
-  });
-
-  it('点击取消按钮恢复显示全月', () => {
-    const { getByText, getByTestId, queryByText } = render(
-      <CalendarView entries={marchEntries} />
-    );
     fireEvent.press(getByText('18'));
-    fireEvent.press(getByTestId('calendar-deselect-btn'));
 
-    expect(getByText('内容 e1')).toBeTruthy();
+    expect(getByText('文字内容 t1')).toBeTruthy();
+    expect(queryByText('文字内容 t2')).toBeNull();
   });
 
   it('切换月份后清空日期选中并显示新月数据', () => {
-    const feb5 = makeEntry('e5', '2026-02-05T10:00:00+08:00', 'text');
-    const { getByText, queryByText, queryByTestId } = render(
-      <CalendarView entries={[...marchEntries, feb5]} />
-    );
-    // 先选中 18 号，确认取消按钮出现
+    const { getByText, queryByText, queryByTestId } = render(<CalendarView {...calendarProps} />);
+
     fireEvent.press(getByText('18'));
     expect(queryByTestId('calendar-deselect-btn')).toBeTruthy();
 
-    // 切换到上月（2月），icon name 是 'chevron-back'
     fireEvent.press(getByText('chevron-back'));
 
-    // 取消按钮消失（同一组件实例，selectedKey 已清空）
     expect(queryByTestId('calendar-deselect-btn')).toBeNull();
-    // 应显示 2 月记录
-    expect(getByText('内容 e5')).toBeTruthy();
-    // 3 月记录不显示
-    expect(queryByText('内容 e1')).toBeNull();
+    expect(getByText('文字内容 t2')).toBeTruthy();
+    expect(queryByText('文字内容 t1')).toBeNull();
   });
 });

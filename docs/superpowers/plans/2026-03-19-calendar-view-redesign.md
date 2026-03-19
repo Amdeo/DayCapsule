@@ -1,12 +1,32 @@
-# 日历视图重设计 实现计划
+# Calendar View Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将「按月」和「日历」合并为增强日历视图，整体 Tab 从三个简化为两个（列表 | 日历）。
+**Goal:** 将「按月」和「日历」合并为增强日历视图，并把日历内容区重做为一套保留完整交互能力的时间轴卡片系统。
 
-**Architecture:** 修改 `CalendarView.tsx`，在现有月历格子下方增加内容区——默认展示当月所有记录（按日分组），点击某天过滤为仅显示当天；修改 `Timeline.v2.tsx` 删除 `'monthly'` ViewMode 及相关代码。
+**Architecture:** 保留 `CalendarView` 的月历格子、选中日期和月份切换逻辑，但把内容区从“简化文本行”重构为独立的日历时间轴卡片系统。卡片系统按 `text / photo / voice` 分化主内容区，完整复用现有记录能力，并新增“日历内容区密度”设置影响布局密度而不影响行为。
 
-**Tech Stack:** React Native, TypeScript, Jest + @testing-library/react-native
+**Tech Stack:** React Native, TypeScript, Zustand, MMKV Storage, Jest + @testing-library/react-native
+
+---
+
+## 执行状态
+
+- 状态：已实现，已验证
+- 实现时间：2026-03-19
+- 验证结果：
+  - `cd app && npx tsc --noEmit` 通过
+  - `cd app && npx jest --testPathPattern="EntryCard.test|CalendarView.test|Timeline.v2.view-mode|SettingsPage" --no-coverage` 通过
+  - `cd app && npx jest --no-coverage` 通过
+
+## 实现说明
+
+- 日历内容区已从简化文本行切换为时间轴卡片列表。
+- `EntryCard` 新增 `calendar` 变体，用于承载日历场景的完整能力与新的照片布局。
+- 照片卡已落地：
+  - 单图：干净大单图
+  - 多图：主图 + 侧露结构型
+- 设置页已新增 `日历内容区密度`，并接入 `settingsStore`。
 
 ---
 
@@ -14,515 +34,536 @@
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `app/src/components/CalendarView.tsx` | 修改 | 增加全月列表区、日期过滤、✕取消按钮 |
-| `app/src/components/__tests__/CalendarView.test.tsx` | 新建 | CalendarView 单元测试 |
-| `app/src/components/Timeline.v2.tsx` | 修改 | 删除 'monthly' ViewMode，简化为 2 个 Tab |
-| `app/src/components/__tests__/Timeline.v2.view-mode.test.tsx` | 修改 | 删除/更新 monthly 相关测试用例 |
+| `app/src/components/CalendarView.tsx` | 修改 | 接入新时间轴卡片系统、密度设置、完整回调 |
+| `app/src/components/Timeline.v2.tsx` | 修改 | 删除 `monthly` 模式，向 `CalendarView` 传递完整回调与状态 |
+| `app/src/components/EntryCard.tsx` | 修改 | 抽出可复用内容主体或新增变体支持，避免重复实现完整能力 |
+| `app/src/components/CalendarTimelineItem.tsx` | 新建 | 日历内容区单条时间轴项：时间、圆点、卡片容器 |
+| `app/src/components/CalendarEntryCard.tsx` | 新建 | 日历场景专用卡片外壳与类型分发 |
+| `app/src/components/CalendarTextCardBody.tsx` | 新建 | 文字卡主体 |
+| `app/src/components/CalendarPhotoCardBody.tsx` | 新建 | 照片卡主体，落地单图/多图方案 |
+| `app/src/components/CalendarVoiceCardBody.tsx` | 新建 | 语音卡主体 |
+| `app/src/store/settingsStore.ts` | 修改 | 新增 `calendarDensity` 设置值、默认值、load/reset/setter |
+| `app/src/components/SettingsPage.tsx` | 修改 | 新增“日历内容区密度”设置组件 |
+| `app/src/components/__tests__/CalendarView.test.tsx` | 重写/扩展 | 覆盖完整能力、空 content 媒体场景、密度切换 |
+| `app/src/components/__tests__/Timeline.v2.view-mode.test.tsx` | 修改 | 适配新 `CalendarView` props 与 view mode 行为 |
+| `app/src/components/__tests__/SettingsPage.test.tsx` | 新建或修改 | 覆盖密度设置读写与默认值 |
 
 ---
 
-## Task 1：为 CalendarView 新交互写失败测试
+## Chunk 1: 测试红线与接口基线
+
+### Task 1: 重建 CalendarView 的行为测试基线
 
 **Files:**
-- Create: `app/src/components/__tests__/CalendarView.test.tsx`
+- Modify: `app/src/components/__tests__/CalendarView.test.tsx`
 
-- [ ] **Step 1：创建测试文件，写 mock 和测试数据**
+- [ ] **Step 1: 重写测试数据，覆盖真实媒体场景**
 
-```typescript
-// app/src/components/__tests__/CalendarView.test.tsx
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
-import { CalendarView } from '../CalendarView';
-import { Entry } from '@/src/types/entry';
+补充以下数据形态：
 
-// 固定"今天"为 2026-03-19，避免测试受真实日期影响
-const FIXED_NOW = new Date('2026-03-19T12:00:00+08:00');
-const OriginalDate = Date;
+- `text`：有 `content`、有 tags
+- `photo`：`content` 可为空，`media` 至少 1 张
+- `photo`：多张 `media`
+- `voice`：`content` 为空，依赖 `media.duration + transcription`
+- `voice`：`recordingStatus === 'recording'`
 
-beforeAll(() => {
-  jest.spyOn(global, 'Date').mockImplementation((arg?: any) => {
-    if (arg === undefined) return new OriginalDate(FIXED_NOW);
-    return new OriginalDate(arg);
-  });
-  (global.Date as any).now = () => FIXED_NOW.getTime();
-});
+- [ ] **Step 2: 写失败测试，验证日历默认展示完整内容而非简化行**
 
-afterAll(() => {
-  jest.restoreAllMocks();
-});
+至少新增这些断言：
 
-jest.mock('@expo/vector-icons', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return { Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text> };
-});
+- 照片记录出现图片区 / 数量提示，而不是只看 `content`
+- 语音记录出现播放区 / 时长 / 转录，而不是只看 `content`
+- 标签、转录、录音中状态可见
 
-const makeEntry = (id: string, isoDate: string, type: Entry['type'] = 'text'): Entry => ({
-  id,
-  type,
-  content: `内容 ${id}`,
-  tags: [],
-  timestamp: new Date(isoDate).getTime(),
-  syncStatus: 'synced',
-});
+- [ ] **Step 3: 写失败测试，覆盖单图 / 多图方案**
 
-// 当月（3月）有记录的几天
-const march17 = makeEntry('e1', '2026-03-17T09:00:00+08:00', 'text');
-const march18a = makeEntry('e2', '2026-03-18T10:00:00+08:00', 'photo');
-const march18b = makeEntry('e3', '2026-03-18T14:00:00+08:00', 'text');
-// 其他月份的记录（不应显示）
-const feb10 = makeEntry('e4', '2026-02-10T08:00:00+08:00', 'text');
+至少断言：
 
-const marchEntries = [march17, march18a, march18b];
-const allEntries = [...marchEntries, feb10];
-```
+- 单图照片卡走“大单图”布局
+- 多图照片卡走“主图 + 侧露结构”布局
 
-- [ ] **Step 2：写「默认显示全月所有记录」测试**
+- [ ] **Step 4: 写失败测试，覆盖点击过滤、取消、切月清空选中**
 
-```typescript
-describe('CalendarView', () => {
-  it('默认状态下显示当月所有记录', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={allEntries} />
-    );
-    // 当月记录内容可见
-    expect(getByText('内容 e1')).toBeTruthy();
-    expect(getByText('内容 e2')).toBeTruthy();
-    expect(getByText('内容 e3')).toBeTruthy();
-    // 其他月份记录不显示
-    expect(queryByText('内容 e4')).toBeNull();
-  });
+沿用现有行为测试，但数据换成完整媒体记录。
 
-  it('默认状态下不显示"取消"按钮', () => {
-    const { queryByTestId } = render(<CalendarView entries={marchEntries} />);
-    expect(queryByTestId('calendar-deselect-btn')).toBeNull();
-  });
-```
+- [ ] **Step 5: 运行测试确认失败**
 
-- [ ] **Step 3：写「点击某天过滤到当天」测试**
-
-```typescript
-  it('点击有记录的日期后只显示当天记录', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={marchEntries} />
-    );
-    // 点击 18 号
-    fireEvent.press(getByText('18'));
-
-    expect(getByText('内容 e2')).toBeTruthy();
-    expect(getByText('内容 e3')).toBeTruthy();
-    // 17 号记录消失
-    expect(queryByText('内容 e1')).toBeNull();
-  });
-
-  it('选中日期后显示"取消"按钮', () => {
-    const { getByText, getByTestId } = render(
-      <CalendarView entries={marchEntries} />
-    );
-    fireEvent.press(getByText('18'));
-    expect(getByTestId('calendar-deselect-btn')).toBeTruthy();
-  });
-```
-
-- [ ] **Step 4：写「再次点击同一天 / 点取消 → 恢复全月」测试**
-
-```typescript
-  it('再次点击同一天恢复显示全月', () => {
-    const { getByText, queryByText } = render(
-      <CalendarView entries={marchEntries} />
-    );
-    fireEvent.press(getByText('18'));
-    fireEvent.press(getByText('18')); // 再次点击取消
-
-    expect(getByText('内容 e1')).toBeTruthy();
-    expect(queryByText('内容 e4')).toBeNull();
-  });
-
-  it('点击取消按钮恢复显示全月', () => {
-    const { getByText, getByTestId, queryByText } = render(
-      <CalendarView entries={marchEntries} />
-    );
-    fireEvent.press(getByText('18'));
-    fireEvent.press(getByTestId('calendar-deselect-btn'));
-
-    expect(getByText('内容 e1')).toBeTruthy();
-  });
-```
-
-- [ ] **Step 5：写「切换月份清空选中」测试**
-
-```typescript
-  it('切换月份后清空日期选中并显示新月数据', () => {
-    const feb5 = makeEntry('e5', '2026-02-05T10:00:00+08:00', 'text');
-    const { getByText, queryByText, queryByTestId } = render(
-      <CalendarView entries={[...marchEntries, feb5]} />
-    );
-    // 先选中 18 号，确认取消按钮出现
-    fireEvent.press(getByText('18'));
-    expect(queryByTestId('calendar-deselect-btn')).toBeTruthy();
-
-    // 切换到上月（2月），icon name 是 'chevron-back'
-    fireEvent.press(getByText('chevron-back'));
-
-    // 取消按钮消失（同一组件实例，selectedKey 已清空）
-    expect(queryByTestId('calendar-deselect-btn')).toBeNull();
-    // 应显示 2 月记录
-    expect(getByText('内容 e5')).toBeTruthy();
-    // 3 月记录不显示
-    expect(queryByText('内容 e1')).toBeNull();
-  });
-});
-```
-
-- [ ] **Step 6：运行测试，确认全部失败（CalendarView 还未实现新功能）**
+Run:
 
 ```bash
-cd app && npx jest --testPathPattern="CalendarView.test" --no-coverage 2>&1 | tail -20
+cd app && npx jest --testPathPattern="CalendarView.test" --no-coverage
 ```
 
-期望：多个 FAIL（内容 e1 not found 等）
+Expected:
 
-- [ ] **Step 7：Commit 失败的测试**
+- 多个 FAIL
+- 失败原因集中在“缺少完整卡片内容 / 布局 / 交互”
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/src/components/__tests__/CalendarView.test.tsx
-git commit -m "test: add CalendarView month/day filter tests (failing)"
+git commit -m "test: rebuild CalendarView coverage for full card behavior"
+```
+
+### Task 2: 为设置项和 Timeline 交互补失败测试
+
+**Files:**
+- Modify: `app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+- Create or Modify: `app/src/components/__tests__/SettingsPage.test.tsx`
+
+- [ ] **Step 1: 为 `Timeline.v2` 写失败测试**
+
+断言：
+
+- 切到日历模式时，`CalendarView` 接收到完整回调和状态，不只是 `entries`
+- 旧的 `monthly` 模式不再存在
+
+- [ ] **Step 2: 为设置页写失败测试**
+
+断言：
+
+- 新增“日历内容区密度”设置项
+- 默认值为 `标准`
+- 切换后调用 store setter
+
+- [ ] **Step 3: 运行目标测试确认失败**
+
+Run:
+
+```bash
+cd app && npx jest --testPathPattern="Timeline.v2.view-mode|SettingsPage" --no-coverage
+```
+
+Expected:
+
+- FAIL，提示 props / 设置项 / 文案缺失
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/SettingsPage.test.tsx
+git commit -m "test: add failing coverage for calendar density and full calendar props"
 ```
 
 ---
 
-## Task 2：实现 CalendarView 新交互
+## Chunk 2: 设置层与密度配置
+
+### Task 3: 在 settingsStore 中新增日历内容区密度
+
+**Files:**
+- Modify: `app/src/store/settingsStore.ts`
+
+- [ ] **Step 1: 增加类型与映射**
+
+新增：
+
+```ts
+export type CalendarDensity = 'comfortable' | 'default' | 'compact';
+export const CALENDAR_DENSITY_VALUES = {
+  comfortable: { ... },
+  default: { ... },
+  compact: { ... },
+};
+```
+
+映射项至少包含：
+
+- 时间轴项垂直间距
+- 图片区高度上限
+- 文字默认截断行数
+- 语音播放区高度
+
+- [ ] **Step 2: 扩展 store state 和 setter**
+
+新增：
+
+- `calendarDensity`
+- `setCalendarDensity`
+
+- [ ] **Step 3: 扩展 load/reset/default/key**
+
+同步修改：
+
+- `SETTINGS_KEYS`
+- `DEFAULT_SETTINGS`
+- `loadSettings`
+- `resetSettings`
+
+- [ ] **Step 4: 运行 store 相关测试或 TypeScript**
+
+Run:
+
+```bash
+cd app && npx tsc --noEmit
+```
+
+Expected:
+
+- 零错误
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/store/settingsStore.ts
+git commit -m "feat: add calendar density setting state"
+```
+
+### Task 4: 在 SettingsPage 中接入密度设置
+
+**Files:**
+- Modify: `app/src/components/SettingsPage.tsx`
+
+- [ ] **Step 1: 读取 `calendarDensity` 和 setter**
+
+从 `useSettingsStore` 接入：
+
+- `calendarDensity`
+- `setCalendarDensity`
+
+- [ ] **Step 2: 新增 `CalendarDensitySelector` 组件**
+
+文案：
+
+- 标题：`日历内容区密度`
+- 副标题：`调整日历视图中卡片和时间轴的疏密程度`
+
+选项：
+
+- `舒展`
+- `标准`
+- `紧凑`
+
+- [ ] **Step 3: 将新选择器插入设置页合适位置**
+
+建议放在：
+
+- `CardSpacingSelector` 后
+- `PhotoHeightSelector` 前
+
+- [ ] **Step 4: 运行设置页测试**
+
+Run:
+
+```bash
+cd app && npx jest --testPathPattern="SettingsPage" --no-coverage
+```
+
+Expected:
+
+- PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/components/SettingsPage.tsx
+git commit -m "feat: add calendar density selector to settings"
+```
+
+---
+
+## Chunk 3: 日历卡片系统骨架
+
+### Task 5: 抽出日历时间轴项容器
+
+**Files:**
+- Create: `app/src/components/CalendarTimelineItem.tsx`
+
+- [ ] **Step 1: 创建组件，定义清晰 props**
+
+至少包含：
+
+- `entry`
+- `density`
+- `children`
+- `isLast`
+
+组件职责：
+
+- 渲染时间文本
+- 渲染类型圆点
+- 渲染左侧竖线
+- 放置右侧卡片容器
+
+- [ ] **Step 2: 将布局常量做成密度驱动**
+
+不要写死单一尺寸。
+
+- [ ] **Step 3: 写最小快照/渲染测试或先在 CalendarView 测试中驱动使用**
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add app/src/components/CalendarTimelineItem.tsx
+git commit -m "feat: add calendar timeline item shell"
+```
+
+### Task 6: 建立 CalendarEntryCard 和类型化主体
+
+**Files:**
+- Create: `app/src/components/CalendarEntryCard.tsx`
+- Create: `app/src/components/CalendarTextCardBody.tsx`
+- Create: `app/src/components/CalendarPhotoCardBody.tsx`
+- Create: `app/src/components/CalendarVoiceCardBody.tsx`
+- Modify: `app/src/components/EntryCard.tsx`
+
+- [ ] **Step 1: 决定复用边界**
+
+实现原则：
+
+- 不复制 `EntryCard` 的完整业务逻辑
+- 优先抽可复用的内容主体或共享逻辑
+- 避免把日历卡片写成第二套完全平行实现
+
+- [ ] **Step 2: 让 CalendarEntryCard 支持完整交互 props**
+
+至少支持：
+
+- `onEdit`
+- `onDelete`
+- `onPauseRecording`
+- `onResumeRecording`
+- `onStopRecording`
+- `isActionSheetActive`
+- `onActionSheetOpen`
+
+- [ ] **Step 3: 实现文字卡主体**
+
+要求：
+
+- 正文优先
+- tags 保留
+- 长内容可展开
+
+- [ ] **Step 4: 实现照片卡主体**
+
+要求：
+
+- 单图：干净大单图
+- 多图：主图 + 侧露结构型
+- 适配手机竖图
+- 统一高度上限，受密度影响
+
+- [ ] **Step 5: 实现语音卡主体**
+
+要求：
+
+- 播放按钮 / 波形 / 时长优先
+- 转录摘要保留
+- 录音中状态保留
+
+- [ ] **Step 6: 在这一层补齐空 `content` 媒体记录处理**
+
+不要再使用“只看 `entry.content`”的渲染策略。
+
+- [ ] **Step 7: 跑目标测试**
+
+Run:
+
+```bash
+cd app && npx jest --testPathPattern="CalendarView.test" --no-coverage
+```
+
+Expected:
+
+- 大部分或全部 PASS
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add app/src/components/CalendarEntryCard.tsx app/src/components/CalendarTextCardBody.tsx app/src/components/CalendarPhotoCardBody.tsx app/src/components/CalendarVoiceCardBody.tsx app/src/components/EntryCard.tsx
+git commit -m "feat: build full calendar card system"
+```
+
+---
+
+## Chunk 4: CalendarView 与 Timeline 集成
+
+### Task 7: 重构 CalendarView 内容区
 
 **Files:**
 - Modify: `app/src/components/CalendarView.tsx`
 
-- [ ] **Step 1：在 CalendarView 增加月份记录过滤 + 分组逻辑**
+- [ ] **Step 1: 删除简化 `entryRow` 渲染逻辑**
 
-在现有 `entryMap` useMemo 之后添加：
+移除当前依赖：
 
-```typescript
-// 当月所有记录（按时间倒序）
-const monthEntries = useMemo(() => {
-  return entries
-    .filter((e) => {
-      const d = new Date(e.timestamp);
-      return d.getFullYear() === year && d.getMonth() === month;
-    })
-    .sort((a, b) => b.timestamp - a.timestamp);
-}, [entries, year, month]);
+- `entryRow`
+- `entryTypeDot`
+- 纯 `entry.content` 文本行
 
-// 按日分组（用于全月显示）
-const monthDayGroups = useMemo(() => {
-  const groups: { dateKey: string; label: string; entries: Entry[] }[] = [];
-  let currentKey = '';
-  for (const entry of monthEntries) {
-    const d = new Date(entry.timestamp);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const label = `${d.getMonth() + 1}月${d.getDate()}日`;
-    if (key !== currentKey) {
-      groups.push({ dateKey: key, label, entries: [] });
-      currentKey = key;
-    }
-    groups[groups.length - 1].entries.push(entry);
-  }
-  return groups;
-}, [monthEntries]);
-```
+- [ ] **Step 2: 接入密度设置**
 
-- [ ] **Step 2：更新 prevMonth / nextMonth 清空 selectedKey**
+从 `useSettingsStore` 读取 `calendarDensity`，把值传给：
 
-```typescript
-const prevMonth = () => {
-  setSelectedKey(null);
-  setCurrentDate(new Date(year, month - 1, 1));
-};
-const nextMonth = () => {
-  setSelectedKey(null);
-  setCurrentDate(new Date(year, month + 1, 1));
-};
-```
+- `CalendarTimelineItem`
+- `CalendarEntryCard`
 
-- [ ] **Step 3：更新日期格子渲染，非选中日期圆点变淡**
+- [ ] **Step 3: 让全月模式和单日模式都走新卡片系统**
 
-在 `calendarDays.map` 内，找到渲染 `dot` 的地方，改为：
+要求：
 
-```typescript
-const isOtherSelected = selectedKey !== null && key !== selectedKey;
+- 全月模式：按天分组后渲染 timeline items
+- 单日模式：同样渲染 timeline items，只是数据源变成选中日期
 
-// dot 的 style 增加 opacity
-<View
-  key={type}
-  style={[
-    styles.dot,
-    { backgroundColor: isSelected ? '#FFFFFF' : TYPE_COLOR[type] },
-    isOtherSelected && { opacity: 0.3 },
-  ]}
-/>
-```
+- [ ] **Step 4: 保留现有顶部交互**
 
-- [ ] **Step 4：在组件 return 内，把原有 `{selectedKey && ...}` 详情区换为新的内容区**
+必须继续工作：
 
-> **⚠️ 关于 EntryCard：** 规格提到"使用现有 EntryCard 组件"，但 CalendarView 是只读浏览视图，不需要 delete/edit 回调。为避免向 CalendarView 引入大量 callback props，此处**有意**保留自定义行组件（样式与现有保持一致），不引入 EntryCard。
+- 选中日期
+- 取消选中
+- 切月清空日期
+- 其他日期圆点变淡
 
-删除原有 `{selectedKey && (...)}` 区块，替换为：
+- [ ] **Step 5: 运行 CalendarView 测试**
 
-```typescript
-{/* 内容区标题 */}
-<View style={styles.contentHeader}>
-  <Text style={styles.contentTitle}>
-    {selectedKey
-      ? (() => {
-          const d = new Date(selectedEntries[0]?.timestamp ?? Date.now());
-          return `${d.getMonth() + 1}月${d.getDate()}日 · ${selectedEntries.length} 条`;
-        })()
-      : `全月 · ${monthEntries.length} 条`}
-  </Text>
-  {selectedKey && (
-    <TouchableOpacity
-      testID="calendar-deselect-btn"
-      onPress={() => setSelectedKey(null)}
-      style={styles.deselectBtn}
-    >
-      <Text style={styles.deselectText}>✕ 取消</Text>
-    </TouchableOpacity>
-  )}
-</View>
-
-{/* 内容列表 */}
-{selectedKey ? (
-  // 单日模式：直接渲染当天记录行
-  selectedEntries.length === 0 ? (
-    <Text style={styles.emptyText}>当天无记录</Text>
-  ) : (
-    selectedEntries
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map((entry) => (
-        <View key={entry.id} style={styles.entryRow}>
-          <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
-          <Text style={styles.entryTime}>
-            {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-          <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
-        </View>
-      ))
-  )
-) : (
-  // 全月模式：按日分组渲染
-  monthEntries.length === 0 ? (
-    <Text style={styles.emptyText}>本月暂无记录</Text>
-  ) : (
-    monthDayGroups.map((group) => (
-      <View key={group.dateKey}>
-        <Text style={styles.dayGroupLabel}>{group.label}</Text>
-        {group.entries.map((entry) => (
-          <View key={entry.id} style={styles.entryRow}>
-            <View style={[styles.entryTypeDot, { backgroundColor: TYPE_COLOR[entry.type] }]} />
-            <Text style={styles.entryTime}>
-              {new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-            <Text style={styles.entryContent} numberOfLines={2}>{entry.content}</Text>
-          </View>
-        ))}
-      </View>
-    ))
-  )
-)}
-```
-
-- [ ] **Step 5：在 StyleSheet 增加新样式**
-
-在 `styles = StyleSheet.create({...})` 内追加：
-
-```typescript
-contentHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: 16,
-  marginHorizontal: 16,
-  marginBottom: 8,
-},
-contentTitle: {
-  fontSize: 14,
-  fontWeight: '700',
-  color: '#4A4A4A',
-},
-deselectBtn: {
-  paddingHorizontal: 10,
-  paddingVertical: 4,
-  backgroundColor: '#F0F0F0',
-  borderRadius: 12,
-},
-deselectText: {
-  fontSize: 12,
-  color: '#A3A3A3',
-},
-dayGroupLabel: {
-  fontSize: 12,
-  fontWeight: '600',
-  color: '#A3A3A3',
-  marginHorizontal: 16,
-  marginTop: 10,
-  marginBottom: 4,
-},
-emptyText: {
-  fontSize: 14,
-  color: '#A3A3A3',
-  textAlign: 'center',
-  marginTop: 24,
-},
-```
-
-- [ ] **Step 6：运行测试，确认全部通过**
+Run:
 
 ```bash
-cd app && npx jest --testPathPattern="CalendarView.test" --no-coverage 2>&1 | tail -20
+cd app && npx jest --testPathPattern="CalendarView.test" --no-coverage
 ```
 
-期望：全部 PASS
+Expected:
 
-- [ ] **Step 7：Commit**
+- PASS
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/src/components/CalendarView.tsx
-git commit -m "feat: enhance CalendarView with full-month list and day filter"
+git commit -m "feat: integrate full timeline cards into CalendarView"
 ```
 
----
-
-## Task 3：删除 Timeline.v2.tsx 中的 monthly 模式
+### Task 8: 让 Timeline.v2 向 CalendarView 传递完整能力
 
 **Files:**
 - Modify: `app/src/components/Timeline.v2.tsx`
 
-- [ ] **Step 1：修改 ViewMode 类型和 VIEW_MODES 数组**
+- [ ] **Step 1: 删除旧的 `monthly` 残留逻辑（如果还有）**
 
-找到并修改：
+- [ ] **Step 2: 向 `CalendarView` 传递完整 props**
 
-```typescript
-// 改前
-type ViewMode = 'list' | 'monthly' | 'calendar';
+至少传入：
 
-// 改后
-type ViewMode = 'list' | 'calendar';
-```
+- `entries`
+- `onDeleteEntry`
+- `onEditEntry`
+- `onPauseRecording`
+- `onResumeRecording`
+- `onStopRecording`
+- `activeActionSheetId`
+- `onActionSheetOpen`
 
-```typescript
-// 改前（3项）
-const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
-  { mode: 'list', icon: 'list', label: '列表' },
-  { mode: 'monthly', icon: 'layers', label: '按月' },
-  { mode: 'calendar', icon: 'calendar', label: '日历' },
-];
+- [ ] **Step 3: 保持日历 / 列表切换动画和 loader 行为不回退**
 
-// 改后（2项）
-const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
-  { mode: 'list', icon: 'list', label: '列表' },
-  { mode: 'calendar', icon: 'calendar', label: '日历' },
-];
-```
+- [ ] **Step 4: 运行 Timeline 目标测试**
 
-- [ ] **Step 2：删除 generateMonthlySections 函数**
-
-删除整个 `function generateMonthlySections(entries: Entry[]): TimeSection[]` 函数（第 77-95 行）。
-
-- [ ] **Step 3：简化 sections useMemo（移除 monthly 分支）**
-
-```typescript
-// 改前
-const sections = useMemo(() => {
-  if (displayMode === 'monthly') return generateMonthlySections(displayEntries);
-  return generateTimeSections(displayEntries);
-}, [displayEntries, displayMode]);
-
-// 改后
-const sections = useMemo(() => {
-  return generateTimeSections(displayEntries);
-}, [displayEntries, displayMode]);
-```
-
-（`displayMode` 依赖项可保留，切换到 calendar 时 sections 不被渲染，无影响）
-
-- [ ] **Step 4：确认 TypeScript 无报错**
+Run:
 
 ```bash
-cd app && npx tsc --noEmit 2>&1 | head -30
+cd app && npx jest --testPathPattern="Timeline.v2.view-mode" --no-coverage
 ```
 
-期望：无输出（零错误）
+Expected:
 
-- [ ] **Step 5：Commit**
+- PASS
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add app/src/components/Timeline.v2.tsx
-git commit -m "feat: remove monthly ViewMode, simplify to list|calendar two tabs"
+git add app/src/components/Timeline.v2.tsx app/src/components/__tests__/Timeline.v2.view-mode.test.tsx
+git commit -m "feat: pass full record interactions into CalendarView"
 ```
 
 ---
 
-## Task 4：更新 Timeline 视图切换测试
+## Chunk 5: 回归验证与文档收口
+
+### Task 9: 完整验证
 
 **Files:**
-- Modify: `app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+- Modify: `docs/superpowers/specs/2026-03-19-calendar-view-redesign.md`
+- Modify: `docs/superpowers/plans/2026-03-19-calendar-view-redesign.md`
 
-当前测试中有两个测试引用 `'按月'` 文本（现已不存在），需要删除或更新；一个测试可更新为用 `'日历'` 模式验证 loader dots。
+- [ ] **Step 1: 跑 TypeScript**
 
-- [ ] **Step 1：删除或更新 monthly 相关测试**
-
-删除以下两个测试（monthly 模式已不存在，这些场景不再有效）：
-
-```
-it('uses stable SectionList keys when switching between list and monthly views', ...)
-it('renders entry cards again after switching to monthly mode', ...)
-```
-
-- [ ] **Step 2：更新 loader dots 测试——改为用 calendar 模式触发**
-
-```typescript
-it('renders themed loader dots during view transitions', () => {
-  const screen = render(<Timeline />);
-
-  fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
-  // 改为点击"日历"（不再有"按月"）
-  fireEvent.press(screen.getByText('日历'));
-
-  expect(screen.getByTestId('loader-dot-text')).toHaveStyle({ backgroundColor: '#A491D3' });
-  expect(screen.getByTestId('loader-dot-photo')).toHaveStyle({ backgroundColor: '#77C9D4' });
-  expect(screen.getByTestId('loader-dot-voice')).toHaveStyle({ backgroundColor: '#F5A623' });
-});
-```
-
-- [ ] **Step 3：运行全部 Timeline 测试，确认通过**
+Run:
 
 ```bash
-cd app && npx jest --testPathPattern="Timeline.v2.view-mode" --no-coverage 2>&1 | tail -20
+cd app && npx tsc --noEmit
 ```
 
-期望：全部 PASS
+Expected:
 
-- [ ] **Step 4：运行全量测试确认无回归**
+- 零错误
+
+- [ ] **Step 2: 跑目标测试**
+
+Run:
 
 ```bash
-cd app && npx jest --no-coverage 2>&1 | tail -20
+cd app && npx jest --testPathPattern="CalendarView.test|Timeline.v2.view-mode|SettingsPage" --no-coverage
 ```
 
-期望：全部 PASS，新增测试数量 ≥ 原有 + 5
+Expected:
 
-- [ ] **Step 5：最终 Commit**
+- 全部 PASS
+
+- [ ] **Step 3: 跑全量测试**
+
+Run:
 
 ```bash
-git add app/src/components/__tests__/Timeline.v2.view-mode.test.tsx
-git commit -m "test: update view-mode tests to remove monthly, update to calendar mode"
+cd app && npx jest --no-coverage
+```
+
+Expected:
+
+- 全部 PASS
+
+- [ ] **Step 4: 手动验收**
+
+至少手动确认：
+
+- Tab 只有列表 / 日历
+- 点击日期过滤与取消正常
+- 切月清空选中正常
+- 文字卡可编辑
+- 照片卡可预览
+- 单图 / 多图布局符合 spec
+- 语音卡可播放 / 停止
+- 录音中状态可见
+- 左滑动作和长按展开可用
+- 设置中密度切换即时生效
+
+- [ ] **Step 5: 更新 spec / plan 状态**
+
+更新：
+
+- spec 状态改为 `已实现`
+- plan 勾选关键验收项并补验证记录
+
+- [ ] **Step 6: 最终 Commit**
+
+```bash
+git add docs/superpowers/specs/2026-03-19-calendar-view-redesign.md docs/superpowers/plans/2026-03-19-calendar-view-redesign.md
+git commit -m "docs: finalize calendar view redesign verification"
 ```
 
 ---
 
-## 验收标准
+## 验收清单
 
-- [ ] `npx tsc --noEmit` 零错误
-- [ ] `npx jest --no-coverage` 全部通过
-- [ ] 视图 Tab 只有「列表」和「日历」两个
-- [ ] 日历视图默认展示当月所有记录（按日分组）
-- [ ] 点击有记录的日期：只显示当天，其他日期圆点变淡
-- [ ] 再次点击同一天 或 点「✕ 取消」：恢复全月
-- [ ] 切换月份：清空日期选中，显示新月数据
+- [x] 日历内容区不再出现简化文本行
+- [x] 三类记录在日历里都具备完整功能
+- [x] `photo` / `voice` 在 `content` 为空时仍可正确展示
+- [x] 多图照片卡使用“主图 + 侧露结构型”
+- [x] 单图照片卡使用“干净大单图”
+- [x] 左侧时间轴、时间标签、类型圆点保留
+- [x] 设置页新增“日历内容区密度”
+- [x] `舒展 / 标准 / 紧凑` 三档可切换
+- [x] 默认密度为 `标准`
+- [x] 切换密度只改变布局，不影响交互能力
+- [x] `npx tsc --noEmit` 零错误
+- [x] `npx jest --no-coverage` 全部通过

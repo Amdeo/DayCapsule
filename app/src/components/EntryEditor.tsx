@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  Modal,
-  Pressable,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
@@ -23,10 +23,28 @@ interface EntryEditorProps {
   onClose: () => void;
 }
 
+const getTypeMeta = (type: Entry['type']) => {
+  switch (type) {
+    case 'text':
+      return { icon: 'document-text', label: '文本记录', accent: '#8F7AC8' };
+    case 'photo':
+      return { icon: 'image', label: '照片记录', accent: '#66BFC8' };
+    case 'voice':
+      return { icon: 'mic', label: '语音记录', accent: '#F0A53A' };
+    default:
+      return { icon: 'document-text', label: '记录', accent: '#8F7AC8' };
+  }
+};
+
 export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProps) {
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
+
+  useEffect(() => {
+    if (!tagsLoaded) loadCommonTags();
+  }, [tagsLoaded, loadCommonTags]);
 
   useEffect(() => {
     if (visible && entry) {
@@ -36,12 +54,12 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     }
   }, [visible, entry]);
 
-  // 内容或标签变化时更新建议（300ms 防抖）
   useEffect(() => {
     const timer = setTimeout(() => {
       const existing = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
       setSuggestions(suggestTags(content, existing));
     }, 300);
+
     return () => clearTimeout(timer);
   }, [content, tagsInput]);
 
@@ -53,12 +71,6 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     });
   }, []);
 
-  const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
-
-  useEffect(() => {
-    if (!tagsLoaded) loadCommonTags();
-  }, [tagsLoaded, loadCommonTags]);
-
   const handleRemoveTag = useCallback((tag: string) => {
     setTagsInput((prev) => {
       const parts = prev.split(',').map((t) => t.trim()).filter(Boolean);
@@ -66,9 +78,14 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     });
   }, []);
 
+  const currentTagsList = useMemo(
+    () => tagsInput.split(',').map((t) => t.trim()).filter(Boolean),
+    [tagsInput]
+  );
+
   if (!visible || !entry) return null;
 
-  const currentTagsList = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
+  const typeMeta = getTypeMeta(entry.type);
 
   const handleSave = () => {
     const tags = tagsInput.split(',').map((t) => t.trim()).filter(Boolean);
@@ -77,140 +94,121 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <View style={styles.editor}>
-          <View style={styles.header}>
+        <View style={styles.editorPage}>
+          <View style={styles.headerBar}>
+            <Pressable onPress={onClose} style={styles.headerButton}>
+              <Text style={styles.headerButtonText}>返回</Text>
+            </Pressable>
             <Text style={styles.headerTitle}>编辑记录</Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#4A4A4A" />
+            <Pressable onPress={handleSave} style={styles.headerButton}>
+              <Text style={styles.headerSaveText}>保存</Text>
             </Pressable>
           </View>
 
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.typeTag}>
-              <Ionicons
-                name={
-                  entry.type === 'text'
-                    ? 'document-text'
-                    : entry.type === 'photo'
-                    ? 'image'
-                    : 'mic'
-                }
-                size={16}
-                color="#6A89CC"
-              />
-              <Text style={styles.typeText}>
-                {entry.type === 'text' ? '文本' : entry.type === 'photo' ? '照片' : '语音'}
-              </Text>
+          <View style={styles.main}>
+            <ScrollView
+              testID="entry-editor-scroll"
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={[styles.typeBadge, { borderColor: `${typeMeta.accent}33`, backgroundColor: `${typeMeta.accent}14` }]}>
+                <Ionicons name={typeMeta.icon as any} size={15} color={typeMeta.accent} />
+                <Text style={[styles.typeText, { color: typeMeta.accent }]}>{typeMeta.label}</Text>
+              </View>
+
+              <View testID="entry-editor-content-surface" style={styles.contentSurface}>
+                <Text style={styles.surfaceLabel}>正文</Text>
+                <TextInput
+                  testID="entry-editor-content-input"
+                  style={styles.contentInput}
+                  value={content}
+                  onChangeText={setContent}
+                  placeholder="写下这段记忆..."
+                  placeholderTextColor="#B6AAA0"
+                  multiline
+                  textAlignVertical="top"
+                  autoFocus
+                />
+              </View>
+
+              <View style={styles.metaSection}>
+                <Text style={styles.metaLabel}>创建时间</Text>
+                <Text style={styles.metaValue}>
+                  {new Date(entry.timestamp).toLocaleString('zh-CN')}
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+
+          <View testID="entry-editor-tag-dock" style={styles.tagDock}>
+            <View style={styles.tagDockHeader}>
+              <Text style={styles.tagDockTitle}>标签</Text>
+              {currentTagsList.length > 0 ? (
+                <Text style={styles.tagDockCount}>{currentTagsList.length} 个已选</Text>
+              ) : null}
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>内容</Text>
-              <TextInput
-                style={styles.textInput}
-                value={content}
-                onChangeText={setContent}
-                placeholder="输入内容..."
-                placeholderTextColor="#A3A3A3"
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>标签</Text>
-              {commonTags.length > 0 && (
-                <View style={styles.commonTagsRow}>
-                  {commonTags.map((tag) => {
-                    const selected = currentTagsList.includes(tag);
-                    return (
-                      <TouchableOpacity
-                        key={tag}
-                        style={[styles.commonChip, selected && styles.commonChipSelected]}
-                        onPress={() => selected ? handleRemoveTag(tag) : handleAddSuggestion(tag)}
-                      >
-                        <Text style={[styles.commonChipText, selected && styles.commonChipTextSelected]}>
-                          {tag}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-              <TextInput
-                style={styles.input}
-                value={tagsInput}
-                onChangeText={setTagsInput}
-                placeholder="用逗号分隔多个标签，如：生活, 工作"
-                placeholderTextColor="#A3A3A3"
-              />
-              {tagsInput.length > 0 && (
-                <View style={styles.tagsPreview}>
-                  {tagsInput
-                    .split(',')
-                    .map((tag) => tag.trim())
-                    .filter((tag) => tag.length > 0)
-                    .map((tag, index) => (
-                      <View key={index} style={styles.tag}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                </View>
-              )}
-              {suggestions.length > 0 && (
-                <View style={styles.suggestionsRow}>
-                  <Text style={styles.suggestionsLabel}>建议：</Text>
-                  {suggestions.map((tag) => (
+            {commonTags.length > 0 && (
+              <View style={styles.commonTagsRow}>
+                {commonTags.map((tag) => {
+                  const selected = currentTagsList.includes(tag);
+                  return (
                     <TouchableOpacity
                       key={tag}
-                      style={styles.suggestionChip}
-                      onPress={() => handleAddSuggestion(tag)}
+                      style={[styles.commonChip, selected && styles.commonChipSelected]}
+                      onPress={() => (selected ? handleRemoveTag(tag) : handleAddSuggestion(tag))}
                     >
-                      <Ionicons name="add" size={13} color="#6A89CC" />
-                      <Text style={styles.suggestionChipText}>{tag}</Text>
+                      <Text style={[styles.commonChipText, selected && styles.commonChipTextSelected]}>
+                        {tag}
+                      </Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
+                  );
+                })}
+              </View>
+            )}
 
-            <View style={styles.section}>
-              <Text style={styles.infoLabel}>创建时间</Text>
-              <Text style={styles.infoText}>
-                {new Date(entry.timestamp).toLocaleString('zh-CN')}
-              </Text>
-            </View>
-          </ScrollView>
+            <TextInput
+              testID="entry-editor-tags-input"
+              style={styles.tagsInput}
+              value={tagsInput}
+              onChangeText={setTagsInput}
+              placeholder="添加标签，用逗号分隔"
+              placeholderTextColor="#B6AAA0"
+            />
 
-          <View style={styles.footer}>
-            <Pressable
-              style={[styles.button, styles.cancelButton]}
-              onPress={onClose}
-            >
-              <Text style={styles.cancelButtonText}>取消</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.button, styles.saveButton]}
-              onPress={handleSave}
-            >
-              <Text style={styles.saveButtonText}>保存</Text>
-            </Pressable>
+            {currentTagsList.length > 0 && (
+              <View style={styles.tagsPreview}>
+                {currentTagsList.map((tag) => (
+                  <View key={tag} style={styles.tagChip}>
+                    <Text style={styles.tagChipText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {suggestions.length > 0 && (
+              <View style={styles.suggestionsRow}>
+                {suggestions.map((tag) => (
+                  <TouchableOpacity
+                    key={tag}
+                    style={styles.suggestionChip}
+                    onPress={() => handleAddSuggestion(tag)}
+                  >
+                    <Ionicons name="add" size={13} color="#8F7AC8" />
+                    <Text style={styles.suggestionChipText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -221,199 +219,156 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
   },
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(24, 19, 14, 0.24)',
   },
-  editor: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '90%',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    flexDirection: 'column',
+  editorPage: {
+    flex: 1,
+    backgroundColor: '#FAF8F5',
   },
-  header: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 56,
     paddingBottom: 16,
+    backgroundColor: '#FAF8F5',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: 'rgba(139, 115, 85, 0.08)',
+  },
+  headerButton: {
+    minWidth: 48,
+    paddingVertical: 6,
+  },
+  headerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8A7C70',
+  },
+  headerSaveText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#6A89CC',
+    textAlign: 'right',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#4A4A4A',
+    color: '#3D342E',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
+  main: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
-  contentContainer: {
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 18,
+    paddingBottom: 220,
+    gap: 16,
   },
-  typeTag: {
+  typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
+    gap: 6,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    backgroundColor: '#F0F4FF',
-    borderRadius: 12,
-    marginBottom: 20,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   typeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6A89CC',
-    marginLeft: 6,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A4A4A',
-  },
-  textInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A4A4A',
-    minHeight: 120,
-  },
-  tagsPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#E8F0FE',
-    borderRadius: 12,
-  },
-  tagText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#6A89CC',
+    fontWeight: '600',
   },
-  suggestionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 6,
-  },
-  suggestionsLabel: {
-    fontSize: 12,
-    color: '#A3A3A3',
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#F0F4FF',
-    borderRadius: 10,
+  contentSurface: {
+    minHeight: 420,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#C7D7F5',
-    gap: 3,
+    borderColor: 'rgba(139, 115, 85, 0.14)',
+    backgroundColor: '#FFFDF9',
+    shadowColor: '#5A4330',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 1,
   },
-  suggestionChipText: {
+  surfaceLabel: {
     fontSize: 12,
-    color: '#6A89CC',
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    color: '#A08F82',
+    marginBottom: 14,
   },
-  infoLabel: {
+  contentInput: {
+    minHeight: 340,
+    fontSize: 18,
+    lineHeight: 32,
+    color: '#2F241E',
+    letterSpacing: 0.15,
+    padding: 0,
+  },
+  metaSection: {
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  metaLabel: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#A3A3A3',
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#A08F82',
+    letterSpacing: 0.6,
   },
-  infoText: {
+  metaValue: {
     fontSize: 14,
-    color: '#737373',
+    color: '#6B5B4D',
   },
-  footer: {
-    flexDirection: 'row',
+  tagDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 14,
+    paddingBottom: 28,
+    backgroundColor: 'rgba(250, 248, 245, 0.98)',
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: 'rgba(139, 115, 85, 0.10)',
     gap: 12,
   },
-  button: {
-    flex: 1,
-    height: 48,
+  tagDockHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
+    justifyContent: 'space-between',
   },
-  cancelButton: {
-    backgroundColor: '#F5F5F5',
+  tagDockTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4A4A4A',
   },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#737373',
-  },
-  saveButton: {
-    backgroundColor: '#6A89CC',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  tagDockCount: {
+    fontSize: 12,
+    color: '#A08F82',
   },
   commonTagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 7,
-    marginBottom: 10,
+    gap: 8,
   },
   commonChip: {
     paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: '#F5F3FF',
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#F4F0FF',
     borderWidth: 1,
-    borderColor: '#E0DAFA',
+    borderColor: '#E2DAF8',
   },
   commonChipSelected: {
     backgroundColor: '#A491D3',
@@ -425,5 +380,54 @@ const styles = StyleSheet.create({
   },
   commonChipTextSelected: {
     color: '#FFFFFF',
+  },
+  tagsInput: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 115, 85, 0.12)',
+    backgroundColor: '#FFFDF9',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#4A4A4A',
+  },
+  tagsPreview: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F7F2EA',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 115, 85, 0.10)',
+  },
+  tagChipText: {
+    fontSize: 13,
+    color: '#7A6758',
+    fontWeight: '500',
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#F7F4FF',
+    borderWidth: 1,
+    borderColor: '#E6DFF8',
+  },
+  suggestionChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#8F7AC8',
   },
 });

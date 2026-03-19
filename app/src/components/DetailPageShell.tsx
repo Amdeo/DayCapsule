@@ -21,6 +21,7 @@ interface DetailPageShellProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  headerRight?: ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   scrollEnabled?: boolean;
 }
@@ -30,6 +31,7 @@ export function DetailPageShell({
   title,
   onClose,
   children,
+  headerRight,
   contentContainerStyle,
   scrollEnabled = true,
 }: DetailPageShellProps) {
@@ -83,7 +85,7 @@ export function DetailPageShell({
                 <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
               </Pressable>
               <Text style={styles.headerTitle}>{title}</Text>
-              <View style={styles.headerSpacer} />
+              {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : <View style={styles.headerSpacer} />}
             </View>
 
             <ScrollView
@@ -147,6 +149,11 @@ const styles = StyleSheet.create({
     color: '#4A4A4A',
   },
   headerSpacer: { width: 40 },
+  headerRight: {
+    minWidth: 40,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   content: { flex: 1 },
   contentContainer: { paddingHorizontal: 20 },
 });

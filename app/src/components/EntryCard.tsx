@@ -11,6 +11,7 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import Animated, {
   FadeInRight,
@@ -35,15 +36,16 @@ import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore
 import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
 import { PhotoGrid } from './PhotoGrid';
 import { formatMMSS } from '@/src/utils/timeUtils';
+import { PhotoService } from '@/src/services/photoService';
+import { CalendarDensity } from '@/src/store/settingsStore';
 
-const CARD_RESTING_TRANSLATE_X = -28;
-const CARD_SHIFT_DURATION = 160;
 const ACTION_SHEET_OPEN_DELAY = 100;
 
 
 interface EntryCardProps {
   entry: Entry;
   onDelete: (id: string) => void;
+  onView?: (entry: Entry) => void;
   onEdit?: (entry: Entry) => void;
   onPauseRecording?: (id: string) => void;
   onResumeRecording?: (id: string) => void;
@@ -52,11 +54,14 @@ interface EntryCardProps {
   enterDelay?: number;
   isActionSheetActive?: boolean;
   onActionSheetOpen?: (entryId: string) => void;
+  variant?: 'default' | 'calendar';
+  calendarDensity?: CalendarDensity;
 }
 
 function EntryCard({
   entry,
   onDelete,
+  onView,
   onEdit,
   onPauseRecording,
   onResumeRecording,
@@ -65,11 +70,21 @@ function EntryCard({
   enterDelay = 0,
   isActionSheetActive,
   onActionSheetOpen,
+  variant = 'default',
+  calendarDensity = 'default',
 }: EntryCardProps) {
-  type CardInteractionState = 'idle' | 'cardShifted' | 'sheetOpen' | 'closing';
+  type CardInteractionState = 'idle' | 'pendingSheet' | 'sheetOpen' | 'closing';
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const photoHeight = useSettingsStore((s) => s.photoHeight);
   const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
+  const calendarPhotoHeights: Record<CalendarDensity, number> = {
+    comfortable: 260,
+    default: 220,
+    compact: 180,
+  };
+  const resolvedPhotoHeight = variant === 'calendar'
+    ? Math.min(maxPhotoHeight, calendarPhotoHeights[calendarDensity])
+    : maxPhotoHeight;
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
 
@@ -213,6 +228,9 @@ function EntryCard({
   };
 
   const getCardBgColor = () => {
+    if (variant === 'calendar') {
+      return '#FFFDF9';
+    }
     switch (entry.type) {
       case 'text':  return '#E0D9F5'; // 淡紫
       case 'photo': return '#CCE9EF'; // 淡青，弱化照片类型主色
@@ -222,6 +240,9 @@ function EntryCard({
   };
 
   const getCardPressedColor = () => {
+    if (variant === 'calendar') {
+      return '#FBF6EF';
+    }
     switch (entry.type) {
       case 'text':  return '#D4CBF2';
       case 'photo': return '#BDDEE5';
@@ -238,6 +259,282 @@ function EntryCard({
   const photoImageRadius = hasPhotoFooter
     ? { borderRadius: 10, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
     : { borderRadius: 10 };
+
+  const renderCalendarPhotoBody = () => {
+    if (!entry.media || entry.media.length === 0) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={handleCardPress}
+          style={[styles.calendarPhotoEmptyState, { height: resolvedPhotoHeight }]}
+        >
+          <View style={styles.calendarPhotoEmptyBadge}>
+            <Ionicons name="images-outline" size={26} color="#9F8F7C" />
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (entry.media.length === 1) {
+      const photo = entry.media[0];
+      return (
+        <View testID={`calendar-photo-card-layout-single-${entry.id}`}>
+          <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)}>
+            <Image
+              source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+              style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const [primary, secondary, tertiary] = entry.media;
+    const overflow = entry.media.length - 3;
+
+    return (
+      <View
+        testID={`calendar-photo-card-layout-multi-${entry.id}`}
+        style={[styles.calendarPhotoMultiWrap, { height: resolvedPhotoHeight }]}
+      >
+        <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoPrimary}>
+          <Image
+            source={{ uri: PhotoService.resolvePhotoUri(primary.thumbnail || primary.uri) }}
+            style={styles.calendarPhotoImage}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+        <View style={styles.calendarPhotoSecondaryColumn}>
+          {secondary ? (
+            <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoSecondaryCell}>
+              <Image
+                source={{ uri: PhotoService.resolvePhotoUri(secondary.thumbnail || secondary.uri) }}
+                style={styles.calendarPhotoImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.calendarPhotoSecondaryCell} />
+          )}
+          {tertiary ? (
+            <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoSecondaryCell}>
+              <Image
+                source={{ uri: PhotoService.resolvePhotoUri(tertiary.thumbnail || tertiary.uri) }}
+                style={styles.calendarPhotoImage}
+                resizeMode="cover"
+              />
+              {overflow > 0 && (
+                <View style={styles.calendarPhotoOverflowMask}>
+                  <Text style={styles.calendarPhotoOverflowText}>+{overflow}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.calendarPhotoSecondaryCell} />
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const getCalendarBorderColor = () => {
+    switch (entry.type) {
+      case 'text': return '#DDD0EF';
+      case 'photo': return '#D5E8E5';
+      case 'voice': return '#EFD8B5';
+      default: return '#E6DDD2';
+    }
+  };
+
+  const renderCalendarTags = () => {
+    if (!entry.tags || entry.tags.length === 0) return null;
+
+    return (
+      <View
+        testID={entry.type === 'photo' ? 'photo-tags-container' : undefined}
+        style={[
+          styles.calendarTagsContainer,
+          entry.type === 'photo' && styles.calendarPhotoTagsContainer,
+        ]}
+      >
+        {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
+          <View
+            key={index}
+            style={[
+              styles.calendarTag,
+              entry.type === 'text' && styles.calendarTagTextTone,
+              entry.type === 'voice' && styles.calendarTagVoiceTone,
+            ]}
+          >
+            <Text
+              style={[
+                styles.calendarTagText,
+                entry.type === 'text' && styles.calendarTagTextTextTone,
+                entry.type === 'voice' && styles.calendarTagTextVoiceTone,
+              ]}
+            >
+              #{tag}
+            </Text>
+          </View>
+        ))}
+        {!isExpanded && entry.tags.length > 3 && (
+          <Text style={styles.calendarMoreTagsHint}>+{entry.tags.length - 3}</Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderCalendarTranscription = () => {
+    if (!entry.transcription || entry.type === 'voice') return null;
+
+    return (
+      <View style={styles.calendarTranscriptionContainer}>
+        <Text
+          style={styles.calendarTranscriptionText}
+          numberOfLines={isExpanded ? undefined : 2}
+        >
+          {entry.transcription.text}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderCalendarContent = () => {
+    if (entry.type === 'text') {
+      return (
+        <View style={styles.calendarTextCard}>
+          <Text style={styles.calendarTextContent}>
+            {entry.content}
+          </Text>
+          {renderCalendarTags()}
+          {renderCalendarTranscription()}
+        </View>
+      );
+    }
+
+    if (entry.type === 'photo') {
+      const mediaCount = entry.media?.length ?? 0;
+      return (
+        <View style={styles.calendarPhotoCard}>
+          {renderCalendarPhotoBody()}
+          <View style={styles.calendarPhotoMeta}>
+            <View style={styles.calendarPhotoHeader}>
+              <View />
+              {mediaCount > 0 ? (
+                <View style={styles.calendarPhotoCountPill}>
+                  <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
+                </View>
+              ) : null}
+            </View>
+            {entry.content ? (
+              <Text
+                style={styles.calendarPhotoCaption}
+                numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
+              >
+                {entry.content}
+              </Text>
+            ) : null}
+            {renderCalendarTags()}
+            {renderCalendarTranscription()}
+          </View>
+        </View>
+      );
+    }
+
+    if (entry.type === 'voice') {
+      if (entry.recordingStatus === 'recording') {
+        return (
+          <View
+            testID={`calendar-recording-status-${entry.id}`}
+            style={styles.calendarRecordingCard}
+          >
+            <View style={styles.calendarRecordingHeader}>
+              <TouchableOpacity
+                style={[styles.calendarStopButton, isProcessing && styles.buttonDisabled]}
+                disabled={isProcessing}
+                activeOpacity={0.7}
+                onPress={async () => {
+                  if (isProcessing) return;
+                  setIsProcessing(true);
+                  try {
+                    await onStopRecording?.(entry.id);
+                  } catch (error) {
+                    logger.error('Failed to stop recording:', error);
+                  } finally {
+                    setTimeout(() => setIsProcessing(false), 300);
+                  }
+                }}
+              >
+                <View style={styles.stopIconCompact} />
+              </TouchableOpacity>
+              <View style={styles.calendarVoiceTrack}>
+                <View style={styles.calendarVoiceTrackRow}>
+                  <View style={styles.calendarVoiceTrackActive}>
+                    <WaveformAnimation isRecording={true} color="#F1B463" />
+                  </View>
+                  <Text style={styles.calendarVoiceTime}>{formatDuration(entry.recordingDuration || 0)}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        );
+      }
+
+      if (!entry.media || entry.media.length === 0) return null;
+
+      return (
+        <View style={styles.calendarVoiceCard}>
+          <View style={styles.calendarVoiceHeader}>
+            {audioMissing ? (
+              <View style={styles.audioMissingRow}>
+                <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
+                <Text style={styles.audioMissingText}>音频文件已丢失</Text>
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  testID={`calendar-voice-play-button-${entry.id}`}
+                  style={styles.calendarVoicePlayBtn}
+                  onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
+                  activeOpacity={0.85}
+                >
+                  {isPlayingAudio ? (
+                    <Ionicons name="stop" size={20} color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="play" size={22} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                  )}
+                </TouchableOpacity>
+                <View style={styles.calendarVoiceTrack}>
+                  <View style={styles.calendarVoiceTrackRow}>
+                    <View style={styles.calendarVoiceTrackActive}>
+                      <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F0A533' : '#EDC98D'} />
+                    </View>
+                    <Text style={styles.calendarVoiceTime}>
+                      {isPlayingAudio
+                        ? formatDuration(Math.floor(playbackPosition / 1000))
+                        : formatDuration(entry.media[0].duration ? Math.floor(entry.media[0].duration / 1000) : 0)}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+          {(entry.transcription?.text || entry.content) ? (
+            <Text
+              style={styles.calendarVoiceCaption}
+              numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
+            >
+              {entry.transcription?.text || entry.content}
+            </Text>
+          ) : null}
+          {renderCalendarTags()}
+        </View>
+      );
+    }
+
+    return null;
+  };
 
   // 判断是否需要展开
   const needsExpansion = useMemo(
@@ -264,20 +561,6 @@ function EntryCard({
     }
   };
 
-  const shiftCardToRestingPosition = () => {
-    cardTranslateX.value = withTiming(CARD_RESTING_TRANSLATE_X, {
-      duration: CARD_SHIFT_DURATION,
-      easing: Easing.out(Easing.cubic),
-    });
-  };
-
-  const resetCardPosition = () => {
-    cardTranslateX.value = withTiming(0, {
-      duration: CARD_SHIFT_DURATION,
-      easing: Easing.out(Easing.cubic),
-    });
-  };
-
   const closeActionSheetAndResetCard = () => {
     clearOpenSheetTimeout();
     clearResetCardTimeout();
@@ -285,8 +568,6 @@ function EntryCard({
     setInteractionState('closing');
     setShowActionSheet(false);
     resetCardTimeoutRef.current = setTimeout(() => {
-      logger.log('[EntryCard] reset card position complete', entry.id);
-      resetCardPosition();
       setInteractionState('idle');
       resetCardTimeoutRef.current = null;
     }, ENTRY_ACTION_SHEET_EXIT_DURATION);
@@ -315,8 +596,7 @@ function EntryCard({
     clearResetCardTimeout();
     swipeableRef.current?.close();
     onActionSheetOpen?.(entry.id);
-    setInteractionState('cardShifted');
-    shiftCardToRestingPosition();
+    setInteractionState('pendingSheet');
     openSheetTimeoutRef.current = setTimeout(() => {
       logger.log('[EntryCard] opening action sheet after delay', entry.id);
       setShowActionSheet(true);
@@ -339,9 +619,8 @@ function EntryCard({
 
     switch (entry.type) {
       case 'text':
-        // 文本记录：点击编辑
-        logger.log('文本记录，触发编辑');
-        onEdit?.(entry);
+        logger.log('文本记录，触发查看');
+        onView?.(entry);
         break;
 
       case 'photo':
@@ -382,31 +661,41 @@ function EntryCard({
           layout={Layout.springify()}
           style={[
             styles.cardShadow,
+            variant === 'calendar' && styles.calendarCardShadow,
             cardAnimatedStyle,
             { marginBottom: cardSpacing },
           ]}
         >
-          <Pressable
-            testID="entry-card"
-            onPressIn={() => setIsPressed(true)}
-            onPressOut={() => setIsPressed(false)}
-            onPress={handleCardPress}
-            onLongPress={handleLongPress}
-            style={[
-              styles.cardContainer,
-              {
-                backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
-              },
-            ]}
+          <View
+            testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
+            style={variant === 'calendar' ? styles.calendarCardShell : undefined}
           >
-            <View>
+            <Pressable
+              testID="entry-card"
+              onPressIn={() => setIsPressed(true)}
+              onPressOut={() => setIsPressed(false)}
+              onPress={handleCardPress}
+              onLongPress={handleLongPress}
+              style={[
+                styles.cardContainer,
+                variant === 'calendar' && styles.calendarCardContainer,
+                variant === 'calendar' && { borderColor: getCalendarBorderColor(), borderWidth: 1 },
+                {
+                  backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
+                },
+              ]}
+            >
+              <View>
             {/* 卡片主内容 */}
             <View style={[
               entry.type === 'voice' ? styles.contentVoice : styles.content,
               entry.type === 'text' && styles.contentText,
-              entry.type === 'photo' && styles.contentPhoto
+              entry.type === 'photo' && styles.contentPhoto,
+              variant === 'calendar' && styles.calendarContent,
             ]}>
-              {entry.type === 'text' ? (
+              {variant === 'calendar' ? (
+                renderCalendarContent()
+              ) : entry.type === 'text' ? (
                 // 文本内容
                 <Text
                   style={styles.textContent}
@@ -418,7 +707,7 @@ function EntryCard({
                 <>
                   <PhotoGrid
                     photos={entry.media}
-                    maxPhotoHeight={maxPhotoHeight}
+                    maxPhotoHeight={resolvedPhotoHeight}
                     photoImageRadius={photoImageRadius}
                     onPhotoPress={() => setShowImageViewer(true)}
                   />
@@ -430,7 +719,9 @@ function EntryCard({
                 </>
                ) : entry.type === 'voice' ? (
                  entry.recordingStatus === 'recording' ? (
-                   <View style={styles.recordingContainer}>
+                   <View
+                     style={styles.recordingContainer}
+                   >
                      <View style={styles.recordingCompact}>
                        {/* 左侧：停止按钮 */}
                        <TouchableOpacity
@@ -514,7 +805,7 @@ function EntryCard({
               ) : null}
 
               {/* 标签（如果有） */}
-              {entry.tags && entry.tags.length > 0 && (
+              {variant !== 'calendar' && entry.tags && entry.tags.length > 0 && (
                 <View
                   testID={entry.type === 'photo' ? 'photo-tags-container' : undefined}
                   style={entry.type === 'photo' ? styles.photoTagsContainer : styles.tagsContainer}
@@ -531,7 +822,7 @@ function EntryCard({
               )}
 
               {/* 转录文本（如果有） */}
-              {entry.transcription && (
+              {variant !== 'calendar' && entry.transcription && (
                 <View style={styles.transcriptionContainer}>
                   <Text style={styles.transcriptionLabel}>转录</Text>
                   <Text
@@ -545,10 +836,10 @@ function EntryCard({
             </View>
 
             {/* 展开提示（如果需要） */}
-            {needsExpansion && !isExpanded && (
+            {needsExpansion && !isExpanded && variant !== 'calendar' && (
               <Text style={styles.expandHint}>点击展开更多</Text>
             )}
-            </View>
+              </View>
 
             {/* 图片查看器 */}
             {entry.type === 'photo' && entry.media?.[0]?.uri && (
@@ -560,7 +851,8 @@ function EntryCard({
                 }}
               />
             )}
-          </Pressable>
+            </Pressable>
+          </View>
         </Animated.View>
 
         <EntryActionSheet
@@ -588,13 +880,32 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139, 115, 85, 0.15)',
     elevation: 0,
   },
+  calendarCardShadow: {
+    borderRadius: 10,
+    borderColor: 'rgba(139, 115, 85, 0.06)',
+    shadowColor: '#5A4330',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
   cardContainer: {
     borderRadius: 10,
     overflow: 'hidden',
   },
+  calendarCardShell: {
+    borderRadius: 10,
+  },
+  calendarCardContainer: {
+    borderRadius: 10,
+  },
   content: {
     padding: 20,
     gap: 12,
+  },
+  calendarContent: {
+    padding: 0,
+    gap: 0,
   },
   contentText: {
     borderRadius: 12,
@@ -619,6 +930,187 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#525252',
+  },
+  calendarKickerText: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: '#8B76C8',
+    marginBottom: 10,
+    fontWeight: '700',
+  },
+  calendarKickerPhoto: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: '#8A7E70',
+    marginBottom: 8,
+    fontWeight: '700',
+  },
+  calendarKickerVoice: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: '#B28646',
+    marginBottom: 10,
+    fontWeight: '700',
+  },
+  calendarTextCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  calendarTextContent: {
+    fontSize: 17,
+    lineHeight: 29,
+    color: '#3F374B',
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  calendarPhotoCard: {
+    padding: 10,
+  },
+  calendarPhotoMeta: {
+    paddingHorizontal: 6,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
+  calendarPhotoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  calendarPhotoCountPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#FBF6EF',
+    borderWidth: 1,
+    borderColor: '#EAE0D3',
+  },
+  calendarPhotoCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9A8B7B',
+  },
+  calendarPhotoCaption: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#67584B',
+  },
+  calendarPhotoEmptyState: {
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FBF7F1',
+    borderWidth: 1,
+    borderColor: '#E7DDD0',
+    borderStyle: 'dashed',
+    paddingHorizontal: 24,
+  },
+  calendarPhotoEmptyBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 6,
+    backgroundColor: '#ECE1D5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  calendarSinglePhoto: {
+    width: '100%',
+    borderRadius: 6,
+    backgroundColor: '#ECE7E0',
+  },
+  calendarPhotoMultiWrap: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  calendarPhotoPrimary: {
+    flex: 1.35,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  calendarPhotoSecondaryColumn: {
+    flex: 0.75,
+    gap: 6,
+  },
+  calendarPhotoSecondaryCell: {
+    flex: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#ECE7E0',
+  },
+  calendarPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  calendarPhotoOverflowMask: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  calendarPhotoOverflowText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  calendarTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  calendarPhotoTagsContainer: {
+    marginTop: 10,
+  },
+  calendarTag: {
+    backgroundColor: '#FFFCF7',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#EAE0D5',
+  },
+  calendarTagTextTone: {
+    borderColor: '#E2D7F0',
+    backgroundColor: '#FFFCF7',
+  },
+  calendarTagVoiceTone: {
+    borderColor: '#EFDDBE',
+    backgroundColor: '#FFFCF7',
+  },
+  calendarTagText: {
+    fontSize: 12,
+    color: '#7E7486',
+    fontWeight: '500',
+  },
+  calendarTagTextTextTone: {
+    color: '#7D69B8',
+  },
+  calendarTagTextVoiceTone: {
+    color: '#9A7D55',
+  },
+  calendarMoreTagsHint: {
+    fontSize: 12,
+    color: '#A3968A',
+    alignSelf: 'center',
+  },
+  calendarTranscriptionContainer: {
+    marginTop: 12,
+    borderRadius: 6,
+    backgroundColor: '#FBF7F1',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#ECE2D7',
+  },
+  calendarTranscriptionText: {
+    fontSize: 13,
+    lineHeight: 21,
+    color: '#64594F',
   },
   tag: {
     backgroundColor: '#F9731620',
@@ -817,6 +1309,87 @@ const styles = StyleSheet.create({
   audioMissingText: {
     fontSize: 13,
     color: '#A3A3A3',
+  },
+  calendarVoiceCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  calendarVoiceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 1,
+  },
+  calendarVoicePlayBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#F2A62A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F2A62A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  calendarVoiceTrack: {
+    flex: 1,
+  },
+  calendarVoiceTrackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  calendarVoiceTrackActive: {
+    flex: 1,
+    height: 12,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  calendarVoiceHint: {
+    fontSize: 11,
+    color: '#9C8260',
+  },
+  calendarVoiceTime: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A4865C',
+    fontVariant: ['tabular-nums'],
+    minWidth: 34,
+    textAlign: 'right',
+  },
+  calendarVoiceCaption: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#8B735B',
+  },
+  calendarRecordingCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  calendarRecordingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 2,
+  },
+  calendarStopButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#EEAE78',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#EEAE78',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
 });
 
