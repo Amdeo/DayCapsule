@@ -4,7 +4,6 @@
 
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
-import { SectionList } from 'react-native';
 import { Timeline } from '../Timeline.v2';
 import { Entry } from '@/src/types/entry';
 
@@ -131,41 +130,6 @@ describe('Timeline view mode switching', () => {
     jest.useRealTimers();
   });
 
-  const collectKeys = (listProps: any) =>
-    listProps.sections.flatMap((section: any) =>
-      section.data.map((item: Entry, index: number) => listProps.keyExtractor(item, index))
-    );
-
-  it('uses stable SectionList keys when switching between list and monthly views', () => {
-    const screen = render(<Timeline />);
-
-    const initialList = screen.UNSAFE_getByType(SectionList);
-    expect(collectKeys(initialList.props)).toEqual(['entry-1', 'entry-2']);
-
-    fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
-    fireEvent.press(screen.getByText('按月'));
-
-    act(() => {
-      jest.advanceTimersByTime(600);
-    });
-
-    const monthlyList = screen.UNSAFE_getByType(SectionList);
-    expect(collectKeys(monthlyList.props)).toEqual(['entry-1', 'entry-2']);
-  });
-
-  it('renders entry cards again after switching to monthly mode', () => {
-    const screen = render(<Timeline />);
-
-    fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
-    fireEvent.press(screen.getByText('按月'));
-
-    act(() => {
-      jest.advanceTimersByTime(600);
-    });
-
-    expect(screen.getAllByTestId(/mock-entry-card-/)).toHaveLength(2);
-  });
-
   it('passes staggered enter delays to entry cards', () => {
     const screen = render(<Timeline />);
 
@@ -177,7 +141,7 @@ describe('Timeline view mode switching', () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
-    fireEvent.press(screen.getByText('按月'));
+    fireEvent.press(screen.getByText('日历'));
 
     expect(screen.getByTestId('loader-dot-text')).toHaveStyle({ backgroundColor: '#A491D3' });
     expect(screen.getByTestId('loader-dot-photo')).toHaveStyle({ backgroundColor: '#77C9D4' });
