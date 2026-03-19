@@ -18,6 +18,7 @@ import {
   useSettingsStore,
   CardSpacing, SPACING_VALUES,
   PhotoHeightPreset, PHOTO_HEIGHT_VALUES,
+  CalendarDensity,
 } from '@/src/store/settingsStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
@@ -49,6 +50,12 @@ const PHOTO_HEIGHT_PREVIEW_HEIGHTS: Record<PhotoHeightPreset, number> = {
   large:   48,
 };
 
+const CALENDAR_DENSITY_LABELS: Record<CalendarDensity, string> = {
+  comfortable: '舒展',
+  default: '标准',
+  compact: '紧凑',
+};
+
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const { entries } = useEntryStore();
 
@@ -66,6 +73,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setCardSpacing: saveCardSpacing,
     photoHeight,
     setPhotoHeight: savePhotoHeight,
+    calendarDensity,
+    setCalendarDensity: saveCalendarDensity,
     resetSettings,
   } = useSettingsStore();
 
@@ -139,6 +148,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const handlePhotoHeight = useCallback(async (preset: PhotoHeightPreset) => {
     await savePhotoHeight(preset);
   }, [savePhotoHeight]);
+
+  const handleCalendarDensity = useCallback(async (density: CalendarDensity) => {
+    await saveCalendarDensity(density);
+  }, [saveCalendarDensity]);
 
   // 真实统计数据
   const { photoCount, voiceCount } = useMemo(() => ({
@@ -240,6 +253,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           value={cardSpacing}
           onChange={handleCardSpacing}
         />
+        <CalendarDensitySelector
+          value={calendarDensity}
+          onChange={handleCalendarDensity}
+        />
         <PhotoHeightSelector
           value={photoHeight}
           onChange={handlePhotoHeight}
@@ -294,6 +311,41 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       </View>
       <TagManagementPage visible={showTagMgmt} onClose={() => setShowTagMgmt(false)} />
     </DetailPageShell>
+  );
+}
+
+function CalendarDensitySelector({
+  value,
+  onChange,
+}: {
+  value: CalendarDensity;
+  onChange: (density: CalendarDensity) => void;
+}) {
+  const options: CalendarDensity[] = ['comfortable', 'default', 'compact'];
+
+  return (
+    <View style={csStyles.container}>
+      <View style={csStyles.icon}>
+        <Ionicons name="calendar-outline" size={20} color="#6A89CC" />
+      </View>
+      <View style={csStyles.content}>
+        <Text style={csStyles.title}>日历内容区密度</Text>
+        <Text style={csStyles.subtitle}>调整日历视图中卡片和时间轴的疏密程度</Text>
+      </View>
+      <View style={csStyles.segmentContainer}>
+        {options.map((option) => (
+          <Pressable
+            key={option}
+            style={[csStyles.segment, value === option && csStyles.segmentActive]}
+            onPress={() => onChange(option)}
+          >
+            <Text style={[csStyles.segmentText, value === option && csStyles.segmentTextActive]}>
+              {CALENDAR_DENSITY_LABELS[option]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 

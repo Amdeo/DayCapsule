@@ -1,5 +1,11 @@
 # AGENTS
 
+## Process Requirements
+
+- 所有走 `brainstorming -> spec -> plan -> 实现 -> 验证` 链路的任务，必须同时遵守 [`docs/superpowers/process-task-checklist.md`](docs/superpowers/process-task-checklist.md)。
+- 不允许跳过其中的设计确认、spec review 留痕、用户 review gate、验证结果留痕、文档收口。
+- 代码已经完成但 spec / plan 状态未更新，视为流程未完成。
+
 <skills_system priority="1">
 
 ## Available Skills
