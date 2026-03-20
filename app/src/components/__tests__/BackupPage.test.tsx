@@ -36,7 +36,7 @@ jest.mock('@/src/services/backupService', () => ({
       { name: 'backup_2026-03-16T11-00-00-000Z.zip', uri: 'file:///b.zip', sizeBytes: 1000 },
       { name: 'backup_2026-03-16T12-00-00-000Z.zip', uri: 'file:///c.zip', sizeBytes: 1000 },
     ]),
-    getLastBackupTime: jest.fn().mockResolvedValue(1_710_000_000_000),
+    getLastBackupTime: jest.fn().mockResolvedValue(new Date(2024, 2, 10, 0, 0, 0).getTime()),
     createBackup: jest.fn().mockResolvedValue('file:///exports/latest.zip'),
     saveBackupToUserDirectory: jest.fn().mockResolvedValue({
       saved: true,
