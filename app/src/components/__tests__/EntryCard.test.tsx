@@ -34,10 +34,14 @@ jest.mock('@/src/utils/logger', () => ({
 
 jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
 jest.mock('../ImageViewer', () => {
-  const { View } = require('react-native');
+  const { View, Text } = require('react-native');
   return {
-    ImageViewer: ({ visible }: { visible: boolean; originLayout?: unknown; thumbnailRef?: unknown }) =>
-      visible ? <View testID="image-viewer" /> : null,
+    ImageViewer: ({ visible, imageUri }: { visible: boolean; imageUri?: string; originLayout?: unknown; thumbnailRef?: unknown }) =>
+      visible ? (
+        <View testID="image-viewer">
+          <Text testID="image-viewer-uri">{imageUri}</Text>
+        </View>
+      ) : null,
   };
 });
 jest.mock('@expo/vector-icons', () => {
@@ -466,6 +470,23 @@ describe('EntryCard photo edge-to-edge', () => {
       expect(flatStyle.height).toBe(280);
     });
   });
+
+  it('普通多图卡片点击第二张图时应传第二张图片给 ImageViewer', () => {
+    const multiPhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-multi-1',
+      media: [
+        { uri: 'file://photo-1.jpg', mimeType: 'image/jpeg', size: 1 },
+        { uri: 'file://photo-2.jpg', mimeType: 'image/jpeg', size: 1 },
+        { uri: 'file://photo-3.jpg', mimeType: 'image/jpeg', size: 1 },
+      ],
+    };
+
+    const { getByTestId } = render(<EntryCard entry={multiPhotoEntry} onDelete={jest.fn()} />);
+    fireEvent.press(getByTestId('photo-cell-1'));
+
+    expect(getByTestId('image-viewer-uri').props.children).toBe('file://photo-2.jpg');
+  });
 });
 
 describe('EntryCard calendar variant', () => {
@@ -563,6 +584,20 @@ describe('EntryCard calendar variant', () => {
 
     expect(screen.getByTestId('calendar-photo-card-layout-multi-calendar-photo-multi')).toBeTruthy();
     expect(screen.getByText('+1')).toBeTruthy();
+  });
+
+  it('calendar 多图卡片点击第三张图时应传第三张图片给 ImageViewer', () => {
+    const { getByTestId } = render(
+      <EntryCard
+        entry={calendarPhotoMulti}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    fireEvent.press(getByTestId(`calendar-photo-secondary-cell-2-${calendarPhotoMulti.id}`));
+
+    expect(getByTestId('image-viewer-uri').props.children).toBe('file://calendar-multi-3.jpg');
   });
 
   it('calendar 无照片资源时展示专用空状态', () => {
