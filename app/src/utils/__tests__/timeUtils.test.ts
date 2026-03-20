@@ -20,11 +20,11 @@ describe('timeUtils formatting helpers', () => {
   });
 
   it('formats timestamps as HH:mm', () => {
-    expect(formatHHMM(new Date('2026-03-18T09:05:00+08:00').getTime())).toBe('09:05');
+    expect(formatHHMM(new Date(2026, 2, 18, 9, 5, 0).getTime())).toBe('09:05');
   });
 
   it('formats detailed timestamps as YYYY-MM-DD HH:mm:ss', () => {
-    expect(formatDetailedTime(new Date('2026-03-18T09:05:07+08:00').getTime())).toBe(
+    expect(formatDetailedTime(new Date(2026, 2, 18, 9, 5, 7).getTime())).toBe(
       '2026-03-18 09:05:07'
     );
   });
