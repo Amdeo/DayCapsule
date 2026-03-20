@@ -435,29 +435,31 @@ function EntryCard({
 
     if (entry.type === 'photo') {
       const mediaCount = entry.media?.length ?? 0;
+      const hasMeta = !!(entry.content || (entry.tags && entry.tags.length > 0) || entry.transcription);
       return (
         <View style={styles.calendarPhotoCard}>
-          {renderCalendarPhotoBody()}
-          <View style={styles.calendarPhotoMeta}>
-            <View style={styles.calendarPhotoHeader}>
-              <View />
-              {mediaCount > 0 ? (
-                <View style={styles.calendarPhotoCountPill}>
-                  <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
-                </View>
-              ) : null}
-            </View>
-            {entry.content ? (
-              <Text
-                style={styles.calendarPhotoCaption}
-                numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
-              >
-                {entry.content}
-              </Text>
+          <View style={styles.calendarPhotoBodyWrap}>
+            {renderCalendarPhotoBody()}
+            {mediaCount > 1 ? (
+              <View style={styles.calendarPhotoCountOverlay}>
+                <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
+              </View>
             ) : null}
-            {renderCalendarTags()}
-            {renderCalendarTranscription()}
           </View>
+          {hasMeta ? (
+            <View style={styles.calendarPhotoMeta}>
+              {entry.content ? (
+                <Text
+                  style={styles.calendarPhotoCaption}
+                  numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
+                >
+                  {entry.content}
+                </Text>
+              ) : null}
+              {renderCalendarTags()}
+              {renderCalendarTranscription()}
+            </View>
+          ) : null}
         </View>
       );
     }
@@ -992,29 +994,27 @@ const styles = StyleSheet.create({
   calendarPhotoCard: {
     padding: 10,
   },
-  calendarPhotoMeta: {
-    paddingHorizontal: 6,
-    paddingTop: 12,
-    paddingBottom: 10,
+  calendarPhotoBodyWrap: {
+    position: 'relative',
   },
-  calendarPhotoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  calendarPhotoCountPill: {
+  calendarPhotoCountOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: '#FBF6EF',
-    borderWidth: 1,
-    borderColor: '#EAE0D3',
+    backgroundColor: 'rgba(0,0,0,0.38)',
+  },
+  calendarPhotoMeta: {
+    paddingHorizontal: 6,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   calendarPhotoCountText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#9A8B7B',
+    color: '#FFFFFF',
   },
   calendarPhotoCaption: {
     fontSize: 14,
