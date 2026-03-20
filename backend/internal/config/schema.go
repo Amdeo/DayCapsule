@@ -8,14 +8,20 @@ import (
 )
 
 func EnsureSchema(db *sql.DB) error {
-	schemaPath := filepath.Join("migrations", "001_initial_schema.up.sql")
-	schema, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return fmt.Errorf("failed to read schema file: %w", err)
+	migrations := []string{
+		"001_initial_schema.up.sql",
+		"002_entries_media.up.sql",
 	}
 
-	if _, err := db.Exec(string(schema)); err != nil {
-		return fmt.Errorf("failed to apply schema: %w", err)
+	for _, m := range migrations {
+		path := filepath.Join("migrations", m)
+		schema, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read migration %s: %w", m, err)
+		}
+		if _, err := db.Exec(string(schema)); err != nil {
+			return fmt.Errorf("failed to apply migration %s: %w", m, err)
+		}
 	}
 
 	return nil

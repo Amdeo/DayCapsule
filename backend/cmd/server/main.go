@@ -42,12 +42,17 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 	backupRepo := repository.NewBackupRepository(db)
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret, cfg.JWTExpiry, cfg.RefreshExpiry)
 	syncService := service.NewSyncService(backupRepo)
+	entryService := service.NewEntryService(entryRepo, mediaRepo, cfg.BaseURL)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	syncHandler := handlers.NewSyncHandler(syncService)
+	entryHandler := handlers.NewEntryHandler(entryService)
+	mediaHandler := handlers.NewMediaHandler(mediaRepo, cfg.UploadDir)
 	healthHandler := handlers.NewHealthHandler(db)
 
 	if os.Getenv("ENV") == "production" {
@@ -75,6 +80,18 @@ func main() {
 			authorized.POST("/sync/upload", syncHandler.Upload)
 			authorized.GET("/sync/download", syncHandler.Download)
 			authorized.DELETE("/sync/backup", syncHandler.Delete)
+
+			// Entries CRUD
+			authorized.GET("/entries", entryHandler.List)
+			authorized.POST("/entries", entryHandler.Create)
+			authorized.PUT("/entries/:id", entryHandler.Update)
+			authorized.DELETE("/entries/:id", entryHandler.Delete)
+			authorized.GET("/tags", entryHandler.Tags)
+
+			// Media
+			authorized.POST("/media/upload", mediaHandler.Upload)
+			authorized.GET("/media/:id", mediaHandler.Download)
+			authorized.DELETE("/media/:id", mediaHandler.Delete)
 		}
 	}
 

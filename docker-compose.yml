@@ -10,6 +10,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
       ENV: production
       PORT: 3000
+      UPLOAD_DIR: /app/data/uploads
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
     volumes:
       - ./logs:/app/logs
       - ./backend/data:/app/data

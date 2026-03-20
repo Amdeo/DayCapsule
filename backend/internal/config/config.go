@@ -13,6 +13,8 @@ type Config struct {
 	JWTSecret     string
 	JWTExpiry     int // hours
 	RefreshExpiry int // hours
+	UploadDir     string
+	BaseURL       string
 }
 
 func Load() *Config {
@@ -24,6 +26,8 @@ func Load() *Config {
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		JWTExpiry:     getEnvAsInt("JWT_EXPIRY", 168),
 		RefreshExpiry: getEnvAsInt("REFRESH_EXPIRY", 720),
+		UploadDir:     getEnv("UPLOAD_DIR", "./data/uploads"),
+		BaseURL:       getEnv("BASE_URL", "http://localhost:3000"),
 	}
 }
 
