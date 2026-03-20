@@ -25,6 +25,11 @@ import { VoiceService } from '@/src/services/voiceService';
 import { NotificationService } from '@/src/services/notificationService';
 import { DetailPageShell } from './DetailPageShell';
 import { TagManagementPage } from './TagManagementPage';
+import { useAuthStore } from '@/src/store/authStore';
+import { LoginPage } from './LoginPage';
+import { switchDataSource, localDataSource, createRemoteDataSource } from '@/src/database/dataSource';
+import { getApiClient } from '@/src/services/apiClient';
+import * as DB from '@/src/database/operations';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -81,6 +86,162 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   // 存储统计
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [showTagMgmt, setShowTagMgmt] = useState(false);
+
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const { cloudMode, setCloudMode } = useSettingsStore();
+  const [showLogin, setShowLogin] = useState(false);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+
+  const handleCloudModeToggle = async (enable: boolean) => {
+    if (enable) {
+      if (!isAuthenticated) {
+        setShowLogin(true);
+        return;
+      }
+      await enableCloudMode();
+    } else {
+      await disableCloudMode();
+    }
+  };
+
+  const enableCloudMode = async () => {
+    setIsSwitchingMode(true);
+    try {
+      await setCloudMode('switching');
+      const client = getApiClient();
+      const status = await client.get<{ hasBackup: boolean; entryCount: number }>('/sync/status');
+
+      if (status.hasBackup && status.entryCount > 0) {
+        const localCount = await DB.getEntriesCount();
+        Alert.alert(
+          '数据同步',
+          `云端 ${status.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据来源：`,
+          [
+            { text: '使用云端数据', onPress: () => finishEnableCloud('cloud') },
+            { text: '上传本地数据', onPress: () => finishEnableCloud('local') },
+            { text: '取消', style: 'cancel', onPress: () => setCloudMode(false) },
+          ],
+        );
+      } else {
+        await finishEnableCloud('local');
+      }
+    } catch (e: any) {
+      Alert.alert('切换失败', e?.message ?? '请检查网络连接');
+      await setCloudMode(false);
+    } finally {
+      setIsSwitchingMode(false);
+    }
+  };
+
+  const finishEnableCloud = async (source: 'cloud' | 'local') => {
+    try {
+      if (source === 'local') {
+        const allEntries = await DB.getAllEntries();
+        const client = getApiClient();
+        const hash = String(Date.now());
+        await client.post('/sync/upload', {
+          data: { entries: allEntries, tags: [], version: 1 },
+          hash,
+          entryCount: allEntries.length,
+          deviceName: 'DayCapsule App',
+          encrypted: false,
+          encryptionVersion: 0,
+        });
+      }
+      switchDataSource(createRemoteDataSource());
+      await useEntryStore.getState().loadEntries();
+      await setCloudMode(true);
+    } catch (e: any) {
+      Alert.alert('切换失败', e?.message ?? '操作失败');
+      await setCloudMode(false);
+      switchDataSource(localDataSource);
+    }
+  };
+
+  const disableCloudMode = async () => {
+    setIsSwitchingMode(true);
+    try {
+      await setCloudMode('switching');
+      const client = getApiClient();
+      const status = await client.get<{ hasBackup: boolean; entryCount: number }>('/sync/status');
+      const localCount = await DB.getEntriesCount();
+
+      Alert.alert(
+        '切换到离线模式',
+        `云端 ${status.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
+        [
+          {
+            text: '云端 → 本地',
+            onPress: async () => {
+              try {
+                const data = await client.get<{ data: { entries: any[] } }>('/sync/download');
+                await DB.clearAllEntries();
+                await DB.restoreEntries(data.data.entries);
+                switchDataSource(localDataSource);
+                await useEntryStore.getState().loadEntries();
+                await setCloudMode(false);
+              } catch (err: any) {
+                Alert.alert('同步失败', err?.message);
+                await setCloudMode(true);
+              }
+            },
+          },
+          {
+            text: '本地 → 云端',
+            onPress: async () => {
+              try {
+                const allEntries = await DB.getAllEntries();
+                const hash = String(Date.now());
+                await client.post('/sync/upload', {
+                  data: { entries: allEntries, tags: [], version: 1 },
+                  hash,
+                  entryCount: allEntries.length,
+                  deviceName: 'DayCapsule App',
+                  encrypted: false,
+                  encryptionVersion: 0,
+                });
+                switchDataSource(localDataSource);
+                await useEntryStore.getState().loadEntries();
+                await setCloudMode(false);
+              } catch (err: any) {
+                Alert.alert('同步失败', err?.message);
+                await setCloudMode(true);
+              }
+            },
+          },
+          { text: '取消', style: 'cancel', onPress: () => setCloudMode(true) },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert('操作失败', e?.message);
+      await setCloudMode(true);
+    } finally {
+      setIsSwitchingMode(false);
+    }
+  };
+
+  const handleLoginSuccess = async () => {
+    setShowLogin(false);
+    await enableCloudMode();
+  };
+
+  const handleLogout = () => {
+    Alert.alert('退出登录', '确定要退出登录吗？如果当前是云端模式，将自动切换到离线模式。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '退出',
+        style: 'destructive',
+        onPress: async () => {
+          if (cloudMode === true) {
+            switchDataSource(localDataSource);
+            await setCloudMode(false);
+            await useEntryStore.getState().loadEntries();
+          }
+          logout();
+        },
+      },
+    ]);
+  };
 
   // 加载设置（首次挂载时）
   useEffect(() => {
@@ -202,6 +363,52 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   return (
     <DetailPageShell visible={visible} title="设置" onClose={onClose}>
+      {/* 账户 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>账户</Text>
+        {isAuthenticated ? (
+          <>
+            <View style={styles.settingItem}>
+              <View style={styles.settingIcon}>
+                <Ionicons name="person" size={20} color="#6A89CC" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>{user?.email}</Text>
+                <Text style={styles.settingSubtitle}>已登录</Text>
+              </View>
+            </View>
+            <SettingItem
+              icon="cloud"
+              title="云端模式"
+              subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
+              rightComponent={
+                <Switch
+                  value={cloudMode === true}
+                  onValueChange={handleCloudModeToggle}
+                  disabled={cloudMode === 'switching' || isSwitchingMode}
+                  trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+            <SettingButton
+              icon="log-out"
+              title="退出登录"
+              subtitle="退出当前账户"
+              onPress={handleLogout}
+              danger
+            />
+          </>
+        ) : (
+          <SettingButton
+            icon="person-add"
+            title="登录 / 注册"
+            subtitle="登录后可使用云端同步功能"
+            onPress={() => setShowLogin(true)}
+          />
+        )}
+      </View>
+
       {/* 通知设置 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>通知</Text>
@@ -310,6 +517,11 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         />
       </View>
       <TagManagementPage visible={showTagMgmt} onClose={() => setShowTagMgmt(false)} />
+      <LoginPage
+        visible={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </DetailPageShell>
   );
 }

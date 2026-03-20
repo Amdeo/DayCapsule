@@ -20,6 +20,7 @@ jest.mock('@/src/store/settingsStore', () => ({
     cardSpacing: 'default',
     photoHeight: 'default',
     calendarDensity: 'default',
+    cloudMode: false,
     isLoaded: true,
     loadSettings: mockLoadSettings,
     setNotifications: jest.fn(),
@@ -28,6 +29,7 @@ jest.mock('@/src/store/settingsStore', () => ({
     setCardSpacing: jest.fn(),
     setPhotoHeight: jest.fn(),
     setCalendarDensity: mockSetCalendarDensity,
+    setCloudMode: jest.fn(),
     resetSettings: mockResetSettings,
   }),
   SPACING_VALUES: { compact: 8, default: 16, loose: 24 },
@@ -63,6 +65,38 @@ jest.mock('../DetailPageShell', () => ({
 
 jest.mock('../TagManagementPage', () => ({
   TagManagementPage: () => null,
+}));
+
+jest.mock('@/src/store/authStore', () => ({
+  useAuthStore: () => ({
+    user: null,
+    isAuthenticated: false,
+    logout: jest.fn(),
+  }),
+}));
+
+jest.mock('../LoginPage', () => ({
+  LoginPage: () => null,
+}));
+
+jest.mock('@/src/database/dataSource', () => ({
+  switchDataSource: jest.fn(),
+  localDataSource: {},
+  createRemoteDataSource: jest.fn(() => ({})),
+}));
+
+jest.mock('@/src/services/apiClient', () => ({
+  getApiClient: jest.fn(() => ({
+    get: jest.fn(),
+    post: jest.fn(),
+  })),
+}));
+
+jest.mock('@/src/database/operations', () => ({
+  getAllEntries: jest.fn(async () => []),
+  getEntriesCount: jest.fn(async () => 0),
+  clearAllEntries: jest.fn(async () => undefined),
+  restoreEntries: jest.fn(async () => []),
 }));
 
 describe('SettingsPage calendar density selector', () => {
