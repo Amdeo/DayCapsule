@@ -22,6 +22,7 @@ import { logger } from '@/src/utils/logger';
 import { BackupService } from '@/src/services/backupService';
 import { Storage } from '@/src/utils/storage';
 import { useEntryStore } from '@/src/store/entryStore';
+import { useAuthStore } from '@/src/store/authStore';
 
 // 初始化 Sentry（Expo 只暴露 EXPO_PUBLIC_ 前缀的变量到客户端 JS）
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -102,6 +103,17 @@ export default function RootLayout() {
         // media_json 列迁移（幂等，已迁移则跳过）
         await migrateToMediaJson();
         logger.log('✅ media_json 列迁移完成');
+
+        // 恢复登录状态
+        await useAuthStore.getState().loadAuth();
+
+        // 检查 cloudMode 中断恢复
+        const cloudModeRaw = await Storage.getString('settings:cloudMode');
+        if (cloudModeRaw === 'switching') {
+          logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
+          await Storage.setString('settings:cloudMode', 'false');
+          Alert.alert('提示', '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。');
+        }
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
         Alert.alert(
