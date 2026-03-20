@@ -32,8 +32,8 @@ func (s *EntryService) Create(userID string, req *models.CreateEntryRequest) (*m
 	return s.toResponse(entry)
 }
 
-func (s *EntryService) GetPage(userID string, limit int, cursor *int64, entryType, search string, tags []string) ([]*models.EntryResponse, error) {
-	entries, err := s.entryRepo.GetPage(userID, limit, cursor, entryType, search, tags)
+func (s *EntryService) GetPage(userID string, limit int, cursor *int64, entryType, search string, tags []string, startTime *int64) ([]*models.EntryResponse, error) {
+	entries, err := s.entryRepo.GetPage(userID, limit, cursor, entryType, search, tags, startTime)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +55,48 @@ func (s *EntryService) Update(userID, entryID string, req *models.UpdateEntryReq
 
 func (s *EntryService) Delete(userID, entryID string) error {
 	return s.entryRepo.Delete(userID, entryID)
+}
+
+func (s *EntryService) Count(userID string) (int, error) {
+	return s.entryRepo.Count(userID)
+}
+
+func (s *EntryService) Export(userID string) ([]*models.EntryResponse, error) {
+	entries, err := s.entryRepo.GetAll(userID)
+	if err != nil {
+		return nil, err
+	}
+	var responses []*models.EntryResponse
+	for _, e := range entries {
+		resp, err := s.toResponse(e)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, resp)
+	}
+	return responses, nil
+}
+
+func (s *EntryService) Import(userID string, entries []models.ImportEntry) (int, error) {
+	// Clear existing entries first
+	if err := s.entryRepo.DeleteAll(userID); err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, e := range entries {
+		req := &models.CreateEntryRequest{
+			Type:              e.Type,
+			Content:           e.Content,
+			Tags:              e.Tags,
+			RecordingStatus:   e.RecordingStatus,
+			RecordingDuration: e.RecordingDuration,
+		}
+		if _, err := s.entryRepo.Create(userID, req); err != nil {
+			return count, err
+		}
+		count++
+	}
+	return count, nil
 }
 
 func (s *EntryService) GetAllTags(userID string) ([]string, error) {

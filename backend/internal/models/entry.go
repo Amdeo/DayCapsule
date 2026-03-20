@@ -50,6 +50,18 @@ type UpdateEntryRequest struct {
 	RecordingDuration *float64 `json:"recordingDuration"`
 }
 
+type ImportEntry struct {
+	Type              string   `json:"type"`
+	Content           string   `json:"content"`
+	Tags              []string `json:"tags"`
+	RecordingStatus   *string  `json:"recordingStatus,omitempty"`
+	RecordingDuration *float64 `json:"recordingDuration,omitempty"`
+}
+
+type ImportRequest struct {
+	Entries []ImportEntry `json:"entries" binding:"required"`
+}
+
 type MediaFile struct {
 	ID          string    `json:"id"`
 	UserID      string    `json:"userId"`

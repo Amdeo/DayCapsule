@@ -41,7 +41,14 @@ func (h *EntryHandler) List(c *gin.Context) {
 		tags = strings.Split(t, ",")
 	}
 
-	entries, err := h.entryService.GetPage(userID, limit, cursor, entryType, search, tags)
+	var startTime *int64
+	if st := c.Query("startTime"); st != "" {
+		if v, err := strconv.ParseInt(st, 10, 64); err == nil {
+			startTime = &v
+		}
+	}
+
+	entries, err := h.entryService.GetPage(userID, limit, cursor, entryType, search, tags, startTime)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -147,4 +154,62 @@ func (h *EntryHandler) Tags(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": tags})
+}
+
+func (h *EntryHandler) Count(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	count, err := h.entryService.Count(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to count entries"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"entryCount": count}})
+}
+
+func (h *EntryHandler) Export(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	entries, err := h.entryService.Export(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to export entries"},
+		})
+		return
+	}
+
+	if entries == nil {
+		entries = []*models.EntryResponse{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": entries})
+}
+
+func (h *EntryHandler) Import(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	var req models.ImportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INVALID_REQUEST", "message": err.Error()},
+		})
+		return
+	}
+
+	count, err := h.entryService.Import(userID, req.Entries)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to import entries"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"imported": count}})
 }

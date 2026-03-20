@@ -109,13 +109,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     try {
       await setCloudMode('switching');
       const client = getApiClient();
-      const status = await client.get<{ hasBackup: boolean; entryCount: number }>('/sync/status');
+      const countResult = await client.get<{ entryCount: number }>('/entries/count');
 
-      if (status.hasBackup && status.entryCount > 0) {
+      if (countResult.entryCount > 0) {
         const localCount = await DB.getEntriesCount();
         Alert.alert(
           '数据同步',
-          `云端 ${status.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据来源：`,
+          `云端 ${countResult.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据来源：`,
           [
             { text: '使用云端数据', onPress: () => finishEnableCloud('cloud') },
             { text: '上传本地数据', onPress: () => finishEnableCloud('local') },
@@ -138,14 +138,14 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       if (source === 'local') {
         const allEntries = await DB.getAllEntries();
         const client = getApiClient();
-        const hash = String(Date.now());
-        await client.post('/sync/upload', {
-          data: { entries: allEntries, tags: [], version: 1 },
-          hash,
-          entryCount: allEntries.length,
-          deviceName: 'DayCapsule App',
-          encrypted: false,
-          encryptionVersion: 0,
+        await client.post('/entries/import', {
+          entries: allEntries.map(e => ({
+            type: e.type,
+            content: e.content,
+            tags: e.tags,
+            recordingStatus: e.recordingStatus,
+            recordingDuration: e.recordingDuration,
+          })),
         });
       }
       switchDataSource(createRemoteDataSource());
@@ -163,20 +163,21 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     try {
       await setCloudMode('switching');
       const client = getApiClient();
-      const status = await client.get<{ hasBackup: boolean; entryCount: number }>('/sync/status');
+      const countResult = await client.get<{ entryCount: number }>('/entries/count');
+      const cloudCount = countResult.entryCount;
       const localCount = await DB.getEntriesCount();
 
       Alert.alert(
         '切换到离线模式',
-        `云端 ${status.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
+        `云端 ${cloudCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
         [
           {
             text: '云端 → 本地',
             onPress: async () => {
               try {
-                const data = await client.get<{ data: { entries: any[] } }>('/sync/download');
+                const entries = await client.get<any[]>('/entries/export');
                 await DB.clearAllEntries();
-                await DB.restoreEntries(data.data.entries);
+                await DB.restoreEntries(entries);
                 switchDataSource(localDataSource);
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
@@ -191,14 +192,14 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
             onPress: async () => {
               try {
                 const allEntries = await DB.getAllEntries();
-                const hash = String(Date.now());
-                await client.post('/sync/upload', {
-                  data: { entries: allEntries, tags: [], version: 1 },
-                  hash,
-                  entryCount: allEntries.length,
-                  deviceName: 'DayCapsule App',
-                  encrypted: false,
-                  encryptionVersion: 0,
+                await client.post('/entries/import', {
+                  entries: allEntries.map(e => ({
+                    type: e.type,
+                    content: e.content,
+                    tags: e.tags,
+                    recordingStatus: e.recordingStatus,
+                    recordingDuration: e.recordingDuration,
+                  })),
                 });
                 switchDataSource(localDataSource);
                 await useEntryStore.getState().loadEntries();

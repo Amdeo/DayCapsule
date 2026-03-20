@@ -87,6 +87,9 @@ func main() {
 			authorized.PUT("/entries/:id", entryHandler.Update)
 			authorized.DELETE("/entries/:id", entryHandler.Delete)
 			authorized.GET("/tags", entryHandler.Tags)
+			authorized.GET("/entries/count", entryHandler.Count)
+			authorized.GET("/entries/export", entryHandler.Export)
+			authorized.POST("/entries/import", entryHandler.Import)
 
 			// Media
 			authorized.POST("/media/upload", mediaHandler.Upload)

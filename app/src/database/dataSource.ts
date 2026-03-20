@@ -63,8 +63,8 @@ export function createRemoteDataSource(): DataSource {
     },
 
     getEntryCount: async () => {
-      const status = await client.get<{ hasBackup: boolean; entryCount: number }>('/sync/status');
-      return status.entryCount ?? 0;
+      const result = await client.get<{ entryCount: number }>('/entries/count');
+      return result.entryCount ?? 0;
     },
 
     addEntry: async (entry) => {
@@ -97,14 +97,14 @@ export function createRemoteDataSource(): DataSource {
     getAllTags: () => client.get<string[]>('/tags'),
 
     restoreEntries: async (entries) => {
-      const hash = String(Date.now());
-      await client.post('/sync/upload', {
-        data: { entries, tags: [], version: 1 },
-        hash,
-        entryCount: entries.length,
-        deviceName: 'DayCapsule App',
-        encrypted: false,
-        encryptionVersion: 0,
+      await client.post('/entries/import', {
+        entries: entries.map(e => ({
+          type: e.type,
+          content: e.content,
+          tags: e.tags,
+          recordingStatus: e.recordingStatus,
+          recordingDuration: e.recordingDuration,
+        })),
       });
       return entries.map((e) => e.id);
     },

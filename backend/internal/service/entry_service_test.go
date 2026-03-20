@@ -65,7 +65,7 @@ func TestEntryServiceCRUD(t *testing.T) {
 	entryID := resp.ID
 
 	// List
-	entries, err := svc.GetPage(user.ID, 20, nil, "", "", nil)
+	entries, err := svc.GetPage(user.ID, 20, nil, "", "", nil, nil)
 	if err != nil {
 		t.Fatalf("list entries: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestEntryServiceCRUD(t *testing.T) {
 	}
 
 	// List after update — verify content changed
-	entries, err = svc.GetPage(user.ID, 20, nil, "", "", nil)
+	entries, err = svc.GetPage(user.ID, 20, nil, "", "", nil, nil)
 	if err != nil {
 		t.Fatalf("list after update: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestEntryServiceCRUD(t *testing.T) {
 		t.Fatalf("delete entry: %v", err)
 	}
 
-	entries, err = svc.GetPage(user.ID, 20, nil, "", "", nil)
+	entries, err = svc.GetPage(user.ID, 20, nil, "", "", nil, nil)
 	if err != nil {
 		t.Fatalf("list after delete: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestEntryServiceFilterByType(t *testing.T) {
 	svc.Create(user.ID, &models.CreateEntryRequest{Type: "text", Content: "text entry"})
 	svc.Create(user.ID, &models.CreateEntryRequest{Type: "photo", Content: "photo entry"})
 
-	textEntries, err := svc.GetPage(user.ID, 20, nil, "text", "", nil)
+	textEntries, err := svc.GetPage(user.ID, 20, nil, "text", "", nil, nil)
 	if err != nil {
 		t.Fatalf("filter by type: %v", err)
 	}

@@ -63,7 +63,7 @@ func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) 
 	return entry, nil
 }
 
-func (r *EntryRepository) GetPage(userID string, limit int, cursor *int64, entryType, search string, tags []string) ([]*models.Entry, error) {
+func (r *EntryRepository) GetPage(userID string, limit int, cursor *int64, entryType, search string, tags []string, startTime *int64) ([]*models.Entry, error) {
 	var conditions []string
 	var args []interface{}
 
@@ -84,6 +84,12 @@ func (r *EntryRepository) GetPage(userID string, limit int, cursor *int64, entry
 	if search != "" {
 		conditions = append(conditions, "content LIKE ?")
 		args = append(args, "%"+search+"%")
+	}
+
+	if startTime != nil && *startTime > 0 {
+		conditions = append(conditions, "created_at >= ?")
+		st := time.UnixMilli(*startTime).UTC()
+		args = append(args, st)
 	}
 
 	if len(tags) > 0 {
@@ -198,6 +204,11 @@ func (r *EntryRepository) Delete(userID, entryID string) error {
 	return nil
 }
 
+func (r *EntryRepository) DeleteAll(userID string) error {
+	_, err := r.db.Exec("DELETE FROM entries WHERE user_id = ?", userID)
+	return err
+}
+
 func (r *EntryRepository) GetAllTags(userID string) ([]string, error) {
 	rows, err := r.db.Query("SELECT tags FROM entries WHERE user_id = ?", userID)
 	if err != nil {
@@ -231,6 +242,30 @@ func (r *EntryRepository) Count(userID string) (int, error) {
 	var count int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM entries WHERE user_id = ?", userID).Scan(&count)
 	return count, err
+}
+
+func (r *EntryRepository) GetAll(userID string) ([]*models.Entry, error) {
+	query := `
+		SELECT id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at
+		FROM entries
+		WHERE user_id = ?
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []*models.Entry
+	for rows.Next() {
+		e, err := scanEntry(rows)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }
 
 type scannable interface {

@@ -120,8 +120,8 @@ describe('RemoteDataSource', () => {
     expect(mockApiClient.delete).toHaveBeenCalledWith('/entries/r1');
   });
 
-  it('getEntryCount calls GET /sync/status', async () => {
-    mockApiClient.get.mockResolvedValueOnce({ hasBackup: true, entryCount: 42 });
+  it('getEntryCount calls GET /entries/count', async () => {
+    mockApiClient.get.mockResolvedValueOnce({ entryCount: 42 });
     const count = await remoteDS.getEntryCount();
     expect(count).toBe(42);
   });
