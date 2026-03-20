@@ -24,19 +24,19 @@ func main() {
 
 	cfg := config.Load()
 
-	if cfg.DatabaseURL == "" {
-		logger.Fatal("DATABASE_URL is required")
-	}
-
 	if cfg.JWTSecret == "" {
 		logger.Fatal("JWT_SECRET is required")
 	}
 
-	db, err := config.NewDB(cfg.DatabaseURL)
+	db, err := config.NewDB(cfg.DatabasePath)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
+
+	if err := config.EnsureSchema(db); err != nil {
+		logger.Fatal("Failed to initialize schema", zap.Error(err))
+	}
 
 	logger.Info("Connected to database")
 

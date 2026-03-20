@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
@@ -54,7 +55,7 @@ export function DetailPageShell({
 
   return (
     <Modal visible={shouldRender} transparent animationType="none" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <GestureHandlerRootView style={styles.container}>
         <Pressable
           testID="detail-page-backdrop"
           style={StyleSheet.absoluteFill}
@@ -88,22 +89,35 @@ export function DetailPageShell({
               {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : <View style={styles.headerSpacer} />}
             </View>
 
-            <ScrollView
-              testID="detail-page-scroll"
-              style={styles.content}
-              contentContainerStyle={[
-                styles.contentContainer,
-                { paddingBottom: 40 + insets.bottom },
-                contentContainerStyle,
-              ]}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={scrollEnabled}
-            >
-              {children}
-            </ScrollView>
+            {scrollEnabled ? (
+              <ScrollView
+                testID="detail-page-scroll"
+                style={styles.content}
+                contentContainerStyle={[
+                  styles.contentContainer,
+                  { paddingBottom: 40 + insets.bottom },
+                  contentContainerStyle,
+                ]}
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View
+                testID="detail-page-content"
+                style={[
+                  styles.content,
+                  styles.staticContent,
+                  { paddingBottom: 40 + insets.bottom },
+                  contentContainerStyle,
+                ]}
+              >
+                {children}
+              </View>
+            )}
           </Animated.View>
         )}
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -156,4 +170,7 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1 },
   contentContainer: { paddingHorizontal: 20 },
+  staticContent: {
+    paddingHorizontal: 20,
+  },
 });

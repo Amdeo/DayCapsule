@@ -8,10 +8,10 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	JWTExpiry   int // hours
+	Port          string
+	DatabasePath  string
+	JWTSecret     string
+	JWTExpiry     int // hours
 	RefreshExpiry int // hours
 }
 
@@ -19,10 +19,10 @@ func Load() *Config {
 	_ = godotenv.Load()
 
 	return &Config{
-		Port:        getEnv("PORT", "3000"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		JWTSecret:   getEnv("JWT_SECRET", ""),
-		JWTExpiry:   getEnvAsInt("JWT_EXPIRY", 168),
+		Port:          getEnv("PORT", "3000"),
+		DatabasePath:  getEnv("DATABASE_PATH", "./data/daycapsule.db"),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
+		JWTExpiry:     getEnvAsInt("JWT_EXPIRY", 168),
 		RefreshExpiry: getEnvAsInt("REFRESH_EXPIRY", 720),
 	}
 }

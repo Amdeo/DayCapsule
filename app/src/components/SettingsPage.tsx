@@ -297,8 +297,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         <Text style={styles.sectionTitle}>其他</Text>
         <SettingButton
           icon="pricetag"
-          title="常用标签管理"
-          subtitle="自定义快速选择的标签"
+          title="预制标签管理"
+          subtitle="管理可快速选择的预制标签"
           onPress={() => setShowTagMgmt(true)}
         />
         <SettingButton

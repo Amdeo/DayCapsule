@@ -85,3 +85,15 @@ describe('resetToDefaults', () => {
     expect(useCommonTagsStore.getState().tags).toEqual(DEFAULTS);
   });
 });
+
+describe('reorderCommonTags', () => {
+  it('reorders tags and persists the new order', async () => {
+    Storage.setObject.mockResolvedValue(undefined);
+    useCommonTagsStore.setState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
+
+    await useCommonTagsStore.getState().reorderCommonTags(0, 2);
+
+    expect(useCommonTagsStore.getState().tags).toEqual(['学习', '旅行', '工作']);
+    expect(Storage.setObject).toHaveBeenCalledWith('common_tags', ['学习', '旅行', '工作']);
+  });
+});

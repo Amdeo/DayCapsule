@@ -1,5 +1,7 @@
 # DayCapsule 后端云同步功能实施计划
 
+> 说明：本文档中的 PostgreSQL 实施计划已于 2026-03-20 被 [2026-03-20-backend-sqlite-migration.md](/Users/cooper/Documents/code/MemoryCapsule/docs/superpowers/plans/2026-03-20-backend-sqlite-migration.md) 替代，当前实现以后者为准。
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 实现 DayCapsule 后端云同步功能，包括 Go 后端服务、PostgreSQL 数据库、Docker 部署和客户端集成

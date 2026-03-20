@@ -19,16 +19,17 @@ WORKDIR /app
 
 RUN apk --no-cache add ca-certificates
 
-COPY --from=migrate/migrate /usr/local/bin/migrate /usr/local/bin/
-
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrations ./migrations
 
 RUN mkdir -p logs
+RUN mkdir -p data
+
+ENV DATABASE_PATH=/app/data/daycapsule.db
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-CMD migrate -path /app/migrations -database "$DATABASE_URL" up && ./server
+CMD ["./server"]

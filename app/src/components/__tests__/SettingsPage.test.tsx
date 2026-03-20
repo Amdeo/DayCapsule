@@ -93,4 +93,15 @@ describe('SettingsPage calendar density selector', () => {
 
     expect(mockSetCalendarDensity).toHaveBeenCalledWith('comfortable');
   });
+
+  it('shows preset tags management entry in settings', async () => {
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
+    });
+
+    expect(screen.getByText('预制标签管理')).toBeTruthy();
+    expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
+  });
 });

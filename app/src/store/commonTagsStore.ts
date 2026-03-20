@@ -10,6 +10,9 @@ export const DEFAULT_COMMON_TAGS: string[] = [
   '家人', '美食', '旅行', '思考', '娱乐', '购物', '天气',
 ];
 
+// 对外语义收口为“预制标签”，底层仍复用现有 store 与持久化 key。
+export const DEFAULT_PRESET_TAGS = DEFAULT_COMMON_TAGS;
+
 interface CommonTagsStore {
   tags: string[];
   isLoaded: boolean;
@@ -17,6 +20,7 @@ interface CommonTagsStore {
   addCommonTag: (tag: string) => Promise<void>;
   removeCommonTag: (tag: string) => Promise<void>;
   resetToDefaults: () => Promise<void>;
+  reorderCommonTags: (fromIndex: number, toIndex: number) => Promise<void>;
 }
 
 export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
@@ -61,6 +65,30 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       await Storage.setObject(STORAGE_KEY, DEFAULT_COMMON_TAGS);
     } catch (error) {
       logger.error('Failed to save common tags after reset:', error);
+    }
+  },
+
+  reorderCommonTags: async (fromIndex: number, toIndex: number) => {
+    const current = get().tags;
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= current.length ||
+      toIndex >= current.length
+    ) {
+      return;
+    }
+
+    const next = [...current];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    set({ tags: next });
+    try {
+      await Storage.setObject(STORAGE_KEY, next);
+    } catch (error) {
+      logger.error('Failed to save common tags after reorder:', error);
     }
   },
 }));

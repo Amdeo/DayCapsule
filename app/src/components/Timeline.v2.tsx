@@ -298,6 +298,7 @@ const EntryMarker = React.memo(function EntryMarker({
         onStopRecording={onStopRecording}
         isActionSheetActive={isActionSheetActive}
         onActionSheetOpen={onActionSheetOpen}
+        variant="calendar"
         cardSpacing={cardSpacing}
         enterDelay={enterDelay}
       />

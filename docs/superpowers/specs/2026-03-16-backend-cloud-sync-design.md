@@ -1,5 +1,7 @@
 # DayCapsule 后端云同步功能设计文档
 
+> 说明：本文档中的 PostgreSQL 设计已于 2026-03-20 被 [2026-03-20-backend-sqlite-migration-design.md](/Users/cooper/Documents/code/MemoryCapsule/docs/superpowers/specs/2026-03-20-backend-sqlite-migration-design.md) 替代，当前实现以后者为准。
+
 **创建日期**: 2026-03-16
 **状态**: 已批准
 **版本**: 1.0

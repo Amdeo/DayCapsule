@@ -42,6 +42,7 @@ const mockLoadMore = jest.fn();
 const mockCalendarView = jest.fn(() => null);
 const mockEntryEditor = jest.fn(() => null);
 const mockTextEntryDetailPage = jest.fn(() => null);
+const mockEntryCard = jest.fn(() => null);
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -116,13 +117,16 @@ jest.mock('../EntryCard', () => ({
     entry,
     enterDelay = -1,
     onView,
+    variant,
   }: {
     entry: { id: string };
     enterDelay?: number;
     onView?: (entry: { id: string }) => void;
+    variant?: string;
   }) => {
     const React = require('react');
     const { Text, Pressable } = require('react-native');
+    mockEntryCard({ entry, enterDelay, onView, variant });
     return (
       <Pressable testID={`mock-entry-card-${entry.id}`} onPress={() => onView?.(entry)}>
         <Text>{`${entry.id}:${enterDelay}`}</Text>
@@ -141,6 +145,7 @@ describe('Timeline view mode switching', () => {
     jest.clearAllMocks();
     mockEntryEditor.mockImplementation(() => null);
     mockTextEntryDetailPage.mockImplementation(() => null);
+    mockEntryCard.mockClear();
   });
 
   afterEach(() => {
@@ -155,6 +160,16 @@ describe('Timeline view mode switching', () => {
 
     expect(screen.getByText('entry-1:0')).toBeTruthy();
     expect(screen.getByText('entry-2:90')).toBeTruthy();
+  });
+
+  it('uses calendar variant for entry cards in list mode', () => {
+    render(<Timeline />);
+
+    expect(mockEntryCard).toHaveBeenCalled();
+
+    const entryCardCalls = mockEntryCard.mock.calls.map(([props]) => props);
+    expect(entryCardCalls[0]?.variant).toBe('calendar');
+    expect(entryCardCalls[1]?.variant).toBe('calendar');
   });
 
   it('renders themed loader dots during view transitions', () => {
