@@ -1,7 +1,7 @@
 # 设计文档：多图片卡片点击打开对应图片
 
 **日期：** 2026-03-20
-**状态：** 已批准
+**状态：** 已实现
 **影响文件：** `app/src/components/EntryCard.tsx`、`app/src/components/__tests__/EntryCard.test.tsx`
 
 ---
@@ -221,3 +221,21 @@ entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri
 备注：
 
 - 本轮按当前会话约束采用本地留痕评审，未启用子代理评审流程
+
+---
+
+## 实现结果
+
+已按设计完成实现，实际落地如下：
+
+- `EntryCard` 新增 `selectedImageIndex` 状态
+- 普通时间线 `PhotoGrid` 点击会透传被点中的图片索引
+- 日历视图单图、多图入口统一改为 `handleImagePress(index)`
+- `ImageViewer` 继续保持单图接口，仅将 `imageUri` 改为按索引取值并带第一张图回退
+
+### 验证结果
+
+- `cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx`
+  结果：PASS，29/29
+- `cd app && npx tsc --noEmit`
+  结果：PASS，无输出

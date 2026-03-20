@@ -20,7 +20,7 @@
 - Modify: `app/src/components/__tests__/EntryCard.test.tsx`
 - Modify: `app/src/components/EntryCard.tsx`（后续实现）
 
-- [ ] **Step 1: 更新 `ImageViewer` mock，使其暴露收到的 `imageUri`**
+- [x] **Step 1: 更新 `ImageViewer` mock，使其暴露收到的 `imageUri`**
 
 在 `app/src/components/__tests__/EntryCard.test.tsx` 顶部的 `jest.mock('../ImageViewer', ...)` 中，把 mock 改成能渲染 `imageUri`，例如：
 
@@ -38,7 +38,7 @@ jest.mock('../ImageViewer', () => {
 });
 ```
 
-- [ ] **Step 2: 添加普通多图卡片点击第二张图的测试**
+- [x] **Step 2: 添加普通多图卡片点击第二张图的测试**
 
 在 `EntryCard photo edge-to-edge` 或新的 describe 块中加入一条测试，构造 3 张图的 `photo` entry：
 
@@ -60,7 +60,7 @@ it('普通多图卡片点击第二张图时应传第二张图片给 ImageViewer'
 });
 ```
 
-- [ ] **Step 3: 运行单测，确认当前失败**
+- [x] **Step 3: 运行单测，确认当前失败**
 
 ```bash
 cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "普通多图卡片点击第二张图时应传第二张图片给 ImageViewer"
@@ -76,7 +76,7 @@ cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "�
 - Modify: `app/src/components/EntryCard.tsx`
 - Test: `app/src/components/__tests__/EntryCard.test.tsx`
 
-- [ ] **Step 1: 在 `showImageViewer` state 后新增选中索引 state**
+- [x] **Step 1: 在 `showImageViewer` state 后新增选中索引 state**
 
 在 `EntryCard` 内找到：
 
@@ -90,7 +90,7 @@ const [showImageViewer, setShowImageViewer] = useState(false);
 const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 ```
 
-- [ ] **Step 2: 添加统一图片点击入口**
+- [x] **Step 2: 添加统一图片点击入口**
 
 在 `handleCardPress` 前新增：
 
@@ -102,7 +102,7 @@ const handleImagePress = (index: number) => {
 };
 ```
 
-- [ ] **Step 3: 普通时间线 `PhotoGrid` 改为透传索引**
+- [x] **Step 3: 普通时间线 `PhotoGrid` 改为透传索引**
 
 找到当前代码：
 
@@ -126,7 +126,7 @@ const handleImagePress = (index: number) => {
 />;
 ```
 
-- [ ] **Step 4: `ImageViewer` 改为按索引取图并带回退**
+- [x] **Step 4: `ImageViewer` 改为按索引取图并带回退**
 
 找到当前代码：
 
@@ -152,7 +152,7 @@ const handleImagePress = (index: number) => {
 />
 ```
 
-- [ ] **Step 5: 重新运行刚才那条测试，确认通过**
+- [x] **Step 5: 重新运行刚才那条测试，确认通过**
 
 ```bash
 cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "普通多图卡片点击第二张图时应传第二张图片给 ImageViewer"
@@ -177,7 +177,7 @@ git commit -m "fix: open selected photo in timeline viewer"
 - Modify: `app/src/components/__tests__/EntryCard.test.tsx`
 - Modify: `app/src/components/EntryCard.tsx`（后续实现）
 
-- [ ] **Step 1: 添加日历多图点击第三张图的测试**
+- [x] **Step 1: 添加日历多图点击第三张图的测试**
 
 在 `EntryCard calendar variant` describe 中添加一条测试，使用 4 张图的 `photo` entry：
 
@@ -220,7 +220,7 @@ cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "c
 - Modify: `app/src/components/EntryCard.tsx`
 - Test: `app/src/components/__tests__/EntryCard.test.tsx`
 
-- [ ] **Step 1: 日历单图点击改为使用统一入口**
+- [x] **Step 1: 日历单图点击改为使用统一入口**
 
 找到：
 
@@ -234,7 +234,7 @@ cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "c
 <TouchableOpacity activeOpacity={0.92} onPress={() => handleImagePress(0)}>
 ```
 
-- [ ] **Step 2: 日历多图三个点击入口分别传正确索引**
+- [x] **Step 2: 日历多图三个点击入口分别传正确索引**
 
 将以下 3 处点击从统一打开改为显式索引：
 
@@ -250,7 +250,7 @@ onPress={() => handleImagePress(2)}
 - 第二张图
 - 第三张图
 
-- [ ] **Step 3: 为日历多图可点击节点补最小必要 testID**
+- [x] **Step 3: 为日历多图可点击节点补最小必要 testID**
 
 在不影响生产行为的前提下，为测试目标增加稳定 testID，例如：
 
@@ -262,7 +262,7 @@ testID={`calendar-photo-secondary-cell-2-${entry.id}`}
 
 只加在 `TouchableOpacity` 上，不新增无关测试节点。
 
-- [ ] **Step 4: 重新运行日历测试，确认通过**
+- [x] **Step 4: 重新运行日历测试，确认通过**
 
 ```bash
 cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx -t "calendar 多图卡片点击第三张图时应传第三张图片给 ImageViewer"
@@ -288,7 +288,7 @@ git commit -m "fix: open selected photo in calendar viewer"
 - Modify: `docs/superpowers/specs/2026-03-20-multi-photo-viewer-index-design.md`
 - Verify: `app/src/components/__tests__/EntryCard.test.tsx`
 
-- [ ] **Step 1: 运行 `EntryCard` 相关测试**
+- [x] **Step 1: 运行 `EntryCard` 相关测试**
 
 ```bash
 cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx
@@ -296,7 +296,7 @@ cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx
 
 期望：PASS。
 
-- [ ] **Step 2: 运行类型检查**
+- [x] **Step 2: 运行类型检查**
 
 ```bash
 cd app && npx tsc --noEmit
@@ -304,7 +304,7 @@ cd app && npx tsc --noEmit
 
 期望：无新增 TypeScript 错误。
 
-- [ ] **Step 3: 在本 plan 中补齐实际验证结果**
+- [x] **Step 3: 在本 plan 中补齐实际验证结果**
 
 把本文件对应步骤后的执行结果补齐，至少记录：
 
@@ -312,7 +312,7 @@ cd app && npx tsc --noEmit
 - 是否通过
 - 如有基线噪音，注明“无新增失败”
 
-- [ ] **Step 4: 更新 spec 状态为 `已实现`**
+- [x] **Step 4: 更新 spec 状态为 `已实现`**
 
 修改：
 
@@ -333,6 +333,19 @@ cd app && npx tsc --noEmit
 并在评审记录后追加一节“实现结果”或“验证结果”。
 
 - [ ] **Step 5: 提交收尾文档**
+
+### 实际验证结果
+
+- `cd app && npx jest --runInBand src/components/__tests__/EntryCard.test.tsx`
+  结果：PASS，29/29
+- `cd app && npx tsc --noEmit`
+  结果：PASS，无输出
+
+### 执行备注
+
+- Task 1 的失败测试已明确验证普通多图卡片原本总是打开第一张图
+- Task 3 的测试在补上最小必要 testID 后直接随实现一起转绿；本次未单独保留一次“节点存在但 URI 仍错误”的失败快照
+- 两个中间 commit 步骤未单独执行，改为在最终收尾时统一提交，避免把极小改动拆成多条无额外信息增量的 commit
 
 ```bash
 git add docs/superpowers/plans/2026-03-20-multi-photo-viewer-index.md docs/superpowers/specs/2026-03-20-multi-photo-viewer-index-design.md

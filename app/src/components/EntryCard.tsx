@@ -101,6 +101,7 @@ function EntryCard({
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const swipeableRef = useRef<Swipeable>(null);
   const [audioMissing, setAudioMissing] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -279,7 +280,11 @@ function EntryCard({
       const photo = entry.media[0];
       return (
         <View testID={`calendar-photo-card-layout-single-${entry.id}`}>
-          <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)}>
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => handleImagePress(0)}
+            testID={`calendar-photo-primary-${entry.id}`}
+          >
             <Image
               source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
               style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
@@ -298,7 +303,12 @@ function EntryCard({
         testID={`calendar-photo-card-layout-multi-${entry.id}`}
         style={[styles.calendarPhotoMultiWrap, { height: resolvedPhotoHeight }]}
       >
-        <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoPrimary}>
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => handleImagePress(0)}
+          style={styles.calendarPhotoPrimary}
+          testID={`calendar-photo-primary-${entry.id}`}
+        >
           <Image
             source={{ uri: PhotoService.resolvePhotoUri(primary.thumbnail || primary.uri) }}
             style={styles.calendarPhotoImage}
@@ -307,7 +317,12 @@ function EntryCard({
         </TouchableOpacity>
         <View style={styles.calendarPhotoSecondaryColumn}>
           {secondary ? (
-            <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoSecondaryCell}>
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={() => handleImagePress(1)}
+              style={styles.calendarPhotoSecondaryCell}
+              testID={`calendar-photo-secondary-cell-1-${entry.id}`}
+            >
               <Image
                 source={{ uri: PhotoService.resolvePhotoUri(secondary.thumbnail || secondary.uri) }}
                 style={styles.calendarPhotoImage}
@@ -318,7 +333,12 @@ function EntryCard({
             <View style={styles.calendarPhotoSecondaryCell} />
           )}
           {tertiary ? (
-            <TouchableOpacity activeOpacity={0.92} onPress={() => setShowImageViewer(true)} style={styles.calendarPhotoSecondaryCell}>
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={() => handleImagePress(2)}
+              style={styles.calendarPhotoSecondaryCell}
+              testID={`calendar-photo-secondary-cell-2-${entry.id}`}
+            >
               <Image
                 source={{ uri: PhotoService.resolvePhotoUri(tertiary.thumbnail || tertiary.uri) }}
                 style={styles.calendarPhotoImage}
@@ -607,6 +627,12 @@ function EntryCard({
 
   const renderRightActions = () => <View style={{ width: 96 }} />;
 
+  const handleImagePress = (index: number) => {
+    logger.log('图片被点击，打开图片查看器，index:', index);
+    setSelectedImageIndex(index);
+    setShowImageViewer(true);
+  };
+
   // 处理卡片点击 - 根据类型执行不同操作
   const handleCardPress = () => {
     logger.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
@@ -709,7 +735,7 @@ function EntryCard({
                     photos={entry.media}
                     maxPhotoHeight={resolvedPhotoHeight}
                     photoImageRadius={photoImageRadius}
-                    onPhotoPress={() => setShowImageViewer(true)}
+                    onPhotoPress={(index) => handleImagePress(index)}
                   />
                   {entry.content && (
                     <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
@@ -845,7 +871,7 @@ function EntryCard({
             {entry.type === 'photo' && entry.media?.[0]?.uri && (
               <ImageViewer
                 visible={showImageViewer}
-                imageUri={entry.media[0].uri}
+                imageUri={entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri}
                 onClose={() => {
                   setShowImageViewer(false);
                 }}
