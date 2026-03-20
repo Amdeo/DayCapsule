@@ -49,6 +49,8 @@ interface ApiClient {
 }
 ```
 
+Token 刷新竞态处理：使用 refresh 锁机制。第一个 401 触发 refresh 请求，后续并发的 401 排队等待 refresh 完成后用新 token 重试，避免多次 refresh 调用。
+
 ### 2. AuthStore (`app/src/store/authStore.ts`)
 
 Zustand store，token 持久化到 MMKV。
@@ -62,7 +64,7 @@ interface AuthState {
 
   login(email: string, password: string): Promise<void>
   register(email: string, password: string): Promise<void>
-  logout(): void
+  logout(): void  // 清 token + 切 cloudMode=false + 切 LocalDS + reload entries
   refreshAuth(): Promise<boolean>
   loadAuth(): void  // 启动时从 MMKV 恢复
 }
@@ -80,6 +82,7 @@ MMKV keys：
 ```typescript
 interface DataSource {
   getEntriesPage(filters: EntryFilters, pageSize: number, cursor?: number): Promise<Entry[]>
+  getEntryCount(): Promise<number>
   addEntry(entry: Omit<Entry, 'id' | 'timestamp'>): Promise<Entry>
   updateEntry(id: string, updates: Partial<Entry>): Promise<void>
   deleteEntry(id: string): Promise<void>
@@ -87,6 +90,8 @@ interface DataSource {
   restoreEntries(entries: Entry[]): Promise<string[]>
 }
 ```
+
+`EntryFilters` 类型从 `database/operations.ts` 提取到 `types/entry.ts`，供 DataSource 接口和两个实现共用。
 
 #### LocalDataSource
 
@@ -100,12 +105,12 @@ interface DataSource {
 - `updateEntry` → `PUT /api/entries/:id`
 - `deleteEntry` → `DELETE /api/entries/:id`
 - `getAllTags` → `GET /api/tags`
+- `getEntryCount` → `GET /sync/status` 的 `entryCount` 字段
 - `restoreEntries` → `POST /sync/upload`（复用现有全量上传）
 
-缓存策略：
-- 首次拉取全量数据后，在内存中缓存 hash
-- 后续通过 `GET /sync/status` 的 hash 字段判断是否需要重新拉取
-- 写操作后本地更新内存缓存，不等待重新拉取
+媒体 URI 处理：RemoteDataSource 返回的 entry 中 `media[].uri` 为远程 URL（如 `https://api.example.com/api/media/xxx`）。React Native 的 `Image` 和 `expo-av` 原生支持远程 URL，无需 UI 层改动。RemoteDS 在返回 entry 时将后端的 media ID 转换为完整的下载 URL。
+
+缓存策略：RemoteDataSource 自身不做缓存。entryStore 已有的 entries 数组 + 游标分页机制就是缓存层。通过 `GET /sync/status` 的 hash 字段在 app 回到前台时做脏检查，hash 变化则触发 `loadEntries()` 重新拉取。
 
 ### 4. entryStore 改造
 
@@ -118,7 +123,7 @@ function switchDataSource(ds: DataSource) {
 }
 ```
 
-现有方法中所有 `DB.*` 调用替换为 `activeDataSource.*`。其余逻辑（分页、过滤、内存缓存）保持不变。
+现有方法中所有 `DB.*` 调用替换为 `activeDataSource.*`。包括 `removeBrokenRecordingEntries` 中直接调用的 `DB.deleteEntry`，也需要走 `activeDataSource`。其余逻辑（分页、过滤、内存缓存）保持不变。
 
 ### 5. 模式切换逻辑
 
@@ -129,16 +134,20 @@ function switchDataSource(ds: DataSource) {
   → 检查 isAuthenticated
     → 未登录：弹出登录/注册页
     → 登录成功后继续
-  → 上传本地数据到云端（POST /sync/upload）
+  → 持久化 cloudMode = 'switching' 到 MMKV（防止中断导致不一致）
+  → 检查云端是否已有数据（GET /sync/status）
+    → 云端已有数据：展示摘要弹窗，让用户选择覆盖方向（同关闭时的逻辑）
+    → 云端无数据：上传本地数据到云端（POST /sync/upload）
   → 切换 dataSource 为 RemoteDS
   → 重新加载 entries（loadEntries）
-  → 持久化 cloudMode = true 到 MMKV
+  → 持久化 cloudMode = true
 ```
 
 #### 关闭云端模式
 
 ```
 用户关闭开关
+  → 持久化 cloudMode = 'switching'
   → 获取双方摘要：
     - 云端：GET /sync/status → { entryCount, updatedAt }
     - 本地：DB.getEntryCount()
@@ -154,6 +163,8 @@ function switchDataSource(ds: DataSource) {
   → 重新加载 entries
   → 持久化 cloudMode = false
 ```
+
+启动时恢复：app 启动时检查 MMKV 中 `cloudMode` 值，若为 `'switching'` 则提示用户"上次切换未完成"，让用户重新选择。
 
 ### 6. 登录/注册 UI
 
