@@ -51,6 +51,8 @@ interface SettingsState {
   setPhotoHeight: (value: PhotoHeightPreset) => Promise<void>;
   setCalendarDensity: (value: CalendarDensity) => Promise<void>;
   setLastAddType: (value: LastAddType) => Promise<void>;
+  cloudMode: boolean | 'switching';
+  setCloudMode: (value: boolean | 'switching') => Promise<void>;
 
   // 重置设置
   resetSettings: () => Promise<void>;
@@ -64,6 +66,7 @@ const SETTINGS_KEYS = {
   photoHeight:       'settings:photoHeight',
   calendarDensity:   'settings:calendarDensity',
   lastAddType:       'settings:lastAddType',
+  cloudMode:         'settings:cloudMode',
 };
 
 const DEFAULT_SETTINGS = {
@@ -74,6 +77,7 @@ const DEFAULT_SETTINGS = {
   photoHeight: 'default' as PhotoHeightPreset,
   calendarDensity: 'default' as CalendarDensity,
   lastAddType: null as LastAddType | null,
+  cloudMode: false as boolean | 'switching',
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -82,7 +86,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const [notif, backup, hq, spacing, ph, density, lat] = await Promise.all([
+      const [notif, backup, hq, spacing, ph, density, lat, cm] = await Promise.all([
         Storage.getString(SETTINGS_KEYS.notifications),
         Storage.getString(SETTINGS_KEYS.autoBackup),
         Storage.getString(SETTINGS_KEYS.highQualityPhotos),
@@ -90,6 +94,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         Storage.getString(SETTINGS_KEYS.photoHeight),
         Storage.getString(SETTINGS_KEYS.calendarDensity),
         Storage.getString(SETTINGS_KEYS.lastAddType),
+        Storage.getString(SETTINGS_KEYS.cloudMode),
       ]);
 
       const validSpacing = (value: string | null): CardSpacing => {
@@ -120,6 +125,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         photoHeight: ph === null ? DEFAULT_SETTINGS.photoHeight : validPhotoHeight(ph),
         calendarDensity: density === null ? DEFAULT_SETTINGS.calendarDensity : validCalendarDensity(density),
         lastAddType: validLastAddType(lat),
+        cloudMode: cm === 'true' ? true : cm === 'switching' ? 'switching' : false,
         isLoaded: true,
       });
     } catch (error) {
@@ -163,6 +169,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ lastAddType: value });
   },
 
+  setCloudMode: async (value) => {
+    await Storage.setString(SETTINGS_KEYS.cloudMode, String(value));
+    set({ cloudMode: value });
+  },
+
   resetSettings: async () => {
     await Promise.all([
       Storage.delete(SETTINGS_KEYS.notifications),
@@ -172,6 +183,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       Storage.delete(SETTINGS_KEYS.photoHeight),
       Storage.delete(SETTINGS_KEYS.calendarDensity),
       Storage.delete(SETTINGS_KEYS.lastAddType),
+      Storage.delete(SETTINGS_KEYS.cloudMode),
     ]);
     set({ ...DEFAULT_SETTINGS });
   },

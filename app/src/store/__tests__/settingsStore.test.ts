@@ -26,6 +26,7 @@ const resetStore = () =>
     cardSpacing: 'default',
     photoHeight: 'default',
     lastAddType: null,
+    cloudMode: false,
     isLoaded: false,
   });
 
@@ -161,5 +162,21 @@ describe('resetSettings — lastAddType', () => {
 
     expect(Storage.delete).toHaveBeenCalledWith('settings:lastAddType');
     expect(useSettingsStore.getState().lastAddType).toBeNull();
+  });
+});
+
+describe('cloudMode', () => {
+  it('defaults to false', () => {
+    expect(useSettingsStore.getState().cloudMode).toBe(false);
+  });
+
+  it('setCloudMode persists to MMKV', async () => {
+    await useSettingsStore.getState().setCloudMode('switching');
+    expect(Storage.setString).toHaveBeenCalledWith('settings:cloudMode', 'switching');
+    expect(useSettingsStore.getState().cloudMode).toBe('switching');
+
+    await useSettingsStore.getState().setCloudMode(true);
+    expect(Storage.setString).toHaveBeenCalledWith('settings:cloudMode', 'true');
+    expect(useSettingsStore.getState().cloudMode).toBe(true);
   });
 });
