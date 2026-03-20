@@ -133,3 +133,10 @@ export interface AudioCompressionOptions {
   sampleRate?: number; // 采样率 (Hz)
   quality: 'low' | 'medium' | 'high';
 }
+
+export interface EntryFilters {
+  type?: 'text' | 'photo' | 'voice';
+  startTime?: number;
+  search?: string;
+  tags?: string[];
+}

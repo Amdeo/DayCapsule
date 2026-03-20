@@ -380,12 +380,9 @@ export const getEntriesCount = async (): Promise<number> => {
   }
 };
 
-export interface EntryFilters {
-  type?: 'text' | 'photo' | 'voice';
-  startTime?: number;
-  search?: string;
-  tags?: string[];
-}
+// Re-export for backward compatibility
+export type { EntryFilters } from '@/src/types/entry';
+import type { EntryFilters } from '@/src/types/entry';
 
 /**
  * 游标分页查询（支持过滤条件）
