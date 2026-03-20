@@ -5,8 +5,8 @@
 
 import { create } from 'zustand';
 import { Entry } from '@/src/types/entry';
-import * as DB from '@/src/database/operations';
-import { EntryFilters } from '@/src/database/operations';
+import { getActiveDataSource } from '@/src/database/dataSource';
+import type { EntryFilters } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
 const PAGE_SIZE = 20;
@@ -70,7 +70,7 @@ const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => 
   for (const entry of page) {
     if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
       try {
-        await DB.deleteEntry(entry.id);
+        await getActiveDataSource().deleteEntry(entry.id);
         logger.log('🧹 清理无效录音:', entry.id);
         continue;
       } catch {
@@ -150,7 +150,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   ): Promise<void> => {
     try {
       const filters = buildFilters(get());
-      const page = await DB.getEntriesPage(filters, PAGE_SIZE);
+      const page = await getActiveDataSource().getEntriesPage(filters, PAGE_SIZE);
       const cleaned = await removeBrokenRecordingEntries(page);
 
       if (get().activeQueryKey !== queryKey) {
@@ -240,7 +240,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     set({ isLoadingMore: true });
     try {
       const filters = buildFilters(get());
-      const page = await DB.getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
+      const page = await getActiveDataSource().getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
 
       if (get().activeQueryKey !== activeQueryKey) {
         logger.debug('[entryStore] Ignore stale loadMore result:', activeQueryKey);
@@ -271,7 +271,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   addEntry: async (entry) => {
     try {
-      const newEntry = await DB.addEntry(entry);
+      const newEntry = await getActiveDataSource().addEntry(entry);
       set((s) => ({
         entries: [newEntry, ...s.entries],
       }));
@@ -287,7 +287,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   updateEntry: async (id, updates) => {
     try {
-      await DB.updateEntry(id, updates);
+      await getActiveDataSource().updateEntry(id, updates);
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...updates } : e));
       set((s) => ({ entries: patch(s.entries) }));
@@ -303,7 +303,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   deleteEntry: async (id) => {
     try {
-      await DB.deleteEntry(id);
+      await getActiveDataSource().deleteEntry(id);
       const remove = (arr: Entry[]) => arr.filter((e) => e.id !== id);
       set((s) => ({ entries: remove(s.entries) }));
       logger.log('✅ 删除记录:', id);
@@ -321,7 +321,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     await get().applyFilters();
   },
 
-  getAllTags: () => DB.getAllTags(),
+  getAllTags: () => getActiveDataSource().getAllTags(),
 
   updateRecordingStatus: async (id, status) => get().updateEntry(id, { recordingStatus: status }),
 
@@ -385,7 +385,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    * 批量恢复备份记录，完成后重新加载第一页
    */
   restoreEntries: async (entries: Entry[]): Promise<string[]> => {
-    const insertedIds = await DB.restoreEntries(entries);
+    const insertedIds = await getActiveDataSource().restoreEntries(entries);
     await get().loadEntries();
     return insertedIds;
   },

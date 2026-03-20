@@ -2,9 +2,9 @@
  * entryStore 单元测试
  */
 
-jest.mock('@/src/database/operations', () => ({
+const mockDataSource = {
   getEntriesPage: jest.fn().mockResolvedValue([]),
-  getAllEntries: jest.fn().mockResolvedValue([]),
+  getEntryCount: jest.fn().mockResolvedValue(0),
   addEntry: jest.fn().mockImplementation((entry) =>
     Promise.resolve({
       ...entry,
@@ -15,8 +15,14 @@ jest.mock('@/src/database/operations', () => ({
   ),
   updateEntry: jest.fn().mockResolvedValue(undefined),
   deleteEntry: jest.fn().mockResolvedValue(undefined),
-  searchEntries: jest.fn().mockResolvedValue([]),
   getAllTags: jest.fn().mockResolvedValue([]),
+  restoreEntries: jest.fn().mockResolvedValue([]),
+};
+
+jest.mock('@/src/database/dataSource', () => ({
+  getActiveDataSource: () => mockDataSource,
+  localDataSource: mockDataSource,
+  switchDataSource: jest.fn(),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -30,7 +36,6 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import { useEntryStore } from '../entryStore';
-import * as DB from '@/src/database/operations';
 
 const PAGE_SIZE = 20;
 
@@ -77,9 +82,9 @@ describe('entryStore', () => {
   beforeEach(() => {
     resetStore();
     jest.resetAllMocks();
-    (DB.getEntriesPage as jest.Mock).mockResolvedValue([]);
-    (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
-    (DB.addEntry as jest.Mock).mockImplementation((entry) =>
+    mockDataSource.getEntriesPage.mockResolvedValue([]);
+    mockDataSource.getEntryCount.mockResolvedValue(0);
+    mockDataSource.addEntry.mockImplementation((entry) =>
       Promise.resolve({
         ...entry,
         id: 'test-id-1',
@@ -87,10 +92,10 @@ describe('entryStore', () => {
         syncStatus: 'synced',
       })
     );
-    (DB.updateEntry as jest.Mock).mockResolvedValue(undefined);
-    (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
-    (DB.searchEntries as jest.Mock).mockResolvedValue([]);
-    (DB.getAllTags as jest.Mock).mockResolvedValue([]);
+    mockDataSource.updateEntry.mockResolvedValue(undefined);
+    mockDataSource.deleteEntry.mockResolvedValue(undefined);
+    mockDataSource.getAllTags.mockResolvedValue([]);
+    mockDataSource.restoreEntries.mockResolvedValue([]);
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────
@@ -100,7 +105,7 @@ describe('entryStore', () => {
       const mockEntries = [
         { id: '1', type: 'text', content: '测试', timestamp: 1700000000000, syncStatus: 'synced' },
       ];
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue(mockEntries);
+      mockDataSource.getEntriesPage.mockResolvedValue(mockEntries);
 
       await useEntryStore.getState().loadEntries();
 
@@ -110,7 +115,7 @@ describe('entryStore', () => {
 
     it('加载时 isLoading 应该为 true', async () => {
       let capturedLoading = false;
-      (DB.getEntriesPage as jest.Mock).mockImplementation(async () => {
+      mockDataSource.getEntriesPage.mockImplementation(async () => {
         capturedLoading = useEntryStore.getState().isLoading;
         return [];
       });
@@ -125,14 +130,14 @@ describe('entryStore', () => {
         { id: '1', type: 'voice', content: '', timestamp: 1700000000000, recordingStatus: 'recording', syncStatus: 'synced' },
         { id: '2', type: 'text', content: '正常记录', timestamp: 1700000000001, syncStatus: 'synced' },
       ];
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue(mockEntries);
+      mockDataSource.getEntriesPage.mockResolvedValue(mockEntries);
 
       await useEntryStore.getState().loadEntries();
 
       const entries = useEntryStore.getState().entries;
       expect(entries).toHaveLength(1);
       expect(entries[0].id).toBe('2');
-      expect(DB.deleteEntry).toHaveBeenCalledWith('1');
+      expect(mockDataSource.deleteEntry).toHaveBeenCalledWith('1');
     });
 
     it('满页时 hasMore 应该为 true', async () => {
@@ -143,7 +148,7 @@ describe('entryStore', () => {
         timestamp: 1700000000000 - i * 1000,
         syncStatus: 'synced' as const,
       }));
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue(fullPage);
+      mockDataSource.getEntriesPage.mockResolvedValue(fullPage);
 
       await useEntryStore.getState().loadEntries();
 
@@ -152,7 +157,7 @@ describe('entryStore', () => {
     });
 
     it('不足一页时 hasMore 应该为 false', async () => {
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue([
+      mockDataSource.getEntriesPage.mockResolvedValue([
         { id: '1', type: 'text', content: '仅一条', timestamp: 1700000000000, syncStatus: 'synced' },
       ]);
 
@@ -165,7 +170,7 @@ describe('entryStore', () => {
       const first = createDeferred<any[]>();
       const second = createDeferred<any[]>();
 
-      (DB.getEntriesPage as jest.Mock)
+      mockDataSource.getEntriesPage
         .mockReturnValueOnce(first.promise)
         .mockReturnValueOnce(second.promise);
 
@@ -184,7 +189,7 @@ describe('entryStore', () => {
 
     it('applySearchFilters 开启新首屏查询时应重置 isLoadingMore 为 false', async () => {
       useEntryStore.setState({ isLoadingMore: true, cursor: 999, hasMore: true });
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue([
+      mockDataSource.getEntriesPage.mockResolvedValue([
         makeEntry('1', 10),
       ]);
 
@@ -203,7 +208,7 @@ describe('entryStore', () => {
     it('数据库表未就绪的延迟重试在签名过期后应放弃', async () => {
       jest.useFakeTimers();
       try {
-        (DB.getEntriesPage as jest.Mock)
+        mockDataSource.getEntriesPage
           .mockRejectedValueOnce(new Error('no such table: entries'))
           .mockResolvedValueOnce([{ id: 'fresh', type: 'text', content: 'fresh', timestamp: 1, syncStatus: 'synced' }])
           .mockResolvedValueOnce([{ id: 'stale', type: 'text', content: 'stale', timestamp: 0, syncStatus: 'synced' }]);
@@ -237,7 +242,7 @@ describe('entryStore', () => {
       ];
 
       useEntryStore.setState({ entries: firstPage, cursor: 2000, hasMore: true });
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue(secondPage);
+      mockDataSource.getEntriesPage.mockResolvedValue(secondPage);
 
       await useEntryStore.getState().loadMore();
 
@@ -251,7 +256,7 @@ describe('entryStore', () => {
 
       await useEntryStore.getState().loadMore();
 
-      expect(DB.getEntriesPage).not.toHaveBeenCalled();
+      expect(mockDataSource.getEntriesPage).not.toHaveBeenCalled();
     });
 
     it('isLoadingMore 为 true 时不应该重复请求', async () => {
@@ -259,12 +264,12 @@ describe('entryStore', () => {
 
       await useEntryStore.getState().loadMore();
 
-      expect(DB.getEntriesPage).not.toHaveBeenCalled();
+      expect(mockDataSource.getEntriesPage).not.toHaveBeenCalled();
     });
 
     it('最后一页后 hasMore 应该变为 false', async () => {
       useEntryStore.setState({ cursor: 2000, hasMore: true });
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue([
+      mockDataSource.getEntriesPage.mockResolvedValue([
         { id: '99', type: 'text' as const, content: '最后一条', timestamp: 1000, syncStatus: 'synced' as const },
       ]);
 
@@ -283,7 +288,7 @@ describe('entryStore', () => {
       ];
 
       useEntryStore.setState({ entries: existing, cursor: 2000, hasMore: true });
-      (DB.getEntriesPage as jest.Mock).mockResolvedValue(duplicatePage);
+      mockDataSource.getEntriesPage.mockResolvedValue(duplicatePage);
 
       await useEntryStore.getState().loadMore();
 
@@ -294,7 +299,7 @@ describe('entryStore', () => {
       const deferred = createDeferred<any[]>();
       const firstPage = makeFullPage('first', 4000);
       const freshPage = makeFullPage('fresh', 3000);
-      (DB.getEntriesPage as jest.Mock)
+      mockDataSource.getEntriesPage
         .mockResolvedValueOnce(firstPage)
         .mockReturnValueOnce(deferred.promise)
         .mockResolvedValueOnce(freshPage)
@@ -312,7 +317,7 @@ describe('entryStore', () => {
       await staleLoadMore;
 
       const ids = useEntryStore.getState().entries.map((entry) => entry.id);
-      expect(DB.getEntriesPage).toHaveBeenCalledTimes(4);
+      expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(4);
       expect(ids).toContain('fresh-more');
       expect(ids).not.toContain('stale-more');
     });
@@ -321,7 +326,7 @@ describe('entryStore', () => {
       const firstPage = makeFullPage('first', 5000);
       const voicePage = makeFullPage('voice', 4000);
 
-      (DB.getEntriesPage as jest.Mock)
+      mockDataSource.getEntriesPage
         .mockResolvedValueOnce(firstPage)
         .mockResolvedValueOnce(voicePage)
         .mockResolvedValueOnce([makeEntry('voice-more', 3000)]);
@@ -340,7 +345,7 @@ describe('entryStore', () => {
       useEntryStore.setState({ cursor: voicePage.at(-1)?.timestamp ?? null, hasMore: true });
       await useEntryStore.getState().loadMore();
 
-      expect(DB.getEntriesPage).toHaveBeenCalledTimes(3);
+      expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(3);
       expect(useEntryStore.getState().entries.map((entry) => entry.id)).toContain('voice-more');
     });
   });
@@ -350,7 +355,7 @@ describe('entryStore', () => {
   describe('addEntry', () => {
     it('应该添加新记录到 store', async () => {
       const newEntryData = { type: 'text' as const, content: '新记录', tags: ['测试'] };
-      (DB.addEntry as jest.Mock).mockResolvedValue({
+      mockDataSource.addEntry.mockResolvedValue({
         ...newEntryData,
         id: 'new-id',
         timestamp: Date.now(),
@@ -365,7 +370,7 @@ describe('entryStore', () => {
     });
 
     it('添加失败时应该抛出错误', async () => {
-      (DB.addEntry as jest.Mock).mockRejectedValue(new Error('数据库错误'));
+      mockDataSource.addEntry.mockRejectedValue(new Error('数据库错误'));
 
       await expect(
         useEntryStore.getState().addEntry({ type: 'text', content: '测试' })
@@ -389,7 +394,7 @@ describe('entryStore', () => {
       const entries = useEntryStore.getState().entries;
       expect(entries).toHaveLength(1);
       expect(entries[0].id).toBe('2');
-      expect(DB.deleteEntry).toHaveBeenCalledWith('1');
+      expect(mockDataSource.deleteEntry).toHaveBeenCalledWith('1');
     });
   });
 
