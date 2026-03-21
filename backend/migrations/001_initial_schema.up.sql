@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE users (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE backups (
+CREATE TABLE IF NOT EXISTS backups (
     id TEXT PRIMARY KEY NOT NULL,
     user_id TEXT NOT NULL UNIQUE,
     data_json TEXT NOT NULL,
@@ -20,4 +20,4 @@ CREATE TABLE backups (
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_backups_user_id ON backups(user_id);
+CREATE INDEX IF NOT EXISTS idx_backups_user_id ON backups(user_id);
