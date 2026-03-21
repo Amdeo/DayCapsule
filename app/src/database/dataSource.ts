@@ -97,15 +97,26 @@ export function createRemoteDataSource(): DataSource {
     getAllTags: () => client.get<string[]>('/tags'),
 
     restoreEntries: async (entries) => {
-      await client.post('/entries/import', {
-        entries: entries.map(e => ({
+      // 先清空云端
+      await client.post('/entries/import', { entries: [] });
+      // 逐条上传，含媒体文件
+      for (const e of entries) {
+        let mediaIds: string[] | undefined;
+        if (e.media?.length) {
+          const uploads = await Promise.all(
+            e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+          );
+          mediaIds = uploads.map((u) => u.id);
+        }
+        await client.post('/entries', {
           type: e.type,
           content: e.content,
           tags: e.tags,
+          mediaIds,
           recordingStatus: e.recordingStatus,
           recordingDuration: e.recordingDuration,
-        })),
-      });
+        });
+      }
       return entries.map((e) => e.id);
     },
   };

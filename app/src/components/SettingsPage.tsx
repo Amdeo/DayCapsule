@@ -138,15 +138,24 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       if (source === 'local') {
         const allEntries = await DB.getAllEntries();
         const client = getApiClient();
-        await client.post('/entries/import', {
-          entries: allEntries.map(e => ({
+        // 逐条处理，有媒体文件的先上传媒体
+        for (const e of allEntries) {
+          let mediaIds: string[] | undefined;
+          if (e.media?.length) {
+            const uploads = await Promise.all(
+              e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+            );
+            mediaIds = uploads.map((u) => u.id);
+          }
+          await client.post('/entries', {
             type: e.type,
             content: e.content,
             tags: e.tags,
+            mediaIds,
             recordingStatus: e.recordingStatus,
             recordingDuration: e.recordingDuration,
-          })),
-        });
+          });
+        }
       }
       switchDataSource(createRemoteDataSource());
       await useEntryStore.getState().loadEntries();
@@ -192,15 +201,25 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
             onPress: async () => {
               try {
                 const allEntries = await DB.getAllEntries();
-                await client.post('/entries/import', {
-                  entries: allEntries.map(e => ({
+                // 先清空云端，再逐条上传（含媒体文件）
+                await client.post('/entries/import', { entries: [] });
+                for (const e of allEntries) {
+                  let mediaIds: string[] | undefined;
+                  if (e.media?.length) {
+                    const uploads = await Promise.all(
+                      e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+                    );
+                    mediaIds = uploads.map((u) => u.id);
+                  }
+                  await client.post('/entries', {
                     type: e.type,
                     content: e.content,
                     tags: e.tags,
+                    mediaIds,
                     recordingStatus: e.recordingStatus,
                     recordingDuration: e.recordingDuration,
-                  })),
-                });
+                  });
+                }
                 switchDataSource(localDataSource);
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
