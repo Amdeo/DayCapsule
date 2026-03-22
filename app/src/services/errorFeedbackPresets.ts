@@ -52,6 +52,17 @@ export function buildCloudSyncFailedFeedback(error: unknown): ErrorFeedbackReque
   );
 }
 
+export function buildCloudModeToggleFailedFeedback(
+  error: unknown,
+  fallbackMessage = '操作失败',
+): ErrorFeedbackRequest {
+  return createPrimaryOnlyFeedback(
+    '切换失败',
+    getErrorMessage(error) ?? fallbackMessage,
+    'cloud-mode-toggle-failed',
+  );
+}
+
 export function buildNotificationPermissionFeedback(): ErrorFeedbackRequest {
   return {
     title: '权限不足',
@@ -73,6 +84,14 @@ export function buildBackupExportFailedFeedback(): ErrorFeedbackRequest {
     '保存失败',
     '无法将备份保存到所选目录，请重试。',
     'backup-export-save-failed',
+  );
+}
+
+export function buildBackupCreateFailedFeedback(): ErrorFeedbackRequest {
+  return createPrimaryOnlyFeedback(
+    '导出失败',
+    '无法导出数据，请重试。',
+    'backup-export-create-failed',
   );
 }
 

@@ -4,6 +4,8 @@ import { Alert } from 'react-native';
 
 import { BackupPage } from '../BackupPage';
 import { BackupService } from '@/src/services/backupService';
+import { SyncService } from '../../services/syncService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -56,6 +58,10 @@ jest.mock('../../services/syncService', () => ({
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 describe('BackupPage', () => {
@@ -113,6 +119,45 @@ describe('BackupPage', () => {
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith('保存成功', '备份已保存为 latest.zip');
+    });
+  });
+
+  it('shows branded feedback when export save fails', async () => {
+    (BackupService.saveBackupToUserDirectory as jest.Mock).mockResolvedValueOnce({
+      saved: false,
+      canceled: false,
+      fileName: 'latest.zip',
+    });
+
+    const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '保存失败',
+          dedupeKey: 'backup-export-save-failed',
+        })
+      );
+    });
+  });
+
+  it('shows branded feedback when import parsing fails', async () => {
+    (SyncService.pickAndParseBackup as jest.Mock).mockRejectedValueOnce(new Error('bad zip'));
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '导入失败',
+          dedupeKey: 'backup-import-failed',
+        })
+      );
     });
   });
 });

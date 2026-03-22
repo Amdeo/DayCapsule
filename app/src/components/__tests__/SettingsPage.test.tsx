@@ -3,6 +3,8 @@ import { Alert, Switch } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SettingsPage } from '../SettingsPage';
 import * as DB from '@/src/database/operations';
+import { NotificationService } from '@/src/services/notificationService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockSetCalendarDensity = jest.fn();
 const mockLoadSettings = jest.fn();
@@ -67,6 +69,10 @@ jest.mock('@/src/utils/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
   },
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 jest.mock('@/src/services/cloudSyncService', () => ({
@@ -214,6 +220,53 @@ describe('SettingsPage calendar density selector', () => {
         '云同步状态',
         expect.stringContaining('冲突副本：1'),
         expect.any(Array),
+      );
+    });
+  });
+
+  it('shows branded feedback when enabling cloud mode fails', async () => {
+    mockCloudMode = false;
+    mockIsAuthenticated = true;
+    mockUser = { email: 'broken@test.com' };
+    mockInspectInitialState.mockRejectedValueOnce(new Error('network down'));
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('broken@test.com')).toBeTruthy();
+    });
+
+    const switches = screen.UNSAFE_getAllByType(Switch);
+    fireEvent(switches[0], 'valueChange', true);
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '切换失败',
+          dedupeKey: 'cloud-mode-toggle-failed',
+        })
+      );
+    });
+  });
+
+  it('shows go-to-settings feedback when notification permission is denied', async () => {
+    (NotificationService.requestPermission as jest.Mock).mockResolvedValueOnce(false);
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
+    });
+
+    const switches = screen.UNSAFE_getAllByType(Switch);
+    fireEvent(switches[0], 'valueChange', true);
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '权限不足',
+          dedupeKey: 'notification-permission-denied',
+        })
       );
     });
   });

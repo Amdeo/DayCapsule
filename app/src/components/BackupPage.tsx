@@ -13,6 +13,12 @@ import { logger } from '@/src/utils/logger';
 import { DetailPageShell } from './DetailPageShell';
 import { BackupExportSheet } from './BackupExportSheet';
 import { formatDetailedTime } from '@/src/utils/timeUtils';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import {
+  buildBackupCreateFailedFeedback,
+  buildBackupExportFailedFeedback,
+  buildBackupImportFailedFeedback,
+} from '@/src/services/errorFeedbackPresets';
 
 interface BackupPageProps {
   visible: boolean;
@@ -75,7 +81,7 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
       setExportTarget({ name: getFileNameFromUri(uri), uri });
       setShowExportSheet(true);
     } catch {
-      Alert.alert('导出失败', '无法导出数据，请重试');
+      showErrorFeedback(buildBackupCreateFailedFeedback());
     } finally {
       setIsExporting(false);
     }
@@ -106,9 +112,11 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
       if (result.saved && result.fileName) {
         Alert.alert('保存成功', `备份已保存为 ${result.fileName}`);
         handleCloseExportSheet();
+        return;
       }
+      showErrorFeedback(buildBackupExportFailedFeedback());
     } catch {
-      Alert.alert('保存失败', '无法将备份保存到所选目录，请重试');
+      showErrorFeedback(buildBackupExportFailedFeedback());
     } finally {
       setIsSavingToFiles(false);
     }
@@ -160,7 +168,7 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
       await refreshBackupInfo();
       Alert.alert('导入成功', `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`);
     } catch (e: any) {
-      Alert.alert('导入失败', e?.message ?? '无法解析备份文件，请确认格式正确');
+      showErrorFeedback(buildBackupImportFailedFeedback(e));
     } finally {
       setIsImporting(false);
     }

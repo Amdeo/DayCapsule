@@ -32,6 +32,12 @@ import { useAuthStore } from '@/src/store/authStore';
 import { LoginPage } from './LoginPage';
 import { getApiClient } from '@/src/services/apiClient';
 import * as DB from '@/src/database/operations';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import {
+  buildCloudModeToggleFailedFeedback,
+  buildCloudSyncFailedFeedback,
+  buildNotificationPermissionFeedback,
+} from '@/src/services/errorFeedbackPresets';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -129,7 +135,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         await finishEnableCloud(source);
       }
     } catch (e: any) {
-      Alert.alert('切换失败', e?.message ?? '请检查网络连接');
+      showErrorFeedback(buildCloudModeToggleFailedFeedback(e, '请检查网络连接'));
       await setCloudMode(false);
     } finally {
       setIsSwitchingMode(false);
@@ -146,7 +152,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         logger.warn('[Settings] 初次启用云同步后的首轮同步失败:', error);
       });
     } catch (e: any) {
-      Alert.alert('切换失败', e?.message ?? '操作失败');
+      showErrorFeedback(buildCloudModeToggleFailedFeedback(e));
       await setCloudMode(false);
     }
   };
@@ -176,7 +182,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                 try {
                   await switchToLocalOnly();
                 } catch (err: any) {
-                  Alert.alert('切换失败', err?.message ?? '操作失败');
+                  showErrorFeedback(buildCloudModeToggleFailedFeedback(err));
                   await setCloudMode(true);
                 }
               },
@@ -206,7 +212,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                   }
                   await switchToLocalOnly();
                 } catch (err: any) {
-                  Alert.alert('同步失败', err?.message);
+                  showErrorFeedback(buildCloudSyncFailedFeedback(err));
                   await setCloudMode(true);
                 }
               },
@@ -231,7 +237,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
-                Alert.alert('同步失败', err?.message);
+                showErrorFeedback(buildCloudSyncFailedFeedback(err));
                 await setCloudMode(true);
               }
             },
@@ -263,7 +269,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
-                Alert.alert('同步失败', err?.message);
+                showErrorFeedback(buildCloudSyncFailedFeedback(err));
                 await setCloudMode(true);
               }
             },
@@ -272,7 +278,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         ],
       );
     } catch (e: any) {
-      Alert.alert('操作失败', e?.message);
+      showErrorFeedback(buildCloudModeToggleFailedFeedback(e));
       await setCloudMode(true);
     } finally {
       setIsSwitchingMode(false);
@@ -342,7 +348,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     if (v) {
       const granted = await NotificationService.requestPermission();
       if (!granted) {
-        Alert.alert('权限不足', '请在系统设置中允许通知权限后再开启');
+        showErrorFeedback(buildNotificationPermissionFeedback());
         return;
       }
       await NotificationService.scheduleDailyReminder();
