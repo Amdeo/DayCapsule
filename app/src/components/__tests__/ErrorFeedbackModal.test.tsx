@@ -33,4 +33,27 @@ describe('ErrorFeedbackModal', () => {
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('renders structured detail rows when provided', () => {
+    const screen = render(
+      <ErrorFeedbackModal
+        visible
+        request={{
+          title: '云同步状态',
+          tone: 'accent',
+          details: [
+            { label: '上次同步', value: '从未同步' },
+            { label: '待同步条数', value: '2' },
+          ],
+          actions: [{ label: '关闭', role: 'secondary' }],
+        }}
+        onDismiss={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('上次同步')).toBeTruthy();
+    expect(screen.getByText('从未同步')).toBeTruthy();
+    expect(screen.getByText('待同步条数')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+  });
 });

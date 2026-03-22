@@ -11,6 +11,8 @@ export const visualLanguage = {
     tertiary: '#9E9084',
   },
   accent: {
+    brand: '#6A89CC',
+    brandPressed: '#5876B6',
     error: '#B96A57',
     errorPressed: '#9E5646',
   },

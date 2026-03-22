@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import { showCloudSyncStatusAlert } from '../showCloudSyncStatusAlert';
 import { showErrorFeedback } from '../showErrorFeedback';
 
@@ -39,23 +38,23 @@ describe('showCloudSyncStatusAlert', () => {
       conflictCopies: 1,
     });
 
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-
     await showCloudSyncStatusAlert();
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      '云同步状态',
-      expect.stringContaining('待同步条数：2'),
-      expect.any(Array),
-    );
-    expect(alertSpy).toHaveBeenCalledWith(
-      '云同步状态',
-      expect.stringContaining('冲突副本：1'),
-      expect.any(Array),
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步状态',
+        tone: 'accent',
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: '待同步条数', value: '2' }),
+          expect.objectContaining({ label: '冲突副本', value: '1' }),
+        ]),
+      }),
     );
 
-    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ text?: string; onPress?: () => void }>;
-    const syncAction = actions.find((action) => action.text === '立即同步');
+    const firstRequest = (showErrorFeedback as jest.Mock).mock.calls[0]?.[0] as {
+      actions?: Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    };
+    const syncAction = firstRequest.actions?.find((action) => action.label === '立即同步');
 
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000001000,
@@ -67,9 +66,14 @@ describe('showCloudSyncStatusAlert', () => {
     await syncAction?.onPress?.();
 
     expect(mockSyncNow).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith(
-      '云同步完成',
-      expect.stringContaining('待同步条数：0'),
+    expect(showErrorFeedback).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: '云同步完成',
+        tone: 'accent',
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: '待同步条数', value: '0' }),
+        ]),
+      }),
     );
   });
 
@@ -95,12 +99,12 @@ describe('showCloudSyncStatusAlert', () => {
     });
     mockSyncNow.mockRejectedValueOnce(new Error('network down'));
 
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-
     await showCloudSyncStatusAlert();
 
-    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ text?: string; onPress?: () => void }>;
-    const syncAction = actions.find((action) => action.text === '立即同步');
+    const firstRequest = (showErrorFeedback as jest.Mock).mock.calls[0]?.[0] as {
+      actions?: Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    };
+    const syncAction = firstRequest.actions?.find((action) => action.label === '立即同步');
 
     await syncAction?.onPress?.();
 

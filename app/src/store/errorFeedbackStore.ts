@@ -6,9 +6,16 @@ export type ErrorFeedbackAction = {
   onPress?: () => void | Promise<void>;
 };
 
+export type ErrorFeedbackDetail = {
+  label: string;
+  value: string;
+};
+
 export type ErrorFeedbackRequest = {
   title: string;
-  message: string;
+  message?: string;
+  details?: ErrorFeedbackDetail[];
+  tone?: 'error' | 'accent';
   dedupeKey?: string;
   actions: ErrorFeedbackAction[];
 };

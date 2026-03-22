@@ -34,7 +34,22 @@ export function ErrorFeedbackModal({
         />
         <View testID="error-feedback-card" style={styles.card}>
           <Text style={styles.title}>{request.title}</Text>
-          <Text style={styles.message}>{request.message}</Text>
+          {request.message ? (
+            <Text style={styles.message}>{request.message}</Text>
+          ) : null}
+          {request.details?.length ? (
+            <View style={styles.details}>
+              {request.details.map((detail, index) => (
+                <View
+                  key={`${detail.label}-${index}`}
+                  style={styles.detailRow}
+                >
+                  <Text style={styles.detailLabel}>{detail.label}</Text>
+                  <Text style={styles.detailValue}>{detail.value}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <View style={styles.actions}>
             {request.actions.map((action, index) => (
               <Pressable
@@ -43,7 +58,9 @@ export function ErrorFeedbackModal({
                 style={[
                   styles.actionButton,
                   action.role === 'primary'
-                    ? styles.primaryButton
+                    ? request.tone === 'accent'
+                      ? styles.accentButton
+                      : styles.primaryButton
                     : styles.secondaryButton,
                 ]}
               >
@@ -100,6 +117,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 18,
   },
+  details: {
+    gap: 10,
+    marginBottom: 18,
+  },
+  detailRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  detailLabel: {
+    color: visualLanguage.text.secondary,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  detailValue: {
+    color: visualLanguage.text.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -115,6 +154,9 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: visualLanguage.accent.error,
+  },
+  accentButton: {
+    backgroundColor: visualLanguage.accent.brand,
   },
   secondaryButton: {
     backgroundColor: visualLanguage.surface.card,
