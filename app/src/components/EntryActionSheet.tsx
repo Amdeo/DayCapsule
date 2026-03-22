@@ -3,7 +3,6 @@ import {
   Modal,
   PanResponder,
   Pressable,
-  StyleSheet,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -146,81 +145,94 @@ export function EntryActionSheet({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View className="flex-1 justify-end">
         <Pressable
           testID="action-sheet-overlay"
-          style={StyleSheet.absoluteFill}
+          className="absolute inset-0"
           onPress={onClose}
         >
-          <Animated.View pointerEvents="none" style={[styles.backdrop, backdropStyle]} />
+          <Animated.View
+            pointerEvents="none"
+            className="absolute inset-0 bg-black/40"
+            style={backdropStyle}
+          />
         </Pressable>
 
         <Animated.View
-          style={[styles.sheetWrap, sheetStyle]}
+          className="justify-end"
+          style={sheetStyle}
           {...panResponder.panHandlers}
         >
-          <View style={styles.panel}>
+          <View className="px-3" testID="action-sheet-panel">
             <View
               testID="action-sheet-handle"
-              style={[styles.handle, { backgroundColor: typeColor }]}
+              className="mb-4 mt-3 h-1.5 w-10 self-center rounded-full"
+              style={{ backgroundColor: typeColor }}
             />
 
             {mode === 'menu' ? (
               <>
-                <View style={styles.optionGroup}>
+                <View
+                  className="overflow-hidden rounded-[18px] bg-white"
+                  testID="action-sheet-option-group"
+                >
                   <TouchableOpacity
                     testID="action-sheet-edit"
-                    style={styles.optionRow}
+                    className="h-14 flex-row items-center px-4"
                     onPress={() => {
                       onEdit();
                     }}
                   >
                     <Ionicons name="pencil-outline" size={20} color="#8E8E93" />
-                    <Text style={styles.optionText}>编辑</Text>
+                    <Text className="ml-3 text-[17px] text-[#1A1A1A]">编辑</Text>
                   </TouchableOpacity>
 
-                  <View style={styles.divider} />
+                  <View className="ml-12 h-px bg-[#F0F0F0]" />
 
                   <TouchableOpacity
                     testID="action-sheet-delete"
-                    style={styles.optionRow}
+                    className="h-14 flex-row items-center px-4"
                     onPress={() => setMode('confirm')}
                   >
                     <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                    <Text style={styles.deleteText}>删除</Text>
+                    <Text className="ml-3 text-[17px] text-[#FF3B30]">删除</Text>
                   </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity
                   testID="action-sheet-cancel"
-                  style={styles.cancelButton}
+                  className="mt-2 h-[52px] items-center justify-center rounded-[14px] bg-white"
                   onPress={onClose}
                 >
-                  <Text style={styles.cancelText}>取消</Text>
+                  <Text className="text-[17px] font-medium text-[#8E8E93]">取消</Text>
                 </TouchableOpacity>
               </>
             ) : (
-              <View style={styles.confirmGroup}>
-                <Text style={styles.confirmTitle}>确认删除这条记录？</Text>
-                <Text style={styles.confirmSubtitle}>此操作无法撤销</Text>
+              <View className="rounded-[18px] bg-white px-4 pt-2">
+                <Text className="text-center text-base font-semibold text-[#1A1A1A]">
+                  确认删除这条记录？
+                </Text>
+                <Text className="mt-1 text-center text-[13px] text-[#8E8E93]">
+                  此操作无法撤销
+                </Text>
 
                 <TouchableOpacity
                   testID="action-sheet-confirm-delete"
-                  style={styles.confirmDeleteButton}
+                  className="mt-4 h-[52px] items-center justify-center rounded-[14px] bg-[#FF3B30]"
                   onPress={() => {
                     onDelete();
                     onClose();
                   }}
                 >
-                  <Text style={styles.confirmDeleteText}>删除</Text>
+                  <Text className="text-[17px] font-semibold text-white">删除</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   testID="action-sheet-confirm-cancel"
-                  style={styles.confirmCancelButton}
+                  className="mt-2 items-center py-2"
                   onPress={() => setMode('menu')}
                 >
-                  <Text style={styles.cancelText}>取消</Text>
+                  <Text className="text-[17px] font-medium text-[#8E8E93]">取消</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -232,104 +244,3 @@ export function EntryActionSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    height: 52,
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  cancelText: {
-    color: '#8E8E93',
-    fontSize: 17,
-    fontWeight: '500',
-  },
-  confirmCancelButton: {
-    alignItems: 'center',
-    marginTop: 8,
-    paddingVertical: 8,
-  },
-  confirmDeleteButton: {
-    alignItems: 'center',
-    backgroundColor: '#FF3B30',
-    borderRadius: 14,
-    height: 52,
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  confirmDeleteText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  confirmGroup: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  confirmSubtitle: {
-    color: '#8E8E93',
-    fontSize: 13,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  confirmTitle: {
-    color: '#1A1A1A',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  deleteText: {
-    color: '#FF3B30',
-    fontSize: 17,
-    marginLeft: 12,
-  },
-  divider: {
-    backgroundColor: '#F0F0F0',
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 48,
-  },
-  handle: {
-    alignSelf: 'center',
-    borderRadius: 999,
-    height: 6,
-    marginBottom: 16,
-    marginTop: 12,
-    width: 40,
-  },
-  optionGroup: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  optionRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: 56,
-    paddingHorizontal: 16,
-  },
-  optionText: {
-    color: '#1A1A1A',
-    fontSize: 17,
-    marginLeft: 12,
-  },
-  panel: {
-    paddingHorizontal: 12,
-    paddingTop: 0,
-  },
-  sheetWrap: {
-    justifyContent: 'flex-end',
-  },
-});

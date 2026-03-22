@@ -14,7 +14,6 @@ module.exports = {
     'src/components/CalendarView.tsx',
     'src/components/CloudSyncStatusButton.tsx',
     'src/components/DetailPageShell.tsx',
-    'src/components/EntryActionSheet.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
     'src/components/HelpPage.tsx',
@@ -87,10 +86,6 @@ module.exports = {
     },
     'src/components/DetailPageShell.tsx': {
       'style-guard/no-new-stylesheet-create': ['7dd23977c4e2'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/EntryActionSheet.tsx': {
-      'style-guard/no-new-stylesheet-create': ['6743a0e81826'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/ErrorBoundary.tsx': {
