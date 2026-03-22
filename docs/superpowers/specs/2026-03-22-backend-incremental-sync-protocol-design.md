@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -290,8 +291,9 @@
 要求：
 
 - entry 已落库但 change log 没写入，属于不可接受的不一致状态
-- 因此实现上应尽量把“写 entries + 写 entry_changes”放在同一事务中
-- 本次 spec 先明确一致性要求，不强制要求顺带做大规模 repository 重构
+- 当前版本已经锁定协议语义，但尚未把“写 entries + 写 entry_changes”包进单一数据库事务
+- 因此这里仍是实现目标与后续改进点，不应在文档里写成“已完成事务一致性”
+- 后续若补上事务，再在此处补充事务入口与验证覆盖
 
 ## 架构与模块边界
 
@@ -360,7 +362,7 @@
 - `delete` 删除不存在的记录时返回 `ignored`，不报错
 - 只有真实生效的服务端变更会写入 `entry_changes`
 - `cursor=0` 的首次同步语义明确
-- 文档明确要求 entry 写入与 change log 写入保持事务一致性
+- 文档明确当前只锁定协议语义，entry 写入与 change log 写入的事务原子性仍是后续工作
 
 ## 验证计划
 
@@ -382,3 +384,50 @@
 
 - 2026-03-22：已完成首轮人工一致性检查，确认本文与当前对话中已确认的范围、请求响应模型和处理规则一致。
 - 2026-03-22：用户 review 通过，本文状态更新为 `已批准`，允许进入 plan 阶段。
+
+## 实现结果
+
+- 已完成 `SyncV2Service` 协议语义落地：
+  - `clientChanges[].changeId`
+  - `results[]`
+  - `conflicts[]`
+  - `ignored / conflicted / applied` 回执
+- 已完成核心服务端行为锁定：
+  - `cursor=0` 返回当前用户的全部 change log
+  - `newCursor` 取本次返回的最大 `changeId`
+  - 无新变更时 `newCursor` 保持原 cursor
+  - `ignored / conflicted` 不写 `entry_changes`
+  - `applied create / update / delete` 才写 `entry_changes`
+- 已完成 handler 合同收口：
+  - 非法 JSON 返回 `400 INVALID_REQUEST`
+  - 缺失 `deviceId` 或缺失 `clientChanges` 返回 `400 INVALID_REQUEST`
+  - `update` 缺失 `baseUpdatedAt` 返回 `400 INVALID_REQUEST`
+  - service 返回错误时返回 `500 INTERNAL_ERROR`
+  - 成功响应中 `results / serverChanges / conflicts` 空值统一序列化为 `[]`
+- 已完成增量拉取收口：
+  - `ListSinceCursor(..., 500)` 现在会按批次循环拉取直至耗尽，避免首次同步或大批量增量被静默截断
+
+## 实现偏差说明
+
+- 本轮没有实现 entry 写入与 change log 追加的单事务原子性。
+- 当前 `create / update / delete` 仍是分步 repository 调用：
+  - 语义与回执已被测试锁定
+  - 事务一致性仍是后续改进项
+- `update` 现在在 handler 层做最小协议校验，缺失 `baseUpdatedAt` 时直接返回 `400 INVALID_REQUEST`，避免进入 service 后误写入覆盖数据。
+- 服务端增量拉取没有引入分页协议字段，改为在 service 内循环读取批次并合并结果，当前仅保证“不静默截断”，未新增 `hasMore` / `nextCursor`。
+- handler 的最小结构校验本轮只锁到：
+  - `deviceId` 非空
+  - `clientChanges` 字段存在
+  - 更细的字段级约束未在本轮扩展
+
+## 最终验证结果
+
+- 目标测试：
+  - `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
+  - 结果：通过
+- 目标测试：
+  - `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
+  - 结果：通过
+- 后端全量测试：
+  - `cd backend && go test ./...`
+  - 结果：通过

@@ -20,10 +20,20 @@
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 未开始 | 补齐协议模型与响应字段，先锁定 service 层语义 |
-| Task 2 | 未开始 | 收紧 repository 行为，确保 `ignored / conflicted` 不写 change log |
-| Task 3 | 未开始 | 增加 handler 层请求校验与响应测试 |
-| Task 4 | 未开始 | 运行验证并同步文档收口 |
+| Task 1 | 已完成 | 已补齐 `changeId` / `results[]` / `conflicts[]` 语义，并修复 update 快照一致性与非法变更 `ignored` 回执 |
+| Task 2 | 已完成 | 已补上 cursor 语义测试，锁定 `cursor=0` 全量返回、`newCursor` 取最大 `changeId`、无新变更时保持原 cursor |
+| Task 3 | 已完成 | 已用回归测试锁定 `ignored / conflicted` 不写 `entry_changes`，以及 `applied create / update / delete` 才写 change log |
+| Task 4 | 已完成 | 已同步文档收口：当前版本锁定协议语义，但未实现 `entry` 与 `change log` 的单事务原子性 |
+| Task 5 | 已完成 | 已完成 handler 合同测试，锁定 `400 / 500 / success` envelope、最小请求校验和空数组归一化 |
+| Task 6 | 已完成 | 已完成目标测试、后端全量测试与 spec / plan 收口 |
+
+> 说明：本轮按用户要求不执行任何 `git commit`，因此各 Task 的 `Step 5: Commit` 保持未勾选；其余已实际完成的实现与验证步骤已同步勾选。
+
+## 实际执行说明
+
+- Task 2 与 Task 3 的业务逻辑在现有实现中已基本满足要求，本轮主要以新增回归测试的方式把行为锁住。
+- Task 4 明确记录了当前未事务化边界，但没有实现单事务原子性；这是已知后续项，不属于本轮遗漏。
+- Task 5 为了让 handler 测试脱离真实 DB / service，最小引入了 `syncV2Service` 接口，`SyncV2Handler` 现在依赖该接口而不是具体 `*service.SyncV2Service`。
 
 ## File Structure
 
@@ -63,7 +73,7 @@
 - Create: `backend/internal/service/sync_v2_service_test.go`
 - Modify: `backend/internal/service/sync_v2_service.go`
 
-- [ ] **Step 1: 先写失败测试，覆盖协议核心结果模型**
+- [x] **Step 1: 先写失败测试，覆盖协议核心结果模型**
 
 在 `backend/internal/service/sync_v2_service_test.go` 新增 table-driven tests，至少覆盖：
 
@@ -80,12 +90,12 @@ func TestSyncV2Service_ReturnsIgnoredResultForDeleteWhenEntryMissing(t *testing.
 - `update` 冲突时返回 `conflicted`，并在 `conflicts[]` 中带回 `serverEntry` 与 `clientEntry`
 - `delete` 删除不存在 entry 时返回 `ignored`
 
-- [ ] **Step 2: 运行测试确认当前实现失败**
+- [x] **Step 2: 运行测试确认当前实现失败**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: FAIL，原因是当前 `SyncResponse` 还没有 `results[]`，冲突和忽略语义也未完整对齐 spec
 
-- [ ] **Step 3: 最小修改 service 协议模型**
+- [x] **Step 3: 最小修改 service 协议模型**
 
 在 `backend/internal/service/sync_v2_service.go`：
 
@@ -116,7 +126,7 @@ type SyncResponse struct {
   - 冲突：追加 `results.status = "conflicted"`，同时写 `conflicts[]`
   - 无需报错的空操作：追加 `results.status = "ignored"`
 
-- [ ] **Step 4: 重新运行 service 测试确认通过**
+- [x] **Step 4: 重新运行 service 测试确认通过**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: PASS
@@ -135,7 +145,7 @@ git commit -m "feat: align sync v2 results with protocol spec"
 - Modify: `backend/internal/service/sync_v2_service.go`
 - Modify: `backend/internal/repository/change_repo.go`
 
-- [ ] **Step 1: 先写失败测试，覆盖 cursor 语义**
+- [x] **Step 1: 先写失败测试，覆盖 cursor 语义**
 
 在 `backend/internal/service/sync_v2_service_test.go` 增加测试：
 
@@ -150,12 +160,12 @@ func TestSyncV2Service_AdvancesNewCursorToLargestReturnedChangeID(t *testing.T) 
 - `newCursor` 等于本次返回的最大 `changeId`
 - 没有新 change 时 `newCursor` 保持请求中的 cursor
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_(ReturnsAllChangesWhenCursorIsZero|AdvancesNewCursorToLargestReturnedChangeID)' -count=1`
 Expected: FAIL，原因是当前实现对回执结构和 cursor 边界还未完全被测试锁住
 
-- [ ] **Step 3: 最小修改 service / repository**
+- [x] **Step 3: 最小修改 service / repository**
 
 在 `backend/internal/service/sync_v2_service.go`：
 
@@ -167,7 +177,7 @@ Expected: FAIL，原因是当前实现对回执结构和 cursor 边界还未完�
 - 保持 `ORDER BY change_id ASC`
 - 若测试暴露问题，只做最小必要修正，不重写仓储接口
 
-- [ ] **Step 4: 重新运行 service 测试确认通过**
+- [x] **Step 4: 重新运行 service 测试确认通过**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: PASS
@@ -189,7 +199,7 @@ git commit -m "test: lock sync v2 cursor semantics"
 - Modify: `backend/internal/repository/entry_repo.go`
 - Modify: `backend/internal/repository/change_repo.go`
 
-- [ ] **Step 1: 先写失败测试，覆盖 change log 写入边界**
+- [x] **Step 1: 先写失败测试，覆盖 change log 写入边界**
 
 在 `backend/internal/service/sync_v2_service_test.go` 增加测试：
 
@@ -204,12 +214,12 @@ func TestSyncV2Service_DoesNotAppendChangeForConflictedUpdate(t *testing.T) {}
 - `conflicted` 不追加 change log
 - `applied` 才追加 change log
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_(DoesNotAppendChangeForIgnoredDelete|DoesNotAppendChangeForConflictedUpdate)' -count=1`
 Expected: FAIL，原因是当前逻辑虽然大体接近，但还没有测试确保后续不会回归
 
-- [ ] **Step 3: 最小修改 service / repository**
+- [x] **Step 3: 最小修改 service / repository**
 
 在 `backend/internal/service/sync_v2_service.go`：
 
@@ -221,7 +231,7 @@ Expected: FAIL，原因是当前逻辑虽然大体接近，但还没有测试确
 
 - 若测试需要，补充最小返回值检查，确保 `UpdateFromSync` / `Delete` 可以区分是否真的改动了服务端状态
 
-- [ ] **Step 4: 重新运行 service 测试确认通过**
+- [x] **Step 4: 重新运行 service 测试确认通过**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: PASS
@@ -240,11 +250,11 @@ git commit -m "fix: only append applied sync changes"
 - Modify: `docs/superpowers/specs/2026-03-22-backend-incremental-sync-protocol-design.md`
 - Modify: `docs/superpowers/plans/2026-03-22-backend-incremental-sync-protocol.md`
 
-- [ ] **Step 1: 先写一个失败测试或 TODO 断言，明确当前边界**
+- [x] **Step 1: 先写一个失败测试或 TODO 断言，明确当前边界**
 
-如果当前仓储层暂不支持事务注入，则在 `backend/internal/service/sync_v2_service_test.go` 新增说明性测试或注释，锁定“当前版本未完全事务化”的现实边界，并避免误宣称完成。
+已在 `backend/internal/service/sync_v2_service.go` 补充最小注释，明确当前仍是分步 repository 调用，事务原子性未在本轮实现。
 
-- [ ] **Step 2: 做最小文档收口**
+- [x] **Step 2: 做最小文档收口**
 
 在实现没有真正引入事务前：
 
@@ -257,17 +267,12 @@ git commit -m "fix: only append applied sync changes"
 - 事务入口在哪个 repository / service helper
 - 已增加的验证覆盖
 
-- [ ] **Step 3: 运行相关测试确认没有回归**
+- [x] **Step 3: 运行相关测试确认没有回归**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add backend/internal/service/sync_v2_service.go docs/superpowers/specs/2026-03-22-backend-incremental-sync-protocol-design.md docs/superpowers/plans/2026-03-22-backend-incremental-sync-protocol.md
-git commit -m "docs: record sync v2 consistency boundary"
-```
+已按要求只做文档收口，不创建 commit。
 
 ## Chunk 3: Handler 层与最终验证
 
@@ -277,7 +282,7 @@ git commit -m "docs: record sync v2 consistency boundary"
 - Create: `backend/internal/handlers/sync_v2_test.go`
 - Modify: `backend/internal/handlers/sync_v2.go`
 
-- [ ] **Step 1: 先写失败测试，覆盖 handler 协议出口**
+- [x] **Step 1: 先写失败测试，覆盖 handler 协议出口**
 
 在 `backend/internal/handlers/sync_v2_test.go` 新增测试：
 
@@ -292,19 +297,19 @@ func TestSyncV2Handler_ReturnsSyncResponseDataOnSuccess(t *testing.T) {}
 - 成功时返回 `success=true`
 - `data` 中带有 `newCursor`、`results`、`serverChanges`、`conflicts`
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
 Expected: FAIL，原因是当前 handler 测试文件尚不存在，或响应结构尚未被测试锁定
 
-- [ ] **Step 3: 最小修改 handler**
+- [x] **Step 3: 最小修改 handler**
 
 在 `backend/internal/handlers/sync_v2.go`：
 
 - 保持 `ShouldBindJSON` 的 `400` 分支
 - 如测试暴露字段缺失，则以最小改动让成功响应严格对齐 spec
 
-- [ ] **Step 4: 重新运行 handler 测试确认通过**
+- [x] **Step 4: 重新运行 handler 测试确认通过**
 
 Run: `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
 Expected: PASS
@@ -322,7 +327,7 @@ git commit -m "test: cover sync v2 handler contract"
 - Modify: `docs/superpowers/specs/2026-03-22-backend-incremental-sync-protocol-design.md`
 - Modify: `docs/superpowers/plans/2026-03-22-backend-incremental-sync-protocol.md`
 
-- [ ] **Step 1: 运行目标测试**
+- [x] **Step 1: 运行目标测试**
 
 Run:
 
@@ -333,12 +338,12 @@ cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1
 
 Expected: PASS
 
-- [ ] **Step 2: 运行后端全量测试**
+- [x] **Step 2: 运行后端全量测试**
 
 Run: `cd backend && go test ./...`
 Expected: PASS
 
-- [ ] **Step 3: 更新 spec / plan 状态**
+- [x] **Step 3: 更新 spec / plan 状态**
 
 在 spec 中：
 
@@ -358,3 +363,12 @@ Expected: PASS
 git add docs/superpowers/specs/2026-03-22-backend-incremental-sync-protocol-design.md docs/superpowers/plans/2026-03-22-backend-incremental-sync-protocol.md
 git commit -m "docs: close backend incremental sync protocol task"
 ```
+
+## 最终验证结果
+
+- `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
+  - 结果：通过
+- `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
+  - 结果：通过
+- `cd backend && go test ./...`
+  - 结果：通过

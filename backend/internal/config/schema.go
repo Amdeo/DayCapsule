@@ -11,6 +11,7 @@ func EnsureSchema(db *sql.DB) error {
 	migrations := []string{
 		"001_initial_schema.up.sql",
 		"002_entries_media.up.sql",
+		"003_entry_changes.up.sql",
 	}
 
 	for _, m := range migrations {

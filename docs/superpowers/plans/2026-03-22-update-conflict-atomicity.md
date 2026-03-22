@@ -15,15 +15,23 @@
 ## 变更记录
 
 - 2026-03-22：基于已批准 spec 创建实现计划，范围只覆盖 `update` 冲突判定原子化，不扩展到 `create/delete` 或 `entry_changes` 的完整事务化改造。
+- 2026-03-22：已按计划完成实现与验证；由于当前工作区存在大量无关未提交改动，且本轮未使用隔离 worktree，计划中的分任务 `Commit` 步骤未执行，改为仅收口文档与验证结果。
 
 ## 执行状态
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 未开始 | 为 `EntryRepository` 增加条件更新 helper，并用 repository 测试锁定 `updated / version_mismatch / missing` 三态 |
-| Task 2 | 未开始 | 调整 `SyncV2Service` 的 `update` 流转，消费条件更新结果并补 service 级原子化语义测试 |
-| Task 3 | 未开始 | 增加真实 DB 回归测试，锁定 `update` 命中缺失 entry 时仍视作 `create` 的旧语义 |
-| Task 4 | 未开始 | 运行回归与最终验证，并把 spec / plan 状态收口到已实现 |
+| Task 1 | 已完成 | 已新增条件更新 helper 和 repository 级三态测试，锁定 `updated / version_mismatch / missing` |
+| Task 2 | 已完成 | 已让 `SyncV2Service` 消费三态 helper，并补齐 `version_mismatch / missing` 原子化语义测试 |
+| Task 3 | 已完成 | 已新增真实 DB 回归测试，确认 `update` 命中缺失 entry 时仍按 `create` 处理并写入 `create` change log |
+| Task 4 | 已完成 | 已完成目标测试、回归测试、handler 测试和后端全量测试，并同步收口 spec / plan |
+
+## 实际执行说明
+
+- 实现中新增了 `backend/internal/service/sync_v2_service_atomicity_test.go`，用最小 fake store 锁定 service 层对 `version_mismatch / missing` 的映射；这是为了覆盖真实 DB 很难稳定构造的窗口期分支。
+- `SyncV2Service` 内部增加了最小 store 接口和 `newSyncV2Service(...)` 测试构造函数，外部仍通过 `NewSyncV2Service(...)` 注入真实 repository。
+- repository helper 继续使用现有 `time.Time` 参数绑定路径，没有引入新的 SQLite 时间字符串编码。
+- 本轮没有执行计划中的分任务 commit 步骤；原因是当前工作区存在大量无关未提交改动，且没有隔离分支/worktree，不适合按 task 粒度直接提交到 `main`。
 
 ## File Structure
 
@@ -60,7 +68,7 @@
 - Create: `backend/internal/repository/entry_repo_test.go`
 - Modify: `backend/internal/repository/entry_repo.go`
 
-- [ ] **Step 1: 先写失败测试，覆盖 helper 的三态结果**
+- [x] **Step 1: 先写失败测试，覆盖 helper 的三态结果**
 
 在 `backend/internal/repository/entry_repo_test.go` 新增真实 SQLite 测试，至少覆盖：
 
@@ -76,12 +84,12 @@ func TestEntryRepository_UpdateFromSyncIfVersionMatches_ReturnsMissingWhenEntryI
 - `version_mismatch` 时不覆盖现有服务端版本
 - `missing` 时不更新任何记录，也不把结果误判成 `version_mismatch`
 
-- [ ] **Step 2: 运行 repository 测试，确认当前实现失败**
+- [x] **Step 2: 运行 repository 测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/repository -run TestEntryRepository_UpdateFromSyncIfVersionMatches -count=1`
 Expected: FAIL，原因是当前仓库还没有 `UpdateFromSyncMatchResult` 和 `UpdateFromSyncIfVersionMatches`
 
-- [ ] **Step 3: 以最小改动实现条件更新 helper**
+- [x] **Step 3: 以最小改动实现条件更新 helper**
 
 在 `backend/internal/repository/entry_repo.go`：
 
@@ -116,7 +124,7 @@ func (r *EntryRepository) UpdateFromSyncIfVersionMatches(
 - 重读仍存在时返回 `UpdateFromSyncVersionMismatch`
 - 继续沿用现有 `time.Time` 参数绑定，不引入手写时间字符串格式
 
-- [ ] **Step 4: 重新运行 repository 测试，确认通过**
+- [x] **Step 4: 重新运行 repository 测试，确认通过**
 
 Run: `cd backend && go test ./internal/repository -run TestEntryRepository_UpdateFromSyncIfVersionMatches -count=1`
 Expected: PASS
@@ -136,7 +144,7 @@ git commit -m "feat: add atomic sync update repository helper"
 - Create: `backend/internal/service/sync_v2_service_atomicity_test.go`
 - Modify: `backend/internal/service/sync_v2_service.go`
 
-- [ ] **Step 1: 先写失败测试，锁定 service 的结果映射**
+- [x] **Step 1: 先写失败测试，锁定 service 的结果映射**
 
 在 `backend/internal/service/sync_v2_service_atomicity_test.go` 新增最小 fake repository / change repository 测试，至少覆盖：
 
@@ -156,12 +164,12 @@ func TestSyncV2Service_UpdateReturnsIgnoredWhenConditionalUpdateReportsMissing(t
   - 不生成 `conflicts[]`
   - 不调用 `AppendChange`
 
-- [ ] **Step 2: 运行 service 测试，确认当前实现失败**
+- [x] **Step 2: 运行 service 测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_Update(ReturnsConflictedWithFreshServerEntryAfterVersionMismatch|ReturnsIgnoredWhenConditionalUpdateReportsMissing)' -count=1`
 Expected: FAIL，原因是当前 `SyncV2Service` 仍直接依赖具体 repository，且 `update` 路径还没有接入三态 helper
 
-- [ ] **Step 3: 最小修改 `SyncV2Service`，消费条件更新 helper**
+- [x] **Step 3: 最小修改 `SyncV2Service`，消费条件更新 helper**
 
 在 `backend/internal/service/sync_v2_service.go`：
 
@@ -189,7 +197,7 @@ type syncV2ChangeStore interface {
   - `version_mismatch`：重读当前服务端 entry，返回 `conflicted`
   - `missing`：返回 `ignored`，不写 change log，不生成 conflict
 
-- [ ] **Step 4: 重新运行 atomicity service 测试，确认通过**
+- [x] **Step 4: 重新运行 atomicity service 测试，确认通过**
 
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_Update(ReturnsConflictedWithFreshServerEntryAfterVersionMismatch|ReturnsIgnoredWhenConditionalUpdateReportsMissing)' -count=1`
 Expected: PASS
@@ -206,7 +214,7 @@ git commit -m "fix: make sync v2 update conflict check atomic"
 **Files:**
 - Modify: `backend/internal/service/sync_v2_service_test.go`
 
-- [ ] **Step 1: 增加真实 DB 回归测试，防止原子化改坏旧语义**
+- [x] **Step 1: 增加真实 DB 回归测试，防止原子化改坏旧语义**
 
 在 `backend/internal/service/sync_v2_service_test.go` 新增：
 
@@ -220,12 +228,12 @@ func TestSyncV2Service_UpdateCreatesEntryWhenServerRowIsMissing(t *testing.T) {}
 - entry 被实际创建
 - `entry_changes` 仍追加一条 `create`
 
-- [ ] **Step 2: 运行回归测试，确认当前实现基线成立**
+- [x] **Step 2: 运行回归测试，确认当前实现基线成立**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service_UpdateCreatesEntryWhenServerRowIsMissing -count=1`
 Expected: PASS，原因是当前实现本来就要求 `update` 命中缺失 entry 时退化为 `create`
 
-- [ ] **Step 3: 在原子化实现完成后重新运行相关 service 测试**
+- [x] **Step 3: 在原子化实现完成后重新运行相关 service 测试**
 
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_(UpdateCreatesEntryWhenServerRowIsMissing|UpdateSuccessUsesPersistedSnapshot|DoesNotAppendChangeLogForConflictedUpdate)' -count=1`
 Expected: PASS
@@ -245,7 +253,7 @@ git commit -m "test: lock sync v2 update regression semantics"
 - Modify: `docs/superpowers/specs/2026-03-22-update-conflict-atomicity-design.md`
 - Modify: `docs/superpowers/plans/2026-03-22-update-conflict-atomicity.md`
 
-- [ ] **Step 1: 运行目标测试**
+- [x] **Step 1: 运行目标测试**
 
 Run: `cd backend && go test ./internal/repository -run TestEntryRepository_UpdateFromSyncIfVersionMatches -count=1`
 Expected: PASS
@@ -253,7 +261,7 @@ Expected: PASS
 Run: `cd backend && go test ./internal/service -run 'TestSyncV2Service_(UpdateReturnsConflictedWithFreshServerEntryAfterVersionMismatch|UpdateReturnsIgnoredWhenConditionalUpdateReportsMissing|UpdateCreatesEntryWhenServerRowIsMissing)' -count=1`
 Expected: PASS
 
-- [ ] **Step 2: 运行回归与 handler 测试**
+- [x] **Step 2: 运行回归与 handler 测试**
 
 Run: `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`
 Expected: PASS
@@ -261,12 +269,12 @@ Expected: PASS
 Run: `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
 Expected: PASS
 
-- [ ] **Step 3: 运行后端全量测试**
+- [x] **Step 3: 运行后端全量测试**
 
 Run: `cd backend && go test ./...`
 Expected: PASS
 
-- [ ] **Step 4: 收口 spec / plan**
+- [x] **Step 4: 收口 spec / plan**
 
 在 `docs/superpowers/specs/2026-03-22-update-conflict-atomicity-design.md`：
 

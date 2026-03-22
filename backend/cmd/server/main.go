@@ -38,19 +38,20 @@ func main() {
 		logger.Fatal("Failed to initialize schema", zap.Error(err))
 	}
 
-	logger.Info("Connected to database")
-
 	userRepo := repository.NewUserRepository(db)
 	backupRepo := repository.NewBackupRepository(db)
+	changeRepo := repository.NewChangeRepository(db)
 	entryRepo := repository.NewEntryRepository(db)
 	mediaRepo := repository.NewMediaRepository(db)
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret, cfg.JWTExpiry, cfg.RefreshExpiry)
 	syncService := service.NewSyncService(backupRepo)
+	syncV2Service := service.NewSyncV2Service(entryRepo, changeRepo)
 	entryService := service.NewEntryService(entryRepo, mediaRepo, cfg.BaseURL)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	syncHandler := handlers.NewSyncHandler(syncService)
+	syncV2Handler := handlers.NewSyncV2Handler(syncV2Service)
 	entryHandler := handlers.NewEntryHandler(entryService)
 	mediaHandler := handlers.NewMediaHandler(mediaRepo, cfg.UploadDir)
 	healthHandler := handlers.NewHealthHandler(db)
@@ -80,6 +81,7 @@ func main() {
 			authorized.POST("/sync/upload", syncHandler.Upload)
 			authorized.GET("/sync/download", syncHandler.Download)
 			authorized.DELETE("/sync/backup", syncHandler.Delete)
+			authorized.POST("/sync", syncV2Handler.Sync)
 
 			// Entries CRUD
 			authorized.GET("/entries", entryHandler.List)

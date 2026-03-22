@@ -16,6 +16,14 @@ type EntryRepository struct {
 	db *sql.DB
 }
 
+type UpdateFromSyncMatchResult string
+
+const (
+	UpdateFromSyncUpdated         UpdateFromSyncMatchResult = "updated"
+	UpdateFromSyncVersionMismatch UpdateFromSyncMatchResult = "version_mismatch"
+	UpdateFromSyncMissing         UpdateFromSyncMatchResult = "missing"
+)
+
 func NewEntryRepository(db *sql.DB) *EntryRepository {
 	return &EntryRepository{db: db}
 }
@@ -266,6 +274,109 @@ func (r *EntryRepository) GetAll(userID string) ([]*models.Entry, error) {
 		entries = append(entries, e)
 	}
 	return entries, rows.Err()
+}
+
+func (r *EntryRepository) InsertFromSync(userID string, entry *models.Entry) (*models.Entry, error) {
+	// 使用客户端提供的 ID；若为空则生成一个新的
+	if entry.ID == "" {
+		entry.ID = uuid.NewString()
+	}
+
+	if entry.CreatedAt.IsZero() {
+		entry.CreatedAt = time.Now().UTC()
+	}
+	if entry.UpdatedAt.IsZero() {
+		entry.UpdatedAt = entry.CreatedAt
+	}
+
+	query := `
+		INSERT INTO entries (id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	_, err := r.db.Exec(query,
+		entry.ID,
+		userID,
+		entry.Type,
+		entry.Content,
+		entry.Tags,
+		entry.Media,
+		entry.RecordingStatus,
+		entry.RecordingDuration,
+		"synced",
+		entry.CreatedAt,
+		entry.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	entry.UserID = userID
+	entry.SyncStatus = "synced"
+	return entry, nil
+}
+
+func (r *EntryRepository) UpdateFromSync(userID string, entry *models.Entry) error {
+	if entry.UpdatedAt.IsZero() {
+		entry.UpdatedAt = time.Now().UTC()
+	}
+
+	query := `UPDATE entries SET content = ?, tags = ?, media = ?, recording_status = ?, recording_duration = ?, sync_status = ?, updated_at = ?
+	          WHERE id = ? AND user_id = ?`
+	_, err := r.db.Exec(query,
+		entry.Content,
+		entry.Tags,
+		entry.Media,
+		entry.RecordingStatus,
+		entry.RecordingDuration,
+		"synced",
+		entry.UpdatedAt,
+		entry.ID,
+		userID,
+	)
+	return err
+}
+
+func (r *EntryRepository) UpdateFromSyncIfVersionMatches(userID string, entry *models.Entry, baseUpdatedAt time.Time) (UpdateFromSyncMatchResult, error) {
+	if entry.UpdatedAt.IsZero() {
+		entry.UpdatedAt = time.Now().UTC()
+	}
+
+	result, err := r.db.Exec(
+		`UPDATE entries
+		 SET content = ?, tags = ?, media = ?, recording_status = ?, recording_duration = ?, sync_status = ?, updated_at = ?
+		 WHERE id = ? AND user_id = ? AND updated_at = ?`,
+		entry.Content,
+		entry.Tags,
+		entry.Media,
+		entry.RecordingStatus,
+		entry.RecordingDuration,
+		"synced",
+		entry.UpdatedAt,
+		entry.ID,
+		userID,
+		baseUpdatedAt,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return "", err
+	}
+	if rows == 1 {
+		return UpdateFromSyncUpdated, nil
+	}
+
+	existing, err := r.GetByID(userID, entry.ID)
+	if err != nil {
+		return "", err
+	}
+	if existing == nil {
+		return UpdateFromSyncMissing, nil
+	}
+
+	return UpdateFromSyncVersionMismatch, nil
 }
 
 type scannable interface {

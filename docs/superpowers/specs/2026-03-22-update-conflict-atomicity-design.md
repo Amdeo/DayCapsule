@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -383,6 +384,21 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 - `entry` 更新成功与 `entry_changes` 追加写入仍不在同一数据库事务
 - 如果条件更新成功，但回读或 `AppendChange` 失败，当前版本仍按 `500 INTERNAL_ERROR + 部分成功` 处理
 - 因此本次不是“完整事务化”，而是“先收掉最核心的并发冲突误判”
+
+## 最终实现说明
+
+- `EntryRepository` 已新增 `UpdateFromSyncMatchResult` 与 `UpdateFromSyncIfVersionMatches(...)`，用数据库条件更新返回 `updated / version_mismatch / missing` 三态结果。
+- `SyncV2Service` 已把 `update` 路径切到三态 helper，并在 `version_mismatch` 时回读最新服务端版本、在 `missing` 时返回 `ignored`。
+- 为了让 `missing` 与 `version_mismatch` 分支能做稳定单测，`SyncV2Service` 内部额外引入了最小 store 接口和测试构造函数；对外的 `NewSyncV2Service(...)` 和 handler 合同未变化。
+- 实际实现里保留了 service 对 `BaseUpdatedAt == nil` 的兼容：如果绕过 handler 直接调用 service，则回退使用当前 `existing.UpdatedAt` 作为条件更新基线；`/api/sync` 的正式协议仍由 handler 保持 `update` 必须带 `baseUpdatedAt`。
+
+## 验证结果
+
+- 2026-03-22：已运行 `cd backend && go test ./internal/repository -run TestEntryRepository_UpdateFromSyncIfVersionMatches -count=1`，结果：PASS
+- 2026-03-22：已运行 `cd backend && go test ./internal/service -run 'TestSyncV2Service_(UpdateReturnsConflictedWithFreshServerEntryAfterVersionMismatch|UpdateReturnsIgnoredWhenConditionalUpdateReportsMissing|UpdateCreatesEntryWhenServerRowIsMissing)' -count=1`，结果：PASS
+- 2026-03-22：已运行 `cd backend && go test ./internal/service -run TestSyncV2Service -count=1`，结果：PASS
+- 2026-03-22：已运行 `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`，结果：PASS
+- 2026-03-22：已运行 `cd backend && go test ./...`，结果：PASS
 
 ## Spec Review 留痕
 
