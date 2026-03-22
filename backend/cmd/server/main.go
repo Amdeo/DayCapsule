@@ -61,6 +61,10 @@ func main() {
 	}
 
 	router := gin.New()
+	router.Use(middleware.RequestID())
+	if middleware.ShouldEnableAccessLog(os.Getenv("ENV")) {
+		router.Use(middleware.AccessLog(logger))
+	}
 	router.Use(gin.Recovery())
 	router.Use(middleware.ErrorHandler(logger))
 	router.Use(middleware.NewRateLimiter(100))
