@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,8 +38,8 @@ func AccessLog(logger *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-func ShouldEnableAccessLog(env string) bool {
-	return strings.TrimSpace(strings.ToLower(env)) != "production"
+func ShouldEnableAccessLog(_ string) bool {
+	return true
 }
 
 func SetAccessLogField(c *gin.Context, key string, value any) {

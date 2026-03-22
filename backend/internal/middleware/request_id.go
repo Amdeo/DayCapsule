@@ -14,6 +14,9 @@ func RequestID() gin.HandlerFunc {
 		requestID := c.GetHeader(RequestIDHeader)
 		if requestID == "" {
 			requestID = uuid.NewString()
+		} else if _, err := uuid.Parse(requestID); err != nil {
+			// 客户端传入的不是合法 UUID，回退到服务端生成，防止日志注入
+			requestID = uuid.NewString()
 		}
 
 		c.Set(requestIDContextKey, requestID)

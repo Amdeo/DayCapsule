@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
@@ -26,8 +27,9 @@ func TestAccessLogMiddleware_LogsBaseFieldsAndSummary(t *testing.T) {
 		c.Status(http.StatusNoContent)
 	})
 
+	validRequestID := uuid.NewString()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	req.Header.Set(RequestIDHeader, "req-access-1")
+	req.Header.Set(RequestIDHeader, validRequestID)
 	req.Header.Set("User-Agent", "backend-test")
 	rec := httptest.NewRecorder()
 
@@ -43,8 +45,8 @@ func TestAccessLogMiddleware_LogsBaseFieldsAndSummary(t *testing.T) {
 	}
 
 	fields := entries[0].ContextMap()
-	if got := fields["requestId"]; got != "req-access-1" {
-		t.Fatalf("expected requestId req-access-1, got %#v", got)
+	if got := fields["requestId"]; got != validRequestID {
+		t.Fatalf("expected requestId %q, got %#v", validRequestID, got)
 	}
 	if got := fields["method"]; got != http.MethodGet {
 		t.Fatalf("expected method GET, got %#v", got)
@@ -75,22 +77,21 @@ func TestAccessLogMiddleware_LogsBaseFieldsAndSummary(t *testing.T) {
 	}
 }
 
-func TestShouldEnableAccessLog_DisablesOnlyInProduction(t *testing.T) {
+func TestShouldEnableAccessLog_AlwaysEnabled(t *testing.T) {
 	cases := []struct {
 		name string
 		env  string
-		want bool
 	}{
-		{name: "empty env", env: "", want: true},
-		{name: "development", env: "development", want: true},
-		{name: "test", env: "test", want: true},
-		{name: "production", env: "production", want: false},
+		{name: "empty env", env: ""},
+		{name: "development", env: "development"},
+		{name: "test", env: "test"},
+		{name: "production", env: "production"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ShouldEnableAccessLog(tc.env); got != tc.want {
-				t.Fatalf("expected %v for env %q, got %v", tc.want, tc.env, got)
+			if got := ShouldEnableAccessLog(tc.env); !got {
+				t.Fatalf("expected true for env %q, got false", tc.env)
 			}
 		})
 	}

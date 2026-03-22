@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
@@ -25,8 +26,9 @@ func TestErrorHandler_LogsRequestMetadata(t *testing.T) {
 		_ = c.Error(errors.New("boom"))
 	})
 
+	validRequestID := uuid.NewString()
 	req := httptest.NewRequest(http.MethodGet, "/broken", nil)
-	req.Header.Set(RequestIDHeader, "req-error-1")
+	req.Header.Set(RequestIDHeader, validRequestID)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -37,8 +39,8 @@ func TestErrorHandler_LogsRequestMetadata(t *testing.T) {
 	}
 
 	fields := entries[0].ContextMap()
-	if got := fields["requestId"]; got != "req-error-1" {
-		t.Fatalf("expected requestId req-error-1, got %#v", got)
+	if got := fields["requestId"]; got != validRequestID {
+		t.Fatalf("expected requestId %q, got %#v", validRequestID, got)
 	}
 	if got := fields["method"]; got != http.MethodGet {
 		t.Fatalf("expected method GET, got %#v", got)
