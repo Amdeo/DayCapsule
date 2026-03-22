@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/daycapsule/backend/internal/middleware"
 	"github.com/daycapsule/backend/internal/models"
 	"github.com/daycapsule/backend/internal/service"
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,13 @@ type syncV2HandlerEnvelope struct {
 func performSyncV2Request(t *testing.T, handler *SyncV2Handler, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
+	recorder, _ := performSyncV2RequestWithContext(t, handler, body)
+	return recorder
+}
+
+func performSyncV2RequestWithContext(t *testing.T, handler *SyncV2Handler, body string) (*httptest.ResponseRecorder, *gin.Context) {
+	t.Helper()
+
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
@@ -43,7 +51,7 @@ func performSyncV2Request(t *testing.T, handler *SyncV2Handler, body string) *ht
 	ctx.Set("userID", "user-1")
 
 	handler.Sync(ctx)
-	return recorder
+	return recorder, ctx
 }
 
 func decodeEnvelope(t *testing.T, recorder *httptest.ResponseRecorder) syncV2HandlerEnvelope {
@@ -274,5 +282,90 @@ func TestSyncV2Handler_UsesServiceResponseAsData(t *testing.T) {
 	mustRawValue(t, envelope.Data["conflicts"], &conflicts)
 	if len(conflicts) != 1 || conflicts[0].ChangeID != "local-2" || conflicts[0].EntryID != "entry-2" || conflicts[0].Reason != "server_newer_than_base" {
 		t.Fatalf("unexpected conflicts payload: %#v", conflicts)
+	}
+}
+
+func TestSyncV2Handler_AttachesAccessLogSummaryOnSuccess(t *testing.T) {
+	handler := NewSyncV2Handler(&syncV2HandlerStubService{
+		resp: &service.SyncResponse{
+			NewCursor: 5,
+			Results: []service.SyncResult{
+				{ChangeID: "create-1", Status: "applied", EntryID: "entry-1"},
+				{ChangeID: "update-1", Status: "conflicted", EntryID: "entry-2"},
+				{ChangeID: "delete-1", Status: "ignored", EntryID: "entry-3"},
+			},
+			ServerChanges: []service.ServerChange{
+				{ChangeID: 11, Op: "create", Entry: models.Entry{ID: "entry-4"}},
+			},
+			Conflicts: []service.Conflict{
+				{ChangeID: "update-1", EntryID: "entry-2", Reason: "server_newer_than_base"},
+			},
+		},
+	})
+
+	recorder, ctx := performSyncV2RequestWithContext(t, handler, `{
+		"cursor":8,
+		"deviceId":"device-42",
+		"clientChanges":[
+			{"changeId":"create-1","op":"create","entry":{"id":"entry-1","type":"text","content":"c"}},
+			{"changeId":"update-1","op":"update","baseUpdatedAt":"2026-03-22T08:00:00Z","entry":{"id":"entry-2","type":"text","content":"u"}},
+			{"changeId":"delete-1","op":"delete","entry":{"id":"entry-3","type":"text","content":"d"}}
+		]
+	}`)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	assertAccessLogField(t, ctx, "sync.deviceId", "device-42")
+	assertAccessLogField(t, ctx, "sync.hasCursor", true)
+	assertAccessLogField(t, ctx, "sync.clientChangeCount", 3)
+	assertAccessLogField(t, ctx, "sync.clientOpCreateCount", 1)
+	assertAccessLogField(t, ctx, "sync.clientOpUpdateCount", 1)
+	assertAccessLogField(t, ctx, "sync.clientOpDeleteCount", 1)
+	assertAccessLogField(t, ctx, "sync.resultCount", 3)
+	assertAccessLogField(t, ctx, "sync.resultAppliedCount", 1)
+	assertAccessLogField(t, ctx, "sync.resultConflictedCount", 1)
+	assertAccessLogField(t, ctx, "sync.resultIgnoredCount", 1)
+	assertAccessLogField(t, ctx, "sync.serverChangeCount", 1)
+	assertAccessLogField(t, ctx, "sync.conflictCount", 1)
+}
+
+func TestSyncV2Handler_AttachesRequestSummaryBeforeReturning400(t *testing.T) {
+	stub := &syncV2HandlerStubService{}
+	handler := NewSyncV2Handler(stub)
+
+	recorder, ctx := performSyncV2RequestWithContext(t, handler, `{
+		"cursor":0,
+		"deviceId":"",
+		"clientChanges":[
+			{"changeId":"create-1","op":"create","entry":{"id":"entry-1","type":"text","content":"c"}}
+		]
+	}`)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", recorder.Code)
+	}
+	if stub.calls != 0 {
+		t.Fatalf("expected service not to be called, got %d calls", stub.calls)
+	}
+
+	assertAccessLogField(t, ctx, "sync.deviceId", "")
+	assertAccessLogField(t, ctx, "sync.hasCursor", false)
+	assertAccessLogField(t, ctx, "sync.clientChangeCount", 1)
+	assertAccessLogField(t, ctx, "sync.clientOpCreateCount", 1)
+	assertAccessLogField(t, ctx, "sync.clientOpUpdateCount", 0)
+	assertAccessLogField(t, ctx, "sync.clientOpDeleteCount", 0)
+}
+
+func assertAccessLogField(t *testing.T, ctx *gin.Context, key string, want any) {
+	t.Helper()
+
+	got, ok := middleware.GetAccessLogField(ctx, key)
+	if !ok {
+		t.Fatalf("expected access log field %q to be set", key)
+	}
+	if got != want {
+		t.Fatalf("expected access log field %q to be %#v, got %#v", key, want, got)
 	}
 }

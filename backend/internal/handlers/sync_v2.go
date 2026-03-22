@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/daycapsule/backend/internal/middleware"
 	"github.com/daycapsule/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +34,27 @@ func (h *SyncV2Handler) Sync(c *gin.Context) {
 		})
 		return
 	}
+
+	middleware.SetAccessLogField(c, "sync.deviceId", req.DeviceID)
+	middleware.SetAccessLogField(c, "sync.hasCursor", req.Cursor > 0)
+	middleware.SetAccessLogField(c, "sync.clientChangeCount", len(req.ClientChanges))
+
+	createCount := 0
+	updateCount := 0
+	deleteCount := 0
+	for _, change := range req.ClientChanges {
+		switch change.Op {
+		case "create":
+			createCount++
+		case "update":
+			updateCount++
+		case "delete":
+			deleteCount++
+		}
+	}
+	middleware.SetAccessLogField(c, "sync.clientOpCreateCount", createCount)
+	middleware.SetAccessLogField(c, "sync.clientOpUpdateCount", updateCount)
+	middleware.SetAccessLogField(c, "sync.clientOpDeleteCount", deleteCount)
 
 	if strings.TrimSpace(req.DeviceID) == "" || req.ClientChanges == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -78,6 +100,27 @@ func (h *SyncV2Handler) Sync(c *gin.Context) {
 	if resp.Conflicts == nil {
 		resp.Conflicts = []service.Conflict{}
 	}
+
+	middleware.SetAccessLogField(c, "sync.resultCount", len(resp.Results))
+	middleware.SetAccessLogField(c, "sync.serverChangeCount", len(resp.ServerChanges))
+	middleware.SetAccessLogField(c, "sync.conflictCount", len(resp.Conflicts))
+
+	appliedCount := 0
+	conflictedCount := 0
+	ignoredCount := 0
+	for _, result := range resp.Results {
+		switch result.Status {
+		case "applied":
+			appliedCount++
+		case "conflicted":
+			conflictedCount++
+		case "ignored":
+			ignoredCount++
+		}
+	}
+	middleware.SetAccessLogField(c, "sync.resultAppliedCount", appliedCount)
+	middleware.SetAccessLogField(c, "sync.resultConflictedCount", conflictedCount)
+	middleware.SetAccessLogField(c, "sync.resultIgnoredCount", ignoredCount)
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": resp})
 }
