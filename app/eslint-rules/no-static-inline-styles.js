@@ -2,7 +2,37 @@ const path = require('node:path');
 const allowlist = require('../eslint/style-guard-allowlist');
 
 const appRoot = path.resolve(__dirname, '..');
-const allowlistSet = new Set(allowlist);
+const RULE_ID = 'style-guard/no-static-inline-styles';
+
+function normalizeAllowlist(allowlistConfig) {
+  if (Array.isArray(allowlistConfig)) {
+    return {
+      legacyFiles: allowlistConfig,
+      ruleBaselines: {},
+    };
+  }
+
+  return {
+    legacyFiles: allowlistConfig.legacyFiles || [],
+    ruleBaselines: allowlistConfig.ruleBaselines || {},
+  };
+}
+
+const normalizedAllowlist = normalizeAllowlist(allowlist);
+const legacyFileSet = new Set(normalizedAllowlist.legacyFiles);
+
+function getRuleBaseline(relativePath) {
+  const explicit = normalizedAllowlist.ruleBaselines[relativePath]?.[RULE_ID];
+  if (typeof explicit === 'number') {
+    return explicit;
+  }
+
+  if (legacyFileSet.has(relativePath)) {
+    return 0;
+  }
+
+  return 0;
+}
 
 function toProjectRelativePath(fileName) {
   return path.relative(appRoot, fileName).split(path.sep).join('/');
@@ -89,6 +119,10 @@ function isStaticStyleExpression(node) {
     return false;
   }
 
+  if (node.type === 'Identifier') {
+    return false;
+  }
+
   if (node.type === 'ObjectExpression') {
     return isStaticObjectExpression(node);
   }
@@ -98,7 +132,13 @@ function isStaticStyleExpression(node) {
   }
 
   if (node.type === 'ConditionalExpression') {
-    return isStaticStyleExpression(node.consequent) && isStaticStyleExpression(node.alternate);
+    const consequentStatic = isStaticStyleExpression(node.consequent);
+    const alternateStatic = isStaticStyleExpression(node.alternate);
+    const consequentNullish =
+      node.consequent.type === 'Literal' && (node.consequent.value === null || node.consequent.value === false);
+    const alternateNullish =
+      node.alternate.type === 'Literal' && (node.alternate.value === null || node.alternate.value === false);
+    return (consequentStatic && alternateStatic) || (consequentStatic && alternateNullish) || (alternateStatic && consequentNullish);
   }
 
   if (node.type === 'LogicalExpression' && node.operator === '&&') {
@@ -127,11 +167,42 @@ module.exports = {
     }
 
     const relativePath = toProjectRelativePath(fileName);
-    if (allowlistSet.has(relativePath)) {
-      return {};
+    const baseline = process.env.STYLE_GUARD_IGNORE_BASELINE === '1' ? 0 : getRuleBaseline(relativePath);
+    let seenViolations = 0;
+    const staticStyleIdentifiers = new Set();
+    const nonStaticStyleIdentifiers = new Set();
+
+    function isStaticStyleExpressionWithIdentifiers(node) {
+      if (!node) {
+        return false;
+      }
+
+      if (node.type === 'Identifier') {
+        if (/animated/i.test(node.name)) {
+          return false;
+        }
+        if (nonStaticStyleIdentifiers.has(node.name)) {
+          return false;
+        }
+        return staticStyleIdentifiers.has(node.name);
+      }
+
+      return isStaticStyleExpression(node);
     }
 
     return {
+      VariableDeclarator(node) {
+        if (!node.id || node.id.type !== 'Identifier' || !node.init) {
+          return;
+        }
+
+        if (isStaticStyleExpression(node.init)) {
+          staticStyleIdentifiers.add(node.id.name);
+          return;
+        }
+
+        nonStaticStyleIdentifiers.add(node.id.name);
+      },
       JSXAttribute(node) {
         if (!node.name || node.name.type !== 'JSXIdentifier' || node.name.name !== 'style') {
           return;
@@ -140,7 +211,11 @@ module.exports = {
           return;
         }
 
-        if (isStaticStyleExpression(node.value.expression)) {
+        if (isStaticStyleExpressionWithIdentifiers(node.value.expression)) {
+          seenViolations += 1;
+          if (seenViolations <= baseline) {
+            return;
+          }
           context.report({
             node: node.value,
             messageId: 'noStaticInlineStyles',
