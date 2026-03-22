@@ -22,7 +22,6 @@ module.exports = {
     'src/components/ImageViewer.tsx',
     'src/components/LoginPage.tsx',
     'src/components/PhotoGrid.tsx',
-    'src/components/SearchOverlay.tsx',
     'src/components/SettingsPage.tsx',
     'src/components/StatsPage.tsx',
     'src/components/TagManagementPage.tsx',
@@ -124,15 +123,6 @@ module.exports = {
     'src/components/PhotoGrid.tsx': {
       'style-guard/no-new-stylesheet-create': ['e61b82be335d'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/SearchOverlay.tsx': {
-      'style-guard/no-new-stylesheet-create': ['363e41d8759d'],
-      'style-guard/no-static-inline-styles': [
-        '320cdc180a8e',
-        'c7edb3b8e31f',
-        'c7edb3b8e31f',
-        'fac73bf36221',
-      ],
     },
     'src/components/SettingsPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['424dfdf4600e', 'b2ebf5636c74', 'dc9ccd86e21b'],

@@ -76,6 +76,10 @@ module.exports = {
           mask: '#1A1A1A',
           filter: '#F0F4FF',
         },
+        overlay: {
+          muted: '#F0F0F0',
+          subtle: '#FAFAFA',
+        },
         timeline: {
           line: '#E5E5E5',
           dot: '#6A89CC',
@@ -89,11 +93,13 @@ module.exports = {
           primary: '#4A4A4A',
           muted: '#A3A3A3',
           subtle: '#D1D1D1',
+          hint: '#C0C0C0',
           accent: '#4A6FA5',
           loader: '#8B7355',
         },
         border: {
           subtle: '#E5E5E5',
+          overlay: '#EFEFEF',
           filter: '#DDE5F8',
           'filter-strong': '#C7D7F5',
         },
