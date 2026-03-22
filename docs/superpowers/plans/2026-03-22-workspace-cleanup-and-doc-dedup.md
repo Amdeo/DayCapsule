@@ -20,10 +20,10 @@
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 未开始 | `usePermissions` 兼容收口 |
-| Task 2 | 未开始 | `Timeline / Calendar` 录音 props 去残留 |
-| Task 3 | 未开始 | 旧 `2026-03-21` 文档降级与去冲突 |
-| Task 4 | 未开始 | 验证、文档收口与 scoped commit |
+| Task 1 | 已完成 | 已新增 `usePermissions` 测试锚点，并确认权限逻辑已与 `expo-audio` 对齐 |
+| Task 2 | 已完成 | 已通过测试确认 `Timeline / Calendar` 不再透传废弃的 `pause/resume` props |
+| Task 3 | 已完成 | 已将旧 `2026-03-21` spec / plan 改写为历史归档文档 |
+| Task 4 | 已完成 | 已完成 scoped 验证、文档收口与提交 |
 
 ## File Structure
 
@@ -249,3 +249,23 @@ git add \
 ```bash
 git commit -m "chore: clean up leftover sync compatibility changes"
 ```
+
+## 实际执行说明
+
+- 本轮的生产代码兼容修复并非全部在本轮新写：
+  - `app/src/hooks/usePermissions.ts`
+  - `app/src/components/Timeline.v2.tsx`
+  - `app/src/components/CalendarView.tsx`
+  - `app/src/components/CalendarTimelineItem.tsx`
+  这些改动在本轮开始前已存在于工作区；本轮完成了测试补齐、边界确认、文档去冲突和 scoped 收口
+- `Timeline.v2.view-mode.test.tsx` 已在执行前具备目标断言，因此本轮未追加修改，只作为验证文件保留在 scoped diff 中
+- 旧 `2026-03-21` 文档没有继续做局部缝补，而是直接改写成历史归档文档，以彻底消除与 2026-03-22 子任务文档竞争“当前真相”的问题
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/hooks/__tests__/usePermissions.test.ts src/components/__tests__/CalendarView.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+  - 结果：3 个测试文件，16 个测试全部通过
+- `cd app && npx tsc --noEmit`
+  - 结果：通过
+- `git diff --check -- app/src/hooks/usePermissions.ts app/src/hooks/__tests__/usePermissions.test.ts app/src/components/Timeline.v2.tsx app/src/components/CalendarView.tsx app/src/components/CalendarTimelineItem.tsx app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/CalendarView.test.tsx docs/superpowers/specs/2026-03-21-cloud-mode-frontend-integration-design.md docs/superpowers/plans/2026-03-21-cloud-mode-frontend-integration.md docs/superpowers/specs/2026-03-22-workspace-cleanup-and-doc-dedup-design.md docs/superpowers/plans/2026-03-22-workspace-cleanup-and-doc-dedup.md`
+  - 结果：通过

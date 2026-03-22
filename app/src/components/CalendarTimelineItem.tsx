@@ -10,8 +10,6 @@ interface CalendarTimelineItemProps {
   onDeleteEntry?: (id: string) => void;
   onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   isActionSheetActive?: boolean;
   onActionSheetOpen?: (id: string) => void;
@@ -38,8 +36,6 @@ export function CalendarTimelineItem({
   onDeleteEntry,
   onViewEntry,
   onEditEntry,
-  onPauseRecording,
-  onResumeRecording,
   onStopRecording,
   isActionSheetActive = false,
   onActionSheetOpen,
@@ -61,8 +57,6 @@ export function CalendarTimelineItem({
           onDelete={onDeleteEntry ?? (() => {})}
           onView={onViewEntry}
           onEdit={onEditEntry}
-          onPauseRecording={onPauseRecording}
-          onResumeRecording={onResumeRecording}
           onStopRecording={onStopRecording}
           isActionSheetActive={isActionSheetActive}
           onActionSheetOpen={onActionSheetOpen}

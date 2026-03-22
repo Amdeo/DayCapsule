@@ -33,10 +33,13 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
+let latestCalendarTimelineItemProps: Record<string, unknown> | undefined;
+
 jest.mock('../CalendarTimelineItem', () => ({
-  CalendarTimelineItem: ({ entry }: { entry: Entry }) => {
+  CalendarTimelineItem: ({ entry, ...rest }: { entry: Entry } & Record<string, unknown>) => {
     const React = require('react');
     const { View, Text } = require('react-native');
+    latestCalendarTimelineItemProps = rest;
 
     return (
       <View>
@@ -144,14 +147,16 @@ const calendarProps = {
   entries: [marchText, marchPhotoMulti, marchPhotoSingle, marchVoice, marchRecording, febText],
   onDeleteEntry: noop,
   onEditEntry: noop,
-  onPauseRecording: noop,
-  onResumeRecording: noop,
   onStopRecording: noop,
   activeActionSheetId: null,
   onActionSheetOpen: noop,
 };
 
 describe('CalendarView full-card behavior', () => {
+  beforeEach(() => {
+    latestCalendarTimelineItemProps = undefined;
+  });
+
   it('默认状态下显示当月记录且保留媒体卡片信息', () => {
     const { getByText, queryByText, getByTestId } = render(
       <CalendarView {...calendarProps} />
@@ -165,6 +170,9 @@ describe('CalendarView full-card behavior', () => {
     expect(getByText('转录 v1')).toBeTruthy();
     expect(getByTestId('calendar-recording-status-v2')).toBeTruthy();
     expect(queryByText('文字内容 t2')).toBeNull();
+    expect(latestCalendarTimelineItemProps?.onPauseRecording).toBeUndefined();
+    expect(latestCalendarTimelineItemProps?.onResumeRecording).toBeUndefined();
+    expect(latestCalendarTimelineItemProps?.onStopRecording).toBe(noop);
   });
 
   it('默认状态下不显示取消按钮', () => {

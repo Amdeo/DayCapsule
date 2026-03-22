@@ -2,9 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
-- 实现完成日期：待补充
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -127,3 +127,35 @@
 - 旧 `2026-03-21-cloud-mode-frontend-integration` spec / plan 明确标注为历史/已拆分，不再描述与 2026-03-22 子任务冲突的当前行为
 - 本轮提交不包含照片功能草稿、`.debug`、`.gitignore`、`metro.config.js`
 - 收口完成后，工作区中剩余未提交改动应更清晰地归属于“下一条照片 / 媒体任务”或“本地噪音”
+
+## 实现结果
+
+- 已新增 `app/src/hooks/__tests__/usePermissions.test.ts`，把录音权限检查的当前语义固定为：
+  - 已授权时不重复请求
+  - 未授权时才请求
+  - 权限查询异常时返回 `false`
+- 已确认并收口当前工作区中预先存在的兼容修复：
+  - `app/src/hooks/usePermissions.ts` 已对齐 `expo-audio`
+  - `Timeline.v2.tsx`、`CalendarView.tsx`、`CalendarTimelineItem.tsx` 已不再透传废弃的 `pause/resume recording` props
+- 已把 `2026-03-21-cloud-mode-frontend-integration` 的旧 spec / plan 改写为历史归档文档，显式指向 2026-03-22 的 authoritative 子任务文档
+
+## 最终说明
+
+- 本轮的重点是“收口与去冲突”，不是新增功能
+- 兼容层中的一部分生产代码改动在本轮开始前已经存在于工作区，因此这次执行主要完成了：
+  - 新增测试锚点
+  - 明确兼容修复归属
+  - 清理旧文档与当前子任务文档之间的冲突
+- 照片 / 媒体草稿、`.debug`、`.gitignore`、`app/metro.config.js`、`2026-03-22-cloud-sync-offline-first.md` 继续留在本轮范围外
+
+## 验证结果
+
+- 目标测试：
+  - `cd app && npx jest --run-in-band --runTestsByPath src/hooks/__tests__/usePermissions.test.ts src/components/__tests__/CalendarView.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+  - 结果：3 个测试文件，16 个测试全部通过
+- 类型检查：
+  - `cd app && npx tsc --noEmit`
+  - 结果：通过
+- scoped diff 检查：
+  - `git diff --check -- app/src/hooks/usePermissions.ts app/src/hooks/__tests__/usePermissions.test.ts app/src/components/Timeline.v2.tsx app/src/components/CalendarView.tsx app/src/components/CalendarTimelineItem.tsx app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/CalendarView.test.tsx docs/superpowers/specs/2026-03-21-cloud-mode-frontend-integration-design.md docs/superpowers/plans/2026-03-21-cloud-mode-frontend-integration.md docs/superpowers/specs/2026-03-22-workspace-cleanup-and-doc-dedup-design.md docs/superpowers/plans/2026-03-22-workspace-cleanup-and-doc-dedup.md`
+  - 结果：通过

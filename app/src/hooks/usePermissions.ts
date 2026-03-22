@@ -7,7 +7,10 @@ import { useCallback, useEffect, useState } from 'react';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera } from 'expo-camera';
-import { Audio } from 'expo-av';
+import {
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+} from 'expo-audio';
 import { Platform, Linking } from 'react-native';
 import { PermissionStatus, PermissionType } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -38,8 +41,10 @@ export function usePermissions() {
           return cameraStatus.granted;
 
         case 'microphone':
-          // 使用 Audio API 而非 Camera API，确保 expo-av 录音权限正确识别
-          const micStatus = await Audio.requestPermissionsAsync();
+          const currentMicStatus = await getRecordingPermissionsAsync();
+          const micStatus = currentMicStatus.granted
+            ? currentMicStatus
+            : await requestRecordingPermissionsAsync();
           setPermissions((prev) => ({
             ...prev,
             microphone: micStatus.granted ? 'granted' : 'denied',
@@ -193,7 +198,11 @@ export function getPermissionMessage(
  */
 export async function checkSpeechPermissions(): Promise<boolean> {
   try {
-    const { granted } = await Audio.requestPermissionsAsync();
+    const currentStatus = await getRecordingPermissionsAsync();
+    if (currentStatus.granted) {
+      return true;
+    }
+    const { granted } = await requestRecordingPermissionsAsync();
     return granted;
   } catch (error) {
     logger.error('Failed to check speech permissions:', error);

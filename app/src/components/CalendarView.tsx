@@ -22,8 +22,6 @@ interface CalendarViewProps {
   onDeleteEntry?: (id: string) => void;
   onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   activeActionSheetId?: string | null;
   onActionSheetOpen?: (id: string) => void;
@@ -42,8 +40,6 @@ export function CalendarView({
   onDeleteEntry,
   onViewEntry,
   onEditEntry,
-  onPauseRecording,
-  onResumeRecording,
   onStopRecording,
   activeActionSheetId,
   onActionSheetOpen,
@@ -141,8 +137,6 @@ export function CalendarView({
           onDeleteEntry={onDeleteEntry}
           onViewEntry={onViewEntry}
           onEditEntry={onEditEntry}
-          onPauseRecording={onPauseRecording}
-          onResumeRecording={onResumeRecording}
           onStopRecording={onStopRecording}
           isActionSheetActive={activeActionSheetId === entry.id}
           onActionSheetOpen={onActionSheetOpen}

@@ -219,8 +219,6 @@ interface EntryMarkerProps {
   onDeleteEntry: (id: string) => void;
   onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   isActionSheetActive: boolean;
   onActionSheetOpen: (id: string) => void;
@@ -234,8 +232,6 @@ const EntryMarker = React.memo(function EntryMarker({
   onDeleteEntry,
   onViewEntry,
   onEditEntry,
-  onPauseRecording,
-  onResumeRecording,
   onStopRecording,
   isActionSheetActive,
   onActionSheetOpen,
@@ -293,8 +289,6 @@ const EntryMarker = React.memo(function EntryMarker({
         onDelete={onDeleteEntry}
         onView={onViewEntry}
         onEdit={onEditEntry}
-        onPauseRecording={onPauseRecording}
-        onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
         isActionSheetActive={isActionSheetActive}
         onActionSheetOpen={onActionSheetOpen}
@@ -404,12 +398,10 @@ function EmptyState() {
 interface TimelineProps {
   onQuickAdd?: (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => void;
   onMenuPress?: () => void;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
 }
 
-export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRecording, onStopRecording }: TimelineProps) {
+export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineProps) {
   const {
     entries, deleteEntry, searchQuery, updateEntry,
     filterType, filterDateRange, selectedTags,
@@ -585,8 +577,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
           onDeleteEntry={deleteEntry}
           onViewEntry={handleViewEntry}
           onEditEntry={handleEditEntry}
-        onPauseRecording={onPauseRecording}
-        onResumeRecording={onResumeRecording}
         onStopRecording={onStopRecording}
         isActionSheetActive={activeActionSheetId === item.id}
         onActionSheetOpen={handleActionSheetOpen}
@@ -595,7 +585,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
         enterDelay={enterDelay}
       />
     );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, handleViewEntry, onPauseRecording, onResumeRecording, onStopRecording]);
+  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, handleViewEntry, onStopRecording]);
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
@@ -654,8 +644,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onPauseRecording, onResumeRe
           onDeleteEntry={deleteEntry}
           onViewEntry={handleViewEntry}
           onEditEntry={handleEditEntry}
-          onPauseRecording={onPauseRecording}
-          onResumeRecording={onResumeRecording}
           onStopRecording={onStopRecording}
           activeActionSheetId={activeActionSheetId}
           onActionSheetOpen={handleActionSheetOpen}
