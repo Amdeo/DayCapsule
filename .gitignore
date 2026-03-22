@@ -97,3 +97,5 @@ media/
 thumbs/
 .serena
 .superpowers
+backend/data/uploads/
+.debug/
