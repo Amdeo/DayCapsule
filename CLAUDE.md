@@ -2,6 +2,9 @@
 
 此文档为 AI 助手提供项目关键上下文。详细内容见下方文档索引。
 
+## Process Requirements
+- 所有走brainstorming技能的需求，默认调用 superpowers中创建 worktree的技能,所有修改在 worktree 中实现
+
 ## 项目概览
 
 **DayCapsule** — 现代化生活记录应用（文字 / 照片 / 语音）
@@ -29,7 +32,6 @@
 6. **MMKV v4 API** — `createMMKV()` 工厂函数，删除用 `remove(key)`
 7. **分页加载** — `loadEntries()` 重置首页，`loadMore()` 追加下一页
 8. **双写策略** — 写入 entry 时同时写 `entries.tags`（JSON）和 `entry_tags` 表
-
 ---
 
 ## 当前功能
