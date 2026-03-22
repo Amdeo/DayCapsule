@@ -217,6 +217,54 @@ eas build --platform all --profile preview
 - **音频预加载** - 提前缓存音频文件，减少播放延迟
 - **虚拟化列表** - FlatList 优化，仅渲染可见项
 
+### 云端上传与同步流程
+
+> 当前实现中，“媒体文件上传成功”和“记录同步成功”是两个阶段；只有记录最终进入 `synced`，才算整条数据完成云端同步。
+
+```mermaid
+flowchart TD
+  subgraph Text["文字记录"]
+    T1[用户保存文字] --> T2[本地 SQLite 落库]
+    T2 --> T3[syncStatus = pending]
+    T3 --> T4[触发 /api/sync]
+    T4 --> T5[后端写入 entry + change log]
+    T5 --> T6[本地结算为 synced]
+  end
+
+  subgraph Photo["照片记录"]
+    P1[用户选择照片] --> P2[保存到本地 cache]
+    P2 --> P3[本地 SQLite 落库]
+    P3 --> P4[syncStatus = pending_upload]
+    P4 --> P5[照片上传队列]
+    P5 --> P6[/api/media/upload]
+    P6 --> P7[写回 remoteUri]
+    P7 --> P8[syncStatus = pending]
+    P8 --> P9[触发 /api/sync]
+    P9 --> P10[后端写入 entry + change log]
+    P10 --> P11[本地结算为 synced]
+  end
+
+  subgraph Voice["语音记录"]
+    V1[用户开始录音] --> V2[本地创建临时 entry]
+    V2 --> V3[syncStatus = pending_upload]
+    V3 --> V4[结束录音并保存到本地 cache]
+    V4 --> V5[语音上传队列]
+    V5 --> V6[/api/media/upload]
+    V6 --> V7[直接 POST /api/entries]
+    V7 --> V8[删除本地临时 entry]
+    V8 --> V9[替换为远端返回 entry]
+    V9 --> V10[syncStatus = synced]
+  end
+```
+
+补充说明：
+
+- **文字** 只走 entry 增量同步，不经过媒体上传接口。
+- **照片** 先上传文件，再把包含 `remoteUri` 的 entry 通过 `/api/sync` 同步到云端。
+- **语音** 当前实现与照片不同：文件上传后直接调用 `/api/entries` 创建远端记录，而不是再走一次 `/api/sync`。
+- App 会在冷启动、回到前台时触发 `syncNow()`，并在冷启动、回到前台、网络恢复时补跑待上传照片/语音队列。
+- 如果文件上传失败，状态会回退到 `pending_upload`；如果 entry 同步失败，则会停留在 `pending` 或进入 `failed`。
+
 ## 📚 参考资源
 
 - [Expo 文档](https://docs.expo.dev/)

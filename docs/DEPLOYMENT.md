@@ -1,5 +1,13 @@
 # MemoryCapsule 部署文档
 
+## 后端部署说明
+
+当前仓库新增了专门的后端部署文档：
+
+- [`docs/BACKEND_DEPLOYMENT.md`](/Users/cooper/Documents/code/MemoryCapsule/docs/BACKEND_DEPLOYMENT.md)
+
+如果你要部署 Go API、SQLite、上传文件存储和 Nginx 反向代理，请优先看这份文档。
+
 ## 目录
 - [环境准备](#环境准备)
 - [EAS Build 构建](#eas-build-构建)
