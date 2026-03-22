@@ -157,15 +157,17 @@ func (r *EntryRepository) UpdateFromSyncIfVersionMatches(
     userID string,
     entry *models.Entry,
     baseUpdatedAt time.Time,
-) (updated bool, err error)
+) (result UpdateFromSyncMatchResult, err error)
 ```
 
 语义约束：
 
-- `updated = true`
+- `result = updated`
   - 说明本次条件更新成功
-- `updated = false`
-  - 说明版本不匹配，或记录不存在
+- `result = version_mismatch`
+  - 说明记录仍存在，但 `updated_at != baseUpdatedAt`
+- `result = missing`
+  - 说明条件更新失败后再次确认，记录已不存在
 
 SQL 语义：
 
@@ -186,6 +188,11 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 
 - 直接把 `baseUpdatedAt` 放进 `WHERE`
 - 让数据库一次决定本次更新是否成立
+
+补充约束：
+
+- `baseUpdatedAt` 与 `entries.updated_at` 的比较必须使用相同的 UTC / 精度规范
+- repository helper 应复用当前 SQLite 的时间编码路径，避免因为格式或精度差异把本应成功的更新误判为冲突
 
 ### 5. Service 状态流转
 
@@ -208,21 +215,43 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 - 生成本次写入的 `updatedAt = now`
 - 调用 `UpdateFromSyncIfVersionMatches(...)`
 
-结果分两类：
+结果分三类：
 
-- `updated = true`
+- `result = updated`
   - 返回 `applied`
   - 再读回持久化后的 entry
   - 用持久化后的最终版本写 `entry_changes`
-- `updated = false`
+- `result = version_mismatch`
   - 重新读一次当前服务端 entry
   - 返回 `conflicted`
   - `conflicts[].serverEntry` 使用这次重读到的最新版本
+- `result = missing`
+  - 返回 `ignored`
+  - 不写 `entry_changes`
+  - 表示服务端删除在这次 update 的窗口期内赢了这次竞争
 
 这样做的原因是：
 
 - 冲突失败后，前面第一次 `GetByID` 拿到的版本可能已经过时
 - 重新读取，才能把真正的当前服务端版本回给客户端
+- 如果窗口期内记录已被并发删除，则当前服务端已没有可回传的版本；这时不再伪造 `conflicted + serverEntry`，而是把它视作“服务端删除生效”的 `ignored`
+
+#### Step 3：处理后续回读与 change log 失败
+
+本次子任务不把“entry 更新成功 + change log 追加”包进同一事务。
+
+因此如果出现以下任一情况：
+
+- 条件更新已成功，但回读持久化 entry 失败
+- 条件更新已成功，但 `AppendChange` 失败
+
+当前版本沿用现状：
+
+- service 返回 error
+- handler 返回 `500 INTERNAL_ERROR`
+- 不做补偿回滚
+
+这属于本次仍保留的已知边界，不在本子任务内解决。
 
 ### 6. 不变的协议语义
 
@@ -249,8 +278,8 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 至少覆盖：
 
 - base 匹配时更新成功
-- base 不匹配时 0 行更新
-- 记录不存在时 0 行更新
+- base 不匹配时返回 `version_mismatch`
+- 记录不存在时返回 `missing`
 
 #### 2. Service 冲突语义测试
 
@@ -265,6 +294,12 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 - 第二次必须返回 `conflicted`
 - `conflicts[].serverEntry` 应是第一次成功更新后的服务端版本
 
+额外补一条边界测试：
+
+- Step 1 读到 entry 存在，但在条件更新前被并发删除时
+- service 返回 `ignored`
+- 不伪造 `conflicts[].serverEntry`
+
 #### 3. 回归测试
 
 目标：
@@ -275,6 +310,7 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 
 - entry 不存在时，`update` 仍视作 `create`
 - 成功 `update` 仍会写 `entry_changes`
+- `result = missing` 的 update 不写 `entry_changes`
 - handler 不需要新增协议字段
 
 ## 架构与模块边界
@@ -336,6 +372,7 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 - 同一条 entry 上，两个基于同一 `baseUpdatedAt` 的更新请求，最多只有一个返回 `applied`
 - 失败的一方返回 `conflicted`
 - `conflicts[].serverEntry` 返回当前服务端版本
+- 如果 entry 在 update 窗口期被服务端删除，则返回 `ignored`
 - entry 不存在时，`update` 仍按现有语义视作 `create`
 - 不改变 `/api/sync` 的请求/响应结构
 
@@ -343,8 +380,17 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
 
 - 本次只原子化 `update` 的版本匹配判定
 - `entry` 更新成功与 `entry_changes` 追加写入仍不在同一数据库事务
+- 如果条件更新成功，但回读或 `AppendChange` 失败，当前版本仍按 `500 INTERNAL_ERROR + 部分成功` 处理
 - 因此本次不是“完整事务化”，而是“先收掉最核心的并发冲突误判”
 
 ## Spec Review 留痕
 
-- 2026-03-22：已完成设计定稿，待进入 spec review。
+- 2026-03-22：已完成设计定稿，进入首轮 spec review。
+- 2026-03-22：spec review 要求补清两类边界：
+  - 条件更新失败后的 `version_mismatch / missing` 区分
+  - 条件更新成功但后续回读或 `AppendChange` 失败时的当前语义
+- 2026-03-22：已补充上述边界，并明确 `baseUpdatedAt` 的 UTC / 精度匹配约束，待重新 review。
+- 2026-03-22：第二轮 spec review 已完成。结论：通过，可进入用户 review gate。确认点：
+  - `updated / version_mismatch / missing` 三态语义完整
+  - 成功更新后回读或 `AppendChange` 失败的当前行为已明示为已知边界
+  - `baseUpdatedAt` 与 SQLite `updated_at` 的 UTC / 精度约束足够支持后续实现
