@@ -5,7 +5,8 @@
 
 import type { Entry, EntryFilters } from '@/src/types/entry';
 import * as DB from './operations';
-import { getApiClient } from '@/src/services/apiClient';
+import { ApiError, getApiClient } from '@/src/services/apiClient';
+import { MediaCacheService } from '@/src/services/mediaCacheService';
 import { logger } from '@/src/utils/logger';
 
 export interface DataSource {
@@ -59,7 +60,8 @@ export function createRemoteDataSource(): DataSource {
       if (filters.startTime) params.startTime = String(filters.startTime);
       if (filters.search) params.search = filters.search;
       if (filters.tags?.length) params.tags = filters.tags.join(',');
-      return client.get<Entry[]>('/entries', params);
+      const entries = await client.get<Entry[]>('/entries', params);
+      return MediaCacheService.hydrateEntries(entries);
     },
 
     getEntryCount: async () => {
@@ -70,20 +72,50 @@ export function createRemoteDataSource(): DataSource {
     addEntry: async (entry) => {
       let mediaIds: string[] | undefined;
       if (entry.media?.length) {
-        const uploads = await Promise.all(
-          entry.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
-        );
-        mediaIds = uploads.map((u) => u.id);
+        try {
+          const uploads = await Promise.all(
+            entry.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+          );
+          mediaIds = uploads.map((u) => u.id);
+        } catch (error) {
+          logger.error('[RemoteDataSource] media-upload-failed:', error);
+          if (error instanceof ApiError) {
+            throw new ApiError('MEDIA_UPLOAD_FAILED', error.message, error.status);
+          }
+          throw error;
+        }
       }
 
-      return client.post<Entry>('/entries', {
-        type: entry.type,
-        content: entry.content,
-        tags: entry.tags,
-        mediaIds,
-        recordingStatus: entry.recordingStatus,
-        recordingDuration: entry.recordingDuration,
-      });
+      try {
+        const created = await client.post<Entry>('/entries', {
+          type: entry.type,
+          content: entry.content,
+          tags: entry.tags,
+          mediaIds,
+          recordingStatus: entry.recordingStatus,
+          recordingDuration: entry.recordingDuration,
+        });
+        if (created.media?.length && entry.media?.length) {
+          created.media = created.media.map((media, index) => ({
+            ...media,
+            uri: entry.media?.[index]?.uri ?? media.uri,
+            thumbnail: entry.media?.[index]?.thumbnail ?? media.thumbnail,
+            remoteUri: MediaCacheService.isRemoteUri(media.uri)
+              ? MediaCacheService.normalizeRemoteUri(media.uri)
+              : media.remoteUri,
+            remoteThumbnail: MediaCacheService.isRemoteUri(media.thumbnail)
+              ? MediaCacheService.normalizeRemoteUri(media.thumbnail!)
+              : media.remoteThumbnail,
+          }));
+        }
+        return created;
+      } catch (error) {
+        logger.error('[RemoteDataSource] entry-create-failed:', error);
+        if (error instanceof ApiError) {
+          throw new ApiError('ENTRY_CREATE_FAILED', error.message, error.status);
+        }
+        throw error;
+      }
     },
 
     updateEntry: async (id, updates) => {

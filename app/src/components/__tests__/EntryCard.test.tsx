@@ -167,6 +167,46 @@ const longTextEntry: Entry = {
   syncStatus: 'synced',
 };
 
+const uploadingVoiceEntry: Entry = {
+  id: 'voice-uploading-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'uploading',
+  recordingStatus: 'completed',
+  media: [{ uri: 'file:///voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
+};
+
+const pendingUploadVoiceEntry: Entry = {
+  id: 'voice-pending-upload-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'pending_upload',
+  recordingStatus: 'completed',
+  media: [{ uri: 'file:///voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
+};
+
+const recordingVoiceEntry: Entry = {
+  id: 'voice-recording-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'pending_upload',
+  recordingStatus: 'recording',
+  recordingDuration: 12,
+  media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
+};
+
+const conflictCopyEntry: Entry = {
+  id: 'conflict-copy-1',
+  type: 'text',
+  content: '冲突版本',
+  timestamp: 1700000000000,
+  syncStatus: 'failed',
+  conflictedCopyOf: 'origin-1',
+};
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('EntryCard swipe actions', () => {
@@ -189,6 +229,61 @@ describe('EntryCard swipe actions', () => {
     );
 
     expect(queryByTestId('entry-action-sheet')).toBeNull();
+  });
+
+  it('renders uploading indicator for voice entries that are still uploading', () => {
+    const { getByTestId, getByText, queryByTestId } = render(
+      <EntryCard entry={uploadingVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByTestId('voice-uploading-button-voice-uploading-1')).toBeTruthy();
+    expect(getByTestId('voice-uploading-spinner-voice-uploading-1')).toBeTruthy();
+    expect(getByTestId('voice-uploading-label-voice-uploading-1')).toBeTruthy();
+    expect(queryByTestId('voice-uploading-spinner-voice-uploading-1')).toBeTruthy();
+    expect(queryByTestId('calendar-voice-play-button-voice-uploading-1')).toBeNull();
+  });
+
+  it('shows 冲突副本 badge for failed conflict copies', () => {
+    const { getByText } = render(
+      <EntryCard entry={conflictCopyEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByText('冲突副本')).toBeTruthy();
+  });
+
+  it('shows 待上传 for completed voice entries waiting for background upload', () => {
+    const { getAllByText } = render(
+      <EntryCard entry={pendingUploadVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getAllByText('待上传').length).toBeGreaterThan(0);
+  });
+
+  it('calls onStopRecording when pressing the stop button of a recording voice card', async () => {
+    const onStopRecording = jest.fn();
+
+    render(
+      <EntryCard
+        entry={recordingVoiceEntry}
+        onDelete={jest.fn()}
+        onStopRecording={onStopRecording}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('voice-stop-button-voice-recording-1'));
+    });
+
+    expect(onStopRecording).toHaveBeenCalledWith('voice-recording-1');
+  });
+
+  it('does not render pause or resume controls for recording voice cards', () => {
+    const { queryByTestId } = render(
+      <EntryCard entry={recordingVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    expect(queryByTestId('voice-pause-button-voice-recording-1')).toBeNull();
+    expect(queryByTestId('voice-resume-button-voice-recording-1')).toBeNull();
   });
 
   it('shows action sheet only after the delayed post-swipe timing', () => {

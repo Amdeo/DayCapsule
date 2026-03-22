@@ -121,4 +121,16 @@ describe('apiClient', () => {
     expect(result).toEqual({ ok: true });
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
+
+  it('normalizes upload network failures to ApiError', async () => {
+    mockFetch.mockRejectedValueOnce(new TypeError('Network request failed'));
+
+    await expect(
+      client.uploadFile('/media/upload', 'file:///voice.m4a', 'file')
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'NETWORK_ERROR',
+      message: 'Network request failed',
+    });
+  });
 });

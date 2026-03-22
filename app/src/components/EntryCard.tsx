@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   FadeInRight,
@@ -47,8 +48,6 @@ interface EntryCardProps {
   onDelete: (id: string) => void;
   onView?: (entry: Entry) => void;
   onEdit?: (entry: Entry) => void;
-  onPauseRecording?: (id: string) => void;
-  onResumeRecording?: (id: string) => void;
   onStopRecording?: (id: string) => void;
   cardSpacing?: number;
   enterDelay?: number;
@@ -63,8 +62,6 @@ function EntryCard({
   onDelete,
   onView,
   onEdit,
-  onPauseRecording,
-  onResumeRecording,
   onStopRecording,
   cardSpacing = 12,
   enterDelay = 0,
@@ -260,6 +257,58 @@ function EntryCard({
   const photoImageRadius = hasPhotoFooter
     ? { borderRadius: 10, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
     : { borderRadius: 10 };
+
+  const getSyncIconName = () => {
+    switch (entry.syncStatus) {
+      case 'pending':
+      case 'pending_upload':
+        return 'cloud-upload-outline';
+      case 'uploading':
+        return 'sync-outline';
+      case 'failed':
+        return 'alert-circle-outline';
+      case 'pending_delete':
+        return 'trash-outline';
+      default:
+        return null;
+    }
+  };
+
+  const getSyncIconColor = () => {
+    switch (entry.syncStatus) {
+      case 'pending':
+      case 'pending_upload':
+        return '#6A89CC';
+      case 'uploading':
+        return '#F5A623';
+      case 'failed':
+        return '#D9534F';
+      case 'pending_delete':
+        return '#A94442';
+      default:
+        return '#A3A3A3';
+    }
+  };
+
+  const getSyncStatusText = () => {
+    switch (entry.syncStatus) {
+      case 'pending':
+        return '待同步';
+      case 'pending_upload':
+        return '待上传';
+      case 'uploading':
+        return '上传中';
+      case 'failed':
+        return entry.conflictedCopyOf ? '冲突副本' : '同步失败';
+      case 'pending_delete':
+        return '待删除';
+      default:
+        return null;
+    }
+  };
+
+  const syncIconName = getSyncIconName();
+  const syncStatusText = getSyncStatusText();
 
   const renderCalendarPhotoBody = () => {
     if (!entry.media || entry.media.length === 0) {
@@ -690,30 +739,30 @@ function EntryCard({
           style={[
             styles.cardShadow,
             variant === 'calendar' && styles.calendarCardShadow,
-            cardAnimatedStyle,
             { marginBottom: cardSpacing },
           ]}
         >
-          <View
-            testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
-            style={variant === 'calendar' ? styles.calendarCardShell : undefined}
-          >
-            <Pressable
-              testID="entry-card"
-              onPressIn={() => setIsPressed(true)}
-              onPressOut={() => setIsPressed(false)}
-              onPress={handleCardPress}
-              onLongPress={handleLongPress}
-              style={[
-                styles.cardContainer,
-                variant === 'calendar' && styles.calendarCardContainer,
-                variant === 'calendar' && { borderColor: getCalendarBorderColor(), borderWidth: 1 },
-                {
-                  backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
-                },
-              ]}
+          <Animated.View style={cardAnimatedStyle}>
+            <View
+              testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
+              style={variant === 'calendar' ? styles.calendarCardShell : undefined}
             >
-              <View>
+              <Pressable
+                testID="entry-card"
+                onPressIn={() => setIsPressed(true)}
+                onPressOut={() => setIsPressed(false)}
+                onPress={handleCardPress}
+                onLongPress={handleLongPress}
+                style={[
+                  styles.cardContainer,
+                  variant === 'calendar' && styles.calendarCardContainer,
+                  variant === 'calendar' && { borderColor: getCalendarBorderColor(), borderWidth: 1 },
+                  {
+                    backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
+                  },
+                ]}
+              >
+                <View>
             {/* 卡片主内容 */}
             <View style={[
               entry.type === 'voice' ? styles.contentVoice : styles.content,
@@ -751,8 +800,8 @@ function EntryCard({
                      style={styles.recordingContainer}
                    >
                      <View style={styles.recordingCompact}>
-                       {/* 左侧：停止按钮 */}
                        <TouchableOpacity
+                         testID={`voice-stop-button-${entry.id}`}
                          style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
                          disabled={isProcessing}
                          activeOpacity={0.7}
@@ -768,10 +817,9 @@ function EntryCard({
                            }
                          }}
                        >
-                         <View style={styles.stopIconCompact} />
+                         <Ionicons name="stop" size={18} color="#FFFFFF" />
                        </TouchableOpacity>
 
-                       {/* 中间：波形 + 文字 */}
                        <View style={styles.recordingCenter}>
                          <View style={styles.waveformCompact}>
                            <WaveformAnimation isRecording={true} color="#F5A68D" />
@@ -785,10 +833,42 @@ function EntryCard({
                        </Text>
                      </View>
                     </View>
-                 ) : entry.media && entry.media.length > 0 ? (
+               ) : entry.syncStatus === 'uploading' ? (
                    <View style={styles.voiceCard}>
-                     {/* 播放行：按钮 + 波形 + 时长 */}
                      <View style={styles.voicePlayRow}>
+                       <View
+                         testID={`voice-uploading-button-${entry.id}`}
+                         style={[styles.voicePlayBtn, styles.voicePlayBtnDisabled]}
+                       >
+                         <ActivityIndicator
+                           testID={`voice-uploading-spinner-${entry.id}`}
+                           size="small"
+                           color="#FFFFFF"
+                         />
+                       </View>
+
+                       <View style={styles.voiceWaveform}>
+                         <WaveformAnimation isRecording={false} color="#D9D9D9" />
+                       </View>
+
+                       <Text
+                         testID={`voice-uploading-label-${entry.id}`}
+                         style={styles.voiceUploadingText}
+                       >
+                         上传中
+                       </Text>
+                     </View>
+
+                     {(entry.transcription?.text || entry.content) ? (
+                       <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
+                         {entry.transcription?.text || entry.content}
+                       </Text>
+                     ) : null}
+                   </View>
+                ) : entry.media && entry.media.length > 0 ? (
+                  <View style={styles.voiceCard}>
+                    {/* 播放行：按钮 + 波形 + 时长 */}
+                    <View style={styles.voicePlayRow}>
                        {audioMissing ? (
                          <View style={styles.audioMissingRow}>
                            <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
@@ -819,11 +899,15 @@ function EntryCard({
                              }
                            </Text>
                          </>
-                       )}
-                     </View>
+                      )}
+                    </View>
 
-                     {/* 转录/描述文字 */}
-                     {(entry.transcription?.text || entry.content) ? (
+                    {entry.syncStatus === 'pending_upload' && (
+                      <Text style={styles.voiceUploadingText}>待上传</Text>
+                    )}
+
+                    {/* 转录/描述文字 */}
+                    {(entry.transcription?.text || entry.content) ? (
                        <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
                          {entry.transcription?.text || entry.content}
                        </Text>
@@ -831,6 +915,22 @@ function EntryCard({
                    </View>
                 ) : null
               ) : null}
+
+              {/* 同步状态图标 */}
+              {syncIconName && variant !== 'calendar' && (
+                <View style={styles.syncStatusBadge}>
+                  {entry.syncStatus === 'uploading' ? (
+                    <ActivityIndicator size="small" color={getSyncIconColor()} />
+                  ) : (
+                    <Ionicons name={syncIconName as any} size={16} color={getSyncIconColor()} />
+                  )}
+                </View>
+              )}
+              {syncStatusText && variant !== 'calendar' && (
+                <View style={styles.syncStatusPill}>
+                  <Text style={styles.syncStatusPillText}>{syncStatusText}</Text>
+                </View>
+              )}
 
               {/* 标签（如果有） */}
               {variant !== 'calendar' && entry.tags && entry.tags.length > 0 && (
@@ -869,18 +969,19 @@ function EntryCard({
             )}
               </View>
 
-            {/* 图片查看器 */}
-            {entry.type === 'photo' && entry.media?.[0]?.uri && (
-              <ImageViewer
-                visible={showImageViewer}
-                imageUri={entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri}
-                onClose={() => {
-                  setShowImageViewer(false);
-                }}
-              />
-            )}
-            </Pressable>
-          </View>
+                {/* 图片查看器 */}
+                {entry.type === 'photo' && entry.media?.[0]?.uri && (
+                  <ImageViewer
+                    visible={showImageViewer}
+                    imageUri={entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri}
+                    onClose={() => {
+                      setShowImageViewer(false);
+                    }}
+                  />
+                )}
+              </Pressable>
+            </View>
+          </Animated.View>
         </Animated.View>
 
         <EntryActionSheet
@@ -902,6 +1003,38 @@ function EntryCard({
 }
 
 const styles = StyleSheet.create({
+  syncStatusBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  syncStatusPill: {
+    position: 'absolute',
+    top: 12,
+    right: 42,
+    zIndex: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  syncStatusPillText: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '600',
+  },
   cardShadow: {
     borderRadius: 10,
     borderWidth: 1,
@@ -1308,6 +1441,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
   },
+  voicePlayBtnDisabled: {
+    opacity: 0.7,
+  },
   voiceWaveform: {
     flex: 1,
     height: 32,
@@ -1318,6 +1454,13 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     fontVariant: ['tabular-nums'],
     minWidth: 38,
+    textAlign: 'right',
+  },
+  voiceUploadingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#B0822F',
+    minWidth: 58,
     textAlign: 'right',
   },
   voiceCaption: {

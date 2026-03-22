@@ -54,12 +54,6 @@
         }
       ],
       [
-        "expo-av",
-        {
-          "microphonePermission": "允许 DayCapsule 录制语音记忆"
-        }
-      ],
-      [
         "@sentry/react-native",
         {
           "enableSourceMapsUpload": false
@@ -69,6 +63,12 @@
         "expo-notifications",
         {
           "color": "#6A89CC"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "允许 DayCapsule 录制语音记忆"
         }
       ]
     ],

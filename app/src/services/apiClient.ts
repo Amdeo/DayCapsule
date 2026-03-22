@@ -208,6 +208,12 @@ export function createApiClient(baseURL: string): ApiClient {
           json.error?.message ?? 'Upload failed',
           res.status,
         );
+      } catch (e) {
+        if (e instanceof ApiError) throw e;
+        if ((e as Error).name === 'AbortError') {
+          throw new ApiError('TIMEOUT', 'Upload timed out', 0);
+        }
+        throw new ApiError('NETWORK_ERROR', (e as Error).message, 0);
       } finally {
         clearTimeout(timeoutId);
       }

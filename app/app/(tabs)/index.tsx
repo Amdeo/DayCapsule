@@ -18,6 +18,13 @@ import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
+import type { Entry } from '@/src/types/entry';
+import { deleteFile } from '@/src/utils/fileSystem';
+import {
+  enqueueVoiceUpload,
+  configureVoiceUploadQueueCallbacks,
+  flushPendingVoiceUploads,
+} from '@/src/services/voiceUploadQueue';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -30,7 +37,94 @@ export interface PhotoSelectDeps {
     quality: 'low' | 'medium' | 'high',
     aspectRatio?: number
   ) => Promise<import('@/src/services/photoService').SavedPhotoResult>;
+  deleteLocalFile?: (uri: string) => Promise<void>;
   addEntry: (entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>) => Promise<void>;
+}
+
+export interface VoiceCloudStartDeps {
+  now?: () => number;
+  startRecording: () => Promise<unknown>;
+  createLocalEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<Entry>;
+}
+
+export interface VoiceCloudFinalizeDeps {
+  stopRecording: () => Promise<{ uri: string; size: number; duration: number; mimeType: string }>;
+  saveVoiceToCache: (sourceUri: string, entryId: string) => Promise<string>;
+  updateLocalEntry: (entryId: string, updates: Partial<Entry>) => Promise<void>;
+  enqueueUpload: (entryId: string) => void;
+  preloadAudio: (uri: string) => Promise<void>;
+}
+
+export function clearRecordingTimerForTest(
+  timerRef: { current: ReturnType<typeof setInterval> | null }
+): void {
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
+export function assertCanStartVoiceRecordingForTest(currentRecordingId: string | null): void {
+  if (!currentRecordingId) return;
+  const error = new Error('ACTIVE_RECORDING_IN_PROGRESS') as Error & { code?: string };
+  error.code = 'ACTIVE_RECORDING_IN_PROGRESS';
+  throw error;
+}
+
+function buildTemporaryVoiceEntry(now: number): Entry {
+  return {
+    id: String(now),
+    type: 'voice',
+    content: '',
+    timestamp: now,
+    syncStatus: 'pending_upload',
+    recordingStatus: 'recording',
+    recordingDuration: 0,
+    media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
+  };
+}
+
+export async function startCloudVoiceRecordingForTest(deps: VoiceCloudStartDeps): Promise<Entry> {
+  await deps.startRecording();
+  const now = deps.now?.() ?? Date.now();
+  const entry = buildTemporaryVoiceEntry(now);
+  return deps.createLocalEntry({
+    type: entry.type,
+    content: entry.content,
+    syncStatus: entry.syncStatus,
+    recordingStatus: entry.recordingStatus,
+    recordingDuration: entry.recordingDuration,
+    media: entry.media,
+  });
+}
+
+export async function finalizeCloudVoiceRecordingForTest(
+  entryId: string,
+  deps: VoiceCloudFinalizeDeps
+): Promise<void> {
+  const audioFile = await deps.stopRecording();
+  const persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
+  await deps.updateLocalEntry(entryId, {
+    recordingStatus: 'completed',
+    syncStatus: 'pending_upload',
+    recordingDuration: Math.floor(audioFile.duration),
+    media: [{
+      uri: persistedUri,
+      mimeType: audioFile.mimeType,
+      size: audioFile.size,
+      duration: Math.floor(audioFile.duration * 1000),
+    }],
+  });
+
+  deps.preloadAudio(persistedUri).catch((err) => {
+    logger.warn('[HomeScreen] Failed to preload audio:', err);
+  });
+
+  try {
+    deps.enqueueUpload(entryId);
+  } catch (error) {
+    logger.warn('[HomeScreen] Failed to enqueue voice upload:', error);
+  }
 }
 
 export async function handlePhotoSelectForTest(
@@ -38,6 +132,7 @@ export async function handlePhotoSelectForTest(
   deps: PhotoSelectDeps
 ): Promise<void> {
   const mediaList: import('@/src/types/entry').MediaInfo[] = [];
+  const savedFiles: string[] = [];
   for (const result of results) {
     const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const savedPhoto = await deps.savePhotoToStorage(
@@ -60,19 +155,27 @@ export async function handlePhotoSelectForTest(
         modifiedAt: Date.now(),
       },
     });
+    savedFiles.push(savedPhoto.originalUri, savedPhoto.thumbnailUri);
   }
 
-  await deps.addEntry({
-    type: 'photo',
-    content: '',
-    syncStatus: 'pending',
-    media: mediaList,
-  });
+  try {
+    await deps.addEntry({
+      type: 'photo',
+      content: '',
+      syncStatus: 'pending',
+      media: mediaList,
+    });
+  } catch (error) {
+    if (deps.deleteLocalFile) {
+      await Promise.all(savedFiles.map((uri) => deps.deleteLocalFile?.(uri)));
+    }
+    throw error;
+  }
 }
 
 export default function HomeScreen() {
   const {
-    loadEntries, addEntry, deleteEntry,
+    loadEntries, addEntry, addLocalEntry, updateLocalEntry, replaceEntry, deleteEntry,
     updateRecordingStatus, updateRecordingDuration, completeRecording,
   } = useEntryStore();
 
@@ -89,6 +192,11 @@ export default function HomeScreen() {
   // 使用 ref 存储计时器和录音 ID，避免触发不必要的重渲染
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentRecordingIdRef = useRef<string | null>(null);
+
+  const isCloudModeEnabled = useCallback(
+    () => useSettingsStore.getState().cloudMode === true,
+    []
+  );
 
   // 初始化：加载设置 + 数据 + 预热音频
   useEffect(() => {
@@ -120,6 +228,28 @@ export default function HomeScreen() {
 
     preloadRecentVoiceEntries();
   }, []);
+
+  useEffect(() => {
+    configureVoiceUploadQueueCallbacks({
+      onEntryUploading: (id) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((entry) => (
+            entry.id === id ? { ...entry, syncStatus: 'uploading' } : entry
+          )),
+        }));
+      },
+      onEntryPending: (id) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((entry) => (
+            entry.id === id ? { ...entry, syncStatus: 'pending_upload' } : entry
+          )),
+        }));
+      },
+      onEntrySynced: (localId, entry) => {
+        replaceEntry(localId, entry);
+      },
+    });
+  }, [replaceEntry]);
 
   // 卸载时清理录音
   useEffect(() => {
@@ -157,33 +287,57 @@ export default function HomeScreen() {
         break;
 
       case 'voice':
+        let createdEntryId: string | null = null;
         try {
-          await addEntry({
-            type: 'voice',
-            content: '',
-            syncStatus: 'pending',
-            recordingStatus: 'recording',
-            recordingDuration: 0,
-            media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
-          });
+          assertCanStartVoiceRecordingForTest(currentRecordingIdRef.current);
+          if (isCloudModeEnabled()) {
+            const tempEntry = await startCloudVoiceRecordingForTest({
+              startRecording: VoiceService.startRecording.bind(VoiceService),
+              createLocalEntry: addLocalEntry,
+            });
+            createdEntryId = tempEntry.id;
+            currentRecordingIdRef.current = tempEntry.id;
+            startRecordingTimer(tempEntry.id);
+          } else {
+            await addEntry({
+              type: 'voice',
+              content: '',
+              syncStatus: 'pending',
+              recordingStatus: 'recording',
+              recordingDuration: 0,
+              media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
+            });
 
-          const entries = useEntryStore.getState().entries;
-          const newEntry = entries[0];
+            const entries = useEntryStore.getState().entries;
+            const newEntry = entries[0];
 
-          if (newEntry) {
-            currentRecordingIdRef.current = newEntry.id;
-            await VoiceService.startRecording();
-            startRecordingTimer(newEntry.id);
+            if (newEntry) {
+              createdEntryId = newEntry.id;
+              currentRecordingIdRef.current = newEntry.id;
+              await VoiceService.startRecording();
+              startRecordingTimer(newEntry.id);
+            }
           }
         } catch (error) {
+          if ((error as any)?.code === 'ACTIVE_RECORDING_IN_PROGRESS') {
+            Alert.alert('录音进行中', '请先完成当前录音，再开始新的录音。');
+            return;
+          }
+
           logger.error('[HomeScreen] Failed to start recording:', error);
-          // startRecording 失败时清理已创建的 entry，避免 UI 残留录音卡片
-          if (currentRecordingIdRef.current) {
+          // startRecording 失败时只清理本次尝试创建的 entry，避免误删已有录音
+          if (createdEntryId) {
             try {
-              await deleteEntry(currentRecordingIdRef.current);
+              if (isCloudModeEnabled()) {
+                await deleteEntry(createdEntryId);
+              } else {
+                await deleteEntry(createdEntryId);
+              }
             } catch (e) {
               logger.error('[HomeScreen] Failed to clean up failed recording entry:', e);
             }
+          }
+          if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
             currentRecordingIdRef.current = null;
           }
           // 权限被拒绝时引导用户去设置
@@ -203,54 +357,37 @@ export default function HomeScreen() {
         }
         break;
     }
-  }, [addEntry, deleteEntry, startRecordingTimer]);
-
-  const handleResumeRecording = useCallback(async (id: string) => {
-    try {
-      await VoiceService.resumeRecording();
-      updateRecordingStatus(id, 'recording');
-
-      if (!recordingTimerRef.current) {
-        startRecordingTimer(id);
-      }
-    } catch (error) {
-      logger.error('[HomeScreen] Failed to resume recording:', error);
-    }
-  }, [updateRecordingStatus, startRecordingTimer]);
-
-  const handlePauseRecording = useCallback(async (id: string) => {
-    try {
-      await VoiceService.pauseRecording();
-      updateRecordingStatus(id, 'paused');
-
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-    } catch (error) {
-      logger.error('[HomeScreen] Failed to pause recording:', error);
-    }
-  }, [updateRecordingStatus]);
+  }, [addEntry, addLocalEntry, deleteEntry, isCloudModeEnabled, startRecordingTimer]);
 
   const handleStopRecording = useCallback(async (id: string) => {
+    clearRecordingTimerForTest(recordingTimerRef);
     try {
-      const audioFile = await VoiceService.stopRecording();
-      const persistentUri = await VoiceService.saveVoiceToStorage(audioFile.uri, id);
-      await completeRecording(id, persistentUri, audioFile.duration * 1000);
+      if (isCloudModeEnabled()) {
+        await finalizeCloudVoiceRecordingForTest(id, {
+          stopRecording: VoiceService.stopRecording.bind(VoiceService),
+          saveVoiceToCache: (sourceUri, entryId) => VoiceService.saveVoiceToCache(sourceUri, entryId),
+          updateLocalEntry,
+          enqueueUpload: enqueueVoiceUpload,
+          preloadAudio: VoiceService.preloadAudio.bind(VoiceService),
+        });
+      } else {
+        const audioFile = await VoiceService.stopRecording();
+        const persistentUri = await VoiceService.saveVoiceToStorage(audioFile.uri, id);
+        await completeRecording(id, persistentUri, audioFile.duration * 1000);
 
-      VoiceService.preloadAudio(persistentUri).catch((err) => {
-        logger.warn('[HomeScreen] Failed to preload audio:', err);
-      });
+        VoiceService.preloadAudio(persistentUri).catch((err) => {
+          logger.warn('[HomeScreen] Failed to preload audio:', err);
+        });
+      }
     } catch (error) {
       logger.error('[HomeScreen] Failed to stop recording:', error);
-    } finally {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
+      if (isCloudModeEnabled()) {
+        Alert.alert('录音保存失败', '录音文件保存失败，请重试。');
       }
+    } finally {
       currentRecordingIdRef.current = null;
     }
-  }, [completeRecording]);
+  }, [completeRecording, isCloudModeEnabled, updateLocalEntry]);
 
   const handleTextSave = useCallback(async (content: string, tags: string[]) => {
     try {
@@ -264,14 +401,17 @@ export default function HomeScreen() {
   const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
       await handlePhotoSelectForTest(results, {
-        savePhotoToStorage: PhotoService.savePhotoToStorage.bind(PhotoService),
+        savePhotoToStorage: isCloudModeEnabled()
+          ? PhotoService.savePhotoToCache.bind(PhotoService)
+          : PhotoService.savePhotoToStorage.bind(PhotoService),
+        deleteLocalFile: deleteFile,
         addEntry,
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
       Alert.alert('保存失败', '照片保存失败，请重试');
     }
-  }, [addEntry]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
+  }, [addEntry, isCloudModeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 
   const openDrawer = useCallback(() => {
     setDrawerOpen(true);
@@ -309,8 +449,6 @@ export default function HomeScreen() {
         <Timeline
           onQuickAdd={handleMediaSelect}
           onMenuPress={openDrawer}
-          onPauseRecording={handlePauseRecording}
-          onResumeRecording={handleResumeRecording}
           onStopRecording={handleStopRecording}
         />
       </Animated.View>

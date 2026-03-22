@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：待评审
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -14,6 +15,7 @@
   - 不保留暂停能力，录音中只有“停止”
   - `待上传` 卡片允许直接播放本地 `cache` 文件
   - 删除 `待上传` 卡片时，要同时删除本地文件并取消上传任务
+- 2026-03-22：用户 review spec 并回复 `ok`，批准进入 plan 阶段。
 
 ## 背景
 
@@ -203,4 +205,43 @@
 
 ## Spec Review 留痕
 
-- 待首次 review
+- 2026-03-22：已完成对话内 review，并将用户确认结果写回本文档；当前状态更新为 `已批准`。
+
+## 实现结果
+
+- 已按设计完成本地优先语音卡链路：
+  - 开始录音即创建本地语音卡
+  - 停止录音后先写入本地 `cache`
+  - 卡片保留并进入 `待上传`
+  - 后台串行上传并在成功后转为 `已同步`
+- 已完成删除语义：
+  - 删除 `pending_upload` / `uploading` 语音卡时，会取消上传任务并删除本地 `cache` 文件
+- 已完成自动重试触发：
+  - App 启动
+  - App 回到前台
+  - 网络恢复
+
+## 实现偏差说明
+
+- 原 plan 中 Task 2 的失败测试示例放在 `src/database/__tests__/dataSource.test.ts`，实际实现时将 SQLite 持久化断言补在 `src/database/__tests__/operations.test.ts`，因为 `sync_status` 与 `media_json.remoteUri` 的核心逻辑位于 `operations.ts`。
+- 为满足“网络恢复时自动重试”，实际新增了 `expo-network` 依赖，并在 Android 端重新构建安装原生壳以接入 `ExpoNetwork` 模块。
+
+## 最终验证结果
+
+- 类型检查：
+  - `cd app && npx tsc --noEmit`
+  - 结果：通过
+- 目标测试：
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryCard.test.tsx`
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath src/database/__tests__/operations.test.ts`
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath src/database/__tests__/dataSource.test.ts`
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath src/services/__tests__/voiceService.test.ts`
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath src/services/__tests__/voiceUploadQueue.test.ts`
+  - `cd app && CI=1 npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts'`
+  - 结果：全部通过
+- 全量测试：
+  - `cd app && CI=1 npx jest --run-in-band`
+  - 结果：34 个测试套件，257 个测试全部通过
+- 手动验证：
+  - 已完成 Android 原生包重编译并确认 `expo-network` 原生模块接入成功，应用可正常启动，不再出现 `Cannot find native module 'ExpoNetwork'`
+  - 未执行会改写现有用户数据的完整录音上传手测，避免再次影响模拟器中的现有数据
