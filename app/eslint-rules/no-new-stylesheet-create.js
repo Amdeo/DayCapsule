@@ -1,42 +1,12 @@
-const path = require('node:path');
-const allowlist = require('../eslint/style-guard-allowlist');
-
-const appRoot = path.resolve(__dirname, '..');
 const RULE_ID = 'style-guard/no-new-stylesheet-create';
-
-function normalizeAllowlist(allowlistConfig) {
-  if (Array.isArray(allowlistConfig)) {
-    return {
-      legacyFiles: allowlistConfig,
-      ruleBaselines: {},
-    };
-  }
-
-  return {
-    legacyFiles: allowlistConfig.legacyFiles || [],
-    ruleBaselines: allowlistConfig.ruleBaselines || {},
-  };
-}
-
-const normalizedAllowlist = normalizeAllowlist(allowlist);
-const legacyFileSet = new Set(normalizedAllowlist.legacyFiles);
-
-function getRuleBaseline(relativePath) {
-  const explicit = normalizedAllowlist.ruleBaselines[relativePath]?.[RULE_ID];
-  if (typeof explicit === 'number') {
-    return explicit;
-  }
-
-  if (legacyFileSet.has(relativePath)) {
-    return 0;
-  }
-
-  return 0;
-}
-
-function toProjectRelativePath(fileName) {
-  return path.relative(appRoot, fileName).split(path.sep).join('/');
-}
+const {
+  toProjectRelativePath,
+  buildActiveBaselineConfig,
+  createFingerprint,
+  createFingerprintBudget,
+  consumeFromBudget,
+  extractRuleBaseline,
+} = require('./baseline');
 
 function collectStyleSheetAliases(programNode) {
   const styleSheetIdentifiers = new Set(['StyleSheet']);
@@ -109,7 +79,12 @@ module.exports = {
     docs: {
       description: 'Disallow new StyleSheet.create usage outside the legacy allowlist.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: true,
+      },
+    ],
     messages: {
       noNewStyleSheetCreate:
         '禁止新增 StyleSheet.create。请改用 className / NativeWind，或先完成对应迁移 chunk。',
@@ -122,8 +97,13 @@ module.exports = {
     }
 
     const relativePath = toProjectRelativePath(fileName);
-    const baseline = process.env.STYLE_GUARD_IGNORE_BASELINE === '1' ? 0 : getRuleBaseline(relativePath);
-    let seenViolations = 0;
+    const baselineConfig = buildActiveBaselineConfig(context.options[0]);
+    const baselineFingerprints =
+      process.env.STYLE_GUARD_IGNORE_BASELINE === '1'
+        ? []
+        : extractRuleBaseline(baselineConfig.ruleBaselines, relativePath, RULE_ID);
+    const fingerprintBudget = createFingerprintBudget(baselineFingerprints);
+    const sourceCode = context.sourceCode;
     let aliases = {
       styleSheetIdentifiers: new Set(['StyleSheet']),
       reactNativeNamespaceIdentifiers: new Set(),
@@ -138,13 +118,15 @@ module.exports = {
           return;
         }
 
-        seenViolations += 1;
-        if (seenViolations > baseline) {
-          context.report({
-            node,
-            messageId: 'noNewStyleSheetCreate',
-          });
+        const fingerprint = createFingerprint(sourceCode.getText(node));
+        if (consumeFromBudget(fingerprintBudget, fingerprint)) {
+          return;
         }
+
+        context.report({
+          node,
+          messageId: 'noNewStyleSheetCreate',
+        });
       },
     };
   },

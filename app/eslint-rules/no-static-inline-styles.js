@@ -1,42 +1,12 @@
-const path = require('node:path');
-const allowlist = require('../eslint/style-guard-allowlist');
-
-const appRoot = path.resolve(__dirname, '..');
 const RULE_ID = 'style-guard/no-static-inline-styles';
-
-function normalizeAllowlist(allowlistConfig) {
-  if (Array.isArray(allowlistConfig)) {
-    return {
-      legacyFiles: allowlistConfig,
-      ruleBaselines: {},
-    };
-  }
-
-  return {
-    legacyFiles: allowlistConfig.legacyFiles || [],
-    ruleBaselines: allowlistConfig.ruleBaselines || {},
-  };
-}
-
-const normalizedAllowlist = normalizeAllowlist(allowlist);
-const legacyFileSet = new Set(normalizedAllowlist.legacyFiles);
-
-function getRuleBaseline(relativePath) {
-  const explicit = normalizedAllowlist.ruleBaselines[relativePath]?.[RULE_ID];
-  if (typeof explicit === 'number') {
-    return explicit;
-  }
-
-  if (legacyFileSet.has(relativePath)) {
-    return 0;
-  }
-
-  return 0;
-}
-
-function toProjectRelativePath(fileName) {
-  return path.relative(appRoot, fileName).split(path.sep).join('/');
-}
+const {
+  toProjectRelativePath,
+  buildActiveBaselineConfig,
+  createFingerprint,
+  createFingerprintBudget,
+  consumeFromBudget,
+  extractRuleBaseline,
+} = require('./baseline');
 
 function isStaticLiteral(node) {
   if (!node) {
@@ -154,7 +124,12 @@ module.exports = {
     docs: {
       description: 'Disallow static inline style objects that should be className or style tokens.',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        additionalProperties: true,
+      },
+    ],
     messages: {
       noStaticInlineStyles:
         '禁止静态内联 style 对象。请改用 className，或保留为动画/运行时驱动样式。',
@@ -167,8 +142,13 @@ module.exports = {
     }
 
     const relativePath = toProjectRelativePath(fileName);
-    const baseline = process.env.STYLE_GUARD_IGNORE_BASELINE === '1' ? 0 : getRuleBaseline(relativePath);
-    let seenViolations = 0;
+    const baselineConfig = buildActiveBaselineConfig(context.options[0]);
+    const baselineFingerprints =
+      process.env.STYLE_GUARD_IGNORE_BASELINE === '1'
+        ? []
+        : extractRuleBaseline(baselineConfig.ruleBaselines, relativePath, RULE_ID);
+    const fingerprintBudget = createFingerprintBudget(baselineFingerprints);
+    const sourceCode = context.sourceCode;
     const staticStyleIdentifiers = new Set();
     const nonStaticStyleIdentifiers = new Set();
 
@@ -212,8 +192,8 @@ module.exports = {
         }
 
         if (isStaticStyleExpressionWithIdentifiers(node.value.expression)) {
-          seenViolations += 1;
-          if (seenViolations <= baseline) {
+          const fingerprint = createFingerprint(sourceCode.getText(node.value));
+          if (consumeFromBudget(fingerprintBudget, fingerprint)) {
             return;
           }
           context.report({

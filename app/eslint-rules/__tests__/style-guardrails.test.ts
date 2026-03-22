@@ -1,8 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import styleGuardPlugin from '..';
+import productionAllowlist from '../../eslint/style-guard-allowlist';
 
 const appRoot = path.resolve(__dirname, '../..');
 const fixturesDir = path.resolve(__dirname, '../__fixtures__');
@@ -12,9 +14,13 @@ async function lintFixture(
   options?: {
     source?: string;
     filePath?: string;
+    baselineConfig?: {
+      ruleBaselines?: Record<string, Record<string, string[]>>;
+    };
   },
 ) {
   const source = options?.source ?? (await fs.readFile(path.join(fixturesDir, fileName), 'utf-8'));
+  const ruleBaselineConfig = options?.baselineConfig ?? {};
   const eslint = new ESLint({
     cwd: appRoot,
     overrideConfigFile: true,
@@ -33,8 +39,8 @@ async function lintFixture(
           'style-guard': styleGuardPlugin,
         },
         rules: {
-          'style-guard/no-new-stylesheet-create': 'error',
-          'style-guard/no-static-inline-styles': 'error',
+          'style-guard/no-new-stylesheet-create': ['error', ruleBaselineConfig],
+          'style-guard/no-static-inline-styles': ['error', ruleBaselineConfig],
         },
       },
     ],
@@ -44,6 +50,10 @@ async function lintFixture(
     filePath: options?.filePath ?? path.join(appRoot, 'src/__style_guard_tests__', fileName),
   });
   return result;
+}
+
+function fingerprint(snippet: string) {
+  return crypto.createHash('sha1').update(snippet.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 12);
 }
 
 describe('style guardrails', () => {
@@ -89,9 +99,19 @@ describe('style guardrails', () => {
 
   test('allowlist supports baseline count: legacy count allowed but extra usage fails', async () => {
     const legacyFilePath = path.join(appRoot, 'src/__style_guard_tests__/allowlisted-baseline.tsx');
+    const legacyRelativePath = 'src/__style_guard_tests__/allowlisted-baseline.tsx';
+    const baselineConfig = {
+      ruleBaselines: {
+        [legacyRelativePath]: {
+          'style-guard/no-new-stylesheet-create': [fingerprint('StyleSheet.create({ container: { padding: 8 } })')],
+          'style-guard/no-static-inline-styles': [fingerprint('{{ padding: 12 }}')],
+        },
+      },
+    };
 
     const withinBaseline = await lintFixture('allowed-dynamic-style.tsx', {
       filePath: legacyFilePath,
+      baselineConfig,
       source: `
 import { StyleSheet, View } from 'react-native';
 const styles = StyleSheet.create({ container: { padding: 8 } });
@@ -105,16 +125,17 @@ export function LegacyWithinBaseline() {
 
     const exceedBaseline = await lintFixture('allowed-dynamic-style.tsx', {
       filePath: legacyFilePath,
+      baselineConfig,
       source: `
 import { StyleSheet, View } from 'react-native';
-const stylesA = StyleSheet.create({ a: { padding: 8 } });
+const styles = StyleSheet.create({ container: { padding: 8 } });
 const stylesB = StyleSheet.create({ b: { marginTop: 8 } });
 export function LegacyExceedBaseline() {
   return (
     <>
       <View style={{ padding: 12 }} />
       <View style={{ marginTop: 4 }} />
-      <View style={stylesA.a} />
+      <View style={styles.container} />
       <View style={stylesB.b} />
     </>
   );
@@ -124,5 +145,41 @@ export function LegacyExceedBaseline() {
 
     expect(exceedBaseline.messages.filter((msg) => msg.ruleId === 'style-guard/no-new-stylesheet-create')).toHaveLength(1);
     expect(exceedBaseline.messages.filter((msg) => msg.ruleId === 'style-guard/no-static-inline-styles')).toHaveLength(1);
+  });
+
+  test('flags replacement with new violation instance even when count is unchanged', async () => {
+    const legacyFilePath = path.join(appRoot, 'src/__style_guard_tests__/allowlisted-replaced-instance.tsx');
+    const legacyRelativePath = 'src/__style_guard_tests__/allowlisted-replaced-instance.tsx';
+    const baselineConfig = {
+      ruleBaselines: {
+        [legacyRelativePath]: {
+          'style-guard/no-new-stylesheet-create': [fingerprint('StyleSheet.create({ box: { padding: 8 } })')],
+          'style-guard/no-static-inline-styles': [fingerprint('{{ padding: 12 }}')],
+        },
+      },
+    };
+
+    const result = await lintFixture('allowed-dynamic-style.tsx', {
+      filePath: legacyFilePath,
+      baselineConfig,
+      source: `
+import { StyleSheet, View } from 'react-native';
+const styles = StyleSheet.create({ box: { marginTop: 8 } });
+export function ReplacedInstance() {
+  return <View style={{ marginTop: 4 }} />;
+}
+`,
+    });
+
+    expect(result.messages.filter((msg) => msg.ruleId === 'style-guard/no-new-stylesheet-create')).toHaveLength(1);
+    expect(result.messages.filter((msg) => msg.ruleId === 'style-guard/no-static-inline-styles')).toHaveLength(1);
+  });
+
+  test('production allowlist does not include test-only fake paths', () => {
+    const hasFakePath =
+      productionAllowlist.legacyFiles.some((filePath) => filePath.includes('__style_guard_tests__')) ||
+      Object.keys(productionAllowlist.ruleBaselines).some((filePath) => filePath.includes('__style_guard_tests__'));
+
+    expect(hasFakePath).toBe(false);
   });
 });
