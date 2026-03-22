@@ -5,9 +5,13 @@
 
 import { create } from 'zustand';
 import { Entry } from '@/src/types/entry';
-import { getActiveDataSource } from '@/src/database/dataSource';
+import { localDataSource } from '@/src/database/dataSource';
 import type { EntryFilters } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
+import * as DB from '@/src/database/operations';
+import { deleteFile } from '@/src/utils/fileSystem';
+import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
+import { useSettingsStore } from '@/src/store/settingsStore';
 
 const PAGE_SIZE = 20;
 const MAX_LOAD_RETRIES = 5;
@@ -64,13 +68,54 @@ const mergeUniqueById = (prev: Entry[], next: Entry[]): Entry[] => {
   return [...prev, ...uniqueNext];
 };
 
+const shouldUseCloudPendingState = (): boolean =>
+  useSettingsStore.getState().cloudMode === true;
+
+const buildPendingInsertEntry = (entry: Omit<Entry, 'id' | 'timestamp'>): Omit<Entry, 'id' | 'timestamp'> => {
+  if (!shouldUseCloudPendingState()) {
+    return entry;
+  }
+
+  return {
+    ...entry,
+    syncStatus: entry.syncStatus === 'pending_upload' || entry.syncStatus === 'uploading' || entry.syncStatus === 'pending_delete'
+      ? entry.syncStatus
+      : 'pending',
+    syncOp: entry.syncOp ?? 'create',
+    updatedAt: entry.updatedAt ?? Date.now(),
+    baseUpdatedAt: entry.baseUpdatedAt ?? entry.updatedAt,
+  };
+};
+
+const buildPendingUpdate = (updates: Partial<Entry>): Partial<Entry> => {
+  if (!shouldUseCloudPendingState()) {
+    return updates;
+  }
+
+  if (updates.syncStatus === 'pending_upload' || updates.syncStatus === 'uploading' || updates.syncStatus === 'pending_delete') {
+    return {
+      ...updates,
+      updatedAt: updates.updatedAt ?? Date.now(),
+      baseUpdatedAt: updates.baseUpdatedAt ?? updates.updatedAt,
+    };
+  }
+
+  return {
+    ...updates,
+    syncStatus: updates.syncStatus ?? 'pending',
+    syncOp: updates.syncOp ?? 'update',
+    updatedAt: updates.updatedAt ?? Date.now(),
+    baseUpdatedAt: updates.baseUpdatedAt ?? updates.updatedAt,
+  };
+};
+
 const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => {
   const cleaned: Entry[] = [];
 
   for (const entry of page) {
     if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
       try {
-        await getActiveDataSource().deleteEntry(entry.id);
+        await localDataSource.deleteEntry(entry.id);
         logger.log('🧹 清理无效录音:', entry.id);
         continue;
       } catch {
@@ -113,7 +158,10 @@ interface EntryStore {
 
   // CRUD
   addEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<void>;
+  addLocalEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<Entry>;
   updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
+  updateLocalEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
+  replaceEntry: (oldId: string, entry: Entry) => void;
   deleteEntry: (id: string) => Promise<void>;
 
   // 查询
@@ -150,8 +198,10 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   ): Promise<void> => {
     try {
       const filters = buildFilters(get());
-      const page = await getActiveDataSource().getEntriesPage(filters, PAGE_SIZE);
-      const cleaned = await removeBrokenRecordingEntries(page);
+      const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE);
+      const pendingVoiceEntries = await DB.getVoiceEntriesBySyncStatus(['pending_upload', 'uploading']);
+      const merged = mergeUniqueById(pendingVoiceEntries, page).sort((a, b) => b.timestamp - a.timestamp);
+      const cleaned = await removeBrokenRecordingEntries(merged);
 
       if (get().activeQueryKey !== queryKey) {
         logger.debug('[entryStore] Ignore stale first-page result:', queryKey);
@@ -240,7 +290,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     set({ isLoadingMore: true });
     try {
       const filters = buildFilters(get());
-      const page = await getActiveDataSource().getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
+      const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
 
       if (get().activeQueryKey !== activeQueryKey) {
         logger.debug('[entryStore] Ignore stale loadMore result:', activeQueryKey);
@@ -271,7 +321,8 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   addEntry: async (entry) => {
     try {
-      const newEntry = await getActiveDataSource().addEntry(entry);
+      const nextEntry = buildPendingInsertEntry(entry);
+      const newEntry = await DB.addEntry(nextEntry);
       set((s) => ({
         entries: [newEntry, ...s.entries],
       }));
@@ -282,14 +333,30 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     }
   },
 
+  addLocalEntry: async (entry) => {
+    try {
+      const nextEntry = buildPendingInsertEntry(entry);
+      const newEntry = await DB.addEntry(nextEntry);
+      set((s) => ({
+        entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)],
+      }));
+      logger.log('✅ 本地添加记录:', newEntry.id);
+      return newEntry;
+    } catch (error) {
+      logger.error('Failed to add local entry:', error);
+      throw error;
+    }
+  },
+
   /**
    * 更新记录：写 DB 后 map 更新内存
    */
   updateEntry: async (id, updates) => {
     try {
-      await getActiveDataSource().updateEntry(id, updates);
+      const nextUpdates = buildPendingUpdate(updates);
+      await DB.updateEntry(id, nextUpdates);
       const patch = (arr: Entry[]) =>
-        arr.map((e) => (e.id === id ? { ...e, ...updates } : e));
+        arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
       set((s) => ({ entries: patch(s.entries) }));
       logger.log('✅ 更新记录:', id);
     } catch (error) {
@@ -298,12 +365,58 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     }
   },
 
+  updateLocalEntry: async (id, updates) => {
+    try {
+      const nextUpdates = buildPendingUpdate(updates);
+      await DB.updateEntry(id, nextUpdates);
+      const patch = (arr: Entry[]) =>
+        arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
+      set((s) => ({ entries: patch(s.entries) }));
+      logger.log('✅ 本地更新记录:', id);
+    } catch (error) {
+      logger.error('Failed to update local entry:', error);
+      throw error;
+    }
+  },
+
+  replaceEntry: (oldId, entry) => {
+    set((s) => ({
+      entries: s.entries
+        .map((existing) => (existing.id === oldId ? entry : existing))
+        .filter((existing, index, arr) => arr.findIndex((candidate) => candidate.id === existing.id) === index),
+    }));
+  },
+
   /**
    * 删除记录：写 DB 后从内存移除
    */
   deleteEntry: async (id) => {
     try {
-      await getActiveDataSource().deleteEntry(id);
+      const existingEntry = get().entries.find((entry) => entry.id === id);
+      const shouldDeleteLocallyOnly =
+        existingEntry?.type === 'voice' &&
+        (existingEntry.syncStatus === 'pending_upload' || existingEntry.syncStatus === 'uploading');
+      const shouldSoftDeleteForCloud =
+        shouldUseCloudPendingState() &&
+        !!existingEntry &&
+        !shouldDeleteLocallyOnly &&
+        existingEntry.syncStatus === 'synced';
+
+      if (shouldDeleteLocallyOnly) {
+        cancelVoiceUpload(id);
+
+        const localUri = existingEntry.media?.[0]?.uri;
+        if (localUri) {
+          await deleteFile(localUri).catch(() => {});
+        }
+
+        await DB.deleteEntry(id);
+      } else if (shouldSoftDeleteForCloud) {
+        await DB.markEntryPendingDelete(id);
+      } else {
+        await localDataSource.deleteEntry(id);
+      }
+
       const remove = (arr: Entry[]) => arr.filter((e) => e.id !== id);
       set((s) => ({ entries: remove(s.entries) }));
       logger.log('✅ 删除记录:', id);
@@ -321,7 +434,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     await get().applyFilters();
   },
 
-  getAllTags: () => getActiveDataSource().getAllTags(),
+  getAllTags: () => localDataSource.getAllTags(),
 
   updateRecordingStatus: async (id, status) => get().updateEntry(id, { recordingStatus: status }),
 
@@ -385,7 +498,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    * 批量恢复备份记录，完成后重新加载第一页
    */
   restoreEntries: async (entries: Entry[]): Promise<string[]> => {
-    const insertedIds = await getActiveDataSource().restoreEntries(entries);
+    const insertedIds = await localDataSource.restoreEntries(entries);
     await get().loadEntries();
     return insertedIds;
   },

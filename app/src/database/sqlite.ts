@@ -43,6 +43,12 @@ export const initDatabase = async () => {
         media_metadata TEXT,
         recording_status TEXT,
         recording_duration INTEGER,
+        sync_status TEXT DEFAULT 'synced',
+        sync_op TEXT DEFAULT 'update',
+        conflicted_copy_of TEXT,
+        base_updated_at INTEGER,
+        user_id TEXT,
+        deleted INTEGER DEFAULT 0,
         created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
         updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
       );

@@ -29,8 +29,14 @@ const rowToEntry = (row: any): Entry => {
     media,
     recordingStatus: row.recording_status,
     recordingDuration: row.recording_duration,
-    syncStatus: 'synced',
-  };
+    syncStatus: row.sync_status ?? 'synced',
+    syncOp: row.sync_op ?? 'update',
+    conflictedCopyOf: row.conflicted_copy_of ?? undefined,
+    baseUpdatedAt: row.base_updated_at ?? undefined,
+    userId: row.user_id ?? undefined,
+    deleted: row.deleted == null ? undefined : Boolean(row.deleted),
+    updatedAt: row.updated_at ?? row.timestamp,
+  } as Entry;
 };
 
 /**
@@ -92,6 +98,54 @@ export const getEntryById = async (id: string): Promise<Entry | null> => {
   }
 };
 
+export const getEntriesBySyncStatus = async (
+  statuses: Array<Entry['syncStatus']>
+): Promise<Entry[]> => {
+  if (statuses.length === 0) return [];
+
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    if (!columns.has('sync_status')) return [];
+
+    const placeholders = statuses.map(() => '?').join(', ');
+    const result = await db.getAllAsync(
+      `SELECT * FROM entries
+       WHERE sync_status IN (${placeholders})
+       ORDER BY timestamp DESC`,
+      statuses,
+    );
+    return result.map(rowToEntry);
+  } catch (error) {
+    logger.error('Failed to get entries by sync status:', error);
+    return [];
+  }
+};
+
+export const getVoiceEntriesBySyncStatus = async (
+  statuses: Array<Entry['syncStatus']>
+): Promise<Entry[]> => {
+  if (statuses.length === 0) return [];
+
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    if (!columns.has('sync_status')) return [];
+
+    const placeholders = statuses.map(() => '?').join(', ');
+    const result = await db.getAllAsync(
+      `SELECT * FROM entries
+       WHERE type = 'voice' AND sync_status IN (${placeholders})
+       ORDER BY timestamp DESC`,
+      statuses,
+    );
+    return result.map(rowToEntry);
+  } catch (error) {
+    logger.error('Failed to get voice entries by sync status:', error);
+    return [];
+  }
+};
+
 /**
  * 检查表是否包含指定列
  */
@@ -123,6 +177,11 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     const columns = await getTableColumns(db);
     const hasMediaJson = columns.has('media_json');
     const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
+    const hasConflictedCopyOf = columns.has('conflicted_copy_of');
+    const hasSyncStatus = columns.has('sync_status');
+    const hasBaseUpdatedAt = columns.has('base_updated_at');
+    const hasUserID = columns.has('user_id');
+    const hasDeleted = columns.has('deleted');
 
     if (hasMediaJson) {
       const mediaJson = entry.media ? JSON.stringify(entry.media) : null;
@@ -130,13 +189,18 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_json,
-          recording_status, recording_duration
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status, sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?, ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
         [
           id, entry.type, entry.content, timestamp,
           entry.tags ? JSON.stringify(entry.tags) : null,
           mediaJson,
           entry.recordingStatus || null, entry.recordingDuration || null,
+          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced', entry.syncOp ?? 'update'] : []),
+          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
+          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
+          ...(hasUserID ? [entry.userId ?? null] : []),
+          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
         ]
       );
     } else if (hasMediaColumns) {
@@ -150,8 +214,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_uri, media_type, media_duration, media_thumbnail, media_metadata,
-          recording_status, recording_duration
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status, sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?, ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
         [
           id,
           entry.type,
@@ -165,6 +229,11 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           mediaMetadata,
           entry.recordingStatus || null,
           entry.recordingDuration || null,
+          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced', entry.syncOp ?? 'update'] : []),
+          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
+          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
+          ...(hasUserID ? [entry.userId ?? null] : []),
+          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
         ]
       );
     } else {
@@ -174,8 +243,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_uri, media_type, media_duration,
-          recording_status, recording_duration
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status, sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?, ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
         [
           id,
           entry.type,
@@ -187,6 +256,11 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           firstMedia?.duration || null,
           entry.recordingStatus || null,
           entry.recordingDuration || null,
+          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced', entry.syncOp ?? 'update'] : []),
+          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
+          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
+          ...(hasUserID ? [entry.userId ?? null] : []),
+          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
         ]
       );
     }
@@ -200,7 +274,12 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       ...entry,
       id,
       timestamp,
-      syncStatus: 'synced',
+      syncStatus: entry.syncStatus ?? 'synced',
+      syncOp: entry.syncOp ?? 'update',
+      conflictedCopyOf: entry.conflictedCopyOf,
+      baseUpdatedAt: entry.baseUpdatedAt,
+      userId: entry.userId,
+      deleted: entry.deleted ?? false,
     } as Entry;
   } catch (error) {
     logger.error('Failed to add entry:', error);
@@ -221,6 +300,10 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     // 获取表列信息
     const columns = await getTableColumns(db);
     const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
+    const hasConflictedCopyOf = columns.has('conflicted_copy_of');
+    const hasBaseUpdatedAt = columns.has('base_updated_at');
+    const hasUserID = columns.has('user_id');
+    const hasDeleted = columns.has('deleted');
 
     if (updates.content !== undefined) {
       fields.push('content = ?');
@@ -257,6 +340,30 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     if (updates.recordingDuration !== undefined) {
       fields.push('recording_duration = ?');
       values.push(updates.recordingDuration);
+    }
+    if (updates.syncStatus !== undefined && columns.has('sync_status')) {
+      fields.push('sync_status = ?');
+      values.push(updates.syncStatus);
+    }
+    if (updates.syncOp !== undefined && columns.has('sync_op')) {
+      fields.push('sync_op = ?');
+      values.push(updates.syncOp);
+    }
+    if (updates.conflictedCopyOf !== undefined && hasConflictedCopyOf) {
+      fields.push('conflicted_copy_of = ?');
+      values.push(updates.conflictedCopyOf);
+    }
+    if (updates.baseUpdatedAt !== undefined && hasBaseUpdatedAt) {
+      fields.push('base_updated_at = ?');
+      values.push(updates.baseUpdatedAt);
+    }
+    if (updates.userId !== undefined && hasUserID) {
+      fields.push('user_id = ?');
+      values.push(updates.userId);
+    }
+    if (updates.deleted !== undefined && hasDeleted) {
+      fields.push('deleted = ?');
+      values.push(updates.deleted ? 1 : 0);
     }
 
     fields.push('updated_at = ?');
@@ -436,6 +543,36 @@ export const getEntriesPage = async (
   }
 };
 
+export const markEntryPendingDelete = async (id: string): Promise<void> => {
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    if (!columns.has('sync_status')) {
+      await db.runAsync('DELETE FROM entries WHERE id = ?', [id]);
+      return;
+    }
+
+    const fields = ['sync_status = ?', 'sync_op = ?'];
+    const values: any[] = ['pending_delete', 'delete'];
+
+    if (columns.has('deleted')) {
+      fields.push('deleted = ?');
+      values.push(1);
+    }
+
+    fields.push('updated_at = ?');
+    values.push(Date.now(), id);
+
+    await db.runAsync(
+      `UPDATE entries SET ${fields.join(', ')} WHERE id = ?`,
+      values,
+    );
+  } catch (error) {
+    logger.error('Failed to mark entry pending delete:', error);
+    throw error;
+  }
+};
+
 /**
  * 清空所有记录（谨慎使用）
  */
@@ -462,6 +599,11 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   // 在循环外获取列信息，避免重复查询
   const columns = await getTableColumns(db);
   const hasMediaJson = columns.has('media_json');
+  const hasSyncStatus = columns.has('sync_status');
+  const hasConflictedCopyOf = columns.has('conflicted_copy_of');
+  const hasBaseUpdatedAt = columns.has('base_updated_at');
+  const hasUserID = columns.has('user_id');
+  const hasDeleted = columns.has('deleted');
 
   await db.withTransactionAsync(async () => {
     for (const e of entries) {
@@ -470,18 +612,23 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
           hasMediaJson
             ? `INSERT OR IGNORE INTO entries
                  (id, type, content, timestamp, tags, media_json,
-                  recording_status, recording_duration, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                  recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}, ?, ?)`
             : `INSERT OR IGNORE INTO entries
                  (id, type, content, timestamp, tags, media_uri, media_type,
-                  media_duration, recording_status, recording_duration, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                  media_duration, recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}, ?, ?)`,
           hasMediaJson
             ? [
                 e.id, e.type, e.content, e.timestamp,
                 e.tags ? JSON.stringify(e.tags) : null,
                 e.media ? JSON.stringify(e.media) : null,
                 e.recordingStatus ?? null, e.recordingDuration ?? null,
+                ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
+                ...(hasConflictedCopyOf ? [e.conflictedCopyOf ?? null] : []),
+                ...(hasBaseUpdatedAt ? [e.baseUpdatedAt ?? null] : []),
+                ...(hasUserID ? [e.userId ?? null] : []),
+                ...(hasDeleted ? [e.deleted ? 1 : 0] : []),
                 e.timestamp, e.editedAt ?? e.timestamp,
               ]
             : [
@@ -490,6 +637,11 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
                 e.media?.[0]?.uri ?? null, e.media?.[0]?.mimeType ?? null,
                 e.media?.[0]?.duration ?? null,
                 e.recordingStatus ?? null, e.recordingDuration ?? null,
+                ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
+                ...(hasConflictedCopyOf ? [e.conflictedCopyOf ?? null] : []),
+                ...(hasBaseUpdatedAt ? [e.baseUpdatedAt ?? null] : []),
+                ...(hasUserID ? [e.userId ?? null] : []),
+                ...(hasDeleted ? [e.deleted ? 1 : 0] : []),
                 e.timestamp, e.editedAt ?? e.timestamp,
               ]
         );

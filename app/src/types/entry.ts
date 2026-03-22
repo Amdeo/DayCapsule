@@ -17,12 +17,19 @@ export interface Entry {
   transcription?: TranscriptionInfo;
 
   // 录音状态（仅在 type 为 'voice' 时使用）
-  recordingStatus?: 'recording' | 'paused' | 'completed';
+  recordingStatus?: 'recording' | 'paused' | 'uploading' | 'completed';
   recordingDuration?: number; // 录音时长（秒）
 
   // 编辑与同步
   editedAt?: number;
-  syncStatus: 'pending' | 'synced' | 'failed';
+  updatedAt?: number; // 最近一次修改时间（来自 updated_at）
+  lastEditedDeviceId?: string; // 最后修改设备（云同步用，可选）
+  baseUpdatedAt?: number; // 编辑时的基线版本，用于构造同步请求
+  conflictedCopyOf?: string; // 若为冲突副本，则指向原 entryId
+  userId?: string; // 当前记录所属账号（云同步用，可选）
+  deleted?: boolean; // 软删除标记，用于本地优先同步
+  syncOp?: 'create' | 'update' | 'delete';
+  syncStatus: 'pending' | 'pending_upload' | 'uploading' | 'synced' | 'failed' | 'pending_delete' | 'conflict-local-copy';
 }
 
 /**
@@ -30,10 +37,12 @@ export interface Entry {
  */
 export interface MediaInfo {
   uri: string; // 本地文件路径
+  remoteUri?: string; // 云端原始地址（若存在）
   mimeType: string; // 媒体类型 (image/jpeg, audio/m4a)
   size: number; // 文件大小（字节）
   duration?: number; // 音频/视频时长（秒）
   thumbnail?: string; // 缩略图 URI
+  remoteThumbnail?: string; // 云端缩略图地址（若存在）
 
   metadata?: {
     width?: number; // 图片宽度

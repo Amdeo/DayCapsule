@@ -303,3 +303,69 @@ export const migrateToMediaJson = async (): Promise<void> => {
     logger.error('❌ media_json 迁移失败:', error);
   }
 };
+
+/**
+ * 为 entries 增加 sync_status 列
+ * 幂等：已存在则跳过
+ */
+export const migrateSyncStatusColumn = async (): Promise<void> => {
+  if (migrationStore.getString('sync_status_column_added') === 'true') return;
+
+  const db = getDatabase();
+  try {
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    if (!tableInfo.some(col => col.name === 'sync_status')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN sync_status TEXT DEFAULT 'synced'`);
+      logger.log('✅ 添加 sync_status 列');
+    }
+    if (!tableInfo.some(col => col.name === 'sync_op')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN sync_op TEXT DEFAULT 'update'`);
+      logger.log('✅ 添加 sync_op 列');
+    }
+    if (!tableInfo.some(col => col.name === 'conflicted_copy_of')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN conflicted_copy_of TEXT`);
+      logger.log('✅ 添加 conflicted_copy_of 列');
+    }
+
+    await db.runAsync(`UPDATE entries SET sync_status = 'synced' WHERE sync_status IS NULL`);
+    await db.runAsync(`UPDATE entries SET sync_op = 'update' WHERE sync_op IS NULL`);
+    invalidateColumnCache();
+    migrationStore.set('sync_status_column_added', 'true');
+    logger.log('✅ sync_status / sync_op / conflicted_copy_of 列迁移完成');
+  } catch (error) {
+    logger.error('❌ sync_status 列迁移失败:', error);
+  }
+};
+
+/**
+ * 为前端本地优先同步内核补齐基础列
+ * 幂等：已存在则跳过
+ */
+export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
+  if (migrationStore.getString('cloud_sync_core_columns_added') === 'true') return;
+
+  const db = getDatabase();
+  try {
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+
+    if (!tableInfo.some(col => col.name === 'base_updated_at')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN base_updated_at INTEGER`);
+      logger.log('✅ 添加 base_updated_at 列');
+    }
+    if (!tableInfo.some(col => col.name === 'user_id')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN user_id TEXT`);
+      logger.log('✅ 添加 user_id 列');
+    }
+    if (!tableInfo.some(col => col.name === 'deleted')) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN deleted INTEGER DEFAULT 0`);
+      logger.log('✅ 添加 deleted 列');
+    }
+
+    await db.runAsync(`UPDATE entries SET deleted = 0 WHERE deleted IS NULL`);
+    invalidateColumnCache();
+    migrationStore.set('cloud_sync_core_columns_added', 'true');
+    logger.log('✅ cloud sync core 列迁移完成');
+  } catch (error) {
+    logger.error('❌ cloud sync core 列迁移失败:', error);
+  }
+};

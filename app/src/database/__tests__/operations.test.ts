@@ -28,6 +28,7 @@ import {
   addEntry,
   updateEntry,
   deleteEntry,
+  markEntryPendingDelete,
   searchEntries,
   getEntriesCount,
   getAllTags,
@@ -79,6 +80,35 @@ describe('database/operations', () => {
 
       const result = await getAllEntries();
       expect(result).toEqual([]);
+    });
+
+    it('应该从数据库行中保留 sync_status 与 media_json.remoteUri', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        {
+          id: 'voice-1',
+          type: 'voice',
+          content: '',
+          timestamp: 1700000000000,
+          tags: null,
+          media_json: JSON.stringify([
+            {
+              uri: 'file:///cache/voice.m4a',
+              remoteUri: 'https://cdn.example.com/voice.m4a',
+              mimeType: 'audio/m4a',
+              size: 100,
+              duration: 12000,
+            },
+          ]),
+          recording_status: 'completed',
+          recording_duration: 12,
+          sync_status: 'pending_upload',
+        },
+      ]);
+
+      const result = await getAllEntries();
+
+      expect(result[0].syncStatus).toBe('pending_upload');
+      expect(result[0].media?.[0]?.remoteUri).toBe('https://cdn.example.com/voice.m4a');
     });
   });
 
@@ -141,6 +171,39 @@ describe('database/operations', () => {
 
       const result = await getEntriesPage({}, 20);
       expect(result).toEqual([]);
+    });
+  });
+
+  // ─── getEntryById ───────────────────────────────────────────────────────────
+
+  describe('getEntryById', () => {
+    it('应该读取 baseUpdatedAt userId deleted 与 conflictedCopyOf', async () => {
+      mockDb.getFirstAsync.mockResolvedValueOnce({
+        id: 'entry-1',
+        type: 'text',
+        content: 'server copy',
+        timestamp: 1700000000000,
+        tags: '["工作"]',
+        sync_status: 'conflict-local-copy',
+        sync_op: 'update',
+        conflicted_copy_of: 'entry-root',
+        base_updated_at: 1699999999000,
+        user_id: 'user-1',
+        deleted: 1,
+        updated_at: 1700000001000,
+      });
+
+      const result = await getEntryById('entry-1');
+
+      expect(result).toMatchObject({
+        id: 'entry-1',
+        syncStatus: 'conflict-local-copy',
+        conflictedCopyOf: 'entry-root',
+        baseUpdatedAt: 1699999999000,
+        userId: 'user-1',
+        deleted: true,
+        updatedAt: 1700000001000,
+      });
     });
   });
 
@@ -229,6 +292,119 @@ describe('database/operations', () => {
 
       pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
       await addEntryPromise;
+    });
+
+    it('写入 media_json 时应该同时持久化 sync_status', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+      ]);
+
+      const result = await addEntry({
+        type: 'voice',
+        content: '',
+        syncStatus: 'pending_upload',
+        recordingStatus: 'completed',
+        media: [{
+          uri: 'file:///cache/voice.m4a',
+          remoteUri: 'https://cdn.example.com/voice.m4a',
+          mimeType: 'audio/m4a',
+          size: 100,
+          duration: 12000,
+        }],
+      });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('sync_status');
+      expect(params).toContain('pending_upload');
+      expect(result.syncStatus).toBe('pending_upload');
+    });
+
+    it('列存在时应该持久化 baseUpdatedAt userId deleted 与 conflictedCopyOf', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+        { name: 'sync_op' },
+        { name: 'conflicted_copy_of' },
+        { name: 'base_updated_at' },
+        { name: 'user_id' },
+        { name: 'deleted' },
+      ]);
+
+      const result = await addEntry({
+        type: 'text',
+        content: '带同步元数据',
+        syncStatus: 'pending',
+        syncOp: 'update',
+        conflictedCopyOf: 'entry-root',
+        baseUpdatedAt: 1700000000000,
+        userId: 'user-1',
+        deleted: true,
+      });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('conflicted_copy_of');
+      expect(sql).toContain('base_updated_at');
+      expect(sql).toContain('user_id');
+      expect(sql).toContain('deleted');
+      expect(params).toContain('entry-root');
+      expect(params).toContain(1700000000000);
+      expect(params).toContain('user-1');
+      expect(params).toContain(1);
+      expect(result).toMatchObject({
+        conflictedCopyOf: 'entry-root',
+        baseUpdatedAt: 1700000000000,
+        userId: 'user-1',
+        deleted: true,
+      });
+    });
+  });
+
+  // ─── updateEntry ───────────────────────────────────────────────────────────
+
+  describe('updateEntry', () => {
+    it('列存在时应该更新 baseUpdatedAt userId deleted 与 conflictedCopyOf', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+        { name: 'sync_op' },
+        { name: 'conflicted_copy_of' },
+        { name: 'base_updated_at' },
+        { name: 'user_id' },
+        { name: 'deleted' },
+      ]);
+
+      await updateEntry('entry-1', {
+        conflictedCopyOf: 'entry-root',
+        baseUpdatedAt: 1700000000000,
+        userId: 'user-1',
+        deleted: true,
+      });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('conflicted_copy_of = ?');
+      expect(sql).toContain('base_updated_at = ?');
+      expect(sql).toContain('user_id = ?');
+      expect(sql).toContain('deleted = ?');
+      expect(params).toContain('entry-root');
+      expect(params).toContain(1700000000000);
+      expect(params).toContain('user-1');
+      expect(params).toContain(1);
     });
   });
 
@@ -334,6 +510,72 @@ describe('database/operations', () => {
       expect(insertCalls).toHaveLength(3);
       expect(mockDb.getFirstAsync).toHaveBeenCalledTimes(2);
       expect(result).toEqual(['1', '3']);
+    });
+
+    it('列存在时应该恢复 baseUpdatedAt userId deleted 与 conflictedCopyOf', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+        { name: 'conflicted_copy_of' },
+        { name: 'base_updated_at' },
+        { name: 'user_id' },
+        { name: 'deleted' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'entry-1',
+          type: 'text',
+          content: 'restore me',
+          timestamp: 1,
+          syncStatus: 'conflict-local-copy',
+          conflictedCopyOf: 'entry-root',
+          baseUpdatedAt: 1700000000000,
+          userId: 'user-1',
+          deleted: true,
+        },
+      ]);
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('conflicted_copy_of');
+      expect(sql).toContain('base_updated_at');
+      expect(sql).toContain('user_id');
+      expect(sql).toContain('deleted');
+      expect(params).toContain('entry-root');
+      expect(params).toContain(1700000000000);
+      expect(params).toContain('user-1');
+      expect(params).toContain(1);
+    });
+  });
+
+  // ─── markEntryPendingDelete ────────────────────────────────────────────────
+
+  describe('markEntryPendingDelete', () => {
+    it('应该保留记录并写入 pending_delete delete deleted', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'sync_status' },
+        { name: 'sync_op' },
+        { name: 'deleted' },
+      ]);
+
+      await markEntryPendingDelete('entry-1');
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('sync_status = ?'),
+        expect.arrayContaining(['pending_delete', 'delete', 1, 'entry-1'])
+      );
+      expect((mockDb.runAsync.mock.calls[0]?.[0] as string)).not.toContain('DELETE FROM entries');
     });
   });
 });

@@ -12,7 +12,25 @@ const mockApiClient = {
 };
 
 jest.mock('@/src/services/apiClient', () => ({
+  ApiError: class ApiError extends Error {
+    code: string;
+    status: number;
+    constructor(code: string, message: string, status: number) {
+      super(message);
+      this.name = 'ApiError';
+      this.code = code;
+      this.status = status;
+    }
+  },
   getApiClient: () => mockApiClient,
+}));
+
+jest.mock('@/src/services/mediaCacheService', () => ({
+  MediaCacheService: {
+    hydrateEntries: jest.fn(async (entries) => entries),
+    isRemoteUri: jest.fn((uri?: string) => !!uri && /^https?:\/\//.test(uri)),
+    normalizeRemoteUri: jest.fn((uri: string) => uri),
+  },
 }));
 
 jest.mock('@/src/database/operations', () => ({
@@ -31,8 +49,16 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
+import { ApiError } from '@/src/services/apiClient';
+import { MediaCacheService } from '@/src/services/mediaCacheService';
 import { localDataSource } from '../dataSource';
 import * as DB from '@/src/database/operations';
+
+const mockMediaCacheService = MediaCacheService as unknown as {
+  hydrateEntries: jest.Mock;
+  isRemoteUri: jest.Mock;
+  normalizeRemoteUri: jest.Mock;
+};
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -72,6 +98,12 @@ describe('RemoteDataSource', () => {
 
   beforeEach(() => {
     Object.values(mockApiClient).forEach((fn) => (fn as jest.Mock).mockReset());
+    Object.values(mockMediaCacheService).forEach((fn) => {
+      if (typeof fn === 'function' && 'mockReset' in fn) (fn as jest.Mock).mockReset();
+    });
+    mockMediaCacheService.hydrateEntries.mockImplementation(async (entries) => entries);
+    mockMediaCacheService.isRemoteUri.mockImplementation((uri?: string) => !!uri && /^https?:\/\//.test(uri));
+    mockMediaCacheService.normalizeRemoteUri.mockImplementation((uri: string) => uri);
   });
 
   it('getEntriesPage calls GET /entries with query params', async () => {
@@ -82,6 +114,7 @@ describe('RemoteDataSource', () => {
       cursor: '1000',
       type: 'text',
     });
+    expect(mockMediaCacheService.hydrateEntries).toHaveBeenCalledWith([]);
   });
 
   it('addEntry without media calls POST /entries', async () => {
@@ -112,6 +145,37 @@ describe('RemoteDataSource', () => {
 
     expect(mockApiClient.uploadFile).toHaveBeenCalledWith('/media/upload', 'file:///local/photo.jpg', 'file');
     expect(result.id).toBe('r2');
+    expect(result.media?.[0]).toMatchObject({
+      uri: 'file:///local/photo.jpg',
+      remoteUri: 'https://cdn/media-1',
+    });
+  });
+
+  it('addEntry stops before POST /entries when media upload fails', async () => {
+    mockApiClient.uploadFile.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'upload failed', 0));
+
+    await expect(
+      remoteDS.addEntry({
+        type: 'voice',
+        content: '',
+        media: [{ uri: 'file:///local/voice.m4a', mimeType: 'audio/m4a', size: 100 }],
+        syncStatus: 'pending',
+      })
+    ).rejects.toMatchObject({ code: 'MEDIA_UPLOAD_FAILED', message: 'upload failed' });
+
+    expect(mockApiClient.post).not.toHaveBeenCalled();
+  });
+
+  it('maps entry creation failure to ENTRY_CREATE_FAILED', async () => {
+    mockApiClient.post.mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'create failed', 0));
+
+    await expect(
+      remoteDS.addEntry({
+        type: 'text',
+        content: 'hello',
+        syncStatus: 'pending',
+      })
+    ).rejects.toMatchObject({ code: 'ENTRY_CREATE_FAILED', message: 'create failed' });
   });
 
   it('deleteEntry calls DELETE /entries/:id', async () => {

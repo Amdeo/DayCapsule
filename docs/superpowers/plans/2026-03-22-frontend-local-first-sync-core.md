@@ -21,10 +21,24 @@
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 未开始 | 扩展本地同步字段、SQLite schema 与 operations，兼容保留现有媒体状态 |
-| Task 2 | 未开始 | 新建 `syncStore` 并收口 `cloudSyncService` 的 cursor / results / conflicts 语义 |
-| Task 3 | 未开始 | 让 `entryStore` 和主读写路径完全本地优先，移除 `RemoteDataSource` 对主流程的控制 |
-| Task 4 | 未开始 | 新建 `syncBootstrapService`，接入 `_layout` / `SettingsPage`，完成验证与文档收口 |
+| Task 1 | 已完成 | 已补齐 `base_updated_at / user_id / deleted` 字段读写，并用 `operations.test.ts` 锁定 round-trip 与 `pending_delete` 兼容 |
+| Task 2 | 已完成 | 已新增 `syncStore`，并让 `cloudSyncService` 对接 `results[] / serverChanges[] / conflicts[]` 与新冲突副本语义 |
+| Task 3 | 已完成 | `entryStore` 主读写路径已切回本地 DB；云端模式下的新增 / 编辑 / 删除只落本地，并保留语音上传状态兼容 |
+| Task 4 | 已完成 | 已新增 `syncBootstrapService`，接入 `SettingsPage` / `_layout`，并完成 targeted tests 与 `typecheck` |
+
+## 实际执行说明
+
+- Task 1 到 Task 4 已按 TDD 执行：先补失败测试，再补最小实现，最后跑绿目标测试。
+- 本轮保留了 `pending_upload`、`uploading`、`pending_delete` 的兼容语义，没有顺手拆媒体状态枚举；这是刻意控制范围，不是遗漏。
+- `RemoteDataSource` 兼容导出仍保留在 `dataSource.ts`，但 `entryStore`、`SettingsPage`、`_layout` 已不再依赖它作为主流程。
+- 当前工作区存在大量用户已有的前端草稿与其他改动，本轮没有按 task 粒度单独提交代码；计划中的 `Commit` 步骤保持未执行。
+
+## 验证结果
+
+- 2026-03-22：已运行 `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
+  - 结果：PASS（7 个 test suite，80 个测试全部通过）
+- 2026-03-22：已运行 `cd app && npm run typecheck`
+  - 结果：PASS
 
 ## File Structure
 

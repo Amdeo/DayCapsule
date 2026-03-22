@@ -21,9 +21,48 @@ const mockDataSource = {
 
 jest.mock('@/src/database/dataSource', () => ({
   getActiveDataSource: () => mockDataSource,
-  localDataSource: mockDataSource,
+  get localDataSource() {
+    return mockDataSource;
+  },
   switchDataSource: jest.fn(),
 }));
+
+jest.mock('@/src/database/operations', () => ({
+  addEntry: jest.fn().mockImplementation(async (entry) => ({
+    ...entry,
+    id: 'local-entry-1',
+    timestamp: 1700000000000,
+  })),
+  updateEntry: jest.fn().mockResolvedValue(undefined),
+  deleteEntry: jest.fn().mockResolvedValue(undefined),
+  markEntryPendingDelete: jest.fn().mockResolvedValue(undefined),
+  getVoiceEntriesBySyncStatus: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('@/src/utils/fileSystem', () => ({
+  deleteFile: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/src/services/voiceUploadQueue', () => ({
+  cancelVoiceUpload: jest.fn(),
+}));
+
+let mockCloudMode: boolean | 'switching' = false;
+jest.mock('@/src/store/settingsStore', () => {
+  const useSettingsStore = Object.assign(
+    () => ({ cloudMode: mockCloudMode }),
+    {
+      getState: () => ({ cloudMode: mockCloudMode }),
+      setState: (partial: { cloudMode?: boolean | 'switching' }) => {
+        if (partial.cloudMode !== undefined) {
+          mockCloudMode = partial.cloudMode;
+        }
+      },
+    },
+  );
+
+  return { useSettingsStore };
+});
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -36,6 +75,8 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import { useEntryStore } from '../entryStore';
+import { useSettingsStore } from '../settingsStore';
+import * as DB from '@/src/database/operations';
 
 const PAGE_SIZE = 20;
 
@@ -82,6 +123,7 @@ describe('entryStore', () => {
   beforeEach(() => {
     resetStore();
     jest.resetAllMocks();
+    mockCloudMode = false;
     mockDataSource.getEntriesPage.mockResolvedValue([]);
     mockDataSource.getEntryCount.mockResolvedValue(0);
     mockDataSource.addEntry.mockImplementation((entry) =>
@@ -96,6 +138,16 @@ describe('entryStore', () => {
     mockDataSource.deleteEntry.mockResolvedValue(undefined);
     mockDataSource.getAllTags.mockResolvedValue([]);
     mockDataSource.restoreEntries.mockResolvedValue([]);
+    (DB.addEntry as jest.Mock).mockImplementation(async (entry) => ({
+      ...entry,
+      id: 'local-entry-1',
+      timestamp: 1700000000000,
+    }));
+    (DB.updateEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.markEntryPendingDelete as jest.Mock).mockResolvedValue(undefined);
+    (DB.getVoiceEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
+    useSettingsStore.setState({ cloudMode: false });
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────
@@ -370,11 +422,64 @@ describe('entryStore', () => {
     });
 
     it('添加失败时应该抛出错误', async () => {
-      mockDataSource.addEntry.mockRejectedValue(new Error('数据库错误'));
+      (DB.addEntry as jest.Mock).mockRejectedValueOnce(new Error('数据库错误'));
 
       await expect(
         useEntryStore.getState().addEntry({ type: 'text', content: '测试' })
       ).rejects.toThrow('数据库错误');
+    });
+
+    it('cloudMode 开启时也应该通过 DB.addEntry 本地写入', async () => {
+      useSettingsStore.setState({ cloudMode: true });
+      (DB.addEntry as jest.Mock).mockResolvedValueOnce({
+        id: 'local-entry-2',
+        type: 'text',
+        content: '云端模式本地写入',
+        timestamp: 1700000000001,
+        syncStatus: 'pending',
+        syncOp: 'create',
+      });
+
+      await useEntryStore.getState().addEntry({ type: 'text', content: '云端模式本地写入' });
+
+      expect(DB.addEntry).toHaveBeenCalledWith(expect.objectContaining({
+        content: '云端模式本地写入',
+        syncStatus: 'pending',
+        syncOp: 'create',
+      }));
+      expect(mockDataSource.addEntry).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── updateEntry ───────────────────────────────────────────────────────────
+
+  describe('updateEntry', () => {
+    it('cloudMode 开启时应该通过 DB.updateEntry 并保留语音上传状态', async () => {
+      useSettingsStore.setState({ cloudMode: true });
+      useEntryStore.setState({
+        entries: [
+          {
+            id: 'voice-1',
+            type: 'voice',
+            content: '',
+            timestamp: 1700000000000,
+            syncStatus: 'pending_upload',
+          },
+        ],
+      });
+
+      await useEntryStore.getState().updateEntry('voice-1', {
+        content: 'updated',
+        syncStatus: 'pending_upload',
+        updatedAt: 1700000001000,
+      });
+
+      expect(DB.updateEntry).toHaveBeenCalledWith('voice-1', expect.objectContaining({
+        content: 'updated',
+        syncStatus: 'pending_upload',
+        baseUpdatedAt: 1700000001000,
+      }));
+      expect(mockDataSource.updateEntry).not.toHaveBeenCalled();
     });
   });
 
@@ -395,6 +500,20 @@ describe('entryStore', () => {
       expect(entries).toHaveLength(1);
       expect(entries[0].id).toBe('2');
       expect(mockDataSource.deleteEntry).toHaveBeenCalledWith('1');
+    });
+
+    it('cloudMode 开启时应该把 synced 记录标记为 pending_delete，而不是调用远端删除', async () => {
+      useSettingsStore.setState({ cloudMode: true });
+      useEntryStore.setState({
+        entries: [
+          { id: '1', type: 'text', content: '记录1', timestamp: 1700000000000, syncStatus: 'synced' },
+        ],
+      });
+
+      await useEntryStore.getState().deleteEntry('1');
+
+      expect(DB.markEntryPendingDelete).toHaveBeenCalledWith('1');
+      expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
     });
   });
 

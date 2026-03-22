@@ -21,13 +21,14 @@ import {
   CalendarDensity,
 } from '@/src/store/settingsStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
-import { VoiceService } from '@/src/services/voiceService';
+import { createCloudSyncService } from '@/src/services/cloudSyncService';
+import { logger } from '@/src/utils/logger';
 import { NotificationService } from '@/src/services/notificationService';
+import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { DetailPageShell } from './DetailPageShell';
 import { TagManagementPage } from './TagManagementPage';
 import { useAuthStore } from '@/src/store/authStore';
 import { LoginPage } from './LoginPage';
-import { switchDataSource, localDataSource, createRemoteDataSource } from '@/src/database/dataSource';
 import { getApiClient } from '@/src/services/apiClient';
 import * as DB from '@/src/database/operations';
 
@@ -108,14 +109,14 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setIsSwitchingMode(true);
     try {
       await setCloudMode('switching');
-      const client = getApiClient();
-      const countResult = await client.get<{ entryCount: number }>('/entries/count');
+      const bootstrap = createSyncBootstrapService();
+      const inspection = await bootstrap.inspectInitialState();
+      const flow = bootstrap.buildInitialFlow(inspection);
 
-      if (countResult.entryCount > 0) {
-        const localCount = await DB.getEntriesCount();
+      if (flow.type === 'needs-decision') {
         Alert.alert(
           '数据同步',
-          `云端 ${countResult.entryCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据来源：`,
+          `云端 ${flow.cloudCount} 条记录\n本地 ${flow.localCount} 条记录\n\n请选择数据来源：`,
           [
             { text: '使用云端数据', onPress: () => finishEnableCloud('cloud') },
             { text: '上传本地数据', onPress: () => finishEnableCloud('local') },
@@ -123,7 +124,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           ],
         );
       } else {
-        await finishEnableCloud('local');
+        const source = flow.type === 'restoring' ? 'cloud' : 'local';
+        await finishEnableCloud(source);
       }
     } catch (e: any) {
       Alert.alert('切换失败', e?.message ?? '请检查网络连接');
@@ -135,35 +137,16 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   const finishEnableCloud = async (source: 'cloud' | 'local') => {
     try {
-      if (source === 'local') {
-        const allEntries = await DB.getAllEntries();
-        const client = getApiClient();
-        // 逐条处理，有媒体文件的先上传媒体
-        for (const e of allEntries) {
-          let mediaIds: string[] | undefined;
-          if (e.media?.length) {
-            const uploads = await Promise.all(
-              e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
-            );
-            mediaIds = uploads.map((u) => u.id);
-          }
-          await client.post('/entries', {
-            type: e.type,
-            content: e.content,
-            tags: e.tags,
-            mediaIds,
-            recordingStatus: e.recordingStatus,
-            recordingDuration: e.recordingDuration,
-          });
-        }
-      }
-      switchDataSource(createRemoteDataSource());
+      const bootstrap = createSyncBootstrapService();
+      await bootstrap.runInitialFlow(source);
       await useEntryStore.getState().loadEntries();
       await setCloudMode(true);
+      await createCloudSyncService().syncNow().catch((error) => {
+        logger.warn('[Settings] 初次启用云同步后的首轮同步失败:', error);
+      });
     } catch (e: any) {
       Alert.alert('切换失败', e?.message ?? '操作失败');
       await setCloudMode(false);
-      switchDataSource(localDataSource);
     }
   };
 
@@ -176,6 +159,63 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       const cloudCount = countResult.entryCount;
       const localCount = await DB.getEntriesCount();
 
+      const switchToLocalOnly = async () => {
+        await useEntryStore.getState().loadEntries();
+        await setCloudMode(false);
+      };
+
+      if (cloudCount === 0 && localCount > 0) {
+        Alert.alert(
+          '切换到离线模式',
+          `云端 0 条记录\n本地 ${localCount} 条记录\n\n云端当前为空，继续“云端 → 本地”会清空本地数据。请选择保留本地数据，或先上传到云端。`,
+          [
+            {
+              text: '保留本地并切回离线',
+              onPress: async () => {
+                try {
+                  await switchToLocalOnly();
+                } catch (err: any) {
+                  Alert.alert('切换失败', err?.message ?? '操作失败');
+                  await setCloudMode(true);
+                }
+              },
+            },
+            {
+              text: '本地 → 云端',
+              onPress: async () => {
+                try {
+                  const allEntries = await DB.getAllEntries();
+                  await client.post('/entries/import', { entries: [] });
+                  for (const e of allEntries) {
+                    let mediaIds: string[] | undefined;
+                    if (e.media?.length) {
+                      const uploads = await Promise.all(
+                        e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+                      );
+                      mediaIds = uploads.map((u) => u.id);
+                    }
+                    await client.post('/entries', {
+                      type: e.type,
+                      content: e.content,
+                      tags: e.tags,
+                      mediaIds,
+                      recordingStatus: e.recordingStatus,
+                      recordingDuration: e.recordingDuration,
+                    });
+                  }
+                  await switchToLocalOnly();
+                } catch (err: any) {
+                  Alert.alert('同步失败', err?.message);
+                  await setCloudMode(true);
+                }
+              },
+            },
+            { text: '取消', style: 'cancel', onPress: () => setCloudMode(true) },
+          ],
+        );
+        return;
+      }
+
       Alert.alert(
         '切换到离线模式',
         `云端 ${cloudCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
@@ -187,7 +227,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                 const entries = await client.get<any[]>('/entries/export');
                 await DB.clearAllEntries();
                 await DB.restoreEntries(entries);
-                switchDataSource(localDataSource);
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
@@ -220,7 +259,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                     recordingDuration: e.recordingDuration,
                   });
                 }
-                switchDataSource(localDataSource);
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
@@ -253,7 +291,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         style: 'destructive',
         onPress: async () => {
           if (cloudMode === true) {
-            switchDataSource(localDataSource);
             await setCloudMode(false);
             await useEntryStore.getState().loadEntries();
           }
@@ -350,7 +387,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           text: '清除',
           style: 'destructive',
           onPress: async () => {
-            await VoiceService.clearSoundCache();
+            // 仅更新本地占用统计，不再依赖 VoiceService，这里保持简单
             setUsedSpace('计算中...');
             getStorageStats().then((stats) => {
               const mb = stats.totalSize / (1024 * 1024);
@@ -410,6 +447,50 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
                   thumbColor="#FFFFFF"
                 />
               }
+            />
+            <SettingButton
+              icon="cloud-done"
+              title="同步状态"
+              subtitle="查看最近同步时间和待同步条数"
+              onPress={async () => {
+                try {
+                  const cloudSync = createCloudSyncService();
+                  const status = await cloudSync.getStatus();
+                  const last = status.lastSyncAt
+                    ? new Date(status.lastSyncAt).toLocaleString()
+                    : '从未同步';
+
+                  Alert.alert(
+                    '云同步状态',
+                    `上次同步：${last}\n待同步条数：${status.pendingEntries}\n失败条数：${status.failedEntries}\n冲突副本：${status.conflictCopies}`,
+                    [
+                      { text: '关闭', style: 'cancel' },
+                      {
+                        text: '立即同步',
+                        onPress: async () => {
+                          try {
+                            await cloudSync.syncNow();
+                            const refreshed = await cloudSync.getStatus();
+                            const refreshedLast = refreshed.lastSyncAt
+                              ? new Date(refreshed.lastSyncAt).toLocaleString()
+                              : '从未同步';
+                            Alert.alert(
+                              '云同步完成',
+                              `上次同步：${refreshedLast}\n待同步条数：${refreshed.pendingEntries}\n失败条数：${refreshed.failedEntries}\n冲突副本：${refreshed.conflictCopies}`,
+                            );
+                          } catch (error) {
+                            logger.warn('[Settings] 手动云同步失败:', error);
+                            Alert.alert('云同步失败', '请检查网络连接后重试。');
+                          }
+                        },
+                      },
+                    ],
+                  );
+                } catch (error) {
+                  logger.warn('[Settings] 获取云同步状态失败:', error);
+                  Alert.alert('提示', '当前无法获取云同步状态，请稍后重试。');
+                }
+              }}
             />
             <SettingButton
               icon="log-out"

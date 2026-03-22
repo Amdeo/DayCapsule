@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
 
 ## 评审记录
@@ -330,6 +330,25 @@
 - 本次不提供复杂冲突解决 UI
 - 本次不做网络恢复自动同步与轮询调度
 - 本次不处理多账号切换的完整数据隔离
+
+### 11. 实现结果
+
+- `entryStore` 的主读写路径已经切回本地 SQLite；`add / update / delete` 不再通过 `RemoteDataSource` 直写远端。
+- `syncStore`、`cloudSyncService`、`syncBootstrapService` 已落地，前端已对接后端 `results[] / serverChanges[] / conflicts[]` 协议，并把冲突副本收口为 `conflict-local-copy`。
+- `_layout` 启动流程已接入 `migrateCloudSyncCoreColumns()`、同步状态恢复和 bootstrap 初始化；回到前台会触发 entry 同步，网络恢复监听仍只处理语音补传。
+- `SettingsPage` 启用云同步时已改走 `syncBootstrapService`，不再切换 `RemoteDataSource`。
+
+### 12. 最终说明
+
+- 为避免把媒体任务再次拖入本轮，`pending_upload`、`uploading`、`pending_delete` 仍保持兼容；`entry` 元数据同步主路径默认只主动生成 `pending`、`synced`、`failed`、`conflict-local-copy`。
+- `dataSource.ts` 中的 `RemoteDataSource` 兼容导出仍然保留，但 `entryStore`、`SettingsPage`、`_layout` 已不再依赖它作为主流程。
+
+## 验证结果
+
+- 2026-03-22：已运行 `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
+  - 结果：PASS（7 个 test suite，80 个测试全部通过）
+- 2026-03-22：已运行 `cd app && npm run typecheck`
+  - 结果：PASS
 
 ## Spec Review 留痕
 
