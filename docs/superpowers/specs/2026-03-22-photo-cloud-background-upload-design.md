@@ -2,8 +2,8 @@
 
 ## 状态
 
-- 当前状态：待评审
-- 用户确认日期：待补充
+- 当前状态：已批准
+- 用户确认日期：2026-03-22
 - 实现完成日期：待补充
 
 ## 评审记录
@@ -20,6 +20,7 @@
   - `photoUploadQueue` 只负责媒体上传，不直接创建远端 entry
   - `cloudSyncService` 继续负责 entry 元数据同步
   - `voiceUploadQueue` 的历史直写路径记为已知技术债，不在本轮顺带清理
+- 2026-03-22：用户 review 了 spec 并回复 `ok`，批准进入 `writing-plans` 阶段。
 
 ## 背景
 
