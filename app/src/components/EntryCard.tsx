@@ -106,6 +106,7 @@ function EntryCard({
   const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
   const openSheetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resetCardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopRecordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardTranslateX = useSharedValue(0);
 
   // 红点闪烁动画
@@ -150,6 +151,9 @@ function EntryCard({
       }
       if (resetCardTimeoutRef.current) {
         clearTimeout(resetCardTimeoutRef.current);
+      }
+      if (stopRecordingTimeoutRef.current) {
+        clearTimeout(stopRecordingTimeoutRef.current);
       }
     };
   }, []);
@@ -692,7 +696,7 @@ function EntryCard({
     } catch (error) {
       logger.error('Failed to stop recording:', error);
     } finally {
-      setTimeout(() => {
+      stopRecordingTimeoutRef.current = setTimeout(() => {
         stopRequestInFlightRef.current = false;
         setIsProcessing(false);
       }, 300);
