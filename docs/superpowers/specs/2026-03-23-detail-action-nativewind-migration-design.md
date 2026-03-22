@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已实现并完成验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -16,6 +17,7 @@
 - 2026-03-23：已确认 `TextEntryDetailPage` 只迁自身内容层，不把 [DetailPageShell.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/DetailPageShell.tsx) 一并纳入本轮。
 - 2026-03-23：已确认本轮会补组件级测试，并在迁移完成后把这 3 个文件从 allowlist 中移除。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 先采用本地结构化 review 留痕。
+- 2026-03-23：实现已按设计完成，三个目标文件均已迁出 allowlist，验证命令全部通过。
 
 ## 背景
 
@@ -230,8 +232,28 @@
 - 只在需要稳定测试时新增 `testID`
 - 每迁完一个文件就同步收紧 allowlist，避免回退
 
+## 实现结果
+
+- `TextEntryDetailPage` 已完成内容层迁移，保留 `DetailPageShell`、时间格式化和 `onEdit(entry)` 行为，并补充 `text-entry-detail-root`、`text-entry-detail-hero`、`text-entry-detail-tags` 测试锚点。
+- `EntryActionSheet` 已完成面板静态壳层迁移，保留 `Modal`、`PanResponder`、`translateY` / `backdropOpacity`、确认态与关闭流程，并补充 `action-sheet-panel`、`action-sheet-option-group` 测试锚点。
+- `CloudSyncStatusButton` 已完成按钮壳层迁移，保留呼吸动画、旋转动画、spinner ring / status dot 的运行时样式，并补充 `cloud-sync-shell` 测试锚点。
+- `app/eslint/style-guard-allowlist.js` 已移除这 3 个目标文件，首页主路径第三批不再依赖 legacy 放行。
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEntryDetailPage.test.tsx src/components/__tests__/EntryActionSheet.test.tsx src/components/__tests__/CloudSyncStatusButton.test.tsx`：PASS
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS
+
+## 实现备注
+
+- 本轮没有新增 Tailwind 语义 token。
+- `TextEntryDetailPage` 优先复用了 `editor.*`、`copy.*`、`border.editor-soft` 等现有 token。
+- `EntryActionSheet` 与 `CloudSyncStatusButton` 为保持现有视觉不漂移，沿用了组件原有的少量精确色值，并改为 NativeWind arbitrary classes 表达。
+
 ## 本地结构化 Review 结论
 
 - 已对第三批范围、入口关系、迁移边界、测试策略和 allowlist 收口方式做本地结构化 review
-- 未发现阻塞进入 implementation plan 的问题
-- 当前需要继续确认的唯一事项，是用户对书面 spec 是否还要调整
+- 未发现阻塞执行与验收的问题
+- 实现结果与设计边界一致，无需额外 spec 调整

@@ -17,6 +17,7 @@
 - 2026-03-23：基于已批准 spec 创建第三批实现计划，范围固定为 `TextEntryDetailPage`、`EntryActionSheet`、`CloudSyncStatusButton`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：已按 TDD 顺序完成三个目标组件的 NativeWind 迁移、allowlist 收口与文档回填。
 
 ## File Structure
 
@@ -61,7 +62,7 @@
 - Modify: `app/eslint/style-guard-allowlist.js`
 - Modify: `app/src/components/TextEntryDetailPage.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定详情页内容和编辑入口**
+- [x] **Step 1: 先写失败测试，锁定详情页内容和编辑入口**
 
 在 `app/src/components/__tests__/TextEntryDetailPage.test.tsx` 新建测试。直接 mock [DetailPageShell.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/DetailPageShell.tsx)，让它渲染：
 
@@ -96,13 +97,13 @@ it('calls onEdit with the current entry from the existing header action', () => 
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEntryDetailPage.test.tsx`
 
 Expected: FAIL，原因应包含 `text-entry-detail-root` / `text-entry-detail-hero` / `text-entry-detail-tags` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `TextEntryDetailPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `TextEntryDetailPage` NativeWind 迁移**
 
 在 `app/src/components/TextEntryDetailPage.tsx`：
 
@@ -116,7 +117,7 @@ Expected: FAIL，原因应包含 `text-entry-detail-root` / `text-entry-detail-h
   - `text-entry-detail-hero`
   - `text-entry-detail-tags`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEntryDetailPage.test.tsx`
 
@@ -132,7 +133,7 @@ Run: `cd app && npm run lint -- src/components/TextEntryDetailPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/TextEntryDetailPage.tsx app/src/components/__tests__/TextEntryDetailPage.test.tsx
@@ -148,7 +149,7 @@ git commit -m "refactor: migrate text entry detail to nativewind"
 - Modify: `app/src/components/EntryActionSheet.tsx`
 - Modify: `app/src/components/__tests__/EntryActionSheet.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定面板壳层与确认态**
+- [x] **Step 1: 先写失败测试，锁定面板壳层与确认态**
 
 在 `app/src/components/__tests__/EntryActionSheet.test.tsx` 增加：
 
@@ -170,13 +171,13 @@ it('keeps the panel shell mounted in confirm mode', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryActionSheet.test.tsx`
 
 Expected: FAIL，原因应包含 `action-sheet-panel` 或 `action-sheet-option-group` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `EntryActionSheet` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `EntryActionSheet` NativeWind 迁移**
 
 在 `app/src/components/EntryActionSheet.tsx`：
 
@@ -202,7 +203,7 @@ Expected: FAIL，原因应包含 `action-sheet-panel` 或 `action-sheet-option-g
   - `action-sheet-panel`
   - `action-sheet-option-group`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryActionSheet.test.tsx`
 
@@ -218,7 +219,7 @@ Run: `cd app && npm run lint -- src/components/EntryActionSheet.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/EntryActionSheet.tsx app/src/components/__tests__/EntryActionSheet.test.tsx
@@ -234,7 +235,7 @@ git commit -m "refactor: migrate entry action sheet to nativewind"
 - Modify: `app/src/components/CloudSyncStatusButton.tsx`
 - Modify: `app/src/components/__tests__/CloudSyncStatusButton.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定按钮壳层与同步中结构**
+- [x] **Step 1: 先写失败测试，锁定按钮壳层与同步中结构**
 
 在 `app/src/components/__tests__/CloudSyncStatusButton.test.tsx` 增加：
 
@@ -254,13 +255,13 @@ it('keeps the cloud shell visible while syncing', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx`
 
 Expected: FAIL，原因应包含 `cloud-sync-shell` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `CloudSyncStatusButton` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `CloudSyncStatusButton` NativeWind 迁移**
 
 在 `app/src/components/CloudSyncStatusButton.tsx`：
 
@@ -277,7 +278,7 @@ Expected: FAIL，原因应包含 `cloud-sync-shell` 尚不存在。
 - 补以下 `testID`：
   - `cloud-sync-shell`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx`
 
@@ -293,7 +294,7 @@ Run: `cd app && npm run lint -- src/components/CloudSyncStatusButton.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/CloudSyncStatusButton.tsx app/src/components/__tests__/CloudSyncStatusButton.test.tsx
@@ -308,7 +309,7 @@ git commit -m "refactor: migrate cloud sync button to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-detail-action-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-detail-action-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第三批相关测试集合**
+- [x] **Step 1: 先跑第三批相关测试集合**
 
 Run:
 
@@ -321,7 +322,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -332,7 +333,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -341,12 +342,29 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-detail-action-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-detail-action-nativewind-migration.md
 git commit -m "docs: backfill detail action nativewind migration"
 ```
+
+## 执行结果
+
+- 已完成 `TextEntryDetailPage`、`EntryActionSheet`、`CloudSyncStatusButton` 的静态壳层 NativeWind 迁移，入口关系、动画、手势与业务行为保持不变。
+- 已新增 `app/src/components/__tests__/TextEntryDetailPage.test.tsx`，并扩充 `EntryActionSheet.test.tsx`、`CloudSyncStatusButton.test.tsx`。
+- 已从 `app/eslint/style-guard-allowlist.js` 移除：
+  - `src/components/TextEntryDetailPage.tsx`
+  - `src/components/EntryActionSheet.tsx`
+  - `src/components/CloudSyncStatusButton.tsx`
+- 未新增新的 Tailwind 语义 token；详情页优先复用 `editor.*` / `copy.*` / `border.editor-soft`，动作面板与同步按钮保留原有精确色值并改为 NativeWind arbitrary classes，以避免视觉偏移。
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEntryDetailPage.test.tsx src/components/__tests__/EntryActionSheet.test.tsx src/components/__tests__/CloudSyncStatusButton.test.tsx`：PASS
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS
 
 ## 本地结构化 Review 结论
 
