@@ -2,7 +2,8 @@
 
 ## 状态
 
-- 当前状态：待评审
+- 当前状态：已批准
+- 用户确认日期：2026-03-22
 
 ## 评审记录
 
@@ -394,3 +395,4 @@ WHERE id = ? AND user_id = ? AND updated_at = ?
   - `updated / version_mismatch / missing` 三态语义完整
   - 成功更新后回读或 `AppendChange` 失败的当前行为已明示为已知边界
   - `baseUpdatedAt` 与 SQLite `updated_at` 的 UTC / 精度约束足够支持后续实现
+- 2026-03-22：用户在 spec review 通过后回复“继续”，视为完成本次 user review gate，同意进入 `writing-plans` 阶段。
