@@ -15,16 +15,24 @@
 ## 变更记录
 
 - 2026-03-22：基于已批准 spec 创建实现计划，范围只覆盖后端访问日志、`requestId` 和 `sync/upload` 业务摘要，不扩展到 tracing、metrics 或生产日志策略重构。
+- 2026-03-23：已按计划完成实现、验证和文档收口；本轮在 `.worktrees/backend-access-log-debug` 隔离工作区执行，避免污染主工作区未提交改动。
 
 ## 执行状态
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 待开始 | 新增 `requestId` 中间件并锁定 header 透传 / 生成行为 |
-| Task 2 | 待开始 | 新增统一访问日志中间件，并补齐 `ErrorHandler` 关联字段与 `main.go` 挂载顺序 |
-| Task 3 | 待开始 | 给 `/api/sync` 增加业务摘要日志字段并补测试 |
-| Task 4 | 待开始 | 给 `/api/media/upload` 增加业务摘要日志字段并补测试 |
-| Task 5 | 待开始 | 完成目标测试、手动验证与 spec / plan 收口 |
+| Task 1 | 已完成 | 已新增 `requestId` 中间件，并锁定 header 透传 / 生成 / 响应回写行为 |
+| Task 2 | 已完成 | 已新增统一访问日志中间件，`ErrorHandler` 已补齐请求关联字段，`main.go` 已按设计挂载 |
+| Task 3 | 已完成 | `/api/sync` 已输出 `sync.*` 摘要，并补齐成功 / 400 路径回归测试 |
+| Task 4 | 已完成 | `/api/media/upload` 已输出 `upload.*` 摘要和失败阶段，并补齐成功 / 失败路径回归测试 |
+| Task 5 | 已完成 | 已完成目标测试、后端全量测试、手动验证、spec / plan 收口和文档提交 |
+
+## 实际执行说明
+
+- 本轮遵循 TDD：先写失败测试，确认红灯后再补最小实现。
+- 为避免在 `main` 和已有未提交改动上直接施工，实际实现放在 `.worktrees/backend-access-log-debug` 分支工作区中完成。
+- `MediaHandler` 最终改为依赖最小 `mediaStore` 接口，而不是具体 `*repository.MediaRepository`，以便用 stub 精确验证 `upload.failedStage` 等日志字段。
+- 手动验证采用临时端口 `39000`、临时 SQLite 文件和临时 upload 目录，避免本机现有端口 / 数据冲突。
 
 ## File Structure
 
@@ -69,7 +77,7 @@
 - Create: `backend/internal/middleware/request_id.go`
 - Create: `backend/internal/middleware/request_id_test.go`
 
-- [ ] **Step 1: 先写失败测试，锁定 `requestId` 透传与生成**
+- [x] **Step 1: 先写失败测试，锁定 `requestId` 透传与生成**
 
 在 `backend/internal/middleware/request_id_test.go` 新增至少两个测试：
 
@@ -84,12 +92,12 @@ func TestRequestIDMiddleware_GeneratesAndEchoesHeaderWhenMissing(t *testing.T) {
 - 没传 header 时会生成非空 `requestId`
 - 响应头始终包含 `X-Request-Id`
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/middleware -run TestRequestIDMiddleware -count=1`
 Expected: FAIL，原因是当前还没有 `RequestID` 中间件和对应 helper。
 
-- [ ] **Step 3: 最小实现 `requestId` 中间件**
+- [x] **Step 3: 最小实现 `requestId` 中间件**
 
 在 `backend/internal/middleware/request_id.go`：
 
@@ -108,12 +116,12 @@ func GetRequestID(c *gin.Context) string
 - 缺失时生成新的随机 ID
 - 同时写入 `gin.Context` 和响应头
 
-- [ ] **Step 4: 回跑 middleware 测试**
+- [x] **Step 4: 回跑 middleware 测试**
 
 Run: `cd backend && go test ./internal/middleware -run TestRequestIDMiddleware -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/internal/middleware/request_id.go backend/internal/middleware/request_id_test.go
@@ -129,7 +137,7 @@ git commit -m "feat: add request id middleware"
 - Modify: `backend/internal/middleware/error.go`
 - Modify: `backend/cmd/server/main.go`
 
-- [ ] **Step 1: 先写失败测试，锁定访问日志与错误日志字段**
+- [x] **Step 1: 先写失败测试，锁定访问日志与错误日志字段**
 
 在 `backend/internal/middleware/access_log_test.go` 新增测试：
 
@@ -151,12 +159,12 @@ func TestErrorHandler_LogsRequestMetadata(t *testing.T) {}
 - `ENV=production` 时访问日志关闭，其它环境开启
 - 错误日志包含 `requestId`、`method`、`path`、`status`
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/middleware -run 'Test(AccessLogMiddleware|ShouldEnableAccessLog|ErrorHandler)' -count=1`
 Expected: FAIL，原因是当前还没有统一访问日志中间件和环境开关 helper，`ErrorHandler` 也未输出 `requestId` 等字段。
 
-- [ ] **Step 3: 最小实现访问日志与错误日志增强**
+- [x] **Step 3: 最小实现访问日志与错误日志增强**
 
 在 `backend/internal/middleware/access_log.go`：
 
@@ -187,12 +195,12 @@ func GetAccessLogField(c *gin.Context, key string) (any, bool)
   4. `ErrorHandler`
   5. `RateLimiter`
 
-- [ ] **Step 4: 回跑 middleware 测试**
+- [x] **Step 4: 回跑 middleware 测试**
 
 Run: `cd backend && go test ./internal/middleware -run 'Test(AccessLogMiddleware|ShouldEnableAccessLog|ErrorHandler)' -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/internal/middleware/access_log.go backend/internal/middleware/access_log_test.go backend/internal/middleware/error.go backend/internal/middleware/error_test.go backend/cmd/server/main.go
@@ -207,7 +215,7 @@ git commit -m "feat: add backend access logging middleware"
 - Modify: `backend/internal/handlers/sync_v2.go`
 - Modify: `backend/internal/handlers/sync_v2_test.go`
 
-- [ ] **Step 1: 先写失败测试，锁定 `sync` 摘要字段**
+- [x] **Step 1: 先写失败测试，锁定 `sync` 摘要字段**
 
 在 `backend/internal/handlers/sync_v2_test.go` 增加测试：
 
@@ -227,12 +235,12 @@ func TestSyncV2Handler_AttachesRequestSummaryBeforeReturning400(t *testing.T) {}
 
 - 现有 `performSyncV2Request` helper 可以扩展为返回 `*gin.Context`，便于测试读取 `middleware.GetAccessLogField(...)`
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
 Expected: FAIL，原因是当前 handler 还没有把 `sync.*` 摘要写入访问日志上下文。
 
-- [ ] **Step 3: 最小实现 `sync` 摘要写入**
+- [x] **Step 3: 最小实现 `sync` 摘要写入**
 
 在 `backend/internal/handlers/sync_v2.go`：
 
@@ -256,12 +264,12 @@ Expected: FAIL，原因是当前 handler 还没有把 `sync.*` 摘要写入访�
 - 只记录计数和布尔值，不写入正文内容
 - 摘要字段统一通过 `middleware.SetAccessLogField(...)` 写入
 
-- [ ] **Step 4: 回跑 `sync` handler 测试**
+- [x] **Step 4: 回跑 `sync` handler 测试**
 
 Run: `cd backend && go test ./internal/handlers -run TestSyncV2Handler -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/internal/handlers/sync_v2.go backend/internal/handlers/sync_v2_test.go
@@ -274,7 +282,7 @@ git commit -m "feat: add sync access log summaries"
 - Create: `backend/internal/handlers/media_test.go`
 - Modify: `backend/internal/handlers/media.go`
 
-- [ ] **Step 1: 先写失败测试，锁定上传摘要字段和失败阶段**
+- [x] **Step 1: 先写失败测试，锁定上传摘要字段和失败阶段**
 
 在 `backend/internal/handlers/media_test.go` 新增测试：
 
@@ -299,12 +307,12 @@ func TestMediaHandlerUpload_SetsFailedStageWhenRepositoryCreateFails(t *testing.
 - 为避免强依赖真实 SQLite，可先把 `MediaHandler` 依赖从具体 `*repository.MediaRepository` 抽成最小接口，再用 stub repo 测试
 - 使用 `multipart.NewWriter` 构造测试请求，文件内容可直接用小字符串
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd backend && go test ./internal/handlers -run TestMediaHandlerUpload -count=1`
 Expected: FAIL，原因是当前没有 `media_test.go`，`MediaHandler` 也没有写入上传摘要或失败阶段。
 
-- [ ] **Step 3: 最小实现上传摘要写入**
+- [x] **Step 3: 最小实现上传摘要写入**
 
 在 `backend/internal/handlers/media.go`：
 
@@ -337,12 +345,12 @@ type mediaStore interface {
 - 不记录完整绝对路径
 - 成功 / 失败都统一通过 `middleware.SetAccessLogField(...)` 交给访问日志中间件收口
 
-- [ ] **Step 4: 回跑 `media` handler 测试**
+- [x] **Step 4: 回跑 `media` handler 测试**
 
 Run: `cd backend && go test ./internal/handlers -run TestMediaHandlerUpload -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/internal/handlers/media.go backend/internal/handlers/media_test.go
@@ -357,7 +365,7 @@ git commit -m "feat: add media upload access log summaries"
 - Modify: `docs/superpowers/specs/2026-03-22-backend-access-log-debug-design.md`
 - Modify: `docs/superpowers/plans/2026-03-22-backend-access-log-debug.md`
 
-- [ ] **Step 1: 跑目标测试**
+- [x] **Step 1: 跑目标测试**
 
 Run:
 
@@ -367,7 +375,7 @@ cd backend && go test ./internal/middleware ./internal/handlers -count=1
 
 Expected: PASS
 
-- [ ] **Step 2: 跑后端全量测试**
+- [x] **Step 2: 跑后端全量测试**
 
 Run:
 
@@ -377,7 +385,7 @@ cd backend && go test ./... -count=1
 
 Expected: PASS
 
-- [ ] **Step 3: 做最小手动验证**
+- [x] **Step 3: 做最小手动验证**
 
 建议顺序：
 
@@ -426,7 +434,7 @@ curl -i http://127.0.0.1:3000/api/media/upload \
 - `/api/media/upload` 日志里能看到 `upload.*` 摘要
 - 若故意构造失败请求，错误日志和访问日志能通过同一个 `requestId` 串起来
 
-- [ ] **Step 4: 更新文档状态与验证结果**
+- [x] **Step 4: 更新文档状态与验证结果**
 
 更新 `docs/superpowers/specs/2026-03-22-backend-access-log-debug-design.md`：
 
@@ -443,9 +451,35 @@ curl -i http://127.0.0.1:3000/api/media/upload \
   - 是否把环境开关下沉到 middleware helper
   - `media` handler 是否为测试引入最小接口
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-22-backend-access-log-debug-design.md docs/superpowers/plans/2026-03-22-backend-access-log-debug.md
 git commit -m "docs: close out backend access log debug work"
 ```
+
+## 最终验证记录
+
+- 目标测试：
+  - `cd backend && go test ./internal/middleware ./internal/handlers -count=1`
+  - 结果：通过
+- 后端全量测试：
+  - `cd backend && go test ./... -count=1`
+  - 结果：通过
+- diff 检查：
+  - `git diff --check`
+  - 结果：通过
+- 手动验证：
+  - 启动命令：
+    - `JWT_SECRET=test-secret ENV=development PORT=39000 BASE_URL=http://localhost:39000 DATABASE_PATH=/tmp/backend-access-log-debug-17261.db UPLOAD_DIR=/tmp/backend-access-log-debug-uploads-17261 go run ./cmd/server`
+  - 请求与结果：
+    - `curl -i -H 'X-Request-Id: debug-health-1' http://127.0.0.1:39000/health`：`200 OK`，响应头带 `X-Request-Id`
+    - `curl -i http://127.0.0.1:39000/api/sync -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' -H 'X-Request-Id: debug-sync-1' -d '{"cursor":0,"deviceId":"debug-device","clientChanges":[]}'`：`200 OK`，服务端日志带 `sync.*` 摘要
+    - `curl -i http://127.0.0.1:39000/api/media/upload -H 'Authorization: Bearer <TOKEN>' -H 'X-Request-Id: debug-upload-1' -F 'file=@go.mod;type=text/plain'`：`201 Created`，服务端日志带 `upload.*` 摘要
+- 自动化补充验证：
+  - `TestErrorHandler_LogsRequestMetadata` 已验证错误日志包含 `requestId`、`method`、`path`、`status`
+
+## 实现偏差说明
+
+- `MediaHandler` 的依赖由具体 `*repository.MediaRepository` 收敛为最小 `mediaStore` 接口，以便隔离真实 DB 做摘要日志测试；这是为可测性做的最小结构调整。
+- 手动验证没有沿用计划示例的 `3000` 端口，而是改用临时 `39000` 端口和临时数据目录，以规避本机现有环境冲突。
