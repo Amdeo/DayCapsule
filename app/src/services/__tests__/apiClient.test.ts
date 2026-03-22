@@ -21,6 +21,8 @@ const mockFetch = jest.fn();
 
 import { createApiClient, ApiError } from '../apiClient';
 import { Storage } from '@/src/utils/storage';
+import { normalizeApiBaseURL } from '../apiClient';
+import { logger } from '@/src/utils/logger';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -28,6 +30,24 @@ beforeEach(() => {
 
 describe('apiClient', () => {
   const client = createApiClient('https://api.test.com');
+
+  it('normalizes Android emulator API host to localhost on iOS', () => {
+    expect(normalizeApiBaseURL('http://10.0.2.2:3000/api', 'ios')).toBe(
+      'http://localhost:3000/api'
+    );
+    expect(normalizeApiBaseURL('http://10.0.2.2:3000/api', 'web')).toBe(
+      'http://localhost:3000/api'
+    );
+  });
+
+  it('normalizes localhost API host to 10.0.2.2 on Android', () => {
+    expect(normalizeApiBaseURL('http://localhost:3000/api', 'android')).toBe(
+      'http://10.0.2.2:3000/api'
+    );
+    expect(normalizeApiBaseURL('http://127.0.0.1:3000/api', 'android')).toBe(
+      'http://10.0.2.2:3000/api'
+    );
+  });
 
   it('GET request with params', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -83,6 +103,30 @@ describe('apiClient', () => {
     });
 
     await expect(client.post('/entries', {})).rejects.toThrow(ApiError);
+  });
+
+  it('surfaces invalid non-JSON responses with request context', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === 'content-type' ? 'text/plain' : null),
+      },
+      text: () => Promise.resolve('proxy error: connection refused'),
+    });
+
+    await expect(client.post('/sync', {})).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'INVALID_RESPONSE',
+      status: 502,
+      message: 'Non-JSON response from https://api.test.com/sync (text/plain): proxy error: connection refused',
+    });
+    expect(logger.error).toHaveBeenCalledWith('[apiClient] Non-JSON response:', {
+      url: 'https://api.test.com/sync',
+      status: 502,
+      contentType: 'text/plain',
+      bodyPreview: 'proxy error: connection refused',
+    });
   });
 
   it('refreshes token on 401 and retries', async () => {

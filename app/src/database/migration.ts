@@ -309,20 +309,27 @@ export const migrateToMediaJson = async (): Promise<void> => {
  * 幂等：已存在则跳过
  */
 export const migrateSyncStatusColumn = async (): Promise<void> => {
-  if (migrationStore.getString('sync_status_column_added') === 'true') return;
-
   const db = getDatabase();
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
-    if (!tableInfo.some(col => col.name === 'sync_status')) {
+    const columnNames = new Set(tableInfo.map(col => col.name));
+    const alreadyMarked = migrationStore.getString('sync_status_column_added') === 'true';
+    const hasAllRequiredColumns =
+      columnNames.has('sync_status') &&
+      columnNames.has('sync_op') &&
+      columnNames.has('conflicted_copy_of');
+
+    if (alreadyMarked && hasAllRequiredColumns) return;
+
+    if (!columnNames.has('sync_status')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN sync_status TEXT DEFAULT 'synced'`);
       logger.log('✅ 添加 sync_status 列');
     }
-    if (!tableInfo.some(col => col.name === 'sync_op')) {
+    if (!columnNames.has('sync_op')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN sync_op TEXT DEFAULT 'update'`);
       logger.log('✅ 添加 sync_op 列');
     }
-    if (!tableInfo.some(col => col.name === 'conflicted_copy_of')) {
+    if (!columnNames.has('conflicted_copy_of')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN conflicted_copy_of TEXT`);
       logger.log('✅ 添加 conflicted_copy_of 列');
     }
@@ -342,21 +349,27 @@ export const migrateSyncStatusColumn = async (): Promise<void> => {
  * 幂等：已存在则跳过
  */
 export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
-  if (migrationStore.getString('cloud_sync_core_columns_added') === 'true') return;
-
   const db = getDatabase();
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    const columnNames = new Set(tableInfo.map(col => col.name));
+    const alreadyMarked = migrationStore.getString('cloud_sync_core_columns_added') === 'true';
+    const hasAllRequiredColumns =
+      columnNames.has('base_updated_at') &&
+      columnNames.has('user_id') &&
+      columnNames.has('deleted');
 
-    if (!tableInfo.some(col => col.name === 'base_updated_at')) {
+    if (alreadyMarked && hasAllRequiredColumns) return;
+
+    if (!columnNames.has('base_updated_at')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN base_updated_at INTEGER`);
       logger.log('✅ 添加 base_updated_at 列');
     }
-    if (!tableInfo.some(col => col.name === 'user_id')) {
+    if (!columnNames.has('user_id')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN user_id TEXT`);
       logger.log('✅ 添加 user_id 列');
     }
-    if (!tableInfo.some(col => col.name === 'deleted')) {
+    if (!columnNames.has('deleted')) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN deleted INTEGER DEFAULT 0`);
       logger.log('✅ 添加 deleted 列');
     }

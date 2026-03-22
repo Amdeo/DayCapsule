@@ -5,6 +5,7 @@
 
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
+import { Platform } from 'react-native';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -33,6 +34,20 @@ export interface ApiClient {
   uploadFile(path: string, fileUri: string, fieldName: string): Promise<{ id: string; url: string }>;
 }
 
+export function normalizeApiBaseURL(
+  baseURL: string,
+  platformOS: 'ios' | 'android' | 'web' | string = Platform.OS
+): string {
+  if (platformOS === 'android') {
+    return baseURL
+      .replace(/^http:\/\/localhost(?=[:/])/i, 'http://10.0.2.2')
+      .replace(/^http:\/\/127\.0\.0\.1(?=[:/])/i, 'http://10.0.2.2');
+  }
+
+  return baseURL
+    .replace(/^http:\/\/10\.0\.2\.2(?=[:/])/i, 'http://localhost');
+}
+
 export function createApiClient(baseURL: string): ApiClient {
   let refreshPromise: Promise<boolean> | null = null;
 
@@ -49,12 +64,51 @@ export function createApiClient(baseURL: string): ApiClient {
     return { Authorization: `Bearer ${token}` };
   };
 
+  const buildResponsePreview = (rawText: string): string => {
+    const normalized = rawText.replace(/\s+/g, ' ').trim();
+    return normalized.length > 160 ? `${normalized.slice(0, 160)}...` : normalized;
+  };
+
+  const parseApiResponse = async <T>(res: Response, requestUrl: string): Promise<ApiResponse<T>> => {
+    if (typeof res.text !== 'function') {
+      return res.json() as Promise<ApiResponse<T>>;
+    }
+
+    const rawText = await res.text();
+    if (rawText.trim() === '') {
+      throw new ApiError(
+        'INVALID_RESPONSE',
+        `Empty response from ${requestUrl}`,
+        res.status,
+      );
+    }
+
+    try {
+      return JSON.parse(rawText) as ApiResponse<T>;
+    } catch {
+      const contentType = res.headers.get('content-type') ?? 'unknown';
+      const preview = buildResponsePreview(rawText);
+      logger.error('[apiClient] Non-JSON response:', {
+        url: requestUrl,
+        status: res.status,
+        contentType,
+        bodyPreview: preview,
+      });
+      throw new ApiError(
+        'INVALID_RESPONSE',
+        `Non-JSON response from ${requestUrl} (${contentType}): ${preview}`,
+        res.status,
+      );
+    }
+  };
+
   const refreshToken = async (): Promise<boolean> => {
     try {
       const rt = await Storage.getString('auth:refreshToken');
       if (!rt) return false;
 
-      const res = await fetch(`${baseURL}/auth/refresh`, {
+      const refreshUrl = `${baseURL}/auth/refresh`;
+      const res = await fetch(refreshUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: rt }),
@@ -62,7 +116,7 @@ export function createApiClient(baseURL: string): ApiClient {
 
       if (!res.ok) return false;
 
-      const json: ApiResponse<{ token: string; refreshToken: string }> = await res.json();
+      const json = await parseApiResponse<{ token: string; refreshToken: string }>(res, refreshUrl);
       if (!json.success || !json.data) return false;
 
       await Storage.setString('auth:token', json.data.token);
@@ -96,14 +150,15 @@ export function createApiClient(baseURL: string): ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const res = await fetch(buildUrl(path), {
+      const url = buildUrl(path);
+      const res = await fetch(url, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
 
-      const json: ApiResponse<T> = await res.json();
+      const json = await parseApiResponse<T>(res, url);
 
       if (res.ok && json.success) {
         return json.data as T;
@@ -150,7 +205,7 @@ export function createApiClient(baseURL: string): ApiClient {
 
     try {
       const res = await fetch(url, { method, headers, signal: controller.signal });
-      const json: ApiResponse<T> = await res.json();
+      const json = await parseApiResponse<T>(res, url);
 
       if (res.ok && json.success) return json.data as T;
 
@@ -193,14 +248,15 @@ export function createApiClient(baseURL: string): ApiClient {
       const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
       try {
-        const res = await fetch(`${baseURL}${path}`, {
+        const uploadUrl = `${baseURL}${path}`;
+        const res = await fetch(uploadUrl, {
           method: 'POST',
           headers: { ...authHeaders },
           body: formData,
           signal: controller.signal,
         });
 
-        const json: ApiResponse<{ id: string; url: string }> = await res.json();
+        const json = await parseApiResponse<{ id: string; url: string }>(res, uploadUrl);
         if (res.ok && json.success && json.data) return json.data;
 
         throw new ApiError(
@@ -226,7 +282,15 @@ let _client: ApiClient | null = null;
 
 export function getApiClient(): ApiClient {
   if (!_client) {
-    const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080/api';
+    const configuredBaseURL = process.env.EXPO_PUBLIC_API_URL;
+    if (!configuredBaseURL) {
+      logger.warn('[apiClient] EXPO_PUBLIC_API_URL 未设置，回退到 http://localhost:8080/api');
+    }
+
+    const baseURL = normalizeApiBaseURL(
+      configuredBaseURL ?? 'http://localhost:8080/api'
+    );
+    logger.info('[apiClient] Using base URL:', baseURL);
     _client = createApiClient(baseURL);
   }
   return _client;
