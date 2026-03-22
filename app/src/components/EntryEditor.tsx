@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -35,6 +34,8 @@ const getTypeMeta = (type: Entry['type']) => {
       return { icon: 'document-text', label: '记录', accent: '#8F7AC8' };
   }
 };
+
+const ENTRY_EDITOR_PLACEHOLDER_COLOR = '#B6AAA0';
 
 export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProps) {
   const [content, setContent] = useState('');
@@ -96,78 +97,98 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.container}
+        className="flex-1 bg-black/20"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable className="absolute inset-0 bg-editor-backdrop" onPress={onClose} />
 
-        <View style={styles.editorPage}>
-          <View style={styles.headerBar}>
-            <Pressable onPress={onClose} style={styles.headerButton}>
-              <Text style={styles.headerButtonText}>返回</Text>
+        <View className="flex-1 bg-editor-canvas">
+          <View
+            testID="entry-editor-header"
+            className="flex-row items-center justify-between border-b border-border-editor-header bg-editor-canvas px-5 pb-4 pt-14"
+          >
+            <Pressable onPress={onClose} className="min-w-12 py-1.5">
+              <Text className="text-[15px] font-semibold text-editor-action">返回</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>编辑记录</Text>
-            <Pressable onPress={handleSave} style={styles.headerButton}>
-              <Text style={styles.headerSaveText}>保存</Text>
+            <Text className="text-lg font-bold text-editor-title">编辑记录</Text>
+            <Pressable onPress={handleSave} className="min-w-12 py-1.5">
+              <Text className="text-right text-[15px] font-bold text-primary">保存</Text>
             </Pressable>
           </View>
 
-          <View style={styles.main}>
+          <View className="flex-1">
             <ScrollView
               testID="entry-editor-scroll"
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
+              className="flex-1"
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <View style={[styles.typeBadge, { borderColor: `${typeMeta.accent}33`, backgroundColor: `${typeMeta.accent}14` }]}>
-                <Ionicons name={typeMeta.icon as any} size={15} color={typeMeta.accent} />
-                <Text style={[styles.typeText, { color: typeMeta.accent }]}>{typeMeta.label}</Text>
-              </View>
+              <View className="gap-4 px-5 pb-[220px] pt-[18px]">
+                <View
+                  testID="entry-editor-type-badge"
+                  className="self-start rounded-full border px-[11px] py-1.5"
+                  style={{ borderColor: `${typeMeta.accent}33`, backgroundColor: `${typeMeta.accent}14` }}
+                >
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons name={typeMeta.icon as any} size={15} color={typeMeta.accent} />
+                    <Text className="text-[13px] font-semibold" style={{ color: typeMeta.accent }}>
+                      {typeMeta.label}
+                    </Text>
+                  </View>
+                </View>
 
-              <View testID="entry-editor-content-surface" style={styles.contentSurface}>
-                <Text style={styles.surfaceLabel}>正文</Text>
-                <TextInput
-                  testID="entry-editor-content-input"
-                  style={styles.contentInput}
-                  value={content}
-                  onChangeText={setContent}
-                  placeholder="写下这段记忆..."
-                  placeholderTextColor="#B6AAA0"
-                  multiline
-                  textAlignVertical="top"
-                  autoFocus
-                />
-              </View>
+                <View
+                  testID="entry-editor-content-surface"
+                  className="min-h-[420px] rounded-[18px] border border-border-editor bg-editor-surface px-[18px] pb-5 pt-[18px] shadow-sm shadow-black/10"
+                >
+                  <Text className="mb-[14px] text-xs font-semibold tracking-[0.6px] text-editor-muted">正文</Text>
+                  <TextInput
+                    testID="entry-editor-content-input"
+                    className="min-h-[340px] p-0 text-[18px] leading-8 tracking-[0.15px] text-editor-body"
+                    value={content}
+                    onChangeText={setContent}
+                    placeholder="写下这段记忆..."
+                    placeholderTextColor={ENTRY_EDITOR_PLACEHOLDER_COLOR}
+                    multiline
+                    textAlignVertical="top"
+                    autoFocus
+                  />
+                </View>
 
-              <View style={styles.metaSection}>
-                <Text style={styles.metaLabel}>创建时间</Text>
-                <Text style={styles.metaValue}>
-                  {new Date(entry.timestamp).toLocaleString('zh-CN')}
-                </Text>
+                <View className="gap-1.5 px-1">
+                  <Text className="text-xs font-semibold tracking-[0.6px] text-editor-muted">创建时间</Text>
+                  <Text className="text-sm text-editor-meta">
+                    {new Date(entry.timestamp).toLocaleString('zh-CN')}
+                  </Text>
+                </View>
               </View>
             </ScrollView>
           </View>
 
-          <View testID="entry-editor-tag-dock" style={styles.tagDock}>
-            <View style={styles.tagDockHeader}>
-              <Text style={styles.tagDockTitle}>标签</Text>
+          <View
+            testID="entry-editor-tag-dock"
+            className="absolute bottom-0 left-0 right-0 gap-3 border-t border-border-editor-dock bg-editor-dock px-5 pb-7 pt-[14px]"
+          >
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-bold text-copy-primary">标签</Text>
               {currentTagsList.length > 0 ? (
-                <Text style={styles.tagDockCount}>{currentTagsList.length} 个已选</Text>
+                <Text className="text-xs text-editor-muted">{currentTagsList.length} 个已选</Text>
               ) : null}
             </View>
 
             {commonTags.length > 0 && (
-              <View style={styles.commonTagsRow}>
+              <View className="flex-row flex-wrap gap-2">
                 {commonTags.map((tag) => {
                   const selected = currentTagsList.includes(tag);
                   return (
                     <TouchableOpacity
                       key={tag}
-                      style={[styles.commonChip, selected && styles.commonChipSelected]}
+                      className={selected
+                        ? 'rounded-full border border-text bg-text px-[11px] py-1.5'
+                        : 'rounded-full border border-border-text-chip bg-editor-text-chip px-[11px] py-1.5'}
                       onPress={() => (selected ? handleRemoveTag(tag) : handleAddSuggestion(tag))}
                     >
-                      <Text style={[styles.commonChipText, selected && styles.commonChipTextSelected]}>
+                      <Text className={selected ? 'text-[13px] text-white' : 'text-[13px] text-editor-text-chip-accent'}>
                         {tag}
                       </Text>
                     </TouchableOpacity>
@@ -178,33 +199,36 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
 
             <TextInput
               testID="entry-editor-tags-input"
-              style={styles.tagsInput}
+              className="rounded-[14px] border border-border-editor-soft bg-editor-surface px-[14px] py-3 text-[15px] text-copy-primary"
               value={tagsInput}
               onChangeText={setTagsInput}
               placeholder="添加标签，用逗号分隔"
-              placeholderTextColor="#B6AAA0"
+              placeholderTextColor={ENTRY_EDITOR_PLACEHOLDER_COLOR}
             />
 
             {currentTagsList.length > 0 && (
-              <View style={styles.tagsPreview}>
+              <View className="flex-row flex-wrap gap-2">
                 {currentTagsList.map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagChipText}>#{tag}</Text>
+                  <View
+                    key={tag}
+                    className="rounded-full border border-border-editor-dock bg-editor-tag px-2.5 py-1.5"
+                  >
+                    <Text className="text-[13px] font-medium text-editor-tag-text">#{tag}</Text>
                   </View>
                 ))}
               </View>
             )}
 
             {suggestions.length > 0 && (
-              <View style={styles.suggestionsRow}>
+              <View className="flex-row flex-wrap gap-2">
                 {suggestions.map((tag) => (
                   <TouchableOpacity
                     key={tag}
-                    style={styles.suggestionChip}
+                    className="flex-row items-center gap-1 rounded-full border border-border-suggestion bg-editor-suggestion px-2.5 py-1.5"
                     onPress={() => handleAddSuggestion(tag)}
                   >
                     <Ionicons name="add" size={13} color="#8F7AC8" />
-                    <Text style={styles.suggestionChipText}>{tag}</Text>
+                    <Text className="text-xs font-medium text-text-dark">{tag}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -215,219 +239,3 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.18)',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(24, 19, 14, 0.24)',
-  },
-  editorPage: {
-    flex: 1,
-    backgroundColor: '#FAF8F5',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: '#FAF8F5',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 115, 85, 0.08)',
-  },
-  headerButton: {
-    minWidth: 48,
-    paddingVertical: 6,
-  },
-  headerButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#8A7C70',
-  },
-  headerSaveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#6A89CC',
-    textAlign: 'right',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#3D342E',
-  },
-  main: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 220,
-    gap: 16,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  typeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  contentSurface: {
-    minHeight: 420,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 20,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 115, 85, 0.14)',
-    backgroundColor: '#FFFDF9',
-    shadowColor: '#5A4330',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 14,
-    elevation: 1,
-  },
-  surfaceLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    color: '#A08F82',
-    marginBottom: 14,
-  },
-  contentInput: {
-    minHeight: 340,
-    fontSize: 18,
-    lineHeight: 32,
-    color: '#2F241E',
-    letterSpacing: 0.15,
-    padding: 0,
-  },
-  metaSection: {
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  metaLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A08F82',
-    letterSpacing: 0.6,
-  },
-  metaValue: {
-    fontSize: 14,
-    color: '#6B5B4D',
-  },
-  tagDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 28,
-    backgroundColor: 'rgba(250, 248, 245, 0.98)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 115, 85, 0.10)',
-    gap: 12,
-  },
-  tagDockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  tagDockTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  tagDockCount: {
-    fontSize: 12,
-    color: '#A08F82',
-  },
-  commonTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  commonChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#F4F0FF',
-    borderWidth: 1,
-    borderColor: '#E2DAF8',
-  },
-  commonChipSelected: {
-    backgroundColor: '#A491D3',
-    borderColor: '#A491D3',
-  },
-  commonChipText: {
-    fontSize: 13,
-    color: '#6A5ACD',
-  },
-  commonChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  tagsInput: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 115, 85, 0.12)',
-    backgroundColor: '#FFFDF9',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A4A4A',
-  },
-  tagsPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tagChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#F7F2EA',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 115, 85, 0.10)',
-  },
-  tagChipText: {
-    fontSize: 13,
-    color: '#7A6758',
-    fontWeight: '500',
-  },
-  suggestionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#F7F4FF',
-    borderWidth: 1,
-    borderColor: '#E6DFF8',
-  },
-  suggestionChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#8F7AC8',
-  },
-});

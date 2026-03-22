@@ -15,7 +15,6 @@ module.exports = {
     'src/components/CloudSyncStatusButton.tsx',
     'src/components/DetailPageShell.tsx',
     'src/components/EntryActionSheet.tsx',
-    'src/components/EntryEditor.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
     'src/components/HelpPage.tsx',
@@ -94,10 +93,6 @@ module.exports = {
     },
     'src/components/EntryActionSheet.tsx': {
       'style-guard/no-new-stylesheet-create': ['6743a0e81826'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/EntryEditor.tsx': {
-      'style-guard/no-new-stylesheet-create': ['b5a4dfbf157b'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/ErrorBoundary.tsx': {

@@ -33,6 +33,16 @@ const textEntry: Entry = {
 };
 
 describe('EntryEditor redesigned layout', () => {
+  it('keeps the header and type badge visible in the full-screen editor shell', () => {
+    const screen = render(
+      <EntryEditor visible entry={textEntry} onSave={jest.fn()} onClose={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('entry-editor-header')).toBeTruthy();
+    expect(screen.getByTestId('entry-editor-type-badge')).toBeTruthy();
+    expect(screen.getByText('编辑记录')).toBeTruthy();
+  });
+
   it('renders a large primary text editor area for text entries', () => {
     const screen = render(
       <EntryEditor visible entry={textEntry} onSave={jest.fn()} onClose={jest.fn()} />
@@ -50,6 +60,7 @@ describe('EntryEditor redesigned layout', () => {
       <EntryEditor visible entry={textEntry} onSave={jest.fn()} onClose={jest.fn()} />
     );
 
+    expect(screen.getByTestId('entry-editor-header')).toBeTruthy();
     expect(screen.getByTestId('entry-editor-tag-dock')).toBeTruthy();
     expect(screen.getByTestId('entry-editor-content-surface')).toBeTruthy();
     expect(screen.getByTestId('entry-editor-tags-input')).toBeTruthy();
