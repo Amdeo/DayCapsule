@@ -4,7 +4,7 @@
 
 **Goal:** 修复云端模式下点击语音卡片“停止”后录音仍继续增长的问题，让停采在点击时刻立即发生，并让 UI 立即退出录音中状态。
 
-**Architecture:** 保持现有“本地 cache + `voiceUploadQueue` 后台上传”架构不变，只把停止链路拆成“即时停采”和“后续收尾”两段。前端本地状态新增短暂 `stopping`，`VoiceService` 负责先释放 recorder 再做文件信息收尾，主页录音链路负责立即冻结 timer 并切状态。
+**Architecture:** 保持现有“本地 cache + `voiceUploadQueue` 后台上传”架构不变，只把停止链路拆成“即时停采”和“后续收尾”两段。前端本地状态新增短暂 `stopping`，`VoiceService` 负责先释放 recorder 再做文件信息收尾，主页录音链路负责立即冻结 timer 并切状态；同时把录音时长发布降到整秒，避免高频全局 store 更新拖慢 stop 点击响应。
 
 **Tech Stack:** React Native, Expo Router, TypeScript, expo-audio, Zustand, Jest, @testing-library/react-native
 
@@ -34,7 +34,7 @@
 - Modify: `app/src/services/__tests__/voiceService.test.ts`
 - Modify: `app/src/services/voiceService.ts`
 
-- [ ] **Step 1: 写失败测试，锁定 stop 过程中时长应立即冻结**
+- [x] **Step 1: 写失败测试，锁定 stop 过程中时长应立即冻结**
 
 ```ts
 it('returns 0 duration while stopRecording is still finalizing', async () => {
@@ -52,13 +52,13 @@ it('returns 0 duration while stopRecording is still finalizing', async () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/services/__tests__/voiceService.test.ts -t "returns 0 duration while stopRecording is still finalizing"`
 
 Expected: FAIL，当前实现里 `stopRecording()` 在 `getFileInfo()` 完成前仍保留 `this.recorder`，`getRecordingDuration()` 还能读到旧时长。
 
-- [ ] **Step 3: 用最小实现把 stop 拆成“先停采、后收尾”**
+- [x] **Step 3: 用最小实现把 stop 拆成“先停采、后收尾”**
 
 ```ts
 static async stopRecording(): Promise<AudioFile> {
@@ -86,7 +86,7 @@ static async stopRecording(): Promise<AudioFile> {
 - 后续 `getStatus()`、`uri`、`getFileInfo()` 全部使用局部变量 `recorder`
 - 不改变现有返回结构和调用方接口
 
-- [ ] **Step 4: 回跑 `voiceService` 测试**
+- [x] **Step 4: 回跑 `voiceService` 测试**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/services/__tests__/voiceService.test.ts`
 
@@ -108,7 +108,7 @@ git commit -m "fix: stop cloud voice recording immediately"
 - Modify: `app/app/(tabs)/index.tsx`
 - Modify: `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
 
-- [ ] **Step 1: 写失败测试，锁定“先切 stopping，再等待 stop 完成”**
+- [x] **Step 1: 写失败测试，锁定“先切 stopping，再等待 stop 完成”**
 
 ```ts
 it('marks voice entry as stopping before stopRecording resolves', async () => {
@@ -128,13 +128,13 @@ it('marks voice entry as stopping before stopRecording resolves', async () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' -t "marks voice entry as stopping before stopRecording resolves"`
 
 Expected: FAIL，当前 `handleStopRecording` / `finalizeCloudVoiceRecordingForTest()` 会一直等 `stopRecording()` 完成后才更新 entry。
 
-- [ ] **Step 3: 提取可测试的 stop helper，并接入主页录音链路**
+- [x] **Step 3: 提取可测试的 stop helper，并接入主页录音链路**
 
 ```ts
 export async function stopCloudVoiceRecordingForTest(entryId: string, deps: VoiceCloudStopDeps) {
@@ -158,7 +158,10 @@ export async function stopCloudVoiceRecordingForTest(entryId: string, deps: Voic
 - `currentRecordingIdRef` 和 timer 仍在 `handleStopRecording` 里统一清理
 - 本地先切 `stopping`，后续失败也不能退回 `recording`
 
-- [ ] **Step 4: 回跑主页录音链路测试**
+实际实现：
+- 复用现有 `finalizeCloudVoiceRecordingForTest()`，没有再新增 helper 名字；仅把“先写 `stopping`，再 stop”的顺序收进现有 helper，缩小改动面。
+
+- [x] **Step 4: 回跑主页录音链路测试**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts'`
 
@@ -179,7 +182,7 @@ git commit -m "fix: mark cloud voice entries stopping immediately"
 - Modify: `app/src/components/EntryCard.tsx`
 - Modify: `app/src/components/__tests__/EntryCard.test.tsx`
 
-- [ ] **Step 1: 写失败测试，锁定 `stopping` 的可见行为**
+- [x] **Step 1: 写失败测试，锁定 `stopping` 的可见行为**
 
 ```tsx
 it('shows 处理中 and disables stop button when voice entry is stopping', () => {
@@ -196,13 +199,13 @@ it('shows 处理中 and disables stop button when voice entry is stopping', () =
 });
 ```
 
-- [ ] **Step 2: 运行测试，确认当前实现失败**
+- [x] **Step 2: 运行测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryCard.test.tsx -t "shows 处理中"`
 
 Expected: FAIL，当前组件只区分 `recording` 与 `completed/uploading`，没有 `stopping` 展示。
 
-- [ ] **Step 3: 最小实现 `stopping` UI**
+- [x] **Step 3: 最小实现 `stopping` UI**
 
 ```tsx
 if (entry.recordingStatus === 'stopping') {
@@ -220,7 +223,11 @@ if (entry.recordingStatus === 'stopping') {
 - stop 按钮继续占位，但禁用点击
 - 不新增新的同步状态；仍由 `recordingStatus` 驱动本地中间态
 
-- [ ] **Step 4: 回跑 `EntryCard` 测试**
+补充实现：
+- 同步覆盖 `variant="calendar"` 的语音卡分支，避免主页仍显示旧的录音中 UI。
+- stop 按钮增加同步 ref 防重，防止连续点击导致重复 stop。
+
+- [x] **Step 4: 回跑 `EntryCard` 测试**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryCard.test.tsx`
 
@@ -241,7 +248,7 @@ git commit -m "fix: show stopping state for cloud voice cards"
 - Modify: `docs/superpowers/specs/2026-03-22-voice-stop-immediacy-design.md`
 - Modify: `docs/superpowers/plans/2026-03-22-voice-stop-immediacy.md`
 
-- [ ] **Step 1: 跑目标测试**
+- [x] **Step 1: 跑目标测试**
 
 Run:
 
@@ -254,7 +261,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑类型检查**
+- [x] **Step 2: 跑类型检查**
 
 Run: `cd app && npx tsc --noEmit`
 
@@ -269,7 +276,12 @@ Expected: PASS
 - 最终保存出来的音频时长不再明显超过点击时刻
 - 完成后仍进入 `待上传`
 
-- [ ] **Step 4: 更新文档状态与验证结果**
+当前结果：
+- 已尝试通过 Android 模拟器做最小手测，并确认可进入录音态。
+- 但自动化点按未能稳定命中 stop 按钮，因此本步暂不勾选，仍需用户实际复测。
+- 用户后续真实复测日志显示，重复报错主要来自连续点击；本轮已补 stop 防重和整秒节流，但仍需用户再次验证第一次点击是否已经及时响应。
+
+- [x] **Step 4: 更新文档状态与验证结果**
 
 更新 `docs/superpowers/specs/2026-03-22-voice-stop-immediacy-design.md`：
 - 状态改为 `已实现`
@@ -279,6 +291,7 @@ Expected: PASS
 更新 `docs/superpowers/plans/2026-03-22-voice-stop-immediacy.md`：
 - 勾选已完成步骤
 - 记录实际执行命令和结果
+- 记录额外实现偏差：整秒发布录音时长、stop ref 防重、`recorder already stopped` 继续收尾
 
 - [ ] **Step 5: 提交文档收口**
 

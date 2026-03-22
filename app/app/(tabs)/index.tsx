@@ -30,6 +30,7 @@ import { enqueuePhotoUpload } from '@/src/services/photoUploadQueue';
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
 const MAIN_TRANSLATE_X = SIDEBAR_WIDTH;
+const RECORDING_DURATION_POLL_MS = 250;
 
 export interface PhotoSelectDeps {
   savePhotoToStorage: (
@@ -75,6 +76,10 @@ export function assertCanStartVoiceRecordingForTest(currentRecordingId: string |
   throw error;
 }
 
+export function toDisplayedRecordingDurationForTest(duration: number): number {
+  return Math.max(0, Math.floor(duration));
+}
+
 function buildTemporaryVoiceEntry(now: number): Entry {
   return {
     id: String(now),
@@ -106,6 +111,10 @@ export async function finalizeCloudVoiceRecordingForTest(
   entryId: string,
   deps: VoiceCloudFinalizeDeps
 ): Promise<void> {
+  await deps.updateLocalEntry(entryId, {
+    recordingStatus: 'stopping',
+  });
+
   const audioFile = await deps.stopRecording();
   const persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
   await deps.updateLocalEntry(entryId, {
@@ -274,14 +283,15 @@ export default function HomeScreen() {
   }, []);
 
   const startRecordingTimer = useCallback((entryId: string) => {
-    let lastDuration = 0;
+    let lastDisplayedDuration = -1;
     recordingTimerRef.current = setInterval(async () => {
       const duration = await VoiceService.getRecordingDuration();
-      if (duration !== lastDuration) {
-        lastDuration = duration;
-        updateRecordingDuration(entryId, duration);
+      const displayedDuration = toDisplayedRecordingDurationForTest(duration);
+      if (displayedDuration !== lastDisplayedDuration) {
+        lastDisplayedDuration = displayedDuration;
+        updateRecordingDuration(entryId, displayedDuration);
       }
-    }, 100);
+    }, RECORDING_DURATION_POLL_MS);
   }, [updateRecordingDuration]);
 
   const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => {

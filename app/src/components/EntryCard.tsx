@@ -97,6 +97,7 @@ function EntryCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const stopRequestInFlightRef = useRef(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const swipeableRef = useRef<Swipeable>(null);
@@ -514,7 +515,8 @@ function EntryCard({
     }
 
     if (entry.type === 'voice') {
-      if (entry.recordingStatus === 'recording') {
+      if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping') {
+        const isStopping = entry.recordingStatus === 'stopping';
         return (
           <View
             testID={`calendar-recording-status-${entry.id}`}
@@ -522,19 +524,11 @@ function EntryCard({
           >
             <View style={styles.calendarRecordingHeader}>
               <TouchableOpacity
-                style={[styles.calendarStopButton, isProcessing && styles.buttonDisabled]}
-                disabled={isProcessing}
+                style={[styles.calendarStopButton, (isProcessing || isStopping) && styles.buttonDisabled]}
+                disabled={isProcessing || isStopping}
                 activeOpacity={0.7}
-                onPress={async () => {
-                  if (isProcessing) return;
-                  setIsProcessing(true);
-                  try {
-                    await onStopRecording?.(entry.id);
-                  } catch (error) {
-                    logger.error('Failed to stop recording:', error);
-                  } finally {
-                    setTimeout(() => setIsProcessing(false), 300);
-                  }
+                onPress={() => {
+                  void runStopRecording(entry.id, isStopping);
                 }}
               >
                 <View style={styles.stopIconCompact} />
@@ -542,9 +536,11 @@ function EntryCard({
               <View style={styles.calendarVoiceTrack}>
                 <View style={styles.calendarVoiceTrackRow}>
                   <View style={styles.calendarVoiceTrackActive}>
-                    <WaveformAnimation isRecording={true} color="#F1B463" />
+                    <WaveformAnimation isRecording={!isStopping} color="#F1B463" />
                   </View>
-                  <Text style={styles.calendarVoiceTime}>{formatDuration(entry.recordingDuration || 0)}</Text>
+                  <Text style={styles.calendarVoiceTime}>
+                    {isStopping ? '处理中...' : formatDuration(entry.recordingDuration || 0)}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -684,12 +680,31 @@ function EntryCard({
     setShowImageViewer(true);
   };
 
+  const runStopRecording = async (entryId: string, isStopping: boolean) => {
+    if (isStopping || stopRequestInFlightRef.current) {
+      return;
+    }
+
+    stopRequestInFlightRef.current = true;
+    setIsProcessing(true);
+    try {
+      await onStopRecording?.(entryId);
+    } catch (error) {
+      logger.error('Failed to stop recording:', error);
+    } finally {
+      setTimeout(() => {
+        stopRequestInFlightRef.current = false;
+        setIsProcessing(false);
+      }, 300);
+    }
+  };
+
   // 处理卡片点击 - 根据类型执行不同操作
   const handleCardPress = () => {
     logger.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
 
     // 录音中不允许点击
-    if (entry.recordingStatus === 'recording') {
+    if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping') {
       logger.log('录音中，忽略点击');
       return;
     }
@@ -795,36 +810,38 @@ function EntryCard({
                   )}
                 </>
                ) : entry.type === 'voice' ? (
-                 entry.recordingStatus === 'recording' ? (
+                 entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping' ? (
                    <View
                      style={styles.recordingContainer}
                    >
                      <View style={styles.recordingCompact}>
+                       {(() => {
+                         const isStopping = entry.recordingStatus === 'stopping';
+                         return (
                        <TouchableOpacity
                          testID={`voice-stop-button-${entry.id}`}
-                         style={[styles.stopButtonCompact, isProcessing && styles.buttonDisabled]}
-                         disabled={isProcessing}
+                         style={[styles.stopButtonCompact, (isProcessing || isStopping) && styles.buttonDisabled]}
+                         disabled={isProcessing || isStopping}
                          activeOpacity={0.7}
-                         onPress={async () => {
-                           if (isProcessing) return;
-                           setIsProcessing(true);
-                           try {
-                             await onStopRecording?.(entry.id);
-                           } catch (error) {
-                             logger.error('Failed to stop recording:', error);
-                           } finally {
-                             setTimeout(() => setIsProcessing(false), 300);
-                           }
+                         onPress={() => {
+                           void runStopRecording(entry.id, isStopping);
                          }}
                        >
                          <Ionicons name="stop" size={18} color="#FFFFFF" />
                        </TouchableOpacity>
+                         );
+                       })()}
 
                        <View style={styles.recordingCenter}>
                          <View style={styles.waveformCompact}>
-                           <WaveformAnimation isRecording={true} color="#F5A68D" />
+                           <WaveformAnimation
+                             isRecording={entry.recordingStatus === 'recording'}
+                             color="#F5A68D"
+                           />
                          </View>
-                         <Text style={styles.recordingLabel}>录音中...</Text>
+                         <Text style={styles.recordingLabel}>
+                           {entry.recordingStatus === 'stopping' ? '处理中...' : '录音中...'}
+                         </Text>
                        </View>
 
                        {/* 右侧：时长 */}

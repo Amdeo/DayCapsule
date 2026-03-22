@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 设计确认日期：2026-03-22
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -193,3 +194,41 @@
 ## Spec Review 留痕
 
 - 2026-03-22：已完成本地结构化 review，重点检查范围控制、状态机边界、防重复 stop 与失败语义；当前版本可进入用户 review gate。
+
+## 实现结果
+
+- `VoiceService.stopRecording()` 已调整为：
+  - 先用局部 `recorder` 完成 `stop()`
+  - 立即清空 `this.recorder` / `this.recordingSession`
+  - 再读取最终 URI 和文件大小
+  - 当 recorder 已经结束采集但仍保留 `uri/url` 时，继续按可收尾状态完成本地保存，不再把 `Recorder not prepared` 当作致命错误
+- 云端录音完成 helper 已改成在 `await stopRecording()` 前先写一次 `recordingStatus = stopping`
+- `EntryCard` 的普通卡与 `calendar` 变体都已支持 `stopping`：
+  - 显示 `处理中...`
+  - 停止按钮禁用
+  - 卡片点击在 `stopping` 时被忽略
+- `EntryCard` 的 stop 交互额外补了同步 ref 防重，连续点击只会触发一次 stop 调用
+- 首页录音时长发布已从高频原始秒数刷新，改成“按整秒显示值发布”，避免录音期间每 `100ms` 刷一次全局 store 拖慢 stop 点击响应
+
+## 实现偏差说明
+
+- 计划中提到可以提取新的 `stopCloudVoiceRecordingForTest()` helper，实际实现时没有新增命名 helper，而是在现有 `finalizeCloudVoiceRecordingForTest()` 中直接收敛“先切 `stopping`，再 stop”的顺序。这样能减少 API 面变化，保持调用点更小。
+- 为解决真实复现中“第一次 stop 点击迟迟不触发”的问题，实际实现额外增加了两项收敛：
+  - 录音时长只在整秒变化时才发布到 `entryStore`
+  - stop 按钮增加同步 ref 防重，防止排队点击穿透到重复 stop
+
+## 最终验证结果
+
+- 目标测试：
+  - `cd app && npx jest --run-in-band --runTestsByPath src/services/__tests__/voiceService.test.ts 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' src/components/__tests__/EntryCard.test.tsx`
+  - 结果：通过，`3` 个 suite，`49` 个测试全部通过
+- 类型检查：
+  - `cd app && npx tsc --noEmit`
+  - 结果：通过
+- diff 检查：
+  - `git diff --check -- app/src/services/voiceService.ts app/src/services/__tests__/voiceService.test.ts app/src/types/entry.ts app/app/'(tabs)'/index.tsx app/app/'(tabs)'/__tests__/index.voice-cloud-mode.test.ts app/src/components/EntryCard.tsx app/src/components/__tests__/EntryCard.test.tsx docs/superpowers/specs/2026-03-22-voice-stop-immediacy-design.md docs/superpowers/plans/2026-03-22-voice-stop-immediacy.md`
+  - 结果：通过
+- 手动验证：
+  - 已尝试通过 Android 模拟器进行最小点击验证，并确认应用可进入录音态
+  - 但自动化点按未能稳定命中录音卡 stop 按钮，因此没有把这轮模拟器手测计为“通过”
+  - 仍需用户在真实交互下复测“点击停止后时长立即冻结”

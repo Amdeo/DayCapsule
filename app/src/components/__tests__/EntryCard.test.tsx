@@ -198,6 +198,17 @@ const recordingVoiceEntry: Entry = {
   media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
 };
 
+const stoppingVoiceEntry: Entry = {
+  id: 'voice-stopping-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'pending_upload',
+  recordingStatus: 'stopping',
+  recordingDuration: 12,
+  media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
+};
+
 const conflictCopyEntry: Entry = {
   id: 'conflict-copy-1',
   type: 'text',
@@ -259,6 +270,19 @@ describe('EntryCard swipe actions', () => {
     expect(getAllByText('待上传').length).toBeGreaterThan(0);
   });
 
+  it('shows 处理中 and disables stop button when voice entry is stopping', () => {
+    const { getByText, getByTestId, queryByText } = render(
+      <EntryCard entry={stoppingVoiceEntry} onDelete={jest.fn()} onStopRecording={jest.fn()} />
+    );
+    const stopButton = getByTestId('voice-stop-button-voice-stopping-1');
+
+    expect(getByText('处理中...')).toBeTruthy();
+    expect(queryByText('录音中...')).toBeNull();
+    expect(
+      stopButton.props.accessibilityState?.disabled ?? stopButton.props['aria-disabled'] ?? false
+    ).toBe(true);
+  });
+
   it('calls onStopRecording when pressing the stop button of a recording voice card', async () => {
     const onStopRecording = jest.fn();
 
@@ -275,6 +299,34 @@ describe('EntryCard swipe actions', () => {
     });
 
     expect(onStopRecording).toHaveBeenCalledWith('voice-recording-1');
+  });
+
+  it('ignores duplicate stop presses while the first stop is still pending', async () => {
+    let resolveStop!: () => void;
+    const onStopRecording = jest.fn(() => new Promise<void>((resolve) => {
+      resolveStop = resolve;
+    }));
+
+    render(
+      <EntryCard
+        entry={recordingVoiceEntry}
+        onDelete={jest.fn()}
+        onStopRecording={onStopRecording}
+      />
+    );
+
+    const stopButton = screen.getByTestId('voice-stop-button-voice-recording-1');
+
+    await act(async () => {
+      fireEvent.press(stopButton);
+      fireEvent.press(stopButton);
+    });
+
+    expect(onStopRecording).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveStop();
+    });
   });
 
   it('does not render pause or resume controls for recording voice cards', () => {
@@ -762,5 +814,24 @@ describe('EntryCard calendar variant', () => {
     );
 
     expect(screen.getByTestId('calendar-recording-status-calendar-recording')).toBeTruthy();
+  });
+
+  it('calendar stopping 语音卡显示处理中状态', () => {
+    render(
+      <EntryCard
+        entry={{
+          ...calendarVoice,
+          id: 'calendar-stopping',
+          recordingStatus: 'stopping',
+          recordingDuration: 8,
+          transcription: undefined,
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-recording-status-calendar-stopping')).toBeTruthy();
+    expect(screen.getByText('处理中...')).toBeTruthy();
   });
 });

@@ -17,7 +17,7 @@ export interface Entry {
   transcription?: TranscriptionInfo;
 
   // 录音状态（仅在 type 为 'voice' 时使用）
-  recordingStatus?: 'recording' | 'paused' | 'uploading' | 'completed';
+  recordingStatus?: 'recording' | 'paused' | 'uploading' | 'stopping' | 'completed';
   recordingDuration?: number; // 录音时长（秒）
 
   // 编辑与同步

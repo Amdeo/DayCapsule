@@ -62,6 +62,17 @@ jest.mock('@/src/utils/logger', () => ({
 
 import { VoiceService } from '../voiceService';
 import { getFileInfo } from '@/src/utils/fileSystem';
+import { AudioModule } from 'expo-audio';
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
 describe('VoiceService remote audio handling', () => {
   beforeEach(() => {
@@ -84,5 +95,52 @@ describe('VoiceService remote audio handling', () => {
     await VoiceService.preloadAudio('http://localhost:3000/api/media/test-audio-id');
 
     expect(getFileInfo).not.toHaveBeenCalled();
+  });
+});
+
+describe('VoiceService stop recording immediacy', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getFileInfo as jest.Mock).mockResolvedValue({ size: 2048 });
+  });
+
+  it('returns 0 duration while stopRecording is still finalizing', async () => {
+    const deferred = createDeferred<{ size: number }>();
+    (getFileInfo as jest.Mock).mockReturnValueOnce(deferred.promise);
+
+    await VoiceService.startRecording();
+
+    const stopPromise = VoiceService.stopRecording();
+
+    await Promise.resolve();
+    await expect(VoiceService.getRecordingDuration()).resolves.toBe(0);
+
+    deferred.resolve({ size: 2048 });
+    await expect(stopPromise).resolves.toMatchObject({
+      uri: 'file:///tmp/test.m4a',
+      size: 2048,
+      duration: 1,
+      mimeType: 'audio/m4a',
+    });
+  });
+
+  it('finalizes recording when recorder is already stopped but the file uri exists', async () => {
+    await VoiceService.startRecording();
+    const recorder = (AudioModule.AudioRecorder as jest.Mock).mock.results[0].value;
+
+    recorder.getStatus.mockReturnValue({
+      canRecord: false,
+      isRecording: false,
+      durationMillis: 2400,
+      url: 'file:///tmp/test.m4a',
+    });
+
+    await expect(VoiceService.stopRecording()).resolves.toMatchObject({
+      uri: 'file:///tmp/test.m4a',
+      size: 2048,
+      duration: 2.4,
+      mimeType: 'audio/m4a',
+    });
+    expect(recorder.stop).not.toHaveBeenCalled();
   });
 });

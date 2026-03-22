@@ -96,6 +96,7 @@ import {
   assertCanStartVoiceRecordingForTest,
   startCloudVoiceRecordingForTest,
   finalizeCloudVoiceRecordingForTest,
+  toDisplayedRecordingDurationForTest,
   type VoiceCloudStartDeps,
   type VoiceCloudFinalizeDeps,
 } from '../index';
@@ -181,6 +182,33 @@ describe('cloud voice recording helpers', () => {
     expect(deps.preloadAudio).toHaveBeenCalledWith('file:///cache/final.m4a');
   });
 
+  it('marks the local voice card as stopping before stopRecording resolves', async () => {
+    let resolveStop!: (value: { uri: string; size: number; duration: number; mimeType: string }) => void;
+    const stopPromise = new Promise<{ uri: string; size: number; duration: number; mimeType: string }>((resolve) => {
+      resolveStop = resolve;
+    });
+    const deps = makeFinalizeDeps({
+      stopRecording: jest.fn(() => stopPromise),
+    });
+
+    const finalizePromise = finalizeCloudVoiceRecordingForTest('temp-voice-stopping', deps);
+
+    await Promise.resolve();
+
+    expect(deps.updateLocalEntry).toHaveBeenNthCalledWith(1, 'temp-voice-stopping', {
+      recordingStatus: 'stopping',
+    });
+
+    resolveStop({
+      uri: 'file:///cache/recording.m4a',
+      duration: 12,
+      size: 2048,
+      mimeType: 'audio/m4a',
+    });
+
+    await expect(finalizePromise).resolves.toBeUndefined();
+  });
+
   it('keeps the local voice card when enqueueing background upload fails', async () => {
     const deps = makeFinalizeDeps({
       enqueueUpload: jest.fn(() => {
@@ -215,6 +243,13 @@ describe('cloud voice recording helpers', () => {
 
     expect(timerRef.current).toBeNull();
     jest.useRealTimers();
+  });
+
+  it('publishes recording duration as whole seconds only', () => {
+    expect(toDisplayedRecordingDurationForTest(0)).toBe(0);
+    expect(toDisplayedRecordingDurationForTest(0.9)).toBe(0);
+    expect(toDisplayedRecordingDurationForTest(1.01)).toBe(1);
+    expect(toDisplayedRecordingDurationForTest(12.99)).toBe(12);
   });
 
   it('blocks starting a new recording while another one is active', () => {

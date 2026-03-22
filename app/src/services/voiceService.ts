@@ -270,33 +270,32 @@ export class VoiceService {
         throw new Error('No active recording');
       }
 
-      const status = this.recorder.getStatus();
-      const duration = (status.durationMillis || 0) / 1000;
+      const recorder = this.recorder;
+      const status = recorder.getStatus();
+      let finalStatus = status;
 
       if (!status.canRecord && !status.isRecording) {
-        logger.warn('[stopRecording] recorder not prepared, cleaning up');
-        this.recorder = null;
-        this.recordingSession = null;
-        throw new Error('Recorder not prepared');
+        logger.warn('[stopRecording] recorder already stopped, finalizing existing file');
+      } else {
+        await recorder.stop();
+        finalStatus = recorder.getStatus();
       }
 
-      await this.recorder.stop();
+      this.recorder = null;
+      this.recordingSession = null;
 
-      const finalStatus = this.recorder.getStatus();
-      const uri = this.recorder.uri || finalStatus.url;
+      const durationMillis = Math.max(status.durationMillis || 0, finalStatus.durationMillis || 0);
+      const uri = recorder.uri || finalStatus.url || status.url;
       if (!uri) {
         throw new Error('Failed to get recording URI');
       }
 
       const { size } = await getFileInfo(uri);
 
-      this.recorder = null;
-      this.recordingSession = null;
-
       return {
         uri,
         size,
-        duration,
+        duration: durationMillis / 1000,
         mimeType: 'audio/m4a',
       };
     } catch (error) {
