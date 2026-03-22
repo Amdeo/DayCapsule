@@ -15,7 +15,10 @@ func ErrorHandler(logger *zap.Logger) gin.HandlerFunc {
 			for _, err := range c.Errors {
 				logger.Error("request error",
 					zap.String("error", err.Error()),
+					zap.String("requestId", GetRequestID(c)),
+					zap.String("method", c.Request.Method),
 					zap.String("path", c.Request.URL.Path),
+					zap.Int("status", c.Writer.Status()),
 				)
 			}
 

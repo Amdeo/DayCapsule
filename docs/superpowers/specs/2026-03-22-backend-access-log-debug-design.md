@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 设计确认日期：2026-03-22
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -14,6 +15,7 @@
 - 2026-03-22：已确认采用全局 `requestId`，并回写到响应头，便于前后端串联定位问题。
 - 2026-03-22：已完成本地结构化 review。由于本轮会话未显式获得子代理授权，spec review 先采用本地 review 留痕，不在本轮调用 subagent。
 - 2026-03-22：用户 review 了 written spec 并回复 `可以`，批准进入 `writing-plans` 阶段。
+- 2026-03-23：实现完成并收口文档；后端已具备开发 / 测试环境访问日志、`requestId`、`/api/sync` 与 `/api/media/upload` 摘要日志能力。
 
 ## 背景
 
@@ -193,3 +195,41 @@
 - `/api/media/upload` 请求日志可看到 `mimeType`、`size`、`mediaId` 或失败阶段
 - 同一请求发生错误时，可通过 `requestId` 同时关联访问日志和错误日志
 - 生产环境默认不会输出这套访问日志
+
+## 实现结果
+
+- 已新增 `backend/internal/middleware/request_id.go` 与对应测试，支持透传或生成 `X-Request-Id`，并回写到响应头。
+- 已新增 `backend/internal/middleware/access_log.go` 与对应测试，在开发 / 测试环境统一输出结构化访问日志。
+- `backend/internal/middleware/error.go` 已补齐 `requestId`、`method`、`path`、`status`，可与访问日志用同一请求 ID 串联。
+- `backend/cmd/server/main.go` 已按设计挂载 `RequestID -> AccessLog -> Recovery -> ErrorHandler -> RateLimiter`。
+- `backend/internal/handlers/sync_v2.go` 已写入 `sync.deviceId`、`sync.clientChangeCount`、`sync.resultCount`、`sync.conflictCount` 等摘要字段，并补齐 handler 回归测试。
+- `backend/internal/handlers/media.go` 已写入 `upload.fieldName`、`upload.mimeType`、`upload.size`、`upload.extension`、`upload.mediaId` 与 `upload.failedStage`，并补齐成功 / 失败路径测试。
+
+## 实现偏差说明
+
+- 为了让 `MediaHandler` 可在不依赖真实 SQLite 的情况下做精确单测，实际实现把 `NewMediaHandler` 的依赖从具体 `*repository.MediaRepository` 收敛成最小 `mediaStore` 接口；现有生产调用点不需要额外改协议。
+- 手动验证时没有使用计划示例中的 `3000` 端口，而是使用临时 `39000` 端口和临时 SQLite / upload 目录，避免本机现有服务冲突；这不影响访问日志能力本身。
+
+## 最终验证结果
+
+- 目标测试：
+  - `cd backend && go test ./internal/middleware ./internal/handlers -count=1`
+  - 结果：通过，`middleware` 与 `handlers` 相关测试全部通过
+- 后端全量测试：
+  - `cd backend && go test ./... -count=1`
+  - 结果：通过
+- diff 检查：
+  - `git diff --check`
+  - 结果：通过
+- 手动验证：
+  - 启动命令：
+    - `JWT_SECRET=test-secret ENV=development PORT=39000 BASE_URL=http://localhost:39000 DATABASE_PATH=/tmp/backend-access-log-debug-17261.db UPLOAD_DIR=/tmp/backend-access-log-debug-uploads-17261 go run ./cmd/server`
+  - 实测请求：
+    - `curl -i -H 'X-Request-Id: debug-health-1' http://127.0.0.1:39000/health`
+    - `curl -i http://127.0.0.1:39000/api/sync -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' -H 'X-Request-Id: debug-sync-1' -d '{"cursor":0,"deviceId":"debug-device","clientChanges":[]}'`
+    - `curl -i http://127.0.0.1:39000/api/media/upload -H 'Authorization: Bearer <TOKEN>' -H 'X-Request-Id: debug-upload-1' -F 'file=@go.mod;type=text/plain'`
+  - 实测结果：
+    - `/health`、`/api/sync`、`/api/media/upload` 响应头都成功返回 `X-Request-Id`
+    - 服务端访问日志中可看到 `debug-sync-1` 对应的 `sync.*` 摘要字段
+    - 服务端访问日志中可看到 `debug-upload-1` 对应的 `upload.*` 摘要字段
+    - 错误日志关联字段已由自动化测试 `TestErrorHandler_LogsRequestMetadata` 覆盖验证
