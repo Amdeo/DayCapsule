@@ -8,9 +8,9 @@ import {
   View,
   Text,
   PanResponder,
-  StyleSheet,
   Pressable,
   Dimensions,
+  StyleSheet,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -271,9 +271,11 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
 
       {/* FAB 主按钮 */}
       <Animated.View style={[styles.fabContainer, fabTranslateYStyle]} pointerEvents="box-none">
-        <View style={styles.mainButtonWrapper}>
+        <View style={styles.mainButtonWrapper} className="items-center">
           <View
+            testID="fab-main-button"
             {...panResponder.current.panHandlers}
+            className="h-14 w-14 items-center justify-center rounded-full shadow-lg"
             style={[styles.mainButton, { backgroundColor: fabBgColor }]}
           >
             <Ionicons name={fabIcon as any} size={28} color="#FFFFFF" />
@@ -281,8 +283,13 @@ export function FABMenu({ onSelect, shouldHide, onRevealRequest }: FABMenuProps)
 
           {/* 首次启动气泡提示 */}
           {lastAddType === null && !isExpanded && (
-            <View style={styles.tipBubble}>
-              <Text style={styles.tipText}>长按选择记录类型</Text>
+            <View
+              style={styles.tipBubble}
+              className="absolute items-center rounded-[10px] bg-neutral-800/90 px-2.5 py-[5px]"
+            >
+              <Text style={styles.tipText} className="text-center text-[11px] font-semibold text-white">
+                长按选择记录类型
+              </Text>
               <View style={styles.tipArrow} />
             </View>
           )}
@@ -329,18 +336,26 @@ const FanOptionButton = React.memo(function FanOptionButton({
 
   return (
     <Animated.View style={[styles.optionWrapper, animatedStyle]}>
-      <View style={[styles.optionButton, { backgroundColor: option.color }]}>
+      <View
+        style={[styles.optionButton, { backgroundColor: option.color }]}
+        className="h-14 w-14 items-center justify-center rounded-full shadow-lg"
+      >
         <Ionicons name={option.icon as any} size={24} color="#FFFFFF" />
       </View>
-      <View style={styles.optionLabelContainer}>
-        <Text style={styles.optionLabel}>{option.label}</Text>
+      <View
+        style={styles.optionLabelContainer}
+        className="mt-1 rounded-[10px] bg-home-surface px-2 py-[2px] shadow-sm"
+      >
+        <Text style={styles.optionLabel} className="text-[11px] font-semibold text-copy-primary">
+          {option.label}
+        </Text>
       </View>
     </Animated.View>
   );
 });
 
 // ─── 样式 ──────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const styles: Record<string, any> = {
   backdropOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -439,4 +454,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4A4A4A',
   },
-});
+};

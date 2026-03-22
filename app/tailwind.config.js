@@ -70,6 +70,37 @@ module.exports = {
         success: '#10B981',
         warning: '#F5A623',
         error: '#EF4444',
+        home: {
+          background: '#FAF8F5',
+          surface: '#FFFFFF',
+          mask: '#1A1A1A',
+          filter: '#F0F4FF',
+        },
+        timeline: {
+          line: '#E5E5E5',
+          dot: '#6A89CC',
+        },
+        entry: {
+          text: '#A491D3',
+          photo: '#77C9D4',
+          voice: '#F5A623',
+        },
+        copy: {
+          primary: '#4A4A4A',
+          muted: '#A3A3A3',
+          subtle: '#D1D1D1',
+          accent: '#4A6FA5',
+          loader: '#8B7355',
+        },
+        border: {
+          subtle: '#E5E5E5',
+          filter: '#DDE5F8',
+          'filter-strong': '#C7D7F5',
+        },
+      },
+      borderRadius: {
+        chip: '12px',
+        card: '10px',
       },
     },
   },

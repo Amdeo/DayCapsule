@@ -1,6 +1,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
+import { render } from '@testing-library/react-native';
 
 // Mock useSafeAreaInsets，模拟 Android 状态栏高度 28dp
 jest.mock('react-native-safe-area-context', () => ({
@@ -63,5 +64,18 @@ describe('SearchBar 安全区适配', () => {
       : json.props.style;
     expect(containerStyle.paddingTop).toBe(28);
     expect(JSON.stringify(json)).toContain('sync');
+  });
+
+  it('keeps the menu button and search shell dimensions after nativewind migration', () => {
+    const { getByTestId } = render(<SearchBar />);
+
+    expect(getByTestId('searchbar-menu-button')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+    expect(getByTestId('searchbar-search-box')).toHaveStyle({
+      height: 48,
+    });
   });
 });

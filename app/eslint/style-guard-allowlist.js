@@ -2,7 +2,6 @@ module.exports = {
   // legacy 存量文件清单（迁移完成后从此移除）
   legacyFiles: [
     'app/(tabs)/_layout.tsx',
-    'app/(tabs)/index.tsx',
     'app/(tabs)/two.tsx',
     'app/+not-found.tsx',
     'app/_layout.tsx',
@@ -16,25 +15,20 @@ module.exports = {
     'src/components/CloudSyncStatusButton.tsx',
     'src/components/DetailPageShell.tsx',
     'src/components/EntryActionSheet.tsx',
-    'src/components/EntryCard.tsx',
     'src/components/EntryEditor.tsx',
     'src/components/ErrorBoundary.tsx',
-    'src/components/FABMenu.tsx',
     'src/components/FilterBar.tsx',
     'src/components/HelpPage.tsx',
     'src/components/ImageViewer.tsx',
     'src/components/LoginPage.tsx',
     'src/components/PhotoGrid.tsx',
-    'src/components/SearchBar.tsx',
     'src/components/SearchOverlay.tsx',
     'src/components/SettingsPage.tsx',
-    'src/components/Sidebar.tsx',
     'src/components/StatsPage.tsx',
     'src/components/TagManagementPage.tsx',
     'src/components/TagsPage.tsx',
     'src/components/TextEditor.tsx',
     'src/components/TextEntryDetailPage.tsx',
-    'src/components/Timeline.v2.tsx',
     'src/components/VoiceRecorder.tsx',
     'src/components/WaveformAnimation.tsx',
   ],
@@ -43,10 +37,6 @@ module.exports = {
     'app/(tabs)/_layout.tsx': {
       'style-guard/no-new-stylesheet-create': [],
       'style-guard/no-static-inline-styles': ['03a276dde7ed'],
-    },
-    'app/(tabs)/index.tsx': {
-      'style-guard/no-new-stylesheet-create': [],
-      'style-guard/no-static-inline-styles': ['316830311e8a', '237a58a0e174'],
     },
     'app/(tabs)/two.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
@@ -107,20 +97,12 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['6743a0e81826'],
       'style-guard/no-static-inline-styles': [],
     },
-    'src/components/EntryCard.tsx': {
-      'style-guard/no-new-stylesheet-create': ['73bb17bd92e5'],
-      'style-guard/no-static-inline-styles': ['34893b2d218c', '89a6c73a8c34', 'a500fec497d4'],
-    },
     'src/components/EntryEditor.tsx': {
       'style-guard/no-new-stylesheet-create': ['b5a4dfbf157b'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/ErrorBoundary.tsx': {
       'style-guard/no-new-stylesheet-create': ['440908eff410'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/FABMenu.tsx': {
-      'style-guard/no-new-stylesheet-create': ['cfe05d293be8'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/FilterBar.tsx': {
@@ -143,10 +125,6 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['e61b82be335d'],
       'style-guard/no-static-inline-styles': [],
     },
-    'src/components/SearchBar.tsx': {
-      'style-guard/no-new-stylesheet-create': ['320cdd7e1e06'],
-      'style-guard/no-static-inline-styles': [],
-    },
     'src/components/SearchOverlay.tsx': {
       'style-guard/no-new-stylesheet-create': ['363e41d8759d'],
       'style-guard/no-static-inline-styles': [
@@ -159,10 +137,6 @@ module.exports = {
     'src/components/SettingsPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['424dfdf4600e', 'b2ebf5636c74', 'dc9ccd86e21b'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/Sidebar.tsx': {
-      'style-guard/no-new-stylesheet-create': ['2d1741c1d068'],
-      'style-guard/no-static-inline-styles': ['320cdc180a8e'],
     },
     'src/components/StatsPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['ab19677eb9c6'],
@@ -183,24 +157,6 @@ module.exports = {
     'src/components/TextEntryDetailPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['0bbd3ceb1783'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/Timeline.v2.tsx': {
-      'style-guard/no-new-stylesheet-create': ['414acdfdc4c3', '3ac1de749885'],
-      'style-guard/no-static-inline-styles': [
-        'fd0a522cb67c',
-        'f81fe5d83a33',
-        '88b4707bc885',
-        '34a79ade6a31',
-        'e422a450e9d3',
-        'da7b167b2a99',
-        'dec87172e45e',
-        'f78fff9edc2c',
-        '5637d2d9c6b4',
-        'fd96c4bec4cc',
-        'b2eaa5039970',
-        'c5a4d1f46e2f',
-        'c55372818a75',
-      ],
     },
     'src/components/VoiceRecorder.tsx': {
       'style-guard/no-new-stylesheet-create': ['ab721f944770'],

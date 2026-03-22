@@ -35,6 +35,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
 const MAIN_TRANSLATE_X = SIDEBAR_WIDTH;
 const RECORDING_DURATION_POLL_MS = 250;
+const HOME_SCREEN_ROOT_FLEX = 1;
+
+const HOME_SCREEN_ROOT_STYLE = {
+  flex: HOME_SCREEN_ROOT_FLEX,
+};
+
+const DRAWER_OVERLAY_STYLE = {
+  left: MAIN_TRANSLATE_X,
+};
 
 export interface PhotoSelectDeps {
   savePhotoToStorage: (
@@ -522,8 +531,12 @@ export default function HomeScreen() {
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
-      <Animated.View style={[{ flex: 1 }, mainContentStyle]}>
+    <View
+      testID="home-screen-root"
+      className="flex-1 bg-home-mask"
+      style={HOME_SCREEN_ROOT_STYLE}
+    >
+      <Animated.View className="flex-1" style={mainContentStyle}>
         <Timeline
           onQuickAdd={handleMediaSelect}
           onMenuPress={openDrawer}
@@ -551,14 +564,8 @@ export default function HomeScreen() {
       {drawerOpen && (
         <Pressable
           onPress={closeDrawer}
-          style={{
-            position: 'absolute',
-            left: MAIN_TRANSLATE_X,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 5,
-          }}
+          className="absolute bottom-0 right-0 top-0 z-[5]"
+          style={DRAWER_OVERLAY_STYLE}
         />
       )}
     </View>

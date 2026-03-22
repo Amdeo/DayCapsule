@@ -2,9 +2,9 @@
 
 ## 状态
 
-- 当前状态：已确认设计
+- 当前状态：已实现并验证
 - 设计确认日期：2026-03-23
-- 实现完成日期：待实现
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -19,6 +19,32 @@
 - 2026-03-23：已确认自动化守卫采用 `ESLint` 方案。
 - 2026-03-23：已确认首页保持现有视觉、结构和交互，不借迁移之名重新设计页面。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞进入 planning 的问题。由于本轮会话未显式获得子代理授权，spec review 先采用本地 review 留痕。
+- 2026-03-23：实现已完成，首页第一批目标文件均已从样式守卫 allowlist 中移除。
+
+## 实现结果
+
+- 已落地 `ESLint + style guard + allowlist baseline`，并用本地规则守住新增 `StyleSheet.create` 与静态内联样式。
+- 已完成首页壳层迁移：`SearchBar`、`Timeline.v2`、`app/(tabs)/index.tsx` 已改为 `NativeWind` 驱动静态视觉，`TimelineSectionHeader` 与 `TimelineEmptyState` 已拆出为纯展示组件。
+- 已完成 `EntryCard` 迁移：新增 [entryCardVariants.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/entryCardVariants.ts)，统一 text/photo/voice 三类卡片的壳层与按下态映射。
+- 已完成 `FABMenu` 与 `Sidebar` 迁移：主 FAB、选项气泡、抽屉壳层、菜单项和 footer 已迁到 `className`，动态位移与安全区 padding 保留在 `style`。
+- 已补齐首页迁移相关测试：新增 [TimelineSectionHeader.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/TimelineSectionHeader.test.tsx)、[TimelineEmptyState.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/TimelineEmptyState.test.tsx)、[entryCardVariants.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/entryCardVariants.test.ts)、[Sidebar.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/Sidebar.test.tsx)、[index.render.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/index.render.test.tsx)。
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath eslint-rules/__tests__/style-guardrails.test.ts`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx 'app/(tabs)/__tests__/index.render.test.tsx'`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/entryCardVariants.test.ts src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.border-radius.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/__tests__/runtime-regressions.test.ts`：通过
+- `cd app && npm run lint`：通过
+- `cd app && npm run typecheck`：通过
+- `cd app && npm test -- --runInBand`：通过
+
+## 偏差与已知问题
+
+- 原计划建议在 [index.photo.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/index.photo.test.ts) 或 [index.voice-cloud-mode.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts) 上补首页根容器断言；实际实现中新增了独立的 [index.render.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/index.render.test.tsx)，避免把 helper-only 测试环境和 UI 渲染断言耦合在一起。
+- 当前 Jest 环境不会把 `className` 自动解析进断言样式，因此少量尺寸/颜色回归点保留了最小 `style` 常量用于测试可见性；这不改变运行时的 `NativeWind` 迁移方向。
+- 收口阶段一并修复了 [runtime-regressions.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/__tests__/runtime-regressions.test.ts) 的过时字符串守卫，使其与当前 `displayedDuration` 去重逻辑一致。
 
 ## 背景
 

@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
-  StyleSheet,
   Alert,
   Image,
   ActivityIndicator,
@@ -39,8 +38,21 @@ import { PhotoGrid } from './PhotoGrid';
 import { formatMMSS } from '@/src/utils/timeUtils';
 import { PhotoService } from '@/src/services/photoService';
 import { CalendarDensity } from '@/src/store/settingsStore';
+import { getEntryCardVariant } from './entryCardVariants';
 
 const ACTION_SHEET_OPEN_DELAY = 100;
+const RIGHT_ACTIONS_WIDTH = 96;
+const PLAY_ICON_CALENDAR_MARGIN_LEFT = 2;
+const PLAY_ICON_DEFAULT_MARGIN_LEFT = 3;
+const RIGHT_ACTIONS_STYLE = {
+  width: RIGHT_ACTIONS_WIDTH,
+};
+const CALENDAR_PLAY_ICON_STYLE = {
+  marginLeft: PLAY_ICON_CALENDAR_MARGIN_LEFT,
+};
+const DEFAULT_PLAY_ICON_STYLE = {
+  marginLeft: PLAY_ICON_DEFAULT_MARGIN_LEFT,
+};
 
 
 interface EntryCardProps {
@@ -108,6 +120,7 @@ function EntryCard({
   const resetCardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopRecordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardTranslateX = useSharedValue(0);
+  const entryCardVariant = getEntryCardVariant(entry.type, variant);
 
   // 红点闪烁动画
   const redDotOpacity = useSharedValue(1);
@@ -219,40 +232,6 @@ function EntryCard({
 
   // 格式化录音时长
   const formatDuration = (seconds: number) => formatMMSS(seconds);
-
-  // 根据类型获取左边框颜色
-  const getBorderColor = () => {
-    switch (entry.type) {
-      case 'text': return '#A491D3';    // 紫色
-      case 'photo': return '#77C9D4';   // 青色
-      case 'voice': return '#F5A623';   // 橙色
-      default: return '#D1D1D1';
-    }
-  };
-
-  const getCardBgColor = () => {
-    if (variant === 'calendar') {
-      return '#FFFDF9';
-    }
-    switch (entry.type) {
-      case 'text':  return '#E0D9F5'; // 淡紫
-      case 'photo': return '#CCE9EF'; // 淡青，弱化照片类型主色
-      case 'voice': return '#FCE8C0'; // 淡橙
-      default:      return '#FFFFFF';
-    }
-  };
-
-  const getCardPressedColor = () => {
-    if (variant === 'calendar') {
-      return '#FBF6EF';
-    }
-    switch (entry.type) {
-      case 'text':  return '#D4CBF2';
-      case 'photo': return '#BDDEE5';
-      case 'voice': return '#F8DFB0';
-      default:      return '#F5F5F5';
-    }
-  };
 
   // 照片卡片是否有底部内容（决定图片圆角）
   const hasPhotoFooter = entry.type === 'photo'
@@ -412,15 +391,6 @@ function EntryCard({
     );
   };
 
-  const getCalendarBorderColor = () => {
-    switch (entry.type) {
-      case 'text': return '#DDD0EF';
-      case 'photo': return '#D5E8E5';
-      case 'voice': return '#EFD8B5';
-      default: return '#E6DDD2';
-    }
-  };
-
   const renderCalendarTags = () => {
     if (!entry.tags || entry.tags.length === 0) return null;
 
@@ -573,7 +543,7 @@ function EntryCard({
                   {isPlayingAudio ? (
                     <Ionicons name="stop" size={20} color="#FFFFFF" />
                   ) : (
-                    <Ionicons name="play" size={22} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                    <Ionicons name="play" size={22} color="#FFFFFF" style={CALENDAR_PLAY_ICON_STYLE} />
                   )}
                 </TouchableOpacity>
                 <View style={styles.calendarVoiceTrack}>
@@ -676,7 +646,7 @@ function EntryCard({
     }, ACTION_SHEET_OPEN_DELAY);
   };
 
-  const renderRightActions = () => <View style={{ width: 96 }} />;
+  const renderRightActions = () => <View style={RIGHT_ACTIONS_STYLE} />;
 
   const handleImagePress = (index: number) => {
     logger.log('图片被点击，打开图片查看器，index:', index);
@@ -755,6 +725,7 @@ function EntryCard({
           testID="entry-card-container"
           entering={FadeInRight.duration(360).delay(enterDelay)}
           layout={Layout.springify()}
+          className={variant === 'calendar' ? 'rounded-card' : undefined}
           style={[
             styles.cardShadow,
             variant === 'calendar' && styles.calendarCardShadow,
@@ -764,6 +735,7 @@ function EntryCard({
           <Animated.View style={cardAnimatedStyle}>
             <View
               testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
+              className={variant === 'calendar' ? 'rounded-card' : undefined}
               style={variant === 'calendar' ? styles.calendarCardShell : undefined}
             >
               <Pressable
@@ -772,12 +744,15 @@ function EntryCard({
                 onPressOut={() => setIsPressed(false)}
                 onPress={handleCardPress}
                 onLongPress={handleLongPress}
+                className={`${entryCardVariant.shellClassName} ${isPressed ? entryCardVariant.pressedClassName : ''}`}
                 style={[
                   styles.cardContainer,
                   variant === 'calendar' && styles.calendarCardContainer,
-                  variant === 'calendar' && { borderColor: getCalendarBorderColor(), borderWidth: 1 },
+                  variant === 'calendar' && { borderColor: entryCardVariant.calendarBorderColor, borderWidth: 1 },
                   {
-                    backgroundColor: isPressed ? getCardPressedColor() : getCardBgColor(),
+                    backgroundColor: isPressed
+                      ? entryCardVariant.pressedBackgroundColor
+                      : entryCardVariant.shellBackgroundColor,
                   },
                 ]}
               >
@@ -905,7 +880,7 @@ function EntryCard({
                              {isPlayingAudio ? (
                                <Ionicons name="stop" size={22} color="#FFFFFF" />
                              ) : (
-                               <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                               <Ionicons name="play" size={24} color="#FFFFFF" style={DEFAULT_PLAY_ICON_STYLE} />
                              )}
                            </TouchableOpacity>
 
@@ -1023,7 +998,7 @@ function EntryCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles: Record<string, any> = {
   syncStatusBadge: {
     position: 'absolute',
     top: 12,
@@ -1581,7 +1556,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-});
+};
 
 // 使用 React.memo 优化性能，避免不必要的重新渲染
 // 注意：以 named export 形式导出，与 Timeline.v2.tsx 的 import { EntryCard } 保持一致

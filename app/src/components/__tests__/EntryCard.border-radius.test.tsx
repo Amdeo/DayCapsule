@@ -96,6 +96,9 @@ describe('EntryCard border radius', () => {
       <EntryCard entry={textEntry} onDelete={jest.fn()} />
     );
 
+    expect(getByTestId('entry-card-container')).toHaveStyle({ borderRadius: 10 });
+    expect(getByTestId('entry-card')).toHaveStyle({ borderRadius: 10 });
+
     const outerStyle = StyleSheet.flatten(getByTestId('entry-card-container').props.style);
     const innerStyle = StyleSheet.flatten(getByTestId('entry-card').props.style);
 

@@ -17,6 +17,15 @@
 - 2026-03-23：基于已批准 spec 创建实现计划，范围覆盖首页第一批 `NativeWind` 迁移、Tailwind token 收敛和 `ESLint` 自动守卫。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：实现已完成。实际新增 [app/app/(tabs)/__tests__/index.render.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/index.render.test.tsx) 覆盖首页根容器回归，未改动原计划中的 helper-only 首页测试文件。
+
+## 执行结果
+
+- Task 1 至 Task 4 的实现与分块验证均已完成，首页首批目标文件 `SearchBar`、`Timeline.v2`、`app/(tabs)/index.tsx`、`EntryCard.tsx`、`FABMenu.tsx`、`Sidebar.tsx` 已从 allowlist 移除。
+- `npm run lint`：通过
+- `npm run typecheck`：通过
+- `npm test -- --runInBand`：通过
+- 额外收口：更新 [runtime-regressions.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/__tests__/runtime-regressions.test.ts) 的过时字符串守卫，使其与当前录音时长去重实现一致。
 
 ## File Structure
 
@@ -40,6 +49,7 @@
 | `app/src/components/entryCardVariants.ts` | 统一管理 text/photo/voice 三类卡片的样式变体映射，避免颜色和壳层类名散落在 `EntryCard.tsx` |
 | `app/src/components/__tests__/entryCardVariants.test.ts` | 锁定卡片变体映射输出，确保类型色和壳层类名稳定 |
 | `app/src/components/__tests__/Sidebar.test.tsx` | 锁定 Sidebar 头部、菜单项和底部安全区 padding 的展示回归 |
+| `app/app/(tabs)/__tests__/index.render.test.tsx` | 独立锁定首页根容器 `home-screen-root` 的壳层回归，避免与 helper-only 测试耦合 |
 
 ### Modified Files
 
@@ -52,8 +62,8 @@
 | `app/src/components/Timeline.v2.tsx` | 改为组合 `TimelineSectionHeader` / `TimelineEmptyState`，把静态壳层样式迁到 `NativeWind` |
 | `app/src/components/__tests__/Timeline.v2.view-mode.test.tsx` | 锁定首页列表/日历切换、loader 色值和空态渲染回归 |
 | `app/app/(tabs)/index.tsx` | 仅保留页面逻辑和动画位移，移除静态容器样式到 `className` |
-| `app/app/(tabs)/__tests__/index.photo.test.ts` | 锁定首页根容器和照片路径回归 |
-| `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts` | 锁定首页根容器和云端录音路径回归 |
+| `app/app/(tabs)/__tests__/index.photo.test.ts` | 保持原有照片 helper 回归，不额外承载首页壳层渲染断言 |
+| `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts` | 保持原有云端录音 helper 回归，不额外承载首页壳层渲染断言 |
 | `app/src/components/EntryCard.tsx` | 把静态卡片壳层和各类型外观迁到 `NativeWind`，保留音频、手势、动画等动态样式 |
 | `app/src/components/__tests__/EntryCard.test.tsx` | 锁定语音上传、冲突副本、详情打开等交互在迁移后不回归 |
 | `app/src/components/__tests__/EntryCard.border-radius.test.tsx` | 锁定卡片壳层圆角和容器结构不变 |
@@ -89,7 +99,7 @@
 - Create: `app/eslint-rules/__fixtures__/disallowed-stylesheet-create.tsx`
 - Create: `app/eslint-rules/__tests__/style-guardrails.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定 style guard 的允许/禁止样例**
+- [x] **Step 1: 先写失败测试，锁定 style guard 的允许/禁止样例**
 
 在 `app/eslint-rules/__tests__/style-guardrails.test.ts` 新建测试，用 `ESLint` API 直接跑本地 fixtures，至少覆盖：
 
@@ -110,13 +120,13 @@ it('allows animated and runtime-driven style usage', async () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath eslint-rules/__tests__/style-guardrails.test.ts`
 
 Expected: FAIL，原因应是 `eslint` / `eslint.config.js` / 本地 rules 尚不存在，或者 test 中引用的规则 ID 未定义。
 
-- [ ] **Step 3: 最小实现 lint 基建和本地守卫**
+- [x] **Step 3: 最小实现 lint 基建和本地守卫**
 
 在 `app/package.json`：
 
@@ -169,7 +179,7 @@ Expected: FAIL，原因应是 `eslint` / `eslint.config.js` / 本地 rules 尚�
   - `StyleSheet.absoluteFill`
   - 依赖 `insets` / 动画值 / 手势值的对象
 
-- [ ] **Step 4: 重新运行守卫测试并建立 lint 基线**
+- [x] **Step 4: 重新运行守卫测试并建立 lint 基线**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath eslint-rules/__tests__/style-guardrails.test.ts`
 Expected: PASS
@@ -177,7 +187,7 @@ Expected: PASS
 Run: `cd app && npm run lint`
 Expected: PASS，说明 allowlist 足以兜住当前 legacy 文件，而新规则已可用。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/package.json app/eslint.config.js app/eslint/style-guard-allowlist.js app/eslint-rules
@@ -203,7 +213,7 @@ git commit -m "chore: add nativewind style guardrails"
 - Modify: `app/app/(tabs)/__tests__/index.photo.test.ts`
 - Modify: `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定首页壳层和 Timeline 展示片段**
+- [x] **Step 1: 先写失败测试，锁定首页壳层和 Timeline 展示片段**
 
 在 `app/src/components/__tests__/SearchBar.safe-area.test.tsx` 增加：
 
@@ -241,13 +251,13 @@ it('renders the empty-state shell and copy', () => {
 expect(screen.getByTestId('home-screen-root')).toHaveStyle({ flex: 1 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx app/(tabs)/__tests__/index.photo.test.ts app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
 
 Expected: FAIL，原因应包含缺少 `TimelineSectionHeader` / `TimelineEmptyState` 文件，以及 `SearchBar` / `HomeScreen` 还没有对应 testID。
 
-- [ ] **Step 3: 最小实现首页壳层迁移**
+- [x] **Step 3: 最小实现首页壳层迁移**
 
 在 `app/tailwind.config.js`：
 
@@ -293,7 +303,7 @@ Expected: FAIL，原因应包含缺少 `TimelineSectionHeader` / `TimelineEmptyS
 
 - 移除 `SearchBar.tsx`、`Timeline.v2.tsx`、`app/(tabs)/index.tsx`
 
-- [ ] **Step 4: 重新运行目标测试、lint 和类型检查**
+- [x] **Step 4: 重新运行目标测试、lint 和类型检查**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx app/(tabs)/__tests__/index.photo.test.ts app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
 Expected: PASS
@@ -324,7 +334,7 @@ git commit -m "refactor: migrate home shell to nativewind"
 - Modify: `app/src/components/__tests__/EntryCard.border-radius.test.tsx`
 - Modify: `app/src/components/__tests__/EntryCard.missing-media.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定卡片变体映射和现有视觉壳层**
+- [x] **Step 1: 先写失败测试，锁定卡片变体映射和现有视觉壳层**
 
 在 `app/src/components/__tests__/entryCardVariants.test.ts` 新建：
 
@@ -351,13 +361,13 @@ expect(getByTestId('entry-card')).toHaveStyle({ borderRadius: 10 });
 
 在 `app/src/components/__tests__/EntryCard.missing-media.test.tsx` 保留现有背景色断言，确保迁移后视觉不变。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/entryCardVariants.test.ts src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.border-radius.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx`
 
 Expected: FAIL，原因应包含缺少 `entryCardVariants.ts` 或新的 test 断言尚未满足。
 
-- [ ] **Step 3: 最小实现 `EntryCard` 迁移**
+- [x] **Step 3: 最小实现 `EntryCard` 迁移**
 
 在 `app/src/components/entryCardVariants.ts`：
 
@@ -390,7 +400,7 @@ export function getEntryCardVariant(type: Entry['type'], variant: 'default' | 'c
 
 - 移除 `EntryCard.tsx`
 
-- [ ] **Step 4: 重新运行目标测试、lint 和类型检查**
+- [x] **Step 4: 重新运行目标测试、lint 和类型检查**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/entryCardVariants.test.ts src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.border-radius.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx`
 Expected: PASS
@@ -421,7 +431,7 @@ git commit -m "refactor: migrate entry card to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-home-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-home-nativewind-migration.md`
 
-- [ ] **Step 1: 先写失败测试，锁定 FAB 和 Sidebar 的静态壳层**
+- [x] **Step 1: 先写失败测试，锁定 FAB 和 Sidebar 的静态壳层**
 
 在 `app/src/components/__tests__/FABMenu.peek-hide.test.tsx` 增加：
 
@@ -443,13 +453,13 @@ it('renders the sidebar shell, menu items and safe-area footer', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`
 
 Expected: FAIL，原因应包含缺少新的 testID 或 `Sidebar.test.tsx` 依赖的结构尚未存在。
 
-- [ ] **Step 3: 最小实现 FAB / Sidebar 迁移并收紧 allowlist**
+- [x] **Step 3: 最小实现 FAB / Sidebar 迁移并收紧 allowlist**
 
 在 `app/src/components/FABMenu.tsx`：
 
@@ -476,7 +486,15 @@ Expected: FAIL，原因应包含缺少新的 testID 或 `Sidebar.test.tsx` 依�
 - 移除 `FABMenu.tsx`
 - 移除 `Sidebar.tsx`
 
-- [ ] **Step 4: 跑最终验证并回填文档**
+- [x] **Step 4: 跑最终验证并回填文档**
+
+验证结果：
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`：PASS
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/__tests__/runtime-regressions.test.ts`：PASS
+- `cd app && npm test -- --runInBand`：PASS
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`
 Expected: PASS

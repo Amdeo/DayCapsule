@@ -30,8 +30,9 @@ describe('runtime regression guards', () => {
     const homePath = path.join(process.cwd(), 'app', '(tabs)', 'index.tsx');
     const source = fs.readFileSync(homePath, 'utf8');
 
-    expect(source).toContain('let lastDuration = 0;');
-    expect(source).toContain('if (duration !== lastDuration) {');
-    expect(source).toContain('lastDuration = duration;');
+    expect(source).toContain('let lastDisplayedDuration = -1;');
+    expect(source).toContain('const displayedDuration = toDisplayedRecordingDurationForTest(duration);');
+    expect(source).toContain('if (displayedDuration !== lastDisplayedDuration) {');
+    expect(source).toContain('lastDisplayedDuration = displayedDuration;');
   });
 });
