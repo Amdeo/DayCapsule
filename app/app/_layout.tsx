@@ -31,6 +31,7 @@ import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
+import { FeedbackHost } from '@/src/components/FeedbackHost';
 
 LogBox.ignoreLogs([
   "SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead.",
@@ -272,10 +273,13 @@ function RootLayoutNav() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
+            <>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              </Stack>
+              <FeedbackHost />
+            </>
           </ThemeProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

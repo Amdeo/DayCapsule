@@ -4,6 +4,7 @@ import { render, act } from '@testing-library/react-native';
 let appStateListener: ((state: 'active' | 'background' | 'inactive') => void | Promise<void>) | null = null;
 let networkListener: ((state: { isConnected: boolean; isInternetReachable: boolean | null }) => void) | null = null;
 const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
+const mockFeedbackHost = jest.fn(() => null);
 
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
@@ -112,6 +113,10 @@ jest.mock('@/src/database/migration', () => ({
 
 jest.mock('@/src/components/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('@/src/components/FeedbackHost', () => ({
+  FeedbackHost: () => mockFeedbackHost(),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -237,6 +242,7 @@ describe('RootLayout photo upload triggers', () => {
 
     await flushPromises();
 
+    expect(mockFeedbackHost).toHaveBeenCalled();
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });
