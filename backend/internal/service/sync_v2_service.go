@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -25,12 +26,17 @@ type syncV2ChangeStore interface {
 }
 
 type SyncV2Service struct {
-	entryRepo  syncV2EntryStore
-	changeRepo syncV2ChangeStore
+	entryRepo    syncV2EntryStore
+	changeRepo   syncV2ChangeStore
+	entryRepoDB  *repository.EntryRepository
+	changeRepoDB *repository.ChangeRepository
 }
 
 func NewSyncV2Service(entryRepo *repository.EntryRepository, changeRepo *repository.ChangeRepository) *SyncV2Service {
-	return newSyncV2Service(entryRepo, changeRepo)
+	svc := newSyncV2Service(entryRepo, changeRepo)
+	svc.entryRepoDB = entryRepo
+	svc.changeRepoDB = changeRepo
+	return svc
 }
 
 func newSyncV2Service(entryRepo syncV2EntryStore, changeRepo syncV2ChangeStore) *SyncV2Service {
@@ -83,7 +89,8 @@ type SyncResponse struct {
 }
 
 // Sync 应用客户端变更并返回增量变更 + 冲突信息。
-// 当前 create/update/delete 都是分步 repository 调用，尚未提供单事务原子性保证。
+// 真实 DB repository 路径会把 entry 写入与 change log 追加放进同一事务；
+// 测试 doubles 仍走原有接口路径，避免扩大 mock 改动面。
 func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncRequest) (*SyncResponse, error) {
 	if s.entryRepo == nil || s.changeRepo == nil {
 		return nil, errors.New("sync service not initialized")
@@ -103,6 +110,35 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 				EntryID:  entry.ID,
 			})
 			continue
+		}
+
+		if s.supportsTransactionalWrites() {
+			switch cc.Op {
+			case "create":
+				result, err := s.applyCreateTx(ctx, userID, cc.ChangeID, &entry)
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, result)
+				continue
+			case "update":
+				result, conflict, err := s.applyUpdateTx(ctx, userID, cc.ChangeID, cc.BaseUpdatedAt, &entry)
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, result)
+				if conflict != nil {
+					conflicts = append(conflicts, *conflict)
+				}
+				continue
+			case "delete":
+				result, err := s.applyDeleteTx(ctx, userID, cc.ChangeID, &entry)
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, result)
+				continue
+			}
 		}
 
 		existing, err := s.entryRepo.GetByID(userID, entry.ID)
@@ -276,17 +312,193 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 	return resp, nil
 }
 
+func (s *SyncV2Service) supportsTransactionalWrites() bool {
+	return s.entryRepoDB != nil && s.changeRepoDB != nil
+}
+
+func (s *SyncV2Service) applyCreateTx(ctx context.Context, userID, changeID string, entry *models.Entry) (SyncResult, error) {
+	tx, err := s.entryRepoDB.BeginTx(ctx)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := s.entryRepoDB.GetByIDTx(tx, userID, entry.ID)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if existing != nil {
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "ignored",
+			EntryID:  entry.ID,
+		}, nil
+	}
+
+	saved, err := s.insertEntryTx(ctx, tx, userID, entry)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return SyncResult{}, err
+	}
+	committed = true
+	return SyncResult{
+		ChangeID: changeID,
+		Status:   "applied",
+		EntryID:  saved.ID,
+	}, nil
+}
+
+func (s *SyncV2Service) applyUpdateTx(
+	ctx context.Context,
+	userID, changeID string,
+	baseUpdatedAt *time.Time,
+	entry *models.Entry,
+) (SyncResult, *Conflict, error) {
+	tx, err := s.entryRepoDB.BeginTx(ctx)
+	if err != nil {
+		return SyncResult{}, nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := s.entryRepoDB.GetByIDTx(tx, userID, entry.ID)
+	if err != nil {
+		return SyncResult{}, nil, err
+	}
+	if existing == nil {
+		saved, err := s.insertEntryTx(ctx, tx, userID, entry)
+		if err != nil {
+			return SyncResult{}, nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			return SyncResult{}, nil, err
+		}
+		committed = true
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "applied",
+			EntryID:  saved.ID,
+		}, nil, nil
+	}
+
+	base := existing.UpdatedAt
+	if baseUpdatedAt != nil {
+		base = *baseUpdatedAt
+	}
+
+	entry.UpdatedAt = time.Now().UTC()
+	entry.SyncStatus = "synced"
+
+	updateResult, err := s.entryRepoDB.UpdateFromSyncIfVersionMatchesTx(tx, userID, entry, base)
+	if err != nil {
+		return SyncResult{}, nil, err
+	}
+
+	switch updateResult {
+	case repository.UpdateFromSyncUpdated:
+		persisted, err := s.entryRepoDB.GetByIDTx(tx, userID, entry.ID)
+		if err != nil {
+			return SyncResult{}, nil, err
+		}
+		if persisted == nil {
+			return SyncResult{}, nil, errors.New("updated entry missing after sync")
+		}
+		if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "update", persisted); err != nil {
+			return SyncResult{}, nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			return SyncResult{}, nil, err
+		}
+		committed = true
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "applied",
+			EntryID:  entry.ID,
+		}, nil, nil
+	case repository.UpdateFromSyncVersionMismatch:
+		latest, err := s.entryRepoDB.GetByIDTx(tx, userID, entry.ID)
+		if err != nil {
+			return SyncResult{}, nil, err
+		}
+		if latest == nil {
+			return SyncResult{}, nil, errors.New("conflicted entry missing after sync")
+		}
+		return SyncResult{
+				ChangeID: changeID,
+				Status:   "conflicted",
+				EntryID:  entry.ID,
+			}, &Conflict{
+				ChangeID:    changeID,
+				EntryID:     entry.ID,
+				Reason:      "server_newer_than_base",
+				ServerEntry: *latest,
+				ClientEntry: *entry,
+			}, nil
+	case repository.UpdateFromSyncMissing:
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "ignored",
+			EntryID:  entry.ID,
+		}, nil, nil
+	default:
+		return SyncResult{}, nil, errors.New("unknown conditional update result")
+	}
+}
+
+func (s *SyncV2Service) applyDeleteTx(ctx context.Context, userID, changeID string, entry *models.Entry) (SyncResult, error) {
+	tx, err := s.entryRepoDB.BeginTx(ctx)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := s.entryRepoDB.GetByIDTx(tx, userID, entry.ID)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	if existing == nil {
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "ignored",
+			EntryID:  entry.ID,
+		}, nil
+	}
+	if err := s.entryRepoDB.DeleteTx(tx, userID, entry.ID); err != nil {
+		return SyncResult{}, err
+	}
+	if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "delete", existing); err != nil {
+		return SyncResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return SyncResult{}, err
+	}
+	committed = true
+	return SyncResult{
+		ChangeID: changeID,
+		Status:   "applied",
+		EntryID:  entry.ID,
+	}, nil
+}
+
 // insertEntry 封装从同步请求创建 entry 的逻辑，并记录变更。
 func (s *SyncV2Service) insertEntry(ctx context.Context, userID string, entry *models.Entry) (*models.Entry, error) {
-	// 对于从客户端来的数据，CreatedAt/UpdatedAt 为空时使用当前时间
-	if entry.CreatedAt.IsZero() {
-		entry.CreatedAt = time.Now().UTC()
-	}
-	if entry.UpdatedAt.IsZero() {
-		entry.UpdatedAt = entry.CreatedAt
-	}
-	entry.UserID = userID
-	entry.SyncStatus = "synced"
+	s.prepareEntryForInsert(userID, entry)
 
 	saved, err := s.entryRepo.InsertFromSync(userID, entry)
 	if err != nil {
@@ -296,4 +508,29 @@ func (s *SyncV2Service) insertEntry(ctx context.Context, userID string, entry *m
 		return nil, err
 	}
 	return saved, nil
+}
+
+func (s *SyncV2Service) insertEntryTx(ctx context.Context, tx *sql.Tx, userID string, entry *models.Entry) (*models.Entry, error) {
+	s.prepareEntryForInsert(userID, entry)
+
+	saved, err := s.entryRepoDB.InsertFromSyncTx(tx, userID, entry)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "create", saved); err != nil {
+		return nil, err
+	}
+	return saved, nil
+}
+
+func (s *SyncV2Service) prepareEntryForInsert(userID string, entry *models.Entry) {
+	// 对于从客户端来的数据，CreatedAt/UpdatedAt 为空时使用当前时间
+	if entry.CreatedAt.IsZero() {
+		entry.CreatedAt = time.Now().UTC()
+	}
+	if entry.UpdatedAt.IsZero() {
+		entry.UpdatedAt = entry.CreatedAt
+	}
+	entry.UserID = userID
+	entry.SyncStatus = "synced"
 }

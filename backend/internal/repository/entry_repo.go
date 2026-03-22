@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,14 @@ type EntryRepository struct {
 	db *sql.DB
 }
 
+type entryQueryRower interface {
+	QueryRow(query string, args ...interface{}) *sql.Row
+}
+
+type entryExecer interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 type UpdateFromSyncMatchResult string
 
 const (
@@ -26,6 +35,10 @@ const (
 
 func NewEntryRepository(db *sql.DB) *EntryRepository {
 	return &EntryRepository{db: db}
+}
+
+func (r *EntryRepository) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return r.db.BeginTx(ctx, nil)
 }
 
 func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) (*models.Entry, error) {
@@ -135,6 +148,14 @@ func (r *EntryRepository) GetPage(userID string, limit int, cursor *int64, entry
 }
 
 func (r *EntryRepository) GetByID(userID, entryID string) (*models.Entry, error) {
+	return r.getByID(r.db, userID, entryID)
+}
+
+func (r *EntryRepository) GetByIDTx(tx *sql.Tx, userID, entryID string) (*models.Entry, error) {
+	return r.getByID(tx, userID, entryID)
+}
+
+func (r *EntryRepository) getByID(queryer entryQueryRower, userID, entryID string) (*models.Entry, error) {
 	query := `
 		SELECT id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at
 		FROM entries
@@ -142,7 +163,7 @@ func (r *EntryRepository) GetByID(userID, entryID string) (*models.Entry, error)
 	`
 	var entry models.Entry
 	var createdAt, updatedAt string
-	err := r.db.QueryRow(query, entryID, userID).Scan(
+	err := queryer.QueryRow(query, entryID, userID).Scan(
 		&entry.ID, &entry.UserID, &entry.Type, &entry.Content, &entry.Tags, &entry.Media,
 		&entry.RecordingStatus, &entry.RecordingDuration, &entry.SyncStatus,
 		&createdAt, &updatedAt,
@@ -201,7 +222,15 @@ func (r *EntryRepository) Update(userID, entryID string, req *models.UpdateEntry
 }
 
 func (r *EntryRepository) Delete(userID, entryID string) error {
-	result, err := r.db.Exec("DELETE FROM entries WHERE id = ? AND user_id = ?", entryID, userID)
+	return r.delete(r.db, userID, entryID)
+}
+
+func (r *EntryRepository) DeleteTx(tx *sql.Tx, userID, entryID string) error {
+	return r.delete(tx, userID, entryID)
+}
+
+func (r *EntryRepository) delete(execer entryExecer, userID, entryID string) error {
+	result, err := execer.Exec("DELETE FROM entries WHERE id = ? AND user_id = ?", entryID, userID)
 	if err != nil {
 		return err
 	}
@@ -277,6 +306,14 @@ func (r *EntryRepository) GetAll(userID string) ([]*models.Entry, error) {
 }
 
 func (r *EntryRepository) InsertFromSync(userID string, entry *models.Entry) (*models.Entry, error) {
+	return r.insertFromSync(r.db, userID, entry)
+}
+
+func (r *EntryRepository) InsertFromSyncTx(tx *sql.Tx, userID string, entry *models.Entry) (*models.Entry, error) {
+	return r.insertFromSync(tx, userID, entry)
+}
+
+func (r *EntryRepository) insertFromSync(execer entryExecer, userID string, entry *models.Entry) (*models.Entry, error) {
 	// 使用客户端提供的 ID；若为空则生成一个新的
 	if entry.ID == "" {
 		entry.ID = uuid.NewString()
@@ -293,7 +330,7 @@ func (r *EntryRepository) InsertFromSync(userID string, entry *models.Entry) (*m
 		INSERT INTO entries (id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.Exec(query,
+	_, err := execer.Exec(query,
 		entry.ID,
 		userID,
 		entry.Type,
@@ -337,11 +374,29 @@ func (r *EntryRepository) UpdateFromSync(userID string, entry *models.Entry) err
 }
 
 func (r *EntryRepository) UpdateFromSyncIfVersionMatches(userID string, entry *models.Entry, baseUpdatedAt time.Time) (UpdateFromSyncMatchResult, error) {
+	return r.updateFromSyncIfVersionMatches(r.db, func(entryID string) (*models.Entry, error) {
+		return r.GetByID(userID, entryID)
+	}, userID, entry, baseUpdatedAt)
+}
+
+func (r *EntryRepository) UpdateFromSyncIfVersionMatchesTx(tx *sql.Tx, userID string, entry *models.Entry, baseUpdatedAt time.Time) (UpdateFromSyncMatchResult, error) {
+	return r.updateFromSyncIfVersionMatches(tx, func(entryID string) (*models.Entry, error) {
+		return r.GetByIDTx(tx, userID, entryID)
+	}, userID, entry, baseUpdatedAt)
+}
+
+func (r *EntryRepository) updateFromSyncIfVersionMatches(
+	execer entryExecer,
+	getByID func(entryID string) (*models.Entry, error),
+	userID string,
+	entry *models.Entry,
+	baseUpdatedAt time.Time,
+) (UpdateFromSyncMatchResult, error) {
 	if entry.UpdatedAt.IsZero() {
 		entry.UpdatedAt = time.Now().UTC()
 	}
 
-	result, err := r.db.Exec(
+	result, err := execer.Exec(
 		`UPDATE entries
 		 SET content = ?, tags = ?, media = ?, recording_status = ?, recording_duration = ?, sync_status = ?, updated_at = ?
 		 WHERE id = ? AND user_id = ? AND updated_at = ?`,
@@ -368,7 +423,7 @@ func (r *EntryRepository) UpdateFromSyncIfVersionMatches(userID string, entry *m
 		return UpdateFromSyncUpdated, nil
 	}
 
-	existing, err := r.GetByID(userID, entry.ID)
+	existing, err := getByID(entry.ID)
 	if err != nil {
 		return "", err
 	}

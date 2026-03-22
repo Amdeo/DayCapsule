@@ -653,6 +653,173 @@ func TestSyncV2Service_UpdateCreatesEntryWhenServerRowIsMissing(t *testing.T) {
 	}
 }
 
+func TestSyncV2Service_CreateRollsBackWhenChangeAppendFails(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-create-rollback@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	if _, err := db.Exec(`DROP TABLE entry_changes`); err != nil {
+		t.Fatalf("drop entry_changes: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	svc := NewSyncV2Service(entryRepo, repository.NewChangeRepository(db))
+	_, err = svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "create-rollback-1",
+				Op:       "create",
+				Entry: models.Entry{
+					ID:      "entry-create-rollback",
+					Type:    "text",
+					Content: "should rollback",
+				},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected sync to fail when change log append fails")
+	}
+
+	persisted, err := entryRepo.GetByID(user.ID, "entry-create-rollback")
+	if err != nil {
+		t.Fatalf("read entry after failed create: %v", err)
+	}
+	if persisted != nil {
+		t.Fatalf("expected create to roll back, got %#v", persisted)
+	}
+}
+
+func TestSyncV2Service_UpdateRollsBackWhenChangeAppendFails(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-update-rollback@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	existing := &models.Entry{
+		ID:         "entry-update-rollback",
+		Type:       "text",
+		Content:    "server version",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC),
+	}
+	if _, err := entryRepo.InsertFromSync(user.ID, existing); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+	if _, err := db.Exec(`DROP TABLE entry_changes`); err != nil {
+		t.Fatalf("drop entry_changes: %v", err)
+	}
+
+	baseUpdatedAt := existing.UpdatedAt
+	svc := NewSyncV2Service(entryRepo, repository.NewChangeRepository(db))
+	_, err = svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID:      "update-rollback-1",
+				Op:            "update",
+				BaseUpdatedAt: &baseUpdatedAt,
+				Entry: models.Entry{
+					ID:      "entry-update-rollback",
+					Type:    "text",
+					Content: "client version",
+				},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected sync to fail when change log append fails")
+	}
+
+	persisted, err := entryRepo.GetByID(user.ID, "entry-update-rollback")
+	if err != nil {
+		t.Fatalf("read entry after failed update: %v", err)
+	}
+	if persisted == nil {
+		t.Fatal("expected original entry to remain after failed update")
+	}
+	if persisted.Content != "server version" {
+		t.Fatalf("expected update to roll back, got %#v", persisted)
+	}
+}
+
+func TestSyncV2Service_DeleteRollsBackWhenChangeAppendFails(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-delete-rollback@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	existing := &models.Entry{
+		ID:         "entry-delete-rollback",
+		Type:       "text",
+		Content:    "delete me",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC),
+	}
+	if _, err := entryRepo.InsertFromSync(user.ID, existing); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+	if _, err := db.Exec(`DROP TABLE entry_changes`); err != nil {
+		t.Fatalf("drop entry_changes: %v", err)
+	}
+
+	svc := NewSyncV2Service(entryRepo, repository.NewChangeRepository(db))
+	_, err = svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "delete-rollback-1",
+				Op:       "delete",
+				Entry: models.Entry{
+					ID: "entry-delete-rollback",
+				},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected sync to fail when change log append fails")
+	}
+
+	persisted, err := entryRepo.GetByID(user.ID, "entry-delete-rollback")
+	if err != nil {
+		t.Fatalf("read entry after failed delete: %v", err)
+	}
+	if persisted == nil {
+		t.Fatal("expected delete to roll back and keep original entry")
+	}
+}
+
 func TestSyncV2Service_DoesNotAppendChangeLogForIgnoredCreateWhenEntryExists(t *testing.T) {
 	db := setupSyncV2TestDB(t)
 	t.Cleanup(func() {

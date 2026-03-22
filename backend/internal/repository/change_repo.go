@@ -13,19 +13,31 @@ type ChangeRepository struct {
 	db *sql.DB
 }
 
+type changeExecer interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
+
 func NewChangeRepository(db *sql.DB) *ChangeRepository {
 	return &ChangeRepository{db: db}
 }
 
 // AppendChange 追加一条变更流水，Snapshot 一般为 EntryResponse 视图
 func (r *ChangeRepository) AppendChange(ctx context.Context, userID string, op string, entry *models.Entry) (int64, error) {
+	return r.appendChange(ctx, r.db, userID, op, entry)
+}
+
+func (r *ChangeRepository) AppendChangeTx(ctx context.Context, tx *sql.Tx, userID string, op string, entry *models.Entry) (int64, error) {
+	return r.appendChange(ctx, tx, userID, op, entry)
+}
+
+func (r *ChangeRepository) appendChange(ctx context.Context, execer changeExecer, userID string, op string, entry *models.Entry) (int64, error) {
 	// 这里用 Entry 模型做快照；如果以后需要更多字段，可以换成 EntryResponse
 	snapshotBytes, err := json.Marshal(entry)
 	if err != nil {
 		return 0, err
 	}
 
-	res, err := r.db.ExecContext(ctx,
+	res, err := execer.ExecContext(ctx,
 		`INSERT INTO entry_changes (user_id, entry_id, op, snapshot, changed_at)
 		 VALUES (?, ?, ?, ?, ?)`,
 		userID, entry.ID, op, snapshotBytes, time.Now().UTC().Format(time.RFC3339),
