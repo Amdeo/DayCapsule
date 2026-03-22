@@ -25,6 +25,7 @@ import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { logger } from '@/src/utils/logger';
 import { NotificationService } from '@/src/services/notificationService';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
+import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
 import { DetailPageShell } from './DetailPageShell';
 import { TagManagementPage } from './TagManagementPage';
 import { useAuthStore } from '@/src/store/authStore';
@@ -453,43 +454,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
               title="同步状态"
               subtitle="查看最近同步时间和待同步条数"
               onPress={async () => {
-                try {
-                  const cloudSync = createCloudSyncService();
-                  const status = await cloudSync.getStatus();
-                  const last = status.lastSyncAt
-                    ? new Date(status.lastSyncAt).toLocaleString()
-                    : '从未同步';
-
-                  Alert.alert(
-                    '云同步状态',
-                    `上次同步：${last}\n待同步条数：${status.pendingEntries}\n失败条数：${status.failedEntries}\n冲突副本：${status.conflictCopies}`,
-                    [
-                      { text: '关闭', style: 'cancel' },
-                      {
-                        text: '立即同步',
-                        onPress: async () => {
-                          try {
-                            await cloudSync.syncNow();
-                            const refreshed = await cloudSync.getStatus();
-                            const refreshedLast = refreshed.lastSyncAt
-                              ? new Date(refreshed.lastSyncAt).toLocaleString()
-                              : '从未同步';
-                            Alert.alert(
-                              '云同步完成',
-                              `上次同步：${refreshedLast}\n待同步条数：${refreshed.pendingEntries}\n失败条数：${refreshed.failedEntries}\n冲突副本：${refreshed.conflictCopies}`,
-                            );
-                          } catch (error) {
-                            logger.warn('[Settings] 手动云同步失败:', error);
-                            Alert.alert('云同步失败', '请检查网络连接后重试。');
-                          }
-                        },
-                      },
-                    ],
-                  );
-                } catch (error) {
-                  logger.warn('[Settings] 获取云同步状态失败:', error);
-                  Alert.alert('提示', '当前无法获取云同步状态，请稍后重试。');
-                }
+                await showCloudSyncStatusAlert();
               }}
             />
             <SettingButton

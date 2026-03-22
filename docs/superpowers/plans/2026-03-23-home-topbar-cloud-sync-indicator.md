@@ -21,10 +21,10 @@
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 未开始 | 补齐 `isSyncing`、SQLite 顶部同步摘要查询与 `cloudSyncIndicatorStore` |
-| Task 2 | 未开始 | 新增 `CloudSyncStatusButton` 与共享 `showCloudSyncStatusAlert()` helper，并接入顶部栏/设置页 |
-| Task 3 | 未开始 | 在首页、生命周期、entry 写操作与上传队列状态变化时刷新顶部同步摘要 |
-| Task 4 | 未开始 | 跑目标测试、类型检查、手动验证，并更新 spec / plan 状态 |
+| Task 1 | 已完成 | 已补齐 `isSyncing`、SQLite 顶部同步摘要查询与 `cloudSyncIndicatorStore`，目标测试已通过 |
+| Task 2 | 已完成 | 已新增 `CloudSyncStatusButton` 与共享 `showCloudSyncStatusAlert()` helper，并接入顶部栏/设置页 |
+| Task 3 | 已完成 | 已在首页、生命周期、entry 写操作与上传队列状态变化时刷新顶部同步摘要，目标测试已通过 |
+| Task 4 | 已完成 | 已完成目标测试、类型检查、diff 检查与关键路径手动验证；提交步骤未执行 |
 
 ## File Structure
 
@@ -64,6 +64,8 @@
 | `app/src/store/__tests__/entryStore.test.ts` | 锁定 `pending` / `pending_delete` / 删除待上传媒体等写操作会联动顶部摘要刷新 |
 | `app/app/_layout.tsx` | 在启动、回到前台、同步完成后刷新顶部摘要 |
 | `app/app/__tests__/_layout.photo-upload.test.tsx` | 锁定前后台生命周期触发后顶部摘要会刷新 |
+| `app/app/(tabs)/__tests__/index.photo.test.ts` | 补齐 `cloudSyncIndicatorStore` / 上传队列 / 文件系统 mock，避免首页 helper 测试误入原生模块 |
+| `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts` | 补齐 `cloudSyncIndicatorStore` / 照片上传队列 mock，兼容首页新增依赖 |
 | `docs/superpowers/specs/2026-03-23-home-topbar-cloud-sync-indicator-design.md` | 实现完成后更新状态、实现结果、偏差说明与最终验证 |
 | `docs/superpowers/plans/2026-03-23-home-topbar-cloud-sync-indicator.md` | 执行过程中勾选任务、补齐验证结果与文档收口 |
 
@@ -90,7 +92,7 @@
 - Create: `app/src/store/cloudSyncIndicatorStore.ts`
 - Create: `app/src/store/__tests__/cloudSyncIndicatorStore.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定顶部同步摘要的基础口径**
+- [x] **Step 1: 先写失败测试，锁定顶部同步摘要的基础口径**
 
 在 `app/src/store/__tests__/syncStore.test.ts` 增加：
 
@@ -126,13 +128,13 @@ it('prioritizes syncing over failed and pending when uploads are active', async 
 it('prioritizes failed over pending when sync is idle', async () => {})
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/store/__tests__/syncStore.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts src/services/__tests__/cloudSyncService.test.ts`
 
 Expected: FAIL，原因是 `syncStore` 还没有 `isSyncing`，SQLite 还没有顶部摘要查询，`cloudSyncIndicatorStore` 尚不存在。
 
-- [ ] **Step 3: 最小实现同步状态基础设施**
+- [x] **Step 3: 最小实现同步状态基础设施**
 
 在 `app/src/store/syncStore.ts`：
 
@@ -187,7 +189,7 @@ type CloudSyncIndicatorSummary = {
   - `DB.getCloudSyncIndicatorSummary()`
 - 按 spec 里的优先级统一计算 `hidden / syncing / failed / pending / synced`
 
-- [ ] **Step 4: 重新运行目标测试，确认通过**
+- [x] **Step 4: 重新运行目标测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/store/__tests__/syncStore.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts src/services/__tests__/cloudSyncService.test.ts`
 
@@ -216,7 +218,7 @@ git commit -m "feat: add home sync indicator state"
 - Modify: `app/src/components/SettingsPage.tsx`
 - Modify: `app/src/components/__tests__/SettingsPage.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定按钮四态和弹窗复用**
+- [x] **Step 1: 先写失败测试，锁定按钮四态和弹窗复用**
 
 在 `app/src/components/__tests__/CloudSyncStatusButton.test.tsx` 新建测试，至少覆盖：
 
@@ -237,13 +239,13 @@ it('shows fallback alert when getStatus fails', async () => {})
 
 在 `app/src/components/__tests__/SettingsPage.test.tsx` 把“同步状态”测试改成断言共享 helper 被调用，而不是继续依赖内联 `Alert.alert` 拼装。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx`
 
 Expected: FAIL，原因是按钮组件和共享 helper 尚不存在，`SettingsPage` 仍在内联拼弹窗。
 
-- [ ] **Step 3: 实现共享弹窗 helper 与顶部按钮组件**
+- [x] **Step 3: 实现共享弹窗 helper 与顶部按钮组件**
 
 在 `app/src/services/showCloudSyncStatusAlert.ts`：
 
@@ -297,7 +299,7 @@ rightActions?: React.ReactNode
 
 - 删除内联同步状态弹窗拼接逻辑，改成直接调用 `showCloudSyncStatusAlert()`
 
-- [ ] **Step 4: 重新运行目标测试，确认通过**
+- [x] **Step 4: 重新运行目标测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx`
 
@@ -325,7 +327,7 @@ git commit -m "feat: add topbar cloud sync status button"
 - Modify: `app/app/_layout.tsx`
 - Test: `app/app/__tests__/_layout.photo-upload.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定刷新触发点**
+- [x] **Step 1: 先写失败测试，锁定刷新触发点**
 
 在 `app/src/store/__tests__/entryStore.test.ts` 增加：
 
@@ -354,13 +356,13 @@ it('refreshes cloud sync indicator when voice upload enters uploading and when i
 it('refreshes cloud sync indicator after app becomes active in cloud mode', async () => {})
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/store/__tests__/entryStore.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.photo-upload.test.tsx`
 
 Expected: FAIL，原因是这些写操作和生命周期当前还没有统一刷新顶部摘要。
 
-- [ ] **Step 3: 用最小改动接入刷新触发点**
+- [x] **Step 3: 用最小改动接入刷新触发点**
 
 在 `app/src/store/entryStore.ts`：
 
@@ -398,7 +400,7 @@ Expected: FAIL，原因是这些写操作和生命周期当前还没有统一刷
 - 启动初始化完成后刷新一次顶部摘要
 - 回到前台时，在 `syncNow()` / 补传 flush 完成后刷新一次顶部摘要
 
-- [ ] **Step 4: 重新运行目标测试，确认通过**
+- [x] **Step 4: 重新运行目标测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/store/__tests__/entryStore.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.photo-upload.test.tsx`
 
@@ -417,7 +419,7 @@ git commit -m "feat: refresh topbar sync indicator on state changes"
 - Modify: `docs/superpowers/specs/2026-03-23-home-topbar-cloud-sync-indicator-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-home-topbar-cloud-sync-indicator.md`
 
-- [ ] **Step 1: 运行目标测试**
+- [x] **Step 1: 运行目标测试**
 
 Run:
 
@@ -435,12 +437,14 @@ cd app && npx jest --run-in-band --runTestsByPath \
   src/components/__tests__/SettingsPage.test.tsx \
   src/components/__tests__/SearchBar.safe-area.test.tsx \
   src/components/__tests__/Timeline.v2.view-mode.test.tsx \
-  app/__tests__/_layout.photo-upload.test.tsx
+  app/__tests__/_layout.photo-upload.test.tsx \
+  app/'(tabs)'/__tests__/index.photo.test.ts \
+  app/'(tabs)'/__tests__/index.voice-cloud-mode.test.ts
 ```
 
 Expected: PASS
 
-- [ ] **Step 2: 运行类型检查与 diff 检查**
+- [x] **Step 2: 运行类型检查与 diff 检查**
 
 Run:
 
@@ -454,19 +458,22 @@ Expected:
 - `npx tsc --noEmit` PASS
 - `git diff --check` 无空白错误
 
-- [ ] **Step 3: 手动验证首页顶部行为**
+- [x] **Step 3: 手动验证首页顶部关键行为（部分场景）**
 
-在 Android 模拟器上至少验证：
+在 Android 模拟器上实际验证：
 
 1. 开启云端模式后，首页顶部出现同步状态按钮，位置在视图切换按钮右侧
+7. 点击顶部按钮与点击设置页“同步状态”，弹出的字段和按钮一致
+
+本轮未在模拟器手动重放，但已由自动化测试覆盖：
+
 2. 新增一条文本记录后，顶部从 `已同步` 变为 `待同步`
 3. 删除一条已同步记录后，顶部显示 `待同步`
 4. 触发手动同步时，顶部显示“云朵呼吸 + 外环扫描”
 5. 同步成功后，顶部回到绿点
 6. 断网后手动同步失败，顶部显示红点
-7. 点击顶部按钮与点击设置页“同步状态”，弹出的字段和按钮一致
 
-- [ ] **Step 4: 更新文档状态并记录最终结果**
+- [x] **Step 4: 更新文档状态并记录最终结果**
 
 在 spec 中补齐：
 
@@ -488,3 +495,20 @@ Expected:
 git add docs/superpowers/specs/2026-03-23-home-topbar-cloud-sync-indicator-design.md docs/superpowers/plans/2026-03-23-home-topbar-cloud-sync-indicator.md
 git commit -m "docs: close out home topbar cloud sync indicator work"
 ```
+
+## 实际执行说明
+
+- Task 1 至 Task 3 已按计划完成，核心实现围绕 `cloudSyncIndicatorStore`、`CloudSyncStatusButton`、共享弹窗 helper 与显式刷新触发点展开。
+- 由于 `index.tsx` 新增了 `cloudSyncIndicatorStore` 与照片上传队列依赖，额外补了两个首页 helper 测试文件的 mock 隔离，这是本次唯一的计划外测试收口动作。
+- 当前工作区存在用户未提交改动，且本轮未收到提交指令，因此所有 `Commit` 步骤保留为未执行。
+
+## 最终验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts src/store/__tests__/syncStore.test.ts src/services/__tests__/cloudSyncService.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/entryStore.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx app/__tests__/_layout.photo-upload.test.tsx app/'(tabs)'/__tests__/index.photo.test.ts app/'(tabs)'/__tests__/index.voice-cloud-mode.test.ts`
+  - 结果：`15` 个 test suite、`118` 个测试全部通过
+- `cd app && npx tsc --noEmit`
+  - 结果：通过
+- `git diff --check`
+  - 结果：无空白错误
+- Android 模拟器手动验证
+  - 结果：已确认顶部按钮在云端模式下显示于视图切换按钮右侧，当前 `synced` 场景展示绿点，点击后弹出与设置页一致的同步状态弹窗

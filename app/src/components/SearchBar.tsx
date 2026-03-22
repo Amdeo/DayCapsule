@@ -2,7 +2,7 @@
  * 搜索栏组件（只读引导，点击后打开搜索覆盖层）
  */
 
-import React, { useEffect } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, cancelAnimation } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,9 +13,16 @@ interface SearchBarProps {
   onSearchFocus?: () => void;
   onViewModePress?: () => void;
   showViewModeActive?: boolean;
+  rightActions?: ReactNode;
 }
 
-export function SearchBar({ onMenuPress, onSearchFocus, onViewModePress, showViewModeActive }: SearchBarProps) {
+export function SearchBar({
+  onMenuPress,
+  onSearchFocus,
+  onViewModePress,
+  showViewModeActive,
+  rightActions,
+}: SearchBarProps) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -67,6 +74,12 @@ export function SearchBar({ onMenuPress, onSearchFocus, onViewModePress, showVie
           />
         </Pressable>
       )}
+
+      {rightActions ? (
+        <View style={styles.rightActions} testID="searchbar-right-actions">
+          {rightActions}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -125,5 +138,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
 });

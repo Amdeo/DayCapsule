@@ -52,6 +52,15 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   cancelPhotoUpload: jest.fn(),
 }));
 
+const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: {
+    getState: () => ({
+      refresh: mockRefreshCloudSyncIndicator,
+    }),
+  },
+}));
+
 let mockCloudMode: boolean | 'switching' = false;
 jest.mock('@/src/store/settingsStore', () => {
   const useSettingsStore = Object.assign(
@@ -155,6 +164,7 @@ describe('entryStore', () => {
     (DB.getVoiceEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
     (DB.getPhotoEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
     (deleteFile as jest.Mock).mockResolvedValue(undefined);
+    mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
     useSettingsStore.setState({ cloudMode: false });
   });
 
@@ -469,6 +479,30 @@ describe('entryStore', () => {
       ).rejects.toThrow('数据库错误');
     });
 
+    it('cloudMode 关闭时应该把误传入的 pending 状态归一化为 synced', async () => {
+      useSettingsStore.setState({ cloudMode: false });
+      (DB.addEntry as jest.Mock).mockResolvedValueOnce({
+        id: 'local-entry-offline',
+        type: 'text',
+        content: '离线记录',
+        timestamp: 1700000000002,
+        syncStatus: 'synced',
+        syncOp: 'update',
+      });
+
+      await useEntryStore.getState().addEntry({
+        type: 'text',
+        content: '离线记录',
+        syncStatus: 'pending',
+      });
+
+      expect(DB.addEntry).toHaveBeenCalledWith(expect.objectContaining({
+        content: '离线记录',
+        syncStatus: 'synced',
+        syncOp: 'update',
+      }));
+    });
+
     it('cloudMode 开启时也应该通过 DB.addEntry 本地写入', async () => {
       useSettingsStore.setState({ cloudMode: true });
       (DB.addEntry as jest.Mock).mockResolvedValueOnce({
@@ -488,6 +522,7 @@ describe('entryStore', () => {
         syncOp: 'create',
       }));
       expect(mockDataSource.addEntry).not.toHaveBeenCalled();
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
   });
 
@@ -520,6 +555,7 @@ describe('entryStore', () => {
         baseUpdatedAt: 1700000001000,
       }));
       expect(mockDataSource.updateEntry).not.toHaveBeenCalled();
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
   });
 
@@ -554,6 +590,7 @@ describe('entryStore', () => {
 
       expect(DB.markEntryPendingDelete).toHaveBeenCalledWith('1');
       expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
 
     it('删除 pending_upload 照片时应该取消上传并清理本地 cache 文件', async () => {
@@ -593,6 +630,7 @@ describe('entryStore', () => {
       expect(DB.deleteEntry).toHaveBeenCalledWith('photo-1');
       expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
       expect(DB.markEntryPendingDelete).not.toHaveBeenCalled();
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
   });
 

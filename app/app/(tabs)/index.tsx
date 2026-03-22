@@ -18,6 +18,7 @@ import { PhotoService, PhotoResult } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
+import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import type { Entry } from '@/src/types/entry';
 import { deleteFile } from '@/src/utils/fileSystem';
 import {
@@ -25,7 +26,10 @@ import {
   configureVoiceUploadQueueCallbacks,
   flushPendingVoiceUploads,
 } from '@/src/services/voiceUploadQueue';
-import { enqueuePhotoUpload } from '@/src/services/photoUploadQueue';
+import {
+  enqueuePhotoUpload,
+  configurePhotoUploadQueueCallbacks,
+} from '@/src/services/photoUploadQueue';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -44,6 +48,7 @@ export interface PhotoSelectDeps {
     entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>
   ) => Promise<import('@/src/types/entry').Entry>;
   enqueueUpload?: (entryId: string) => void;
+  initialSyncStatus?: import('@/src/types/entry').Entry['syncStatus'];
 }
 
 export interface VoiceCloudStartDeps {
@@ -115,8 +120,22 @@ export async function finalizeCloudVoiceRecordingForTest(
     recordingStatus: 'stopping',
   });
 
-  const audioFile = await deps.stopRecording();
-  const persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
+  let audioFile: Awaited<ReturnType<typeof deps.stopRecording>>;
+  try {
+    audioFile = await deps.stopRecording();
+  } catch (error) {
+    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    throw error;
+  }
+
+  let persistedUri: string;
+  try {
+    persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
+  } catch (error) {
+    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    throw error;
+  }
+
   await deps.updateLocalEntry(entryId, {
     recordingStatus: 'completed',
     syncStatus: 'pending_upload',
@@ -175,7 +194,7 @@ export async function handlePhotoSelectForTest(
     const createdEntry = await deps.addLocalEntry({
       type: 'photo',
       content: '',
-      syncStatus: 'pending_upload',
+      syncStatus: deps.initialSyncStatus ?? 'pending_upload',
       media: mediaList,
     });
 
@@ -211,6 +230,11 @@ export default function HomeScreen() {
   // 使用 ref 存储计时器和录音 ID，避免触发不必要的重渲染
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentRecordingIdRef = useRef<string | null>(null);
+  const refreshCloudSyncIndicator = useCallback(() => {
+    void useCloudSyncIndicatorStore.getState().refresh().catch((error) => {
+      logger.warn('[HomeScreen] Failed to refresh cloud sync indicator:', error);
+    });
+  }, []);
 
   const isCloudModeEnabled = useCallback(
     () => useSettingsStore.getState().cloudMode === true,
@@ -224,7 +248,10 @@ export default function HomeScreen() {
       useSettingsStore.getState().loadSettings(),
       useCommonTagsStore.getState().loadCommonTags(),
       loadEntries(),
-    ]).catch(() => {});
+    ]).catch(() => {})
+      .finally(() => {
+        refreshCloudSyncIndicator();
+      });
 
     VoiceService.prewarmAudioSystem().catch(() => {});
 
@@ -246,7 +273,7 @@ export default function HomeScreen() {
     };
 
     preloadRecentVoiceEntries();
-  }, []);
+  }, [loadEntries, refreshCloudSyncIndicator]);
 
   useEffect(() => {
     configureVoiceUploadQueueCallbacks({
@@ -256,6 +283,7 @@ export default function HomeScreen() {
             entry.id === id ? { ...entry, syncStatus: 'uploading' } : entry
           )),
         }));
+        refreshCloudSyncIndicator();
       },
       onEntryPending: (id) => {
         useEntryStore.setState((s) => ({
@@ -263,12 +291,40 @@ export default function HomeScreen() {
             entry.id === id ? { ...entry, syncStatus: 'pending_upload' } : entry
           )),
         }));
+        refreshCloudSyncIndicator();
       },
       onEntrySynced: (localId, entry) => {
         replaceEntry(localId, entry);
+        refreshCloudSyncIndicator();
       },
     });
-  }, [replaceEntry]);
+    configurePhotoUploadQueueCallbacks({
+      onEntryUploading: (id) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((entry) => (
+            entry.id === id ? { ...entry, syncStatus: 'uploading' } : entry
+          )),
+        }));
+        refreshCloudSyncIndicator();
+      },
+      onEntryPendingUpload: (id) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((entry) => (
+            entry.id === id ? { ...entry, syncStatus: 'pending_upload' } : entry
+          )),
+        }));
+        refreshCloudSyncIndicator();
+      },
+      onEntryPendingSync: (id, media) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((entry) => (
+            entry.id === id ? { ...entry, syncStatus: 'pending', media } : entry
+          )),
+        }));
+        refreshCloudSyncIndicator();
+      },
+    });
+  }, [refreshCloudSyncIndicator, replaceEntry]);
 
   // 卸载时清理录音
   useEffect(() => {
@@ -426,7 +482,8 @@ export default function HomeScreen() {
           : PhotoService.savePhotoToStorage.bind(PhotoService),
         deleteLocalFile: deleteFile,
         addLocalEntry,
-        enqueueUpload: enqueuePhotoUpload,
+        enqueueUpload: isCloudModeEnabled() ? enqueuePhotoUpload : undefined,
+        initialSyncStatus: isCloudModeEnabled() ? 'pending_upload' : 'synced',
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
 import { EntryCard } from './EntryCard';
 import { SearchBar } from './SearchBar';
+import { CloudSyncStatusButton } from './CloudSyncStatusButton';
 import { SearchOverlay } from './SearchOverlay';
 import { EntryEditor } from './EntryEditor';
 import { TextEntryDetailPage } from './TextEntryDetailPage';
@@ -18,8 +19,10 @@ import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarView } from './CalendarView';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
+import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { FABMenu } from './FABMenu';
 import { PhotoResult } from '../services/photoService';
+import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -433,6 +436,19 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
 
   // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
   const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
+  const cloudSyncUiState = useCloudSyncIndicatorStore((state) => state.uiState);
+  const rightActions = useMemo(() => {
+    if (cloudSyncUiState === 'hidden') return null;
+
+    return (
+      <CloudSyncStatusButton
+        uiState={cloudSyncUiState}
+        onPress={() => {
+          void showCloudSyncStatusAlert();
+        }}
+      />
+    );
+  }, [cloudSyncUiState]);
   const displayEntries = entries;
 
   // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 直接渲染卡片
@@ -609,6 +625,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
         onSearchFocus={handleSearchFocus}
         onViewModePress={handleToggleViewMode}
         showViewModeActive={showViewToggle}
+        rightActions={rightActions}
       />
 
       {/* 视图模式切换（按需展开） */}

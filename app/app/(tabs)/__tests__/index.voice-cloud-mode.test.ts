@@ -42,6 +42,14 @@ jest.mock('@/src/store/commonTagsStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: {
+    getState: () => ({
+      refresh: jest.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: {
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
@@ -85,6 +93,11 @@ jest.mock('@/src/services/voiceUploadQueue', () => ({
   enqueueVoiceUpload: jest.fn(),
   configureVoiceUploadQueueCallbacks: jest.fn(),
   flushPendingVoiceUploads: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/src/services/photoUploadQueue', () => ({
+  enqueuePhotoUpload: jest.fn(),
+  configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));

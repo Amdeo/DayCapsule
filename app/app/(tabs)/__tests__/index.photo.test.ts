@@ -39,6 +39,14 @@ jest.mock('@/src/store/commonTagsStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: {
+    getState: () => ({
+      refresh: jest.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: {
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
@@ -61,6 +69,17 @@ jest.mock('@/src/services/photoService', () => ({
   },
 }));
 
+jest.mock('@/src/services/voiceUploadQueue', () => ({
+  enqueueVoiceUpload: jest.fn(),
+  configureVoiceUploadQueueCallbacks: jest.fn(),
+  flushPendingVoiceUploads: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/src/services/photoUploadQueue', () => ({
+  enqueuePhotoUpload: jest.fn(),
+  configurePhotoUploadQueueCallbacks: jest.fn(),
+}));
+
 jest.mock('@/src/components/Timeline.v2', () => ({
   Timeline: 'Timeline',
 }));
@@ -75,6 +94,10 @@ jest.mock('@/src/components/TextEditor', () => ({
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+jest.mock('@/src/utils/fileSystem', () => ({
+  deleteFile: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
@@ -156,6 +179,21 @@ describe('handlePhotoSelectForTest', () => {
 
     expect(deps.enqueueUpload).toHaveBeenCalledTimes(1);
     expect(deps.enqueueUpload).toHaveBeenCalledWith('photo-local-1');
+  });
+
+  it('离线照片创建时不应入队后台上传，并应标记为 synced', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], {
+      ...deps,
+      enqueueUpload: undefined,
+      initialSyncStatus: 'synced',
+    });
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      syncStatus: 'synced',
+    }));
+    expect(deps.enqueueUpload).not.toHaveBeenCalled();
   });
 
   it('savePhotoToStorage 接收临时 URI，addLocalEntry 不使用临时 URI', async () => {

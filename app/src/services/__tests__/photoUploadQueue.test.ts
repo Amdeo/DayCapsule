@@ -59,6 +59,9 @@ describe('photoUploadQueue', () => {
         .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/photo_1.jpg' })
         .mockResolvedValueOnce({ id: 'media-2', url: 'https://cdn/photo_2.jpg' }),
       triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     await queue.flushPending();
@@ -89,6 +92,14 @@ describe('photoUploadQueue', () => {
     );
     expect(queue.deps.triggerSync).toHaveBeenCalledTimes(1);
     expect(queue.deps.markPendingUpload).not.toHaveBeenCalled();
+    expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('photo-local-1');
+    expect(queue.deps.onEntryPendingSync).toHaveBeenCalledWith(
+      'photo-local-1',
+      expect.arrayContaining([
+        expect.objectContaining({ remoteUri: 'https://cdn/photo_1.jpg' }),
+      ]),
+    );
+    expect(queue.deps.onEntryPendingUpload).not.toHaveBeenCalled();
   });
 
   it('returns photo entry to pending_upload when any media upload fails', async () => {
@@ -103,6 +114,9 @@ describe('photoUploadQueue', () => {
         .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/photo_1.jpg' })
         .mockRejectedValueOnce(new Error('network down')),
       triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     await queue.flushPending();
@@ -111,6 +125,9 @@ describe('photoUploadQueue', () => {
     expect(queue.deps.markPendingUpload).toHaveBeenCalledWith('photo-local-1');
     expect(queue.deps.markPendingSync).not.toHaveBeenCalled();
     expect(queue.deps.triggerSync).not.toHaveBeenCalled();
+    expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('photo-local-1');
+    expect(queue.deps.onEntryPendingUpload).toHaveBeenCalledWith('photo-local-1');
+    expect(queue.deps.onEntryPendingSync).not.toHaveBeenCalled();
   });
 
   it('does not process canceled photo entries', async () => {
@@ -123,6 +140,9 @@ describe('photoUploadQueue', () => {
       markPendingSync: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn().mockResolvedValue({ id: 'media-1', url: 'https://cdn/photo_1.jpg' }),
       triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     queue.enqueue('photo-local-1');

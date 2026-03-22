@@ -77,6 +77,7 @@ describe('voiceUploadQueue', () => {
     await queue.flushPending();
 
     expect(queue.deps.markUploading).toHaveBeenCalledWith('voice-local-1');
+    expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.uploadMedia).toHaveBeenCalledWith('file:///cache/voice.m4a');
     expect(queue.deps.createRemoteEntry).toHaveBeenCalled();
     expect(queue.deps.removeLocalEntry).toHaveBeenCalledWith('voice-local-1');
@@ -113,6 +114,7 @@ describe('voiceUploadQueue', () => {
     await queue.flushPending();
 
     expect(queue.deps.markUploading).toHaveBeenCalledWith('voice-local-1');
+    expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.markPending).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.removeLocalEntry).not.toHaveBeenCalled();
     expect(queue.deps.onEntryPending).toHaveBeenCalledWith('voice-local-1');

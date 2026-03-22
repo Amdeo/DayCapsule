@@ -2,6 +2,7 @@ import { getApiClient, ApiError } from '@/src/services/apiClient';
 import * as DB from '@/src/database/operations';
 import type { Entry } from '@/src/types/entry';
 import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
+import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { logger } from '@/src/utils/logger';
 
 export interface SyncStatus {
@@ -300,10 +301,12 @@ export function createCloudSyncService(): SyncServiceApi {
     }
 
     inFlightSync = (async () => {
+      await ensureSyncStoreLoaded();
+      await useSyncStore.getState().markSyncStarted();
+
       try {
         await performSyncNow();
       } catch (error) {
-        await ensureSyncStoreLoaded();
         const message = error instanceof Error ? error.message : 'unknown sync error';
         await useSyncStore.getState().markSyncFailure(message);
 
@@ -314,6 +317,10 @@ export function createCloudSyncService(): SyncServiceApi {
         }
         throw error;
       } finally {
+        await useSyncStore.getState().markSyncFinished();
+        await useCloudSyncIndicatorStore.getState().refresh().catch((refreshError) => {
+          logger.warn('[cloudSync] refresh indicator after sync failed:', refreshError);
+        });
         inFlightSync = null;
       }
     })();

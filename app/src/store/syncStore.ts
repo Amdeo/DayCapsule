@@ -22,9 +22,12 @@ interface SyncStoreState {
   lastSyncAt: number | null;
   lastSyncError: string | null;
   initialSyncState: InitialSyncState;
+  isSyncing: boolean;
   isLoaded: boolean;
   load: () => Promise<void>;
   setCursor: (cursor: number) => Promise<void>;
+  markSyncStarted: () => Promise<void>;
+  markSyncFinished: () => Promise<void>;
   markSyncSuccess: (timestamp?: number) => Promise<void>;
   markSyncFailure: (message: string) => Promise<void>;
   setInitialSyncState: (state: InitialSyncState) => Promise<void>;
@@ -36,6 +39,7 @@ const DEFAULT_SYNC_STATE = {
   lastSyncAt: null,
   lastSyncError: null,
   initialSyncState: 'idle' as InitialSyncState,
+  isSyncing: false,
   isLoaded: false,
 };
 
@@ -75,17 +79,26 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
         lastSyncAt: parseNumber(lastSyncAtRaw),
         lastSyncError: lastSyncError ?? null,
         initialSyncState: parseInitialSyncState(initialSyncStateRaw),
+        isSyncing: false,
         isLoaded: true,
       });
     } catch (error) {
       logger.error('[syncStore] Failed to load sync state:', error);
-      set({ isLoaded: true });
+      set({ isSyncing: false, isLoaded: true });
     }
   },
 
   setCursor: async (cursor) => {
     await Storage.setString(SYNC_STORAGE_KEYS.cursor, String(cursor));
     set({ syncCursor: cursor });
+  },
+
+  markSyncStarted: async () => {
+    set({ isSyncing: true });
+  },
+
+  markSyncFinished: async () => {
+    set({ isSyncing: false });
   },
 
   markSyncSuccess: async (timestamp = Date.now()) => {

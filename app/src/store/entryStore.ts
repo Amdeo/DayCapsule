@@ -13,6 +13,7 @@ import { deleteFile } from '@/src/utils/fileSystem';
 import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
 import { cancelPhotoUpload } from '@/src/services/photoUploadQueue';
 import { useSettingsStore } from '@/src/store/settingsStore';
+import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 
 const PAGE_SIZE = 20;
 const MAX_LOAD_RETRIES = 5;
@@ -74,7 +75,11 @@ const shouldUseCloudPendingState = (): boolean =>
 
 const buildPendingInsertEntry = (entry: Omit<Entry, 'id' | 'timestamp'>): Omit<Entry, 'id' | 'timestamp'> => {
   if (!shouldUseCloudPendingState()) {
-    return entry;
+    return {
+      ...entry,
+      syncStatus: 'synced',
+      syncOp: entry.syncOp ?? 'update',
+    };
   }
 
   return {
@@ -90,7 +95,11 @@ const buildPendingInsertEntry = (entry: Omit<Entry, 'id' | 'timestamp'>): Omit<E
 
 const buildPendingUpdate = (updates: Partial<Entry>): Partial<Entry> => {
   if (!shouldUseCloudPendingState()) {
-    return updates;
+    return {
+      ...updates,
+      syncStatus: updates.syncStatus ? 'synced' : updates.syncStatus,
+      syncOp: updates.syncOp ?? 'update',
+    };
   }
 
   if (updates.syncStatus === 'pending_upload' || updates.syncStatus === 'uploading' || updates.syncStatus === 'pending_delete') {
@@ -143,6 +152,12 @@ const deleteLocalMediaFiles = async (entry?: Entry): Promise<void> => {
   for (const uri of getLocalMediaFileUris(entry)) {
     await deleteFile(uri).catch(() => {});
   }
+};
+
+const refreshCloudSyncIndicator = (): void => {
+  void useCloudSyncIndicatorStore.getState().refresh().catch((error) => {
+    logger.warn('[entryStore] Failed to refresh cloud sync indicator:', error);
+  });
 };
 
 interface EntryStore {
@@ -344,6 +359,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       set((s) => ({
         entries: [newEntry, ...s.entries],
       }));
+      refreshCloudSyncIndicator();
       logger.log('✅ 添加记录:', newEntry.id);
     } catch (error) {
       logger.error('Failed to add entry:', error);
@@ -358,6 +374,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       set((s) => ({
         entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)],
       }));
+      refreshCloudSyncIndicator();
       logger.log('✅ 本地添加记录:', newEntry.id);
       return newEntry;
     } catch (error) {
@@ -376,6 +393,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
       set((s) => ({ entries: patch(s.entries) }));
+      refreshCloudSyncIndicator();
       logger.log('✅ 更新记录:', id);
     } catch (error) {
       logger.error('Failed to update entry:', error);
@@ -390,6 +408,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
       set((s) => ({ entries: patch(s.entries) }));
+      refreshCloudSyncIndicator();
       logger.log('✅ 本地更新记录:', id);
     } catch (error) {
       logger.error('Failed to update local entry:', error);
@@ -403,6 +422,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         .map((existing) => (existing.id === oldId ? entry : existing))
         .filter((existing, index, arr) => arr.findIndex((candidate) => candidate.id === existing.id) === index),
     }));
+    refreshCloudSyncIndicator();
   },
 
   /**
@@ -437,6 +457,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
       const remove = (arr: Entry[]) => arr.filter((e) => e.id !== id);
       set((s) => ({ entries: remove(s.entries) }));
+      refreshCloudSyncIndicator();
       logger.log('✅ 删除记录:', id);
     } catch (error) {
       logger.error('Failed to delete entry:', error);
@@ -518,6 +539,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   restoreEntries: async (entries: Entry[]): Promise<string[]> => {
     const insertedIds = await localDataSource.restoreEntries(entries);
     await get().loadEntries();
+    refreshCloudSyncIndicator();
     return insertedIds;
   },
 

@@ -3,6 +3,7 @@ import { render, act } from '@testing-library/react-native';
 
 let appStateListener: ((state: 'active' | 'background' | 'inactive') => void | Promise<void>) | null = null;
 let networkListener: ((state: { isConnected: boolean; isInternetReachable: boolean | null }) => void) | null = null;
+const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
 
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
@@ -171,6 +172,14 @@ jest.mock('@/src/store/syncStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: {
+    getState: () => ({
+      refresh: mockRefreshCloudSyncIndicator,
+    }),
+  },
+}));
+
 jest.mock('@/src/services/voiceUploadQueue', () => ({
   flushPendingVoiceUploads: jest.fn().mockResolvedValue(undefined),
 }));
@@ -229,6 +238,7 @@ describe('RootLayout photo upload triggers', () => {
     await flushPromises();
 
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });
 
   it('flushes pending photo uploads when app becomes active', async () => {
@@ -242,6 +252,7 @@ describe('RootLayout photo upload triggers', () => {
     });
 
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });
 
   it('flushes pending photo uploads when network becomes reachable again', async () => {
@@ -259,5 +270,6 @@ describe('RootLayout photo upload triggers', () => {
     await flushPromises();
 
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });
 });

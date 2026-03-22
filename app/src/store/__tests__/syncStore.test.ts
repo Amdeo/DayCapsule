@@ -27,6 +27,7 @@ describe('syncStore', () => {
       lastSyncAt: null,
       lastSyncError: null,
       initialSyncState: 'idle',
+      isSyncing: false,
       isLoaded: false,
     });
   });
@@ -64,6 +65,7 @@ describe('syncStore', () => {
       lastSyncAt: null,
       lastSyncError: 'network timeout',
       initialSyncState: 'checking',
+      isSyncing: false,
       isLoaded: true,
     });
 
@@ -74,5 +76,13 @@ describe('syncStore', () => {
       lastSyncError: null,
     });
     expect(Storage.delete).toHaveBeenCalledWith('cloudSync:lastSyncError');
+  });
+
+  it('toggles isSyncing when sync starts and finishes', async () => {
+    await useSyncStore.getState().markSyncStarted();
+    expect(useSyncStore.getState().isSyncing).toBe(true);
+
+    await useSyncStore.getState().markSyncFinished();
+    expect(useSyncStore.getState().isSyncing).toBe(false);
   });
 });

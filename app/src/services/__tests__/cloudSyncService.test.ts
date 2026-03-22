@@ -2,6 +2,8 @@ import { createCloudSyncService } from '../cloudSyncService';
 import * as DB from '@/src/database/operations';
 import { useSyncStore } from '@/src/store/syncStore';
 
+const mockRefreshIndicator = jest.fn(async () => undefined);
+
 jest.mock('@/src/utils/logger', () => ({
   logger: {
     log: jest.fn(),
@@ -34,6 +36,14 @@ jest.mock('@/src/database/operations', () => ({
   addEntry: jest.fn(async () => ({ id: 'conflict-copy' })),
 }));
 
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: {
+    getState: () => ({
+      refresh: mockRefreshIndicator,
+    }),
+  },
+}));
+
 const mockPost = jest.fn();
 jest.mock('../apiClient', () => {
   class MockApiError extends Error {
@@ -61,6 +71,7 @@ describe('cloudSyncService', () => {
       lastSyncAt: null,
       lastSyncError: null,
       initialSyncState: 'idle',
+      isSyncing: false,
       isLoaded: true,
     });
   });
@@ -204,6 +215,7 @@ describe('cloudSyncService', () => {
       lastSyncAt: 1700000000000,
       lastSyncError: 'network timeout',
       initialSyncState: 'ready',
+      isSyncing: false,
       isLoaded: true,
     });
     (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
@@ -224,5 +236,23 @@ describe('cloudSyncService', () => {
       failedEntries: 1,
       conflictCopies: 1,
     });
+  });
+
+  it('marks sync as in flight during syncNow and refreshes the indicator after settle', async () => {
+    mockPost.mockImplementationOnce(async () => {
+      expect(useSyncStore.getState().isSyncing).toBe(true);
+      return {
+        newCursor: 0,
+        results: [],
+        serverChanges: [],
+        conflicts: [],
+      };
+    });
+
+    const service = createCloudSyncService();
+    await service.syncNow();
+
+    expect(useSyncStore.getState().isSyncing).toBe(false);
+    expect(mockRefreshIndicator).toHaveBeenCalled();
   });
 });

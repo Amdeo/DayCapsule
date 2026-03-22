@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -320,3 +321,31 @@ UI 状态优先级固定为：
 - 图片 / 语音媒体后台上传进行中时，顶部按钮显示 `同步中`
 - 同步失败后，顶部按钮显示 `失败`
 - 顶部状态不依赖当前列表是否刚好加载到相关记录，而以完整本地同步摘要为准
+
+## 实现结果
+
+- 已新增 `cloudSyncIndicatorStore`，将 `syncStore`、本地 DB 摘要、登录态与云端模式汇总为顶部 UI 四态。
+- 已新增 `CloudSyncStatusButton`，在首页顶部右侧以“视图切换在左、同步状态在右”的顺序渲染。
+- 已提取 `showCloudSyncStatusAlert()`，首页顶部按钮与设置页“同步状态”入口复用同一套弹窗与“立即同步”动作。
+- 已在首页挂载、应用启动、前后台切换、网络恢复、entry 写操作、语音/照片上传队列状态变化后刷新顶部摘要。
+
+## 实现偏差说明
+
+- 计划外补充了两个首页 helper 测试文件的 mock 隔离：
+  - `app/app/(tabs)/__tests__/index.photo.test.ts`
+  - `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
+- 原因是 `index.tsx` 新增对 `cloudSyncIndicatorStore` 的静态 import 后，这两组测试会误入真实 SQLite / 原生模块；本次仅补最小测试桩，不改业务实现。
+- Android 模拟器手动验证覆盖了顶部按钮可见性、右侧位置、`synced` 绿点和弹窗复用；`pending / syncing / failed` 三种状态未在本轮手动重放，改由自动化测试兜底。
+
+## 最终验证结果
+
+- 自动化验证通过：
+  - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CloudSyncStatusButton.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts src/store/__tests__/syncStore.test.ts src/services/__tests__/cloudSyncService.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/entryStore.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx app/__tests__/_layout.photo-upload.test.tsx app/(tabs)/__tests__/index.photo.test.ts app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
+  - 结果：`15` 个 test suite、`118` 个测试全部通过
+- 类型与 diff 校验通过：
+  - `cd app && npx tsc --noEmit`
+  - `git diff --check`
+- Android 模拟器手动验证通过：
+  - 开启云端模式后，首页顶部最右侧显示同步状态按钮，位于视图切换按钮右侧
+  - 当前已同步场景展示绿点
+  - 点击顶部按钮后，弹出与设置页一致的“云同步状态”弹窗，包含上次同步、待同步条数、失败条数、冲突副本和“立即同步”

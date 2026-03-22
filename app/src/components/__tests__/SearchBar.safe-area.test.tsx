@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { Text } from 'react-native';
 
 // Mock useSafeAreaInsets，模拟 Android 状态栏高度 28dp
 jest.mock('react-native-safe-area-context', () => ({
@@ -49,5 +50,18 @@ describe('SearchBar 安全区适配', () => {
       ? Object.assign({}, ...json.props.style)
       : json.props.style;
     expect(containerStyle.paddingTop).not.toBe(60);
+  });
+
+  it('renders rightActions without affecting safe area padding', () => {
+    let tree: renderer.ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(<SearchBar rightActions={<Text>sync</Text>} />);
+    });
+    const json = tree!.toJSON() as any;
+    const containerStyle = Array.isArray(json.props.style)
+      ? Object.assign({}, ...json.props.style)
+      : json.props.style;
+    expect(containerStyle.paddingTop).toBe(28);
+    expect(JSON.stringify(json)).toContain('sync');
   });
 });

@@ -43,6 +43,7 @@ const mockCalendarView = jest.fn(() => null);
 const mockEntryEditor = jest.fn(() => null);
 const mockTextEntryDetailPage = jest.fn(() => null);
 const mockEntryCard = jest.fn(() => null);
+const mockShowCloudSyncStatusAlert = jest.fn();
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -67,6 +68,14 @@ jest.mock('@/src/store/entryStore', () => ({
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: () => ({ cardSpacing: 'default', calendarDensity: 'default' }),
   SPACING_VALUES: { compact: 8, default: 12, loose: 16 },
+}));
+
+jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
+  useCloudSyncIndicatorStore: () => 'hidden',
+}));
+
+jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
+  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({

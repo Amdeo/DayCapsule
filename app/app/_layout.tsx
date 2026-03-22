@@ -26,6 +26,7 @@ import { useEntryStore } from '@/src/store/entryStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSyncStore } from '@/src/store/syncStore';
+import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
@@ -71,6 +72,12 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
+
+  const refreshCloudSyncIndicator = async (label: string) => {
+    await useCloudSyncIndicatorStore.getState().refresh().catch((refreshError) => {
+      logger.warn(`⚠️ ${label}刷新顶部同步状态失败:`, refreshError);
+    });
+  };
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -164,6 +171,7 @@ export default function RootLayout() {
         await flushPendingPhotoUploads().catch((queueError) => {
           logger.warn('⚠️ 启动时补传待上传照片失败:', queueError);
         });
+        await refreshCloudSyncIndicator('启动后');
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
         Alert.alert(
@@ -208,6 +216,7 @@ export default function RootLayout() {
         await flushPendingPhotoUploads().catch((queueError) =>
           logger.warn('⚠️ 回到前台时补传待上传照片失败:', queueError)
         );
+        await refreshCloudSyncIndicator('回到前台后');
       }
     });
     return () => subscription.remove();
@@ -226,6 +235,7 @@ export default function RootLayout() {
         void flushPendingPhotoUploads().catch((queueError) =>
           logger.warn('⚠️ 网络恢复时补传待上传照片失败:', queueError)
         );
+        void refreshCloudSyncIndicator('网络恢复后');
       }
     });
 

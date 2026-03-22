@@ -29,6 +29,7 @@ import {
   updateEntry,
   deleteEntry,
   getPhotoEntriesBySyncStatus,
+  getCloudSyncIndicatorSummary,
   markEntryPendingDelete,
   searchEntries,
   getEntriesCount,
@@ -355,6 +356,7 @@ describe('database/operations', () => {
 
       const [sql, params] = mockDb.runAsync.mock.calls[0];
       expect(sql).toContain('sync_status');
+      expect(sql).not.toContain('sync_op');
       expect(params).toContain('pending_upload');
       expect(result.syncStatus).toBe('pending_upload');
     });
@@ -587,11 +589,61 @@ describe('database/operations', () => {
       expect(params).toContain('user-1');
       expect(params).toContain(1);
     });
+
+    it('恢复记录时应该优先持久化 updatedAt 到 updated_at', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+        { name: 'sync_op' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'entry-2',
+          type: 'text',
+          content: 'restore updatedAt',
+          timestamp: 1000,
+          editedAt: 2000,
+          updatedAt: 3000,
+          syncStatus: 'synced',
+          syncOp: 'update',
+        },
+      ]);
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(params.at(-1)).toBe(3000);
+      expect(params.at(-2)).toBe(1000);
+    });
   });
 
   // ─── markEntryPendingDelete ────────────────────────────────────────────────
 
   describe('markEntryPendingDelete', () => {
+    it('缺少 sync_op 列时应该只写 pending_delete 而不报错', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'sync_status' },
+        { name: 'deleted' },
+      ]);
+
+      await markEntryPendingDelete('entry-1');
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.not.stringContaining('sync_op = ?'),
+        expect.arrayContaining(['pending_delete', 1, 'entry-1'])
+      );
+    });
+
     it('应该保留记录并写入 pending_delete delete deleted', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },
@@ -610,6 +662,36 @@ describe('database/operations', () => {
         expect.arrayContaining(['pending_delete', 'delete', 1, 'entry-1'])
       );
       expect((mockDb.runAsync.mock.calls[0]?.[0] as string)).not.toContain('DELETE FROM entries');
+    });
+  });
+
+  describe('getCloudSyncIndicatorSummary', () => {
+    it('returns counts for pending, pending_delete, pending_upload, uploading and failed', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'sync_status' },
+      ]);
+      mockDb.getFirstAsync.mockResolvedValueOnce({
+        pending_entries: 1,
+        pending_uploads: 1,
+        uploading_entries: 1,
+        failed_entries: 1,
+      });
+
+      const summary = await getCloudSyncIndicatorSummary();
+
+      expect(mockDb.getFirstAsync).toHaveBeenCalledWith(
+        expect.stringContaining('SUM(CASE WHEN sync_status IN (\'pending\', \'pending_delete\')'),
+      );
+      expect(summary).toEqual({
+        pendingEntries: 1,
+        pendingUploads: 1,
+        uploadingEntries: 1,
+        failedEntries: 1,
+      });
     });
   });
 });

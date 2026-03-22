@@ -9,6 +9,9 @@ export interface PhotoUploadQueueDeps {
   markPendingSync: (id: string, media: MediaInfo[]) => Promise<void>;
   uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>;
   triggerSync: () => Promise<void>;
+  onEntryUploading?: (id: string) => void;
+  onEntryPendingUpload?: (id: string) => void;
+  onEntryPendingSync?: (id: string, media: MediaInfo[]) => void;
 }
 
 export interface PhotoUploadQueue {
@@ -79,6 +82,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
 
       try {
         await deps.markUploading(entryId);
+        deps.onEntryUploading?.(entryId);
 
         const uploadedMedia = await uploadPhotoMedia(entryId, entry.media, deps, canceled);
         if (!uploadedMedia) {
@@ -86,6 +90,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
         }
 
         await deps.markPendingSync(entryId, uploadedMedia);
+        deps.onEntryPendingSync?.(entryId, uploadedMedia);
 
         try {
           await deps.triggerSync();
@@ -95,6 +100,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
       } catch (error) {
         logger.warn('[photoUploadQueue] upload failed, will retry later:', entryId, error);
         await deps.markPendingUpload(entryId);
+        deps.onEntryPendingUpload?.(entryId);
       }
     }
   };
@@ -138,6 +144,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
 }
 
 let defaultQueue: PhotoUploadQueue | null = null;
+let queueCallbacks: Pick<PhotoUploadQueueDeps, 'onEntryUploading' | 'onEntryPendingUpload' | 'onEntryPendingSync'> = {};
 
 function getDefaultQueue(): PhotoUploadQueue {
   if (defaultQueue) {
@@ -160,9 +167,18 @@ function getDefaultQueue(): PhotoUploadQueue {
     }),
     uploadMedia: (localUri) => getApiClient().uploadFile('/media/upload', localUri, 'file'),
     triggerSync: () => createCloudSyncService().syncNow(),
+    onEntryUploading: (id) => queueCallbacks.onEntryUploading?.(id),
+    onEntryPendingUpload: (id) => queueCallbacks.onEntryPendingUpload?.(id),
+    onEntryPendingSync: (id, media) => queueCallbacks.onEntryPendingSync?.(id, media),
   });
 
   return defaultQueue;
+}
+
+export function configurePhotoUploadQueueCallbacks(
+  callbacks: Pick<PhotoUploadQueueDeps, 'onEntryUploading' | 'onEntryPendingUpload' | 'onEntryPendingSync'>
+): void {
+  queueCallbacks = callbacks;
 }
 
 export function enqueuePhotoUpload(entryId: string): void {
