@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已实现并验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -16,6 +17,30 @@
 - 2026-03-23：已确认搜索、保存、关闭、标签建议、筛选提交等业务行为不在本轮改动范围内。
 - 2026-03-23：已确认本轮会补组件级测试，并在迁移完成后把这 3 个文件从 allowlist 中移除。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 先采用本地结构化 review 留痕。
+- 2026-03-23：实现已完成，`SearchOverlay`、`EntryEditor`、`TextEditor` 已全部从样式守卫 allowlist 中移除。
+
+## 实现结果
+
+- 已完成 [SearchOverlay.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/SearchOverlay.tsx) 迁移：全屏搜索层、搜索框壳层、类型/时间/标签 section、重置按钮和底部操作条已改为 `NativeWind className`，类型选中态保留最小运行时样式。
+- 已完成 [EntryEditor.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/EntryEditor.tsx) 迁移：全屏编辑页 header、正文 surface、元信息区和底部 tag dock 已迁到 `NativeWind`，类型 badge 继续保留动态色分支。
+- 已完成 [TextEditor.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/TextEditor.tsx) 迁移：底部 sheet、header、内容区、标签区和 footer 按钮已迁到 `NativeWind`，保存禁用态采用条件 `className`。
+- 已新增 [SearchOverlay.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/SearchOverlay.test.tsx) 与 [TextEditor.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/TextEditor.test.tsx)，并扩充了 [EntryEditor.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/EntryEditor.test.tsx)。
+- 已补充第二批所需 token 到 [tailwind.config.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/tailwind.config.js)，包括 `overlay.*`、`editor.*`、`border.editor*` 等最小语义色值。
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryEditor.test.tsx`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEditor.test.tsx`：通过
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/TextEditor.test.tsx`：通过
+- `cd app && npm run lint`：通过
+- `cd app && npm run typecheck`：通过
+- `cd app && npm test -- --runInBand`：通过
+
+## 偏差与已知问题
+
+- 原设计中提到 `TextEditor` 可能需要新增 `sheet.*` token；实际实现中复用了现有 `background`、`neutral`、`primary`、`home.filter` 等 token，没有再新增一组独立 sheet 语义色。
+- 原设计中提到 `EntryEditor` 的 backdrop 可保留对象样式；实际实现里为了满足 style guard，最终改为 `editor.backdrop` token + `className`，同时把内容 surface 阴影收敛到 `NativeWind` 阴影类。
 
 ## 背景
 

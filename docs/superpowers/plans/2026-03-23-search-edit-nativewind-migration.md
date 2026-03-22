@@ -17,6 +17,28 @@
 - 2026-03-23：基于已批准 spec 创建第二批实现计划，范围固定为 `SearchOverlay`、`EntryEditor`、`TextEditor`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：实现已完成，三个目标文件均已迁移到 `NativeWind` 并从 allowlist 中移除。
+
+## 执行结果
+
+- Task 1 至 Task 4 已全部完成，`SearchOverlay`、`EntryEditor`、`TextEditor` 的静态壳层已迁移到 `NativeWind`。
+- 已新增 [SearchOverlay.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/SearchOverlay.test.tsx) 与 [TextEditor.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/TextEditor.test.tsx)，并扩充 [EntryEditor.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/EntryEditor.test.tsx)。
+- 已补齐 `overlay.*`、`editor.*`、`border.editor*` 等第二批 token 到 [tailwind.config.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/tailwind.config.js)。
+- 已从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 移除：
+  - `src/components/SearchOverlay.tsx`
+  - `src/components/EntryEditor.tsx`
+  - `src/components/TextEditor.tsx`
+- 分块提交已完成：
+  - `3584de1 refactor: migrate search overlay to nativewind`
+  - `edd9af7 refactor: migrate entry editor to nativewind`
+  - `53fb075 refactor: migrate text editor to nativewind`
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/TextEditor.test.tsx`：通过
+- `cd app && npm run lint`：通过
+- `cd app && npm run typecheck`：通过
+- `cd app && npm test -- --runInBand`：通过
 
 ## File Structure
 
@@ -63,7 +85,7 @@
 - Modify: `app/src/components/SearchOverlay.tsx`
 - Create: `app/src/components/__tests__/SearchOverlay.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定搜索层壳层和提交行为**
+- [x] **Step 1: 先写失败测试，锁定搜索层壳层和提交行为**
 
 在 `app/src/components/__tests__/SearchOverlay.test.tsx` 新建测试，最少覆盖：
 
@@ -110,13 +132,13 @@ it('submits search filters once and closes the overlay', async () => {
 
 并把 `mockApplySearchFilters`、`mockGetAllTags` 暴露成可断言的 jest.fn。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx`
 
 Expected: FAIL，原因应包含新 test 文件引用的 `testID` 尚不存在，或 `SearchOverlay` 仍未暴露这些结构锚点。
 
-- [ ] **Step 3: 最小实现第二批 token 和 `SearchOverlay` 迁移**
+- [x] **Step 3: 最小实现第二批 token 和 `SearchOverlay` 迁移**
 
 在 `app/tailwind.config.js` 补这批需要的最小语义 token，优先覆盖：
 
@@ -163,7 +185,7 @@ extend: {
   - `search-overlay-reset-button`
   - `search-overlay-submit-button`
 
-- [ ] **Step 4: 运行组件测试并移出 allowlist**
+- [x] **Step 4: 运行组件测试并移出 allowlist**
 
 先跑：
 
@@ -181,7 +203,7 @@ Run: `cd app && npm run lint -- src/components/SearchOverlay.tsx`
 
 Expected: PASS，说明 `SearchOverlay` 已不再依赖 allowlist。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/tailwind.config.js app/eslint/style-guard-allowlist.js app/src/components/SearchOverlay.tsx app/src/components/__tests__/SearchOverlay.test.tsx
@@ -198,7 +220,7 @@ git commit -m "refactor: migrate search overlay to nativewind"
 - Modify: `app/src/components/EntryEditor.tsx`
 - Modify: `app/src/components/__tests__/EntryEditor.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定 header / type badge / tag dock**
+- [x] **Step 1: 先写失败测试，锁定 header / type badge / tag dock**
 
 在 `app/src/components/__tests__/EntryEditor.test.tsx` 增加：
 
@@ -223,13 +245,13 @@ it('keeps the bottom tag dock pinned as a separate editing region', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryEditor.test.tsx`
 
 Expected: FAIL，原因应包含 `entry-editor-header` 或 `entry-editor-type-badge` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `EntryEditor` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `EntryEditor` NativeWind 迁移**
 
 如果 `EntryEditor` 现有暖色系仍缺 token，就在 `app/tailwind.config.js` 继续补最小语义 token，优先覆盖：
 
@@ -267,7 +289,7 @@ colors: {
   - `entry-editor-header`
   - `entry-editor-type-badge`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryEditor.test.tsx`
 
@@ -283,7 +305,7 @@ Run: `cd app && npm run lint -- src/components/EntryEditor.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/tailwind.config.js app/eslint/style-guard-allowlist.js app/src/components/EntryEditor.tsx app/src/components/__tests__/EntryEditor.test.tsx
@@ -300,7 +322,7 @@ git commit -m "refactor: migrate entry editor to nativewind"
 - Modify: `app/src/components/TextEditor.tsx`
 - Create: `app/src/components/__tests__/TextEditor.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定底部 sheet 和保存禁用态**
+- [x] **Step 1: 先写失败测试，锁定底部 sheet 和保存禁用态**
 
 在 `app/src/components/__tests__/TextEditor.test.tsx` 新建测试，至少覆盖：
 
@@ -334,13 +356,13 @@ it('clears local draft state when cancelled', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEditor.test.tsx`
 
 Expected: FAIL，原因应包含 `text-editor-sheet`、`text-editor-content-input` 或 `text-editor-save-button` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `TextEditor` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `TextEditor` NativeWind 迁移**
 
 如果底部 sheet 仍缺 token，就在 `app/tailwind.config.js` 补最小语义 token，优先覆盖：
 
@@ -377,7 +399,7 @@ colors: {
   - `text-editor-tags-input`
   - `text-editor-save-button`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEditor.test.tsx`
 
@@ -393,7 +415,7 @@ Run: `cd app && npm run lint -- src/components/TextEditor.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/tailwind.config.js app/eslint/style-guard-allowlist.js app/src/components/TextEditor.tsx app/src/components/__tests__/TextEditor.test.tsx
@@ -408,7 +430,7 @@ git commit -m "refactor: migrate text editor to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-search-edit-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-search-edit-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第二批相关测试集合**
+- [x] **Step 1: 先跑第二批相关测试集合**
 
 Run:
 
@@ -421,7 +443,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -432,7 +454,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -441,7 +463,7 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-search-edit-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-search-edit-nativewind-migration.md
