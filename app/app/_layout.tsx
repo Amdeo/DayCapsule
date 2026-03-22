@@ -27,6 +27,7 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
+import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 
@@ -160,6 +161,9 @@ export default function RootLayout() {
         await flushPendingVoiceUploads().catch((queueError) => {
           logger.warn('⚠️ 启动时补传待上传语音失败:', queueError);
         });
+        await flushPendingPhotoUploads().catch((queueError) => {
+          logger.warn('⚠️ 启动时补传待上传照片失败:', queueError);
+        });
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
         Alert.alert(
@@ -201,6 +205,9 @@ export default function RootLayout() {
         await flushPendingVoiceUploads().catch((queueError) =>
           logger.warn('⚠️ 回到前台时补传待上传语音失败:', queueError)
         );
+        await flushPendingPhotoUploads().catch((queueError) =>
+          logger.warn('⚠️ 回到前台时补传待上传照片失败:', queueError)
+        );
       }
     });
     return () => subscription.remove();
@@ -215,6 +222,9 @@ export default function RootLayout() {
       if (!wasReachable && isReachable) {
         void flushPendingVoiceUploads().catch((queueError) =>
           logger.warn('⚠️ 网络恢复时补传待上传语音失败:', queueError)
+        );
+        void flushPendingPhotoUploads().catch((queueError) =>
+          logger.warn('⚠️ 网络恢复时补传待上传照片失败:', queueError)
         );
       }
     });

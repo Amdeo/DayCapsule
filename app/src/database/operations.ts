@@ -146,6 +146,30 @@ export const getVoiceEntriesBySyncStatus = async (
   }
 };
 
+export const getPhotoEntriesBySyncStatus = async (
+  statuses: Array<Entry['syncStatus']>
+): Promise<Entry[]> => {
+  if (statuses.length === 0) return [];
+
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    if (!columns.has('sync_status')) return [];
+
+    const placeholders = statuses.map(() => '?').join(', ');
+    const result = await db.getAllAsync(
+      `SELECT * FROM entries
+       WHERE type = 'photo' AND sync_status IN (${placeholders})
+       ORDER BY timestamp DESC`,
+      statuses,
+    );
+    return result.map(rowToEntry);
+  } catch (error) {
+    logger.error('Failed to get photo entries by sync status:', error);
+    return [];
+  }
+};
+
 /**
  * 检查表是否包含指定列
  */

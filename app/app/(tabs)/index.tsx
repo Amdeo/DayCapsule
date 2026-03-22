@@ -25,6 +25,7 @@ import {
   configureVoiceUploadQueueCallbacks,
   flushPendingVoiceUploads,
 } from '@/src/services/voiceUploadQueue';
+import { enqueuePhotoUpload } from '@/src/services/photoUploadQueue';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -38,7 +39,10 @@ export interface PhotoSelectDeps {
     aspectRatio?: number
   ) => Promise<import('@/src/services/photoService').SavedPhotoResult>;
   deleteLocalFile?: (uri: string) => Promise<void>;
-  addEntry: (entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>) => Promise<void>;
+  addLocalEntry: (
+    entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>
+  ) => Promise<import('@/src/types/entry').Entry>;
+  enqueueUpload?: (entryId: string) => void;
 }
 
 export interface VoiceCloudStartDeps {
@@ -159,12 +163,18 @@ export async function handlePhotoSelectForTest(
   }
 
   try {
-    await deps.addEntry({
+    const createdEntry = await deps.addLocalEntry({
       type: 'photo',
       content: '',
-      syncStatus: 'pending',
+      syncStatus: 'pending_upload',
       media: mediaList,
     });
+
+    try {
+      deps.enqueueUpload?.(createdEntry.id);
+    } catch (error) {
+      logger.warn('[HomeScreen] Failed to enqueue photo upload:', error);
+    }
   } catch (error) {
     if (deps.deleteLocalFile) {
       await Promise.all(savedFiles.map((uri) => deps.deleteLocalFile?.(uri)));
@@ -405,13 +415,14 @@ export default function HomeScreen() {
           ? PhotoService.savePhotoToCache.bind(PhotoService)
           : PhotoService.savePhotoToStorage.bind(PhotoService),
         deleteLocalFile: deleteFile,
-        addEntry,
+        addLocalEntry,
+        enqueueUpload: enqueuePhotoUpload,
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
       Alert.alert('保存失败', '照片保存失败，请重试');
     }
-  }, [addEntry, isCloudModeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
+  }, [addLocalEntry, isCloudModeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 
   const openDrawer = useCallback(() => {
     setDrawerOpen(true);

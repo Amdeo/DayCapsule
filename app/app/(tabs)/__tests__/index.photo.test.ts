@@ -15,6 +15,7 @@ jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
     loadEntries: jest.fn(),
     addEntry: jest.fn(),
+    addLocalEntry: jest.fn(),
     deleteEntry: jest.fn(),
     updateRecordingStatus: jest.fn(),
     updateRecordingDuration: jest.fn(),
@@ -48,6 +49,7 @@ jest.mock('@/src/services/voiceService', () => ({
     pauseRecording: jest.fn().mockResolvedValue(undefined),
     stopRecording: jest.fn().mockResolvedValue({ uri: '', duration: 0 }),
     saveVoiceToStorage: jest.fn().mockResolvedValue(''),
+    saveVoiceToCache: jest.fn().mockResolvedValue(''),
     preloadAudio: jest.fn().mockResolvedValue(undefined),
   },
 }));
@@ -55,6 +57,7 @@ jest.mock('@/src/services/voiceService', () => ({
 jest.mock('@/src/services/photoService', () => ({
   PhotoService: {
     savePhotoToStorage: jest.fn(),
+    savePhotoToCache: jest.fn(),
   },
 }));
 
@@ -87,26 +90,35 @@ const PHOTO_RESULT = {
   aspectRatio: 3024 / 4032,
 };
 
-const PERSISTENT_URI =
-  'file:///data/user/0/com.app/files/media/photos/original/photo_123.jpg';
+const CACHE_URI =
+  'file:///data/user/0/com.app/cache/media/photos/display/photo_123.jpg';
 
 const THUMBNAIL_URI =
-  'file:///data/user/0/com.app/files/media/photos/original/thumb_123.jpg';
+  'file:///data/user/0/com.app/cache/media/photos/thumbnails/thumb_123.jpg';
 
 const SAVED_PHOTO = {
-  originalUri: PERSISTENT_URI,
+  originalUri: CACHE_URI,
   thumbnailUri: THUMBNAIL_URI,
   aspectRatio: PHOTO_RESULT.aspectRatio,
   width: PHOTO_RESULT.width,
   height: PHOTO_RESULT.height,
 };
 
-function makeDeps(overrides: Partial<PhotoSelectDeps> = {}): PhotoSelectDeps {
+type PhotoSelectTestDeps = PhotoSelectDeps & {
+  addLocalEntry: jest.Mock;
+  enqueueUpload: jest.Mock;
+  addEntry: jest.Mock;
+};
+
+function makeDeps(overrides: Partial<PhotoSelectTestDeps> = {}): PhotoSelectTestDeps {
   return {
     savePhotoToStorage: jest.fn().mockResolvedValue(SAVED_PHOTO),
+    deleteLocalFile: jest.fn().mockResolvedValue(undefined),
     addEntry: jest.fn().mockResolvedValue(undefined),
+    addLocalEntry: jest.fn().mockResolvedValue({ id: 'photo-local-1' }),
+    enqueueUpload: jest.fn(),
     ...overrides,
-  };
+  } as PhotoSelectTestDeps;
 }
 
 describe('handlePhotoSelectForTest', () => {
@@ -114,63 +126,76 @@ describe('handlePhotoSelectForTest', () => {
     jest.clearAllMocks();
   });
 
-  it('savePhotoToStorage 失败时不调用 addEntry', async () => {
+  it('savePhotoToStorage 失败时不调用 addLocalEntry', async () => {
     const deps = makeDeps({
       savePhotoToStorage: jest.fn().mockRejectedValue(new Error('disk full')),
     });
 
     await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('disk full');
 
-    expect(deps.addEntry).not.toHaveBeenCalled();
+    expect(deps.addLocalEntry).not.toHaveBeenCalled();
   });
 
-  it('addEntry 收到持久化 URI，不含 content:// 前缀', async () => {
+  it('云端照片创建时使用本地 cache URI，并标记为 pending_upload', async () => {
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
-    expect(deps.addEntry).toHaveBeenCalledTimes(1);
-    const callArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
-    expect(callArg.media?.[0]?.uri).toBe(PERSISTENT_URI);
+    expect(deps.addLocalEntry).toHaveBeenCalledTimes(1);
+    const callArg = deps.addLocalEntry.mock.calls[0][0];
+    expect(callArg.syncStatus).toBe('pending_upload');
+    expect(callArg.media?.[0]?.uri).toBe(CACHE_URI);
     expect(callArg.media?.[0]?.uri).not.toContain('content://');
-    expect(callArg.media?.[0]?.uri).not.toContain('cache');
+    expect(callArg.media?.[0]?.uri).toContain('cache');
   });
 
-  it('addEntry 只被调用一次（无 updateEntry 第二步）', async () => {
+  it('本地卡片创建成功后立即 enqueue 一次后台上传', async () => {
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
-    expect(deps.addEntry).toHaveBeenCalledTimes(1);
+    expect(deps.enqueueUpload).toHaveBeenCalledTimes(1);
+    expect(deps.enqueueUpload).toHaveBeenCalledWith('photo-local-1');
   });
 
-  it('savePhotoToStorage 接收临时 URI，addEntry 不使用临时 URI', async () => {
+  it('savePhotoToStorage 接收临时 URI，addLocalEntry 不使用临时 URI', async () => {
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
     expect((deps.savePhotoToStorage as jest.Mock).mock.calls[0][0]).toBe(PHOTO_RESULT.uri);
-    const addCallArg = (deps.addEntry as jest.Mock).mock.calls[0][0];
+    const addCallArg = deps.addLocalEntry.mock.calls[0][0];
     expect(addCallArg.media?.[0]?.uri).not.toBe(PHOTO_RESULT.uri);
   });
 
-  it('single photo: addEntry receives media array of length 1', async () => {
+  it('single photo: addLocalEntry receives media array of length 1', async () => {
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
     expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(1);
-    const call = (deps.addEntry as jest.Mock).mock.calls[0][0];
+    const call = deps.addLocalEntry.mock.calls[0][0];
     expect(call.media).toHaveLength(1);
-    expect(call.media[0].uri).toBe(PERSISTENT_URI);
+    expect(call.media[0].uri).toBe(CACHE_URI);
   });
 
-  it('3 photos: addEntry receives media array of length 3, save called 3 times', async () => {
+  it('3 photos: addLocalEntry receives media array of length 3, save called 3 times', async () => {
     const deps = makeDeps();
     const results = [PHOTO_RESULT, PHOTO_RESULT, PHOTO_RESULT];
 
     await handlePhotoSelectForTest(results, deps);
     expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(3);
-    const call = (deps.addEntry as jest.Mock).mock.calls[0][0];
+    const call = deps.addLocalEntry.mock.calls[0][0];
     expect(call.media).toHaveLength(3);
+  });
+
+  it('addLocalEntry 失败时清理本次新建的本地媒体文件', async () => {
+    const deps = makeDeps({
+      addLocalEntry: jest.fn().mockRejectedValue(new Error('upload failed')),
+    });
+
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('upload failed');
+
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CACHE_URI);
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(THUMBNAIL_URI);
   });
 });

@@ -15,16 +15,30 @@
 ## 变更记录
 
 - 2026-03-22：基于已批准 spec 创建实现计划，覆盖本地 cache 创建、照片后台上传队列、store/DB 集成、生命周期补传触发与文档收口。
+- 2026-03-22：已完成实现；照片创建、后台上传队列、SQLite / store 与生命周期补传触发均已落地并通过目标测试与类型检查。
 
 ## 执行状态
 
 | Task | 状态 | 说明 |
 |------|------|------|
-| Task 1 | 待执行 | 把照片创建链路切到本地 `cache` + `pending_upload`，并在创建成功后立即入队 |
-| Task 2 | 待执行 | 新增独立 `photoUploadQueue`，只负责媒体上传、回写 `remoteUri`、推进到 `pending` |
-| Task 3 | 待执行 | 补齐 SQLite / `entryStore` 对待上传照片的查询、列表加载和删除清理 |
-| Task 4 | 待执行 | 在启动、回前台、网络恢复时接入照片补传触发 |
-| Task 5 | 待执行 | 跑验证、更新文档状态并准备 scoped commit |
+| Task 1 | 已完成 | 首页照片创建已切到 `addLocalEntry + pending_upload`，并在云端模式下注入真实 `enqueuePhotoUpload` |
+| Task 2 | 已完成 | 已新增独立 `photoUploadQueue`，负责媒体上传、回写 `remoteUri`、推进到 `pending` 并触发同步 |
+| Task 3 | 已完成 | 已补齐 SQLite / `entryStore` 对待上传照片的查询、列表合并、删除清理与取消上传 |
+| Task 4 | 已完成 | 已在启动、回前台、网络恢复三处接入照片补传触发，并补了根布局测试 |
+| Task 5 | 已完成 | 已完成目标测试、类型检查与文档收口，待做 scoped commit |
+
+## 实际执行说明
+
+- Task 1 中保留了 `PhotoSelectDeps.savePhotoToStorage` 的依赖命名，以避免为测试 helper 额外引入无收益的 API 变更；云端模式实际仍注入 `PhotoService.savePhotoToCache`，行为与 spec 一致。
+- `app/src/services/photoService.ts` 的 `savePhotoToCache` / `resolvePhotoUri` 主体逻辑在本轮开始前已存在于工作区，本轮主要补上契约测试并完成入口接线。
+- Task 4 新增了 `app/app/__tests__/_layout.photo-upload.test.tsx`，并在测试中显式 mock `global.css` 与 `react-native-css-interop` runtime，避免样式加载干扰生命周期触发断言。
+
+## 最终验证
+
+- `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.photo.test.ts' app/__tests__/_layout.photo-upload.test.tsx src/services/__tests__/photoService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/entryStore.test.ts`
+  - 结果：PASS
+- `cd app && npx tsc --noEmit`
+  - 结果：PASS
 
 ## File Structure
 

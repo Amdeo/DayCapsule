@@ -2,9 +2,9 @@
 
 ## 状态
 
-- 当前状态：已批准
+- 当前状态：已实现
 - 用户确认日期：2026-03-22
-- 实现完成日期：待补充
+- 实现完成日期：2026-03-22
 
 ## 评审记录
 
@@ -21,6 +21,7 @@
   - `cloudSyncService` 继续负责 entry 元数据同步
   - `voiceUploadQueue` 的历史直写路径记为已知技术债，不在本轮顺带清理
 - 2026-03-22：用户 review 了 spec 并回复 `ok`，批准进入 `writing-plans` 阶段。
+- 2026-03-22：实现完成并收口文档；最终代码沿用 `PhotoSelectDeps.savePhotoToStorage` 这一依赖命名，但云端模式实际注入 `PhotoService.savePhotoToCache`，不影响本地 `cache` 优先语义。
 
 ## 背景
 
@@ -148,7 +149,7 @@
 2. 生成：
    - 原图本地 `cache` 路径
    - 本地缩略图路径
-3. 调 `addEntry`
+3. 调 `addLocalEntry`
 4. 创建本地 photo entry：
    - `media[].uri = <local cache original>`
    - `media[].thumbnail = <local cache thumbnail>`
@@ -258,6 +259,18 @@
 - 孤儿媒体清理
 - 独立缩略图上传与服务端缩略图模型
 - `.gitignore`、`app/metro.config.js` 等不明确关联项
+
+## 实际执行说明
+
+- `PhotoService.savePhotoToCache` 与 `resolvePhotoUri` 的主体实现已在本任务开始前存在于工作区；本轮没有重写这部分逻辑，而是通过测试锁定 `cache` 路径契约，并把首页创建、后台上传队列、SQLite / store、应用生命周期触发全部接上。
+- `photoUploadQueue` 默认实例最终使用 `getPhotoEntriesBySyncStatus(['pending_upload', 'uploading'])`，不再依赖通用状态查询后再本地过滤。
+
+## 最终验证
+
+- `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.photo.test.ts' app/__tests__/_layout.photo-upload.test.tsx src/services/__tests__/photoService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/database/__tests__/operations.test.ts src/store/__tests__/entryStore.test.ts`
+  - 结果：PASS
+- `cd app && npx tsc --noEmit`
+  - 结果：PASS
 
 ## 验收标准
 

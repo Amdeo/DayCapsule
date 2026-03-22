@@ -37,6 +37,7 @@ jest.mock('@/src/database/operations', () => ({
   deleteEntry: jest.fn().mockResolvedValue(undefined),
   markEntryPendingDelete: jest.fn().mockResolvedValue(undefined),
   getVoiceEntriesBySyncStatus: jest.fn().mockResolvedValue([]),
+  getPhotoEntriesBySyncStatus: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('@/src/utils/fileSystem', () => ({
@@ -45,6 +46,10 @@ jest.mock('@/src/utils/fileSystem', () => ({
 
 jest.mock('@/src/services/voiceUploadQueue', () => ({
   cancelVoiceUpload: jest.fn(),
+}));
+
+jest.mock('@/src/services/photoUploadQueue', () => ({
+  cancelPhotoUpload: jest.fn(),
 }));
 
 let mockCloudMode: boolean | 'switching' = false;
@@ -77,6 +82,7 @@ jest.mock('@/src/utils/logger', () => ({
 import { useEntryStore } from '../entryStore';
 import { useSettingsStore } from '../settingsStore';
 import * as DB from '@/src/database/operations';
+import { deleteFile } from '@/src/utils/fileSystem';
 
 const PAGE_SIZE = 20;
 
@@ -147,6 +153,8 @@ describe('entryStore', () => {
     (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
     (DB.markEntryPendingDelete as jest.Mock).mockResolvedValue(undefined);
     (DB.getVoiceEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
+    (DB.getPhotoEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
+    (deleteFile as jest.Mock).mockResolvedValue(undefined);
     useSettingsStore.setState({ cloudMode: false });
   });
 
@@ -280,6 +288,37 @@ describe('entryStore', () => {
         jest.useRealTimers();
       }
     });
+
+    it('应该把待上传照片合并到首屏列表中', async () => {
+      mockDataSource.getEntriesPage.mockResolvedValue([
+        { id: 'synced-1', type: 'text', content: '正常记录', timestamp: 1700000000000, syncStatus: 'synced' },
+      ]);
+      (DB.getPhotoEntriesBySyncStatus as jest.Mock).mockResolvedValue([
+        {
+          id: 'photo-pending-1',
+          type: 'photo',
+          content: '',
+          timestamp: 1700000001000,
+          syncStatus: 'pending_upload',
+          media: [
+            {
+              uri: 'file:///cache/media/photos/display/photo_1.jpg',
+              thumbnail: 'file:///cache/media/photos/thumbnails/thumb_1.jpg',
+              mimeType: 'image/jpeg',
+              size: 2048,
+            },
+          ],
+        },
+      ]);
+
+      await useEntryStore.getState().loadEntries();
+
+      expect(DB.getPhotoEntriesBySyncStatus).toHaveBeenCalledWith(['pending_upload', 'uploading']);
+      expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual([
+        'photo-pending-1',
+        'synced-1',
+      ]);
+    });
   });
 
   // ─── loadMore ───────────────────────────────────────────────────────────────
@@ -391,6 +430,7 @@ describe('entryStore', () => {
       });
 
       useEntryStore.getState().setFilterType('voice');
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -514,6 +554,45 @@ describe('entryStore', () => {
 
       expect(DB.markEntryPendingDelete).toHaveBeenCalledWith('1');
       expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
+    });
+
+    it('删除 pending_upload 照片时应该取消上传并清理本地 cache 文件', async () => {
+      const { cancelPhotoUpload } = jest.requireMock('@/src/services/photoUploadQueue') as {
+        cancelPhotoUpload: jest.Mock;
+      };
+      const { deleteFile } = jest.requireMock('@/src/utils/fileSystem') as {
+        deleteFile: jest.Mock;
+      };
+
+      useSettingsStore.setState({ cloudMode: true });
+      useEntryStore.setState({
+        entries: [
+          {
+            id: 'photo-1',
+            type: 'photo',
+            content: '',
+            timestamp: 1700000000000,
+            syncStatus: 'pending_upload',
+            media: [
+              {
+                uri: 'file:///cache/media/photos/display/photo_1.jpg',
+                thumbnail: 'file:///cache/media/photos/thumbnails/thumb_1.jpg',
+                mimeType: 'image/jpeg',
+                size: 2048,
+              },
+            ],
+          },
+        ],
+      });
+
+      await useEntryStore.getState().deleteEntry('photo-1');
+
+      expect(cancelPhotoUpload).toHaveBeenCalledWith('photo-1');
+      expect(deleteFile).toHaveBeenCalledWith('file:///cache/media/photos/display/photo_1.jpg');
+      expect(deleteFile).toHaveBeenCalledWith('file:///cache/media/photos/thumbnails/thumb_1.jpg');
+      expect(DB.deleteEntry).toHaveBeenCalledWith('photo-1');
+      expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
+      expect(DB.markEntryPendingDelete).not.toHaveBeenCalled();
     });
   });
 

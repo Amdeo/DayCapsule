@@ -18,6 +18,7 @@ import {
   getFileInfo,
   copyFile,
 } from '@/src/utils/fileSystem';
+import { MediaCacheService } from './mediaCacheService';
 import { MediaError } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
@@ -95,6 +96,9 @@ export class PhotoService {
    * 统一提取文件名后用当前 documentDirectory 重建路径
    */
   static resolvePhotoUri(uri: string): string {
+    if (MediaCacheService.isRemoteUri(uri)) {
+      return MediaCacheService.normalizeRemoteUri(uri);
+    }
     const photoOriginalRelative = 'media/photos/original/';
     if (uri.includes(photoOriginalRelative)) {
       const filename = uri.split(photoOriginalRelative).pop();
@@ -286,6 +290,26 @@ export class PhotoService {
     quality: 'low' | 'medium' | 'high' = 'medium',
     aspectRatio?: number
   ): Promise<SavedPhotoResult> {
+    return this.savePhoto(sourceUri, entryId, MEDIA_PATHS.photoOriginal, MEDIA_PATHS.photoOriginal, quality, aspectRatio);
+  }
+
+  static async savePhotoToCache(
+    sourceUri: string,
+    entryId: string,
+    quality: 'low' | 'medium' | 'high' = 'medium',
+    aspectRatio?: number
+  ): Promise<SavedPhotoResult> {
+    return this.savePhoto(sourceUri, entryId, MEDIA_PATHS.photoDisplay, MEDIA_PATHS.photoThumbnail, quality, aspectRatio);
+  }
+
+  private static async savePhoto(
+    sourceUri: string,
+    entryId: string,
+    photoDir: string,
+    thumbnailDir: string,
+    quality: 'low' | 'medium' | 'high' = 'medium',
+    aspectRatio?: number
+  ): Promise<SavedPhotoResult> {
     try {
       // 检查存储空间
       const { size } = await getFileInfo(sourceUri);
@@ -310,7 +334,7 @@ export class PhotoService {
       const filename = generateUniqueFilename(entryId, 'photo', 'jpg');
       const targetUri = await copyFile(
         compressed.compressed.uri,
-        MEDIA_PATHS.photoOriginal,
+        photoDir,
         filename
       );
 
@@ -318,7 +342,7 @@ export class PhotoService {
       const thumbnailFilename = generateUniqueFilename(entryId, 'thumb', 'jpg');
       const targetThumbnailUri = await copyFile(
         thumbnailUri,
-        MEDIA_PATHS.photoOriginal,
+        thumbnailDir,
         thumbnailFilename
       );
 

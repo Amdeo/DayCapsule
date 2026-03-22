@@ -11,6 +11,7 @@ import { logger } from '@/src/utils/logger';
 import * as DB from '@/src/database/operations';
 import { deleteFile } from '@/src/utils/fileSystem';
 import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
+import { cancelPhotoUpload } from '@/src/services/photoUploadQueue';
 import { useSettingsStore } from '@/src/store/settingsStore';
 
 const PAGE_SIZE = 20;
@@ -129,6 +130,21 @@ const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => 
   return cleaned;
 };
 
+const getLocalMediaFileUris = (entry?: Entry): string[] =>
+  Array.from(
+    new Set(
+      (entry?.media ?? []).flatMap((media) =>
+        [media.uri, media.thumbnail].filter((uri): uri is string => Boolean(uri))
+      )
+    )
+  );
+
+const deleteLocalMediaFiles = async (entry?: Entry): Promise<void> => {
+  for (const uri of getLocalMediaFileUris(entry)) {
+    await deleteFile(uri).catch(() => {});
+  }
+};
+
 interface EntryStore {
   // 数据
   entries: Entry[];
@@ -200,7 +216,9 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       const filters = buildFilters(get());
       const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE);
       const pendingVoiceEntries = await DB.getVoiceEntriesBySyncStatus(['pending_upload', 'uploading']);
-      const merged = mergeUniqueById(pendingVoiceEntries, page).sort((a, b) => b.timestamp - a.timestamp);
+      const pendingPhotoEntries = await DB.getPhotoEntriesBySyncStatus(['pending_upload', 'uploading']);
+      const mergedPending = mergeUniqueById(pendingVoiceEntries, pendingPhotoEntries);
+      const merged = mergeUniqueById(mergedPending, page).sort((a, b) => b.timestamp - a.timestamp);
       const cleaned = await removeBrokenRecordingEntries(merged);
 
       if (get().activeQueryKey !== queryKey) {
@@ -394,7 +412,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     try {
       const existingEntry = get().entries.find((entry) => entry.id === id);
       const shouldDeleteLocallyOnly =
-        existingEntry?.type === 'voice' &&
+        (existingEntry?.type === 'voice' || existingEntry?.type === 'photo') &&
         (existingEntry.syncStatus === 'pending_upload' || existingEntry.syncStatus === 'uploading');
       const shouldSoftDeleteForCloud =
         shouldUseCloudPendingState() &&
@@ -403,13 +421,13 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         existingEntry.syncStatus === 'synced';
 
       if (shouldDeleteLocallyOnly) {
-        cancelVoiceUpload(id);
-
-        const localUri = existingEntry.media?.[0]?.uri;
-        if (localUri) {
-          await deleteFile(localUri).catch(() => {});
+        if (existingEntry?.type === 'voice') {
+          cancelVoiceUpload(id);
+        } else if (existingEntry?.type === 'photo') {
+          cancelPhotoUpload(id);
         }
 
+        await deleteLocalMediaFiles(existingEntry);
         await DB.deleteEntry(id);
       } else if (shouldSoftDeleteForCloud) {
         await DB.markEntryPendingDelete(id);

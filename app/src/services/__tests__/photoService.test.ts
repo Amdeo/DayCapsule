@@ -26,6 +26,8 @@ jest.mock('@/src/utils/logger', () => ({
 jest.mock('@/src/utils/fileSystem', () => ({
   MEDIA_PATHS: {
     photoOriginal: 'file:///documents/media/photos/original/',
+    photoDisplay: 'file:///cache/media/photos/display/',
+    photoThumbnail: 'file:///cache/media/photos/thumbnails/',
   },
   generateUniqueFilename: jest
     .fn()
@@ -131,6 +133,51 @@ describe('PhotoService', () => {
     expect(result).toEqual({
       originalUri: 'file:///documents/media/photos/original/entry_photo.jpg',
       thumbnailUri: 'file:///documents/media/photos/original/entry_thumb.jpg',
+      aspectRatio: 1200 / 900,
+      width: 1200,
+      height: 900,
+    });
+    expect(deleteFile).toHaveBeenCalledWith('file:///compressed.jpg');
+    expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
+  });
+
+  it('savePhotoToCache 将原图和缩略图写入 cache 目录', async () => {
+    const thumbnailSpy = jest
+      .spyOn(PhotoService, 'generateThumbnail')
+      .mockResolvedValue('file:///thumbnail.jpg');
+
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+      uri: 'file:///compressed.jpg',
+      width: 1200,
+      height: 900,
+    });
+
+    (copyFile as jest.Mock)
+      .mockReset()
+      .mockResolvedValueOnce('file:///cache/media/photos/display/entry_photo.jpg')
+      .mockResolvedValueOnce('file:///cache/media/photos/thumbnails/entry_thumb.jpg');
+
+    const result = await PhotoService.savePhotoToCache(
+      'file:///source.jpg',
+      'entry',
+      'medium'
+    );
+
+    expect(copyFile).toHaveBeenNthCalledWith(
+      1,
+      'file:///compressed.jpg',
+      'file:///cache/media/photos/display/',
+      'entry_photo.jpg'
+    );
+    expect(copyFile).toHaveBeenNthCalledWith(
+      2,
+      'file:///thumbnail.jpg',
+      'file:///cache/media/photos/thumbnails/',
+      'entry_thumb.jpg'
+    );
+    expect(result).toEqual({
+      originalUri: 'file:///cache/media/photos/display/entry_photo.jpg',
+      thumbnailUri: 'file:///cache/media/photos/thumbnails/entry_thumb.jpg',
       aspectRatio: 1200 / 900,
       width: 1200,
       height: 900,

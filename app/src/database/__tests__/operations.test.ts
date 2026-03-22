@@ -28,6 +28,7 @@ import {
   addEntry,
   updateEntry,
   deleteEntry,
+  getPhotoEntriesBySyncStatus,
   markEntryPendingDelete,
   searchEntries,
   getEntriesCount,
@@ -204,6 +205,39 @@ describe('database/operations', () => {
         deleted: true,
         updatedAt: 1700000001000,
       });
+    });
+  });
+
+  describe('getPhotoEntriesBySyncStatus', () => {
+    it('应该只查询 photo 类型的待上传记录', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([
+          { name: 'id' },
+          { name: 'type' },
+          { name: 'content' },
+          { name: 'timestamp' },
+          { name: 'sync_status' },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'photo-1',
+            type: 'photo',
+            content: '',
+            timestamp: 1700000000000,
+            sync_status: 'pending_upload',
+            tags: null,
+            media_json: JSON.stringify([]),
+          },
+        ]);
+
+      const result = await getPhotoEntriesBySyncStatus(['pending_upload', 'uploading']);
+
+      const [sql, params] = mockDb.getAllAsync.mock.calls[1];
+      expect(sql).toContain("WHERE type = 'photo' AND sync_status IN");
+      expect(params).toEqual(['pending_upload', 'uploading']);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('photo');
+      expect(result[0].syncStatus).toBe('pending_upload');
     });
   });
 
