@@ -7,17 +7,24 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/daycapsule/backend/internal/repository"
+	"github.com/daycapsule/backend/internal/middleware"
+	"github.com/daycapsule/backend/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-type MediaHandler struct {
-	mediaRepo  *repository.MediaRepository
-	uploadDir  string
+type mediaStore interface {
+	Create(userID, filename, mimeType, storagePath string, size int64) (*models.MediaFile, error)
+	GetByID(mediaID string) (*models.MediaFile, error)
+	Delete(userID, mediaID string) error
 }
 
-func NewMediaHandler(mediaRepo *repository.MediaRepository, uploadDir string) *MediaHandler {
+type MediaHandler struct {
+	mediaRepo mediaStore
+	uploadDir string
+}
+
+func NewMediaHandler(mediaRepo mediaStore, uploadDir string) *MediaHandler {
 	return &MediaHandler{mediaRepo: mediaRepo, uploadDir: uploadDir}
 }
 
@@ -26,6 +33,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
+		middleware.SetAccessLogField(c, "upload.failedStage", "form_file")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INVALID_REQUEST", "message": "file field required"},
@@ -37,6 +45,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 	// Create user upload directory
 	userDir := filepath.Join(h.uploadDir, userID)
 	if err := os.MkdirAll(userDir, 0755); err != nil {
+		middleware.SetAccessLogField(c, "upload.failedStage", "mkdir")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to create upload directory"},
@@ -46,11 +55,21 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 
 	// Save file to disk
 	ext := filepath.Ext(header.Filename)
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+	middleware.SetAccessLogField(c, "upload.fieldName", "file")
+	middleware.SetAccessLogField(c, "upload.mimeType", mimeType)
+	middleware.SetAccessLogField(c, "upload.size", header.Size)
+	middleware.SetAccessLogField(c, "upload.extension", ext)
+
 	storageName := uuid.NewString() + ext
 	storagePath := filepath.Join(userDir, storageName)
 
 	dst, err := os.Create(storagePath)
 	if err != nil {
+		middleware.SetAccessLogField(c, "upload.failedStage", "create_file")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to save file"},
@@ -61,6 +80,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 
 	if _, err := io.Copy(dst, file); err != nil {
 		os.Remove(storagePath)
+		middleware.SetAccessLogField(c, "upload.failedStage", "copy_file")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to write file"},
@@ -68,21 +88,17 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	// Detect MIME type
-	mimeType := header.Header.Get("Content-Type")
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
-
 	media, err := h.mediaRepo.Create(userID, header.Filename, mimeType, storagePath, header.Size)
 	if err != nil {
 		os.Remove(storagePath)
+		middleware.SetAccessLogField(c, "upload.failedStage", "save_record")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to save media record"},
 		})
 		return
 	}
+	middleware.SetAccessLogField(c, "upload.mediaId", media.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
