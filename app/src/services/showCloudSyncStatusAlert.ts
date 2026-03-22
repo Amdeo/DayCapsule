@@ -1,6 +1,8 @@
 import { Alert } from 'react-native';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { logger } from '@/src/utils/logger';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { buildCloudSyncFailedFeedback } from '@/src/services/errorFeedbackPresets';
 
 function formatCloudSyncStatusMessage(status: Awaited<ReturnType<ReturnType<typeof createCloudSyncService>['getStatus']>>): string {
   const last = status.lastSyncAt
@@ -32,7 +34,7 @@ export async function showCloudSyncStatusAlert(): Promise<void> {
               );
             } catch (error) {
               logger.warn('[showCloudSyncStatusAlert] 手动云同步失败:', error);
-              Alert.alert('云同步失败', '请检查网络连接后重试。');
+              showErrorFeedback(buildCloudSyncFailedFeedback(error));
             }
           },
         },
@@ -40,7 +42,7 @@ export async function showCloudSyncStatusAlert(): Promise<void> {
     );
   } catch (error) {
     logger.warn('[showCloudSyncStatusAlert] 获取云同步状态失败:', error);
-    Alert.alert('提示', '当前无法获取云同步状态，请稍后重试。');
+    showErrorFeedback(buildCloudSyncFailedFeedback(error));
   }
 }
 

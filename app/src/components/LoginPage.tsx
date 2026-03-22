@@ -7,6 +7,8 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityInd
 import { useAuthStore } from '@/src/store/authStore';
 import { DetailPageShell } from './DetailPageShell';
 import { logger } from '@/src/utils/logger';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { buildLoginFailedFeedback } from '@/src/services/errorFeedbackPresets';
 
 interface LoginPageProps {
   visible: boolean;
@@ -51,10 +53,7 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
       onSuccess();
     } catch (e: any) {
       logger.error('[LoginPage] Auth failed:', e);
-      Alert.alert(
-        isRegister ? '注册失败' : '登录失败',
-        e?.message ?? '请检查网络连接后重试',
-      );
+      showErrorFeedback(buildLoginFailedFeedback(e, isRegister));
     } finally {
       setIsLoading(false);
     }

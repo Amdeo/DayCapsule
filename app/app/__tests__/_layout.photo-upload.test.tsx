@@ -5,6 +5,7 @@ let appStateListener: ((state: 'active' | 'background' | 'inactive') => void | P
 let networkListener: ((state: { isConnected: boolean; isInternetReachable: boolean | null }) => void) | null = null;
 const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
 const mockFeedbackHost = jest.fn(() => null);
+const mockShowErrorFeedback = jest.fn();
 
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
@@ -207,6 +208,10 @@ jest.mock('@/src/services/syncBootstrapService', () => ({
   })),
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
 jest.mock('react-native', () => ({
   Alert: { alert: jest.fn() },
   AppState: {
@@ -220,6 +225,7 @@ jest.mock('react-native', () => ({
 }));
 
 import RootLayout from '../_layout';
+import { initDatabase } from '@/src/database/sqlite';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 
 const flushPromises = async () => {
@@ -245,6 +251,21 @@ describe('RootLayout photo upload triggers', () => {
     expect(mockFeedbackHost).toHaveBeenCalled();
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
+  });
+
+  it('shows branded feedback when app initialization fails', async () => {
+    (initDatabase as jest.Mock).mockResolvedValueOnce(false);
+
+    render(<RootLayout />);
+
+    await flushPromises();
+
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '初始化失败',
+        dedupeKey: 'app-initialization-failed',
+      })
+    );
   });
 
   it('flushes pending photo uploads when app becomes active', async () => {

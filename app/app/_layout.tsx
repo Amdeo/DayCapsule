@@ -32,6 +32,8 @@ import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { FeedbackHost } from '@/src/components/FeedbackHost';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedbackPresets';
 
 LogBox.ignoreLogs([
   "SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead.",
@@ -175,11 +177,7 @@ export default function RootLayout() {
         await refreshCloudSyncIndicator('启动后');
       } catch (error) {
         logger.error('❌ 应用初始化失败:', error);
-        Alert.alert(
-          '初始化失败',
-          '应用启动遇到问题，请重启应用。如果问题持续，请联系支持。',
-          [{ text: '确定' }]
-        );
+        showErrorFeedback(buildAppInitializationFailedFeedback());
       }
     };
 

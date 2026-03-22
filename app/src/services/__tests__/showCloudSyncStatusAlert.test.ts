@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { showCloudSyncStatusAlert } from '../showCloudSyncStatusAlert';
+import { showErrorFeedback } from '../showErrorFeedback';
 
 const mockGetStatus = jest.fn();
 const mockSyncNow = jest.fn(async () => undefined);
@@ -9,6 +10,10 @@ jest.mock('../cloudSyncService', () => ({
     getStatus: mockGetStatus,
     syncNow: mockSyncNow,
   })),
+}));
+
+jest.mock('../showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -68,12 +73,42 @@ describe('showCloudSyncStatusAlert', () => {
     );
   });
 
-  it('shows fallback alert when getStatus fails', async () => {
+  it('uses branded feedback when getStatus fails', async () => {
     mockGetStatus.mockRejectedValueOnce(new Error('network down'));
+
+    await showCloudSyncStatusAlert();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步失败',
+        dedupeKey: 'cloud-sync-failed',
+      })
+    );
+  });
+
+  it('uses branded feedback when syncNow fails inside the status alert action', async () => {
+    mockGetStatus.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      pendingEntries: 2,
+      failedEntries: 1,
+      conflictCopies: 1,
+    });
+    mockSyncNow.mockRejectedValueOnce(new Error('network down'));
+
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
     await showCloudSyncStatusAlert();
 
-    expect(alertSpy).toHaveBeenCalledWith('提示', '当前无法获取云同步状态，请稍后重试。');
+    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ text?: string; onPress?: () => void }>;
+    const syncAction = actions.find((action) => action.text === '立即同步');
+
+    await syncAction?.onPress?.();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步失败',
+        dedupeKey: 'cloud-sync-failed',
+      })
+    );
   });
 });
