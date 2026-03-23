@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已完成实现并通过验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -12,6 +13,8 @@
 - 2026-03-23：已确认本轮目标仍然是把现有样式迁到 `NativeWind`，不借迁移之名改媒体手势、录音状态机或业务行为。
 - 2026-03-23：用户已明确要求后续自动推进，不再逐项请示；本轮设计基于该授权直接落文并继续 planning。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 继续采用本地结构化 review 留痕。
+- 2026-03-23：`WaveformAnimation`、`PhotoGrid`、`VoiceRecorder`、`ImageViewer` 已全部迁到 `NativeWind`，并从 allowlist 中移除。
+- 2026-03-23：第七批相关测试、全量 lint、typecheck 与全量测试均已通过。
 
 ## 背景
 
@@ -264,3 +267,35 @@
 - 已检查第七批范围、上下游依赖、测试现状和 allowlist 收口点
 - `WaveformAnimation`、`PhotoGrid`、`VoiceRecorder`、`ImageViewer` 可以组成一条边界清晰的连续迁移链路
 - 未发现阻塞进入 implementation plan 的问题
+
+## 实现结果
+
+- 已完成 [WaveformAnimation.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/WaveformAnimation.tsx)、[PhotoGrid.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/PhotoGrid.tsx)、[VoiceRecorder.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/VoiceRecorder.tsx)、[ImageViewer.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/ImageViewer.tsx) 的静态样式迁移，四者均不再依赖 `StyleSheet.create`
+- 已补稳定测试锚点：
+  - `waveform-animation-root`
+  - `waveform-bar-*`
+  - `photo-grid-root`
+  - `voice-recorder-root`
+  - `voice-recorder-idle`
+  - `voice-recorder-recording`
+  - `voice-recorder-done`
+  - `image-viewer-root`
+  - `image-viewer-action-sheet`
+- 已新增 [WaveformAnimation.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/WaveformAnimation.test.tsx) 与 [VoiceRecorder.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/VoiceRecorder.test.tsx)，并扩充 [PhotoGrid.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/PhotoGrid.test.tsx) 与 [ImageViewer.shared-element.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/ImageViewer.shared-element.test.tsx)
+- 已从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 删除这 4 个组件，完成第七批媒体查看与录音链路收口
+- 入口关系和业务行为保持不变：
+  - `VoiceRecorder -> WaveformAnimation`
+  - 图片卡片入口 -> `PhotoGrid` -> `ImageViewer`
+  - 波形动画、图片网格布局、录音状态机、图片查看器 gesture / shared-element / 保存分享逻辑均未调整
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/WaveformAnimation.test.tsx src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/VoiceRecorder.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx`：PASS，4 个 suite / 13 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，59 个 suite / 364 个测试全部通过
+
+## 偏差说明
+
+- [ImageViewer.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/ImageViewer.tsx) 新增可选属性 `debugShowActionSheet?: boolean`，仅用于测试或调试时稳定渲染 action sheet 壳层，不改变默认交互路径、长按触发逻辑或业务行为
+- 除此之外无功能性偏差

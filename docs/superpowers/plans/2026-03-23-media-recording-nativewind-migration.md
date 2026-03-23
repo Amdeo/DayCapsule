@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-23-media-recording-nativewind-migration-design.md`
 
+**Status:** 已完成实现、验证与文档回填
+
 ---
 
 ## 变更记录
@@ -17,6 +19,11 @@
 - 2026-03-23：基于已批准 spec 创建第七批实现计划，范围固定为 `WaveformAnimation`、`PhotoGrid`、`VoiceRecorder`、`ImageViewer`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：Chunk 1 完成，提交 `e35f63b refactor: migrate waveform animation to nativewind`。
+- 2026-03-23：Chunk 2 完成，提交 `d98e9e5 refactor: migrate photo grid to nativewind`。
+- 2026-03-23：Chunk 3 完成，提交 `66d76cc refactor: migrate voice recorder to nativewind`。
+- 2026-03-23：Chunk 4 完成，提交 `eca053c refactor: migrate image viewer to nativewind`。
+- 2026-03-23：Chunk 5 完成，第七批相关测试、全量 lint、typecheck 与全量测试全部通过。
 
 ## File Structure
 
@@ -64,7 +71,7 @@
 - Create: `app/src/components/__tests__/WaveformAnimation.test.tsx`
 - Modify: `app/src/components/WaveformAnimation.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层和 bar 数量**
+- [x] **Step 1: 先写失败测试，锁定根壳层和 bar 数量**
 
 新增 `app/src/components/__tests__/WaveformAnimation.test.tsx`，至少包含：
 
@@ -77,13 +84,13 @@ it('renders waveform shell with expected bar count', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/WaveformAnimation.test.tsx`
 
 Expected: FAIL，原因应包含 `waveform-animation-root` 或 bar testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `WaveformAnimation` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `WaveformAnimation` NativeWind 迁移**
 
 在 `app/src/components/WaveformAnimation.tsx`：
 
@@ -100,7 +107,7 @@ Expected: FAIL，原因应包含 `waveform-animation-root` 或 bar testID 尚不
   - `waveform-animation-root`
   - `waveform-bar-${index}`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/WaveformAnimation.test.tsx`
 
@@ -116,7 +123,7 @@ Run: `cd app && npm run lint -- src/components/WaveformAnimation.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/WaveformAnimation.tsx app/src/components/__tests__/WaveformAnimation.test.tsx
@@ -132,7 +139,7 @@ git commit -m "refactor: migrate waveform animation to nativewind"
 - Modify: `app/src/components/PhotoGrid.tsx`
 - Modify: `app/src/components/__tests__/PhotoGrid.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层**
+- [x] **Step 1: 先写失败测试，锁定根壳层**
 
 在 `app/src/components/__tests__/PhotoGrid.test.tsx` 增加至少一条断言：
 
@@ -148,13 +155,13 @@ it('2 photos: renders grid root shell', () => {
 
 保留现有单图、多图、overflow 与尺寸计算测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx`
 
 Expected: FAIL，原因应包含 `photo-grid-root` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `PhotoGrid` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `PhotoGrid` NativeWind 迁移**
 
 在 `app/src/components/PhotoGrid.tsx`：
 
@@ -176,7 +183,7 @@ Expected: FAIL，原因应包含 `photo-grid-root` 尚不存在。
 - 补以下 `testID`：
   - `photo-grid-root`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx`
 
@@ -192,7 +199,7 @@ Run: `cd app && npm run lint -- src/components/PhotoGrid.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/PhotoGrid.tsx app/src/components/__tests__/PhotoGrid.test.tsx
@@ -208,7 +215,7 @@ git commit -m "refactor: migrate photo grid to nativewind"
 - Create: `app/src/components/__tests__/VoiceRecorder.test.tsx`
 - Modify: `app/src/components/VoiceRecorder.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层和状态切换**
+- [x] **Step 1: 先写失败测试，锁定根壳层和状态切换**
 
 新增 `app/src/components/__tests__/VoiceRecorder.test.tsx`，至少包含：
 
@@ -226,13 +233,13 @@ it('renders idle shell when visible', () => {
 
 再补一条从开始录音到停止后显示完成态的断言。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx`
 
 Expected: FAIL，原因应包含 `voice-recorder-root` / `voice-recorder-idle` 等 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `VoiceRecorder` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `VoiceRecorder` NativeWind 迁移**
 
 在 `app/src/components/VoiceRecorder.tsx`：
 
@@ -261,7 +268,7 @@ Expected: FAIL，原因应包含 `voice-recorder-root` / `voice-recorder-idle` �
   - `voice-recorder-recording`
   - `voice-recorder-done`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx`
 
@@ -277,7 +284,7 @@ Run: `cd app && npm run lint -- src/components/VoiceRecorder.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/VoiceRecorder.tsx app/src/components/__tests__/VoiceRecorder.test.tsx
@@ -293,7 +300,7 @@ git commit -m "refactor: migrate voice recorder to nativewind"
 - Modify: `app/src/components/ImageViewer.tsx`
 - Modify: `app/src/components/__tests__/ImageViewer.shared-element.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层和 action sheet**
+- [x] **Step 1: 先写失败测试，锁定根壳层和 action sheet**
 
 在 `app/src/components/__tests__/ImageViewer.shared-element.test.tsx` 增加至少一条断言：
 
@@ -309,13 +316,13 @@ it('renders image viewer shell when visible', () => {
 
 并补一条在 action sheet 显示时能找到 `image-viewer-action-sheet` 的断言，可通过 mock/初始状态控制，不要求真实触发长按 gesture。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/ImageViewer.shared-element.test.tsx`
 
 Expected: FAIL，原因应包含 `image-viewer-root` 或 `image-viewer-action-sheet` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `ImageViewer` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `ImageViewer` NativeWind 迁移**
 
 在 `app/src/components/ImageViewer.tsx`：
 
@@ -345,7 +352,7 @@ Expected: FAIL，原因应包含 `image-viewer-root` 或 `image-viewer-action-sh
   - `image-viewer-root`
   - `image-viewer-action-sheet`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/ImageViewer.shared-element.test.tsx`
 
@@ -361,7 +368,7 @@ Run: `cd app && npm run lint -- src/components/ImageViewer.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/ImageViewer.tsx app/src/components/__tests__/ImageViewer.shared-element.test.tsx
@@ -376,7 +383,7 @@ git commit -m "refactor: migrate image viewer to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-media-recording-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-media-recording-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第七批相关测试集合**
+- [x] **Step 1: 先跑第七批相关测试集合**
 
 Run:
 
@@ -390,7 +397,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -401,7 +408,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -410,7 +417,7 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-media-recording-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-media-recording-nativewind-migration.md
@@ -422,3 +429,26 @@ git commit -m "docs: backfill media recording nativewind migration"
 - 已按 chunk 检查媒体链路边界、测试现状、allowlist 收口点和最终验收命令
 - `WaveformAnimation`、`PhotoGrid`、`VoiceRecorder`、`ImageViewer` 都可以独立完成“失败测试 -> 最小实现 -> lint 收口 -> 提交”的闭环
 - 未发现阻塞执行的问题
+
+## 执行结果
+
+- 已完成 [WaveformAnimation.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/WaveformAnimation.tsx)、[PhotoGrid.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/PhotoGrid.tsx)、[VoiceRecorder.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/VoiceRecorder.tsx)、[ImageViewer.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/ImageViewer.tsx) 的 NativeWind 迁移与 allowlist 收口
+- 已新增 [WaveformAnimation.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/WaveformAnimation.test.tsx)、[VoiceRecorder.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/VoiceRecorder.test.tsx)
+- 已扩充 [PhotoGrid.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/PhotoGrid.test.tsx) 与 [ImageViewer.shared-element.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/ImageViewer.shared-element.test.tsx)
+- 四个实现提交已按顺序落地：
+  - `e35f63b refactor: migrate waveform animation to nativewind`
+  - `d98e9e5 refactor: migrate photo grid to nativewind`
+  - `66d76cc refactor: migrate voice recorder to nativewind`
+  - `eca053c refactor: migrate image viewer to nativewind`
+
+## 验证记录
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/WaveformAnimation.test.tsx src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/VoiceRecorder.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx`：PASS，4 个 suite / 13 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，59 个 suite / 364 个测试全部通过
+
+## 偏差说明
+
+- [ImageViewer.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/ImageViewer.tsx) 为稳定测试 action sheet 壳层，新增可选属性 `debugShowActionSheet?: boolean`；该开关默认不启用，不改变正常交互路径
+- 除此之外无功能性偏差
