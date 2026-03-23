@@ -11,7 +11,6 @@ module.exports = {
     'src/components/CalendarView.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
-    'src/components/ImageViewer.tsx',
   ],
   // 按文件+按规则记录实例级 fingerprint baseline，仅放行现存违规实例
   ruleBaselines: {
@@ -54,10 +53,6 @@ module.exports = {
     'src/components/FilterBar.tsx': {
       'style-guard/no-new-stylesheet-create': ['df42cb1b0649'],
       'style-guard/no-static-inline-styles': ['320cdc180a8e', 'b971ed9161de'],
-    },
-    'src/components/ImageViewer.tsx': {
-      'style-guard/no-new-stylesheet-create': ['d5c476a36901'],
-      'style-guard/no-static-inline-styles': ['320cdc180a8e'],
     },
   },
 };

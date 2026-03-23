@@ -8,7 +8,6 @@ import {
   Modal,
   View,
   Image,
-  StyleSheet,
   Alert,
   Share,
   Text,
@@ -51,13 +50,21 @@ interface ImageViewerProps {
   onClose: () => void;
   originLayout?: OriginLayout;
   thumbnailRef?: React.RefObject<React.ElementRef<typeof Image>>;
+  debugShowActionSheet?: boolean;
 }
 
-export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnailRef }: ImageViewerProps) {
+export function ImageViewer({
+  visible,
+  imageUri,
+  onClose,
+  originLayout,
+  thumbnailRef,
+  debugShowActionSheet = false,
+}: ImageViewerProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [showActionSheet, setShowActionSheet] = useState(false);
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [showActionSheet, setShowActionSheet] = React.useState(false);
+  const [phase, setPhase] = React.useState<Phase>('idle');
   const isMountedRef = useRef(true);
   const canAnimateBackRef = useRef(Boolean(originLayout));
   const shouldIgnoreSharedTransitionRef = useRef(false);
@@ -440,10 +447,11 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
       }}
       statusBarTranslucent
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView className="flex-1" testID="image-viewer-root">
         {/* 遮罩（始终渲染）*/}
         <Animated.View
-          style={[StyleSheet.absoluteFill, styles.backdrop, backdropAnimatedStyle]}
+          className="absolute inset-0 bg-black"
+          style={backdropAnimatedStyle}
         />
 
         {/* 英雄覆盖层：opening / closing 阶段 */}
@@ -458,11 +466,11 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         {/* 手势交互层：open 阶段 */}
         {phase === 'open' && (
           <GestureDetector gesture={composedGesture}>
-            <Animated.View style={styles.imageContainer}>
+            <Animated.View className="flex-1 items-center justify-center">
               <Animated.View style={imageAnimatedStyle}>
                 <Image
                   source={{ uri: imageUri }}
-                  style={[styles.image, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+                  style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
                   resizeMode="contain"
                 />
               </Animated.View>
@@ -471,36 +479,39 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
         )}
 
         {/* Action Sheet — 完整保留原有 JSX，位置移至手势层之后 */}
-        {showActionSheet && (
-          <View style={styles.actionSheetOverlay}>
+        {(showActionSheet || debugShowActionSheet) && (
+          <View
+            className="absolute inset-0 z-[100] justify-end"
+            testID="image-viewer-action-sheet"
+          >
             <Pressable
-              style={StyleSheet.absoluteFill}
+              className="absolute inset-0"
               onPress={() => setShowActionSheet(false)}
             />
-            <View style={[styles.actionSheet, { paddingBottom: insets.bottom + 8 }]}>
-              <View style={styles.actionSheetHandle} />
+            <View className="rounded-t-xl bg-[#1c1c1e] pt-2" style={{ paddingBottom: insets.bottom + 8 }}>
+              <View className="mb-3 h-1 w-9 self-center rounded bg-white/20" />
               <TouchableOpacity
-                style={styles.actionSheetItem}
+                className="px-5 py-4"
                 onPress={handleSaveToAlbum}
                 activeOpacity={0.7}
               >
-                <Text style={styles.actionSheetItemText}>保存到相册</Text>
+                <Text className="text-center text-base text-white">保存到相册</Text>
               </TouchableOpacity>
-              <View style={styles.actionSheetDivider} />
+              <View className="h-px bg-white/10" />
               <TouchableOpacity
-                style={styles.actionSheetItem}
+                className="px-5 py-4"
                 onPress={handleShare}
                 activeOpacity={0.7}
               >
-                <Text style={styles.actionSheetItemText}>分享</Text>
+                <Text className="text-center text-base text-white">分享</Text>
               </TouchableOpacity>
-              <View style={styles.actionSheetGap} />
+              <View className="h-2 bg-black/40" />
               <TouchableOpacity
-                style={styles.actionSheetItem}
+                className="px-5 py-4"
                 onPress={() => setShowActionSheet(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.actionSheetCancelText}>取消</Text>
+                <Text className="text-center text-base font-semibold text-white">取消</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -509,59 +520,3 @@ export function ImageViewer({ visible, imageUri, onClose, originLayout, thumbnai
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: '#000000',
-  },
-  imageContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  image: {
-  },
-  actionSheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    zIndex: 100,
-    elevation: 100,
-  },
-  actionSheet: {
-    backgroundColor: '#1c1c1e',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    paddingTop: 8,
-  },
-  actionSheetHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  actionSheetItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-  },
-  actionSheetDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  actionSheetItemText: {
-    fontSize: 16,
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  actionSheetGap: {
-    height: 8,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  actionSheetCancelText: {
-    fontSize: 16,
-    color: '#ffffff',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-});

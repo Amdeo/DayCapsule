@@ -67,6 +67,39 @@ describe('ImageViewer shared element', () => {
     jest.clearAllMocks();
   });
 
+  it('renders image viewer shell when visible', () => {
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri="file:///image.jpg"
+          onClose={jest.fn()}
+        />
+      );
+    });
+
+    expect(() => tree!.root.findByProps({ testID: 'image-viewer-root' })).not.toThrow();
+  });
+
+  it('renders action sheet shell when action sheet state is visible', () => {
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri="file:///image.jpg"
+          onClose={jest.fn()}
+          debugShowActionSheet
+        />
+      );
+    });
+
+    expect(() => tree!.root.findByProps({ testID: 'image-viewer-action-sheet' })).not.toThrow();
+  });
+
   it('opens image directly fullscreen without spring animation when originLayout is provided', () => {
     // Note: The opening animation was removed - images now open directly fullscreen
     // without spring/fly-in effects for better perceived performance
