@@ -17,7 +17,6 @@ module.exports = {
     'src/components/PhotoGrid.tsx',
     'src/components/SettingsPage.tsx',
     'src/components/StatsPage.tsx',
-    'src/components/TagManagementPage.tsx',
     'src/components/VoiceRecorder.tsx',
     'src/components/WaveformAnimation.tsx',
   ],
@@ -92,10 +91,6 @@ module.exports = {
     },
     'src/components/StatsPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['ab19677eb9c6'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/TagManagementPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['74dcfb1df32d'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/VoiceRecorder.tsx': {
