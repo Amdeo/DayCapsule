@@ -80,6 +80,7 @@ app/android/.gradle/
 app/android/app/build/
 app/ios/Pods/
 app/ios/build/
+app/ios/Podfile.lock
 
 # Sensitive data
 *.key
