@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import { getStorageStats } from '@/src/utils/fileSystem';
@@ -21,6 +21,16 @@ interface BackupPageProps {
 
 type BackupFile = { name: string; uri: string; sizeBytes?: number };
 type ExportTarget = { name: string; uri: string } | null;
+
+const SECTION_TITLE_CLASS_NAME =
+  'mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted';
+const INFO_CARD_CLASS_NAME = 'rounded-chip bg-neutral-100 px-4';
+const ROW_CLASS_NAME =
+  'flex-row items-center justify-between border-b border-[#EBEBEB] py-[14px]';
+const ROW_LABEL_CLASS_NAME = 'text-[15px] text-neutral-500';
+const ROW_VALUE_CLASS_NAME = 'text-[15px] font-semibold text-copy-primary';
+const ACTION_CARD_CLASS_NAME =
+  'flex-row items-center rounded-chip bg-neutral-100 p-4';
 
 function formatBackupName(name: string): string {
   // backup_2026-02-24T12-00-00-000Z.json → 2026-02-24 12:00
@@ -168,62 +178,65 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
 
   return (
     <DetailPageShell visible={visible} title="备份与同步" onClose={onClose}>
+      <View className="pt-6" testID="backup-page-root">
       {/* 本地存储状态 */}
-      <Text style={styles.sectionTitle}>本地存储</Text>
-      <View style={styles.infoCard}>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>存储位置</Text>
-          <Text style={styles.rowValue}>设备本地</Text>
+      <Text className="mb-3 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+        本地存储
+      </Text>
+      <View className={INFO_CARD_CLASS_NAME} testID="backup-page-storage-card">
+        <View className={ROW_CLASS_NAME}>
+          <Text className={ROW_LABEL_CLASS_NAME}>存储位置</Text>
+          <Text className={ROW_VALUE_CLASS_NAME}>设备本地</Text>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>已用空间</Text>
-          <Text style={styles.rowValue}>{usedSpace}</Text>
+        <View className={ROW_CLASS_NAME}>
+          <Text className={ROW_LABEL_CLASS_NAME}>已用空间</Text>
+          <Text className={ROW_VALUE_CLASS_NAME}>{usedSpace}</Text>
         </View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>记录总数</Text>
-          <Text style={styles.rowValue}>{entries.length} 条</Text>
+        <View className={ROW_CLASS_NAME}>
+          <Text className={ROW_LABEL_CLASS_NAME}>记录总数</Text>
+          <Text className={ROW_VALUE_CLASS_NAME}>{entries.length} 条</Text>
         </View>
-        <View style={[styles.row, { borderBottomWidth: 0 }]}>
-          <Text style={styles.rowLabel}>上次备份</Text>
-          <Text style={styles.rowValue}>{formatLastBackupTime(lastBackupTime)}</Text>
+        <View className={`${ROW_CLASS_NAME} border-b-0`}>
+          <Text className={ROW_LABEL_CLASS_NAME}>上次备份</Text>
+          <Text className={ROW_VALUE_CLASS_NAME}>{formatLastBackupTime(lastBackupTime)}</Text>
         </View>
       </View>
 
       {/* 本地备份 */}
-      <Text style={styles.sectionTitle}>本地备份</Text>
-      <View style={styles.actionCard}>
-        <View style={styles.actionIcon}>
+      <Text className={SECTION_TITLE_CLASS_NAME}>本地备份</Text>
+      <View className={ACTION_CARD_CLASS_NAME}>
+        <View className="mr-3 h-11 w-11 items-center justify-center rounded-[12px] bg-[#EEF2FF]">
           <Ionicons name="download-outline" size={24} color="#6A89CC" />
         </View>
-        <View style={styles.actionContent}>
-          <Text style={styles.actionTitle}>导出为 ZIP</Text>
-          <Text style={styles.actionSubtitle}>
+        <View className="flex-1">
+          <Text className="mb-1 text-[15px] font-semibold text-copy-primary">导出为 ZIP</Text>
+          <Text className="text-xs leading-4 text-copy-muted">
             将所有记录和媒体文件打包为 ZIP，可保存到文件 App 或通过邮件发送
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.actionButton, isExporting && styles.actionButtonDisabled]}
+          className={`rounded-lg px-[14px] py-2 ${isExporting ? 'bg-neutral-300' : 'bg-primary'}`}
           onPress={handleExport}
           disabled={isExporting}
         >
-          <Text style={styles.actionButtonText}>{isExporting ? '导出中...' : '导出'}</Text>
+          <Text className="text-sm font-semibold text-white">{isExporting ? '导出中...' : '导出'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* 备份历史 */}
       {backupFiles.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>备份历史</Text>
-          <View style={styles.infoCard}>
+          <Text className={SECTION_TITLE_CLASS_NAME}>备份历史</Text>
+          <View className={INFO_CARD_CLASS_NAME}>
             {backupFiles.map((f, idx) => (
               <View
                 key={f.uri}
-                style={[styles.row, idx === backupFiles.length - 1 && { borderBottomWidth: 0 }]}
+                className={`${ROW_CLASS_NAME} ${idx === backupFiles.length - 1 ? 'border-b-0' : ''}`}
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowValue}>{formatBackupName(f.name)}</Text>
+                <View className="flex-1">
+                  <Text className={ROW_VALUE_CLASS_NAME}>{formatBackupName(f.name)}</Text>
                   {f.sizeBytes !== undefined && (
-                    <Text style={styles.rowLabel}>
+                    <Text className={ROW_LABEL_CLASS_NAME}>
                       {f.sizeBytes < 1024
                         ? `${f.sizeBytes} B`
                         : `${(f.sizeBytes / 1024).toFixed(1)} KB`}
@@ -243,42 +256,45 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
       )}
 
       {/* 导入备份 */}
-      <Text style={styles.sectionTitle}>导入备份</Text>
-      <View style={styles.actionCard}>
-        <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+      <Text className={SECTION_TITLE_CLASS_NAME}>导入备份</Text>
+      <View className={ACTION_CARD_CLASS_NAME}>
+        <View className="mr-3 h-11 w-11 items-center justify-center rounded-[12px] bg-[#FFF3E0]">
           <Ionicons name="cloud-upload-outline" size={24} color="#F5A623" />
         </View>
-        <View style={styles.actionContent}>
-          <Text style={styles.actionTitle}>从文件导入</Text>
-          <Text style={styles.actionSubtitle}>
+        <View className="flex-1">
+          <Text className="mb-1 text-[15px] font-semibold text-copy-primary">从文件导入</Text>
+          <Text className="text-xs leading-4 text-copy-muted">
             选择之前导出的 JSON 备份文件，恢复记录（已存在的记录将跳过）
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#F5A623' }, isImporting && styles.actionButtonDisabled]}
+          className={`rounded-lg px-[14px] py-2 ${isImporting ? 'bg-neutral-300' : 'bg-[#F5A623]'}`}
           onPress={handleImport}
           disabled={isImporting}
         >
-          <Text style={styles.actionButtonText}>{isImporting ? '导入中...' : '导入'}</Text>
+          <Text className="text-sm font-semibold text-white">{isImporting ? '导入中...' : '导入'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* iCloud 同步说明 */}
-      <Text style={styles.sectionTitle}>iCloud 同步</Text>
-      <View style={styles.iCloudCard}>
-        <View style={styles.iCloudHeader}>
+      <Text className={SECTION_TITLE_CLASS_NAME}>iCloud 同步</Text>
+      <View className="rounded-chip bg-neutral-100 p-4" testID="backup-page-icloud-card">
+        <View className="mb-2.5 flex-row items-center">
           <Ionicons
             name="cloud-done-outline"
             size={24}
             color={iCloudAvailable ? '#6A89CC' : '#D1D1D1'}
           />
-          <Text style={[styles.iCloudTitle, !iCloudAvailable && { color: '#D1D1D1' }]}>
+          <Text
+            className="ml-2 text-[15px] font-semibold"
+            style={{ color: iCloudAvailable ? '#6A89CC' : '#D1D1D1' }}
+          >
             {iCloudAvailable ? 'iCloud Drive 可用' : '仅限 iOS 设备'}
           </Text>
         </View>
-        <Text style={styles.iCloudText}>
+        <Text className="text-[13px] leading-5 text-neutral-500">
           备份文件保存在应用的 Documents 目录。在 iOS 上，前往{' '}
-          <Text style={styles.iCloudHighlight}>设置 → Apple ID → iCloud → iCloud Drive</Text>
+          <Text className="font-semibold text-copy-primary">设置 → Apple ID → iCloud → iCloud Drive</Text>
           {' '}并开启 MemoryCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
         </Text>
       </View>
@@ -289,44 +305,7 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
         onSaveToFiles={handleSaveToFiles}
         onClose={handleCloseExportSheet}
       />
+      </View>
     </DetailPageShell>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 13, fontWeight: '700', color: '#A3A3A3',
-    marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  infoCard: { backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 16 },
-  row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EBEBEB',
-  },
-  rowLabel: { fontSize: 15, color: '#737373' },
-  rowValue: { fontSize: 15, fontWeight: '600', color: '#4A4A4A' },
-  actionCard: {
-    backgroundColor: '#F5F5F5', borderRadius: 12, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
-  actionIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
-  },
-  actionContent: { flex: 1 },
-  actionTitle: { fontSize: 15, fontWeight: '600', color: '#4A4A4A', marginBottom: 4 },
-  actionSubtitle: { fontSize: 12, color: '#A3A3A3', lineHeight: 16 },
-  actionButton: {
-    backgroundColor: '#6A89CC', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
-  },
-  actionButtonDisabled: { backgroundColor: '#D1D1D1' },
-  actionButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
-  iCloudCard: {
-    backgroundColor: '#F5F5F5', borderRadius: 12, padding: 16, gap: 10,
-  },
-  iCloudHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iCloudTitle: { fontSize: 15, fontWeight: '600', color: '#6A89CC' },
-  iCloudText: { fontSize: 13, color: '#737373', lineHeight: 20 },
-  iCloudHighlight: { fontWeight: '600', color: '#4A4A4A' },
-});

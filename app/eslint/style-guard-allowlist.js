@@ -6,7 +6,6 @@ module.exports = {
     'app/+not-found.tsx',
     'app/_layout.tsx',
     'app/modal.tsx',
-    'src/components/BackupPage.tsx',
     'src/components/BottomToolbar.tsx',
     'src/components/CalendarTimelineItem.tsx',
     'src/components/CalendarView.tsx',
@@ -39,17 +38,6 @@ module.exports = {
     'app/modal.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/BackupPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['e6ca82d91c49'],
-      'style-guard/no-static-inline-styles': [
-        '04347ac02df9',
-        '4adebc775824',
-        '320cdc180a8e',
-        'a3bb2dd84e4e',
-        'b7a22c6eb59d',
-        'b1baf9ff670e',
-      ],
     },
     'src/components/BottomToolbar.tsx': {
       'style-guard/no-new-stylesheet-create': ['a38d9a0970b6'],
