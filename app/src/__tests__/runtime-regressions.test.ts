@@ -10,11 +10,13 @@ describe('runtime regression guards', () => {
     expect(source).toContain('<GestureHandlerRootView');
   });
 
-  it('imports SyncService from the local services directory with a named export', () => {
+  it('imports SyncService with a named export', () => {
     const backupPagePath = path.join(process.cwd(), 'src', 'components', 'BackupPage.tsx');
     const source = fs.readFileSync(backupPagePath, 'utf8');
 
-    expect(source).toContain("import { SyncService } from '../services/syncService';");
+    expect(source).toMatch(
+      /import\s+\{\s*SyncService\s*\}\s+from\s+['"](?:\.\.\/services\/syncService|@\/src\/services\/syncService)['"];/
+    );
   });
 
   it('reads auto backup prerequisites in parallel when app goes to background', () => {

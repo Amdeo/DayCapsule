@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { BackupPage } from '../BackupPage';
 import { BackupService } from '@/src/services/backupService';
@@ -40,6 +40,7 @@ jest.mock('@/src/services/backupService', () => ({
     ]),
     getLastBackupTime: jest.fn().mockResolvedValue(new Date(2024, 2, 10, 0, 0, 0).getTime()),
     createBackup: jest.fn().mockResolvedValue('file:///exports/latest.zip'),
+    shareBackup: jest.fn().mockResolvedValue(undefined),
     saveBackupToUserDirectory: jest.fn().mockResolvedValue({
       saved: true,
       canceled: false,
@@ -67,6 +68,7 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
 describe('BackupPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (Platform as { OS: string }).OS = 'android';
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
   });
 
@@ -77,6 +79,7 @@ describe('BackupPage', () => {
       expect(getByText('备份历史')).toBeTruthy();
       expect(getByText('iCloud 同步')).toBeTruthy();
       expect(getByText('2024-03-10 00:00:00')).toBeTruthy();
+      expect(getByText(/并开启 DayCapsule/)).toBeTruthy();
     });
 
     expect(getByTestId('backup-page-root')).toBeTruthy();
@@ -94,6 +97,16 @@ describe('BackupPage', () => {
     expect(BackupService.createBackup).toHaveBeenCalled();
   });
 
+  it('shows iOS export label when opened on iPhone', async () => {
+    (Platform as { OS: string }).OS = 'ios';
+
+    const { getByText, findByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+
+    await findByText('导出/分享');
+  });
+
   it('saves the export target to user files', async () => {
     const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
 
@@ -106,6 +119,20 @@ describe('BackupPage', () => {
         'latest.zip'
       );
     });
+  });
+
+  it('shares the export target on iOS instead of saving to files', async () => {
+    (Platform as { OS: string }).OS = 'ios';
+
+    const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(BackupService.shareBackup).toHaveBeenCalledWith('file:///exports/latest.zip');
+    });
+    expect(BackupService.saveBackupToUserDirectory).not.toHaveBeenCalled();
   });
 
   it('routes backup history actions through the same save-only export sheet', async () => {

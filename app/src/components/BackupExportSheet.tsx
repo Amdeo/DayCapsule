@@ -5,6 +5,7 @@ import { BackupExportSheetContent } from './backup-export-sheet/BackupExportShee
 interface BackupExportSheetProps {
   visible: boolean;
   fileName: string;
+  primaryActionLabel: string;
   onSaveToFiles: () => void;
   onClose: () => void;
 }
@@ -12,6 +13,7 @@ interface BackupExportSheetProps {
 export function BackupExportSheet({
   visible,
   fileName,
+  primaryActionLabel,
   onSaveToFiles,
   onClose,
 }: BackupExportSheetProps) {
@@ -23,6 +25,7 @@ export function BackupExportSheet({
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <BackupExportSheetContent
         fileName={fileName}
+        primaryActionLabel={primaryActionLabel}
         onSaveToFiles={onSaveToFiles}
         onClose={onClose}
       />

@@ -11,6 +11,7 @@ describe('BackupExportSheet', () => {
   const baseProps = {
     visible: true,
     fileName: 'backup_2026-03-17.zip',
+    primaryActionLabel: '保存到文件',
     onSaveToFiles: jest.fn(),
     onClose: jest.fn(),
   };
@@ -27,6 +28,15 @@ describe('BackupExportSheet', () => {
     expect(getByText('取消')).toBeTruthy();
     expect(queryByText('发送到微信')).toBeNull();
     expect(queryByText('更多方式')).toBeNull();
+  });
+
+  it('renders iOS export label when provided', () => {
+    const { getByText, queryByText } = render(
+      <BackupExportSheet {...baseProps} primaryActionLabel="导出/分享" />
+    );
+
+    expect(getByText('导出/分享')).toBeTruthy();
+    expect(queryByText('保存到文件')).toBeNull();
   });
 
   it('triggers the save and close callbacks', () => {

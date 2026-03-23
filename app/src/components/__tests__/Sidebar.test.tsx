@@ -107,6 +107,7 @@ describe('Sidebar shell', () => {
 
     expect(getByTestId('sidebar-shell')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
+    expect(getByText('DayCapsule v1.0.0')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });
   });
 

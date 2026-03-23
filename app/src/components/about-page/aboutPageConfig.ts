@@ -20,11 +20,11 @@ export interface AboutLinkItem {
 }
 
 export const ABOUT_PAGE_COPY = {
-  appName: 'MemoryCapsule',
+  appName: 'DayCapsule',
   version: 'v1.0.0',
   tagline: '记录生活的每个瞬间',
   developer: 'Built with ❤️ using 2025-2026 modern React Native tech stack',
-  copyrightYear: '© 2026 MemoryCapsule',
+  copyrightYear: '© 2026 DayCapsule',
   copyrightText: 'All rights reserved',
 } as const;
 

@@ -11,12 +11,14 @@ import { backupExportSheetStyles as styles } from './BackupExportSheet.styles';
 
 interface BackupExportSheetContentProps {
   fileName: string;
+  primaryActionLabel: string;
   onSaveToFiles: () => void;
   onClose: () => void;
 }
 
 export function BackupExportSheetContent({
   fileName,
+  primaryActionLabel,
   onSaveToFiles,
   onClose,
 }: BackupExportSheetContentProps) {
@@ -45,7 +47,7 @@ export function BackupExportSheetContent({
             style={styles.actionButton}
             onPress={onSaveToFiles}
           >
-            <Text style={styles.actionText}>保存到文件</Text>
+            <Text style={styles.actionText}>{primaryActionLabel}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

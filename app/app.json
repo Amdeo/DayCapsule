@@ -15,11 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.daycapsule.app",
+      "bundleIdentifier": "com.memorycapsule.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "允许 DayCapsule 访问您的照片以保存记忆",
         "NSCameraUsageDescription": "允许 DayCapsule 使用相机拍摄照片",
-        "NSMicrophoneUsageDescription": "允许 DayCapsule 录制语音记忆"
+        "NSMicrophoneUsageDescription": "允许 DayCapsule 录制语音记忆",
+        "NSPhotoLibraryAddUsageDescription": "允许 DayCapsule 保存图片到系统相册"
       }
     },
     "android": {
@@ -27,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.daycapsule.app",
+      "package": "com.memorycapsule.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [

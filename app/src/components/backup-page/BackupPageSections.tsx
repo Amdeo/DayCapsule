@@ -146,7 +146,7 @@ export function BackupICloudSection({
       <Text style={styles.iCloudText}>
         备份文件保存在应用的 Documents 目录。在 iOS 上，前往{' '}
         <Text style={styles.iCloudHighlight}>设置 → Apple ID → iCloud → iCloud Drive</Text>
-        {' '}并开启 MemoryCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
+        {' '}并开启 DayCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
       </Text>
     </View>
   );

@@ -48,6 +48,7 @@ describe('AboutPage', () => {
     const screen = render(<AboutPage visible onClose={jest.fn()} />);
 
     expect(screen.getByTestId('about-page-root')).toBeTruthy();
+    expect(screen.getByText('DayCapsule')).toBeTruthy();
     expect(screen.getByText('功能特性')).toBeTruthy();
     expect(screen.getByText('技术栈')).toBeTruthy();
     expect(screen.getByText('更多信息')).toBeTruthy();

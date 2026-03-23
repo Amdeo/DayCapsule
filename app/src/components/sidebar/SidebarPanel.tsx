@@ -48,7 +48,7 @@ export function SidebarPanel({
       </View>
 
       <View testID="sidebar-footer" style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
-        <Text style={styles.versionText}>MemoryCapsule v1.0.0</Text>
+        <Text style={styles.versionText}>DayCapsule v1.0.0</Text>
       </View>
     </View>
   );

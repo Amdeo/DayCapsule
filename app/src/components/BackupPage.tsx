@@ -32,10 +32,11 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
     lastBackupTime,
     exportTarget,
     showExportSheet,
+    primaryActionLabel,
     handleExport,
     openExportSheet,
     closeExportSheet,
-    handleSaveToFiles,
+    handleExportPrimaryAction,
     handleImport,
   } = useBackupPageController({
     visible,
@@ -96,7 +97,8 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
       <BackupExportSheet
         visible={showExportSheet}
         fileName={exportTarget?.name ?? ''}
-        onSaveToFiles={handleSaveToFiles}
+        primaryActionLabel={primaryActionLabel}
+        onSaveToFiles={handleExportPrimaryAction}
         onClose={closeExportSheet}
       />
     </DetailPageShell>

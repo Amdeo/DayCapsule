@@ -457,7 +457,7 @@ export default function HomeScreen() {
           if ((error as any)?.code === 'PERMISSION_DENIED') {
             Alert.alert(
               '需要麦克风权限',
-              '请在系统设置中允许 MemoryCapsule 访问麦克风，才能录制语音。',
+              '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
               [
                 { text: '取消', style: 'cancel' },
                 {

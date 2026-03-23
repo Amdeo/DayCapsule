@@ -9,6 +9,9 @@ jest.mock('react-native', () => ({
   Platform: {
     OS: 'android',
   },
+  Share: {
+    share: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 const mockZipInstance = {
@@ -54,7 +57,7 @@ jest.mock('@/src/services/voiceService', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import * as FileSystem from 'expo-file-system/legacy';
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { BackupService } from '../backupService';
 import { Entry } from '@/src/types/entry';
 
@@ -295,6 +298,17 @@ describe('BackupService', () => {
   });
 
   describe('android export helpers', () => {
+    it('iOS 上应通过系统分享导出备份', async () => {
+      (Platform as { OS: string }).OS = 'ios';
+
+      await BackupService.shareBackup('file:///app/backups/a.zip');
+
+      expect(Share.share).toHaveBeenCalledWith({
+        title: 'DayCapsule 备份',
+        url: 'file:///app/backups/a.zip',
+      });
+    });
+
     it('Android 上应将 file URI 转换为 content URI', async () => {
       await expect(
         BackupService.getAndroidShareableUri('file:///app/backups/a.zip')

@@ -6,7 +6,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { Entry } from '@/src/types/entry';
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
@@ -199,6 +199,14 @@ export class BackupService {
       return fileUri;
     }
     return FileSystem.getContentUriAsync(fileUri);
+  }
+
+  /** 通过系统分享面板导出备份（当前用于 iOS） */
+  static async shareBackup(fileUri: string): Promise<void> {
+    await Share.share({
+      title: 'DayCapsule 备份',
+      url: fileUri,
+    });
   }
 
   /** 将备份保存到用户选择的目录（Android SAF） */

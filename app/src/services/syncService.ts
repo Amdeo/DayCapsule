@@ -41,7 +41,7 @@ export class SyncService {
    */
   static async exportAndShare(entries: Entry[]): Promise<string> {
     const uri = await BackupService.createBackup(entries);
-    await Share.share({ url: uri, title: 'MemoryCapsule 备份' });
+    await Share.share({ url: uri, title: 'DayCapsule 备份' });
     return uri;
   }
 
