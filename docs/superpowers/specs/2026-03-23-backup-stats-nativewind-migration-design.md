@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已完成实现并通过验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -12,6 +13,8 @@
 - 2026-03-23：已确认本轮目标仍然是把现有样式迁到 `NativeWind`，不借迁移之名改页面结构或文案。
 - 2026-03-23：用户已明确要求后续自动推进，不再逐项请示；本轮设计基于该授权直接落文并继续 planning。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 继续采用本地结构化 review 留痕。
+- 2026-03-23：`BackupExportSheet`、`BackupPage`、`StatsPage` 已全部迁到 `NativeWind`，并从 allowlist 中移除。
+- 2026-03-23：第六批相关测试、全量 lint、typecheck 与全量测试均已通过。
 
 ## 背景
 
@@ -219,3 +222,40 @@
 - 已检查第六批范围、上下游依赖、测试现状和 allowlist 收口点
 - `BackupExportSheet`、`BackupPage`、`StatsPage` 可以组成一条边界清晰的连续迁移链路
 - 未发现阻塞进入 implementation plan 的问题
+
+## 实现结果
+
+- 已完成 [BackupExportSheet.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/BackupExportSheet.tsx)、[BackupPage.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/BackupPage.tsx)、[StatsPage.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/StatsPage.tsx) 的静态样式迁移，三者均不再依赖 `StyleSheet.create`
+- 已补稳定测试锚点：
+  - `backup-export-sheet`
+  - `backup-page-root`
+  - `backup-page-storage-card`
+  - `backup-page-icloud-card`
+  - `stats-page-root`
+  - `stats-overview-grid`
+  - `stats-trend-card`
+- 已新增 [StatsPage.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/StatsPage.test.tsx)，补齐统计页的独立回归保护
+- 已从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 删除这 3 个组件，完成第六批备份与统计链路收口
+- 入口关系和业务行为保持不变：
+  - `Sidebar -> BackupPage`
+  - `Sidebar -> StatsPage`
+  - `BackupPage -> BackupExportSheet`
+  - 备份导出、保存到文件、导入恢复、iCloud 提示、统计聚合与趋势计算逻辑均未调整
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/BackupExportSheet.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/BackupPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/StatsPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx src/components/__tests__/BackupPage.test.tsx src/components/__tests__/StatsPage.test.tsx`：PASS，3 个 suite / 8 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，57 个 suite / 359 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
+- `StatsPage` 新增了独立测试文件，这是对原有测试覆盖的补足，不影响运行时行为

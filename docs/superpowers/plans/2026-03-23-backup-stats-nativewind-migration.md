@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-23-backup-stats-nativewind-migration-design.md`
 
+**Status:** 已完成实现、验证与文档回填
+
 ---
 
 ## 变更记录
@@ -17,6 +19,10 @@
 - 2026-03-23：基于已批准 spec 创建第六批实现计划，范围固定为 `BackupExportSheet`、`BackupPage`、`StatsPage`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：Chunk 1 完成，提交 `75332b8 refactor: migrate backup export sheet to nativewind`。
+- 2026-03-23：Chunk 2 完成，提交 `878d7ab refactor: migrate backup page to nativewind`。
+- 2026-03-23：Chunk 3 完成，提交 `4257e25 refactor: migrate stats page to nativewind`。
+- 2026-03-23：Chunk 4 完成，第六批相关测试、全量 lint、typecheck 与全量测试全部通过。
 
 ## File Structure
 
@@ -61,7 +67,7 @@
 - Modify: `app/src/components/BackupExportSheet.tsx`
 - Modify: `app/src/components/__tests__/BackupExportSheet.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定弹层根壳层**
+- [x] **Step 1: 先写失败测试，锁定弹层根壳层**
 
 在 `app/src/components/__tests__/BackupExportSheet.test.tsx` 增加至少一条断言：
 
@@ -76,13 +82,13 @@ it('renders the export sheet shell when visible', () => {
 
 保留现有保存和关闭回调测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`
 
 Expected: FAIL，原因应包含 `backup-export-sheet` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `BackupExportSheet` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `BackupExportSheet` NativeWind 迁移**
 
 在 `app/src/components/BackupExportSheet.tsx`：
 
@@ -104,7 +110,7 @@ Expected: FAIL，原因应包含 `backup-export-sheet` 尚不存在。
 - 补以下 `testID`：
   - `backup-export-sheet`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`
 
@@ -120,7 +126,7 @@ Run: `cd app && npm run lint -- src/components/BackupExportSheet.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/BackupExportSheet.tsx app/src/components/__tests__/BackupExportSheet.test.tsx
@@ -136,7 +142,7 @@ git commit -m "refactor: migrate backup export sheet to nativewind"
 - Modify: `app/src/components/BackupPage.tsx`
 - Modify: `app/src/components/__tests__/BackupPage.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定页面根壳层和关键卡片**
+- [x] **Step 1: 先写失败测试，锁定页面根壳层和关键卡片**
 
 在 `app/src/components/__tests__/BackupPage.test.tsx` 增加至少一条断言：
 
@@ -156,13 +162,13 @@ it('renders the backup page shell and key cards', async () => {
 
 保留现有导出、保存到文件和历史分享流转测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`
 
 Expected: FAIL，原因应包含 `backup-page-root` / `backup-page-storage-card` / `backup-page-icloud-card` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `BackupPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `BackupPage` NativeWind 迁移**
 
 在 `app/src/components/BackupPage.tsx`：
 
@@ -190,7 +196,7 @@ Expected: FAIL，原因应包含 `backup-page-root` / `backup-page-storage-card`
   - `backup-page-storage-card`
   - `backup-page-icloud-card`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`
 
@@ -206,7 +212,7 @@ Run: `cd app && npm run lint -- src/components/BackupPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/BackupPage.tsx app/src/components/__tests__/BackupPage.test.tsx
@@ -222,7 +228,7 @@ git commit -m "refactor: migrate backup page to nativewind"
 - Create: `app/src/components/__tests__/StatsPage.test.tsx`
 - Modify: `app/src/components/StatsPage.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层、总览网格和趋势卡**
+- [x] **Step 1: 先写失败测试，锁定根壳层、总览网格和趋势卡**
 
 新增 `app/src/components/__tests__/StatsPage.test.tsx`，至少包含：
 
@@ -239,13 +245,13 @@ it('renders the stats page shell and trend card', () => {
 
 同时补一条覆盖语音总时长或标签统计的断言。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`
 
 Expected: FAIL，原因应包含 `stats-page-root` / `stats-overview-grid` / `stats-trend-card` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `StatsPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `StatsPage` NativeWind 迁移**
 
 在 `app/src/components/StatsPage.tsx`：
 
@@ -270,7 +276,7 @@ Expected: FAIL，原因应包含 `stats-page-root` / `stats-overview-grid` / `st
   - `stats-overview-grid`
   - `stats-trend-card`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`
 
@@ -286,7 +292,7 @@ Run: `cd app && npm run lint -- src/components/StatsPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/StatsPage.tsx app/src/components/__tests__/StatsPage.test.tsx
@@ -301,7 +307,7 @@ git commit -m "refactor: migrate stats page to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-backup-stats-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-backup-stats-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第六批相关测试集合**
+- [x] **Step 1: 先跑第六批相关测试集合**
 
 Run:
 
@@ -314,7 +320,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -325,7 +331,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -334,12 +340,47 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-backup-stats-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-backup-stats-nativewind-migration.md
 git commit -m "docs: backfill backup stats nativewind migration"
 ```
+
+## 执行结果
+
+- 已完成 `BackupExportSheet`、`BackupPage`、`StatsPage` 的 NativeWind 迁移，并全部从 allowlist 中移除
+- 已新增并验证以下测试锚点：
+  - `backup-export-sheet`
+  - `backup-page-root`
+  - `backup-page-storage-card`
+  - `backup-page-icloud-card`
+  - `stats-page-root`
+  - `stats-overview-grid`
+  - `stats-trend-card`
+- 已新增 `app/src/components/__tests__/StatsPage.test.tsx`，补齐统计页独立测试覆盖
+- 已完成 3 次功能提交：
+  - `75332b8 refactor: migrate backup export sheet to nativewind`
+  - `878d7ab refactor: migrate backup page to nativewind`
+  - `4257e25 refactor: migrate stats page to nativewind`
+
+## 验证记录
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/BackupExportSheet.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/BackupPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/StatsPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx src/components/__tests__/BackupPage.test.tsx src/components/__tests__/StatsPage.test.tsx`：PASS，3 个 suite / 8 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，57 个 suite / 359 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
+- `StatsPage` 新增独立测试文件属于计划内补强，不影响运行时逻辑和视觉结构
 
 ## 本地结构化 Review 结论
 
