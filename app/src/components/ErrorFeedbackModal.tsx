@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -15,6 +14,60 @@ interface ErrorFeedbackModalProps {
   onDismiss: () => void;
 }
 
+const BACKDROP_STYLE = {
+  backgroundColor: visualLanguage.surface.backdrop,
+};
+
+const CARD_STYLE = {
+  backgroundColor: visualLanguage.surface.modal,
+  borderRadius: visualLanguage.radius.modal,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.12,
+  shadowRadius: 20,
+  elevation: 8,
+};
+
+const TITLE_STYLE = {
+  color: visualLanguage.text.primary,
+};
+
+const MESSAGE_STYLE = {
+  color: visualLanguage.text.secondary,
+};
+
+const DETAIL_LABEL_STYLE = {
+  color: visualLanguage.text.secondary,
+};
+
+const DETAIL_VALUE_STYLE = {
+  color: visualLanguage.text.primary,
+};
+
+const ACTION_BUTTON_STYLE = {
+  borderRadius: visualLanguage.radius.control,
+};
+
+const PRIMARY_BUTTON_STYLE = {
+  backgroundColor: visualLanguage.accent.error,
+};
+
+const ACCENT_BUTTON_STYLE = {
+  backgroundColor: visualLanguage.accent.brand,
+};
+
+const SECONDARY_BUTTON_STYLE = {
+  backgroundColor: visualLanguage.surface.card,
+};
+
+const PRIMARY_LABEL_STYLE = {
+  color: '#FFFFFF',
+};
+
+const SECONDARY_LABEL_STYLE = {
+  color: visualLanguage.text.primary,
+};
+
 export function ErrorFeedbackModal({
   visible,
   request,
@@ -26,51 +79,65 @@ export function ErrorFeedbackModal({
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.container}>
+      <View className="flex-1 justify-center px-6">
         <Pressable
           testID="error-feedback-backdrop"
-          style={styles.backdrop}
+          className="absolute inset-0"
+          style={BACKDROP_STYLE}
           onPress={onDismiss}
         />
-        <View testID="error-feedback-card" style={styles.card}>
-          <Text style={styles.title}>{request.title}</Text>
+        <View
+          testID="error-feedback-card"
+          className="px-5 py-[18px]"
+          style={CARD_STYLE}
+        >
+          <Text className="mb-2 text-[20px] font-bold" style={TITLE_STYLE}>
+            {request.title}
+          </Text>
           {request.message ? (
-            <Text style={styles.message}>{request.message}</Text>
+            <Text className="mb-[18px] text-sm leading-5" style={MESSAGE_STYLE}>
+              {request.message}
+            </Text>
           ) : null}
           {request.details?.length ? (
-            <View style={styles.details}>
+            <View className="mb-[18px] gap-2.5">
               {request.details.map((detail, index) => (
                 <View
                   key={`${detail.label}-${index}`}
-                  style={styles.detailRow}
+                  className="flex-row items-center justify-between gap-4"
                 >
-                  <Text style={styles.detailLabel}>{detail.label}</Text>
-                  <Text style={styles.detailValue}>{detail.value}</Text>
+                  <Text className="flex-1 text-sm leading-5" style={DETAIL_LABEL_STYLE}>
+                    {detail.label}
+                  </Text>
+                  <Text className="text-sm font-bold leading-5" style={DETAIL_VALUE_STYLE}>
+                    {detail.value}
+                  </Text>
                 </View>
               ))}
             </View>
           ) : null}
-          <View style={styles.actions}>
+          <View className="flex-row justify-end gap-2.5">
             {request.actions.map((action, index) => (
               <Pressable
                 key={`${action.label}-${index}`}
                 onPress={action.onPress}
                 style={[
-                  styles.actionButton,
+                  ACTION_BUTTON_STYLE,
                   action.role === 'primary'
                     ? request.tone === 'accent'
-                      ? styles.accentButton
-                      : styles.primaryButton
-                    : styles.secondaryButton,
+                      ? ACCENT_BUTTON_STYLE
+                      : PRIMARY_BUTTON_STYLE
+                    : SECONDARY_BUTTON_STYLE,
                 ]}
+                className="min-w-[92px] items-center justify-center px-4 py-[11px]"
               >
                 <Text
                   testID={`error-feedback-action-${index}`}
+                  className="text-sm font-semibold"
                   style={[
-                    styles.actionLabel,
                     action.role === 'primary'
-                      ? styles.primaryButtonLabel
-                      : styles.secondaryButtonLabel,
+                      ? PRIMARY_LABEL_STYLE
+                      : SECONDARY_LABEL_STYLE,
                   ]}
                 >
                   {action.label}
@@ -83,92 +150,3 @@ export function ErrorFeedbackModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: visualLanguage.surface.backdrop,
-  },
-  card: {
-    backgroundColor: visualLanguage.surface.modal,
-    borderRadius: visualLanguage.radius.modal,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  title: {
-    color: visualLanguage.text.primary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  message: {
-    color: visualLanguage.text.secondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 18,
-  },
-  details: {
-    gap: 10,
-    marginBottom: 18,
-  },
-  detailRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  detailLabel: {
-    color: visualLanguage.text.secondary,
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  detailValue: {
-    color: visualLanguage.text.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  actionButton: {
-    minWidth: 92,
-    borderRadius: visualLanguage.radius.control,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButton: {
-    backgroundColor: visualLanguage.accent.error,
-  },
-  accentButton: {
-    backgroundColor: visualLanguage.accent.brand,
-  },
-  secondaryButton: {
-    backgroundColor: visualLanguage.surface.card,
-  },
-  actionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  primaryButtonLabel: {
-    color: '#FFFFFF',
-  },
-  secondaryButtonLabel: {
-    color: visualLanguage.text.primary,
-  },
-});

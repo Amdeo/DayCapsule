@@ -22,6 +22,7 @@ const mockBuildInitialFlow = jest.fn(() => ({ type: 'backing-up', localCount: 0,
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSwitchDataSource = jest.fn();
 const mockCreateRemoteDataSource = jest.fn(() => ({}));
+const mockShowCloudSyncStatusAlert = jest.fn(async () => undefined);
 
 let mockCloudMode: boolean | 'switching' = false;
 let mockIsAuthenticated = false;
@@ -80,6 +81,10 @@ jest.mock('@/src/services/cloudSyncService', () => ({
     getStatus: mockCloudSyncGetStatus,
     syncNow: mockCloudSyncNow,
   })),
+}));
+
+jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
+  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
 }));
 
 jest.mock('@/src/services/voiceService', () => ({
@@ -203,7 +208,6 @@ describe('SettingsPage calendar density selector', () => {
     mockIsAuthenticated = true;
     mockUser = { email: 'sync@test.com' };
 
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const screen = render(<SettingsPage visible onClose={() => {}} />);
 
     await waitFor(() => {
@@ -213,17 +217,7 @@ describe('SettingsPage calendar density selector', () => {
     fireEvent.press(screen.getByText('同步状态'));
 
     await waitFor(() => {
-      expect(mockCloudSyncGetStatus).toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith(
-        '云同步状态',
-        expect.stringContaining('待同步条数：2'),
-        expect.any(Array),
-      );
-      expect(alertSpy).toHaveBeenCalledWith(
-        '云同步状态',
-        expect.stringContaining('冲突副本：1'),
-        expect.any(Array),
-      );
+      expect(mockShowCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
     });
   });
 
