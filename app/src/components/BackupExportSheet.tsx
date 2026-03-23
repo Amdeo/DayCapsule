@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Modal,
   Pressable,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -30,37 +29,40 @@ export function BackupExportSheet({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <View className="flex-1 justify-end">
         <Pressable
           testID="backup-export-overlay"
-          style={StyleSheet.absoluteFill}
+          className="absolute inset-0"
           onPress={onClose}
         >
-          <View style={styles.backdrop} />
+          <View className="absolute inset-0 bg-black/40" />
         </Pressable>
 
-        <View style={styles.sheetWrap}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <Text style={styles.title}>导出备份</Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
+        <View className="justify-end">
+          <View
+            className="rounded-t-[24px] bg-white px-4 pb-0 pt-3"
+            testID="backup-export-sheet"
+          >
+            <View className="mb-4 h-[5px] w-10 self-center rounded-full bg-[#CFCFCF]" />
+            <Text className="mb-1 text-center text-lg font-semibold text-[#1A1A1A]">导出备份</Text>
+            <Text className="mb-3 text-center text-[13px] text-[#8E8E93]" numberOfLines={1}>
               {fileName}
             </Text>
 
             <TouchableOpacity
               testID="backup-export-save"
-              style={styles.actionButton}
+              className="mt-2 h-[52px] items-center justify-center rounded-2xl bg-[#F7F7F7]"
               onPress={onSaveToFiles}
             >
-              <Text style={styles.actionText}>保存到文件</Text>
+              <Text className="text-[17px] font-medium text-[#1A1A1A]">保存到文件</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               testID="backup-export-cancel"
-              style={styles.cancelButton}
+              className="mt-3 h-[52px] items-center justify-center rounded-2xl bg-white"
               onPress={onClose}
             >
-              <Text style={styles.cancelText}>取消</Text>
+              <Text className="text-[17px] font-medium text-[#8E8E93]">取消</Text>
             </TouchableOpacity>
 
             <View style={{ height: insets.bottom }} />
@@ -70,71 +72,3 @@ export function BackupExportSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  actionButton: {
-    alignItems: 'center',
-    borderRadius: 16,
-    height: 52,
-    justifyContent: 'center',
-    marginTop: 8,
-    backgroundColor: '#F7F7F7',
-  },
-  actionText: {
-    color: '#1A1A1A',
-    fontSize: 17,
-    fontWeight: '500',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    height: 52,
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  cancelText: {
-    color: '#8E8E93',
-    fontSize: 17,
-    fontWeight: '500',
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  handle: {
-    alignSelf: 'center',
-    backgroundColor: '#CFCFCF',
-    borderRadius: 999,
-    height: 5,
-    marginBottom: 16,
-    width: 40,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  sheetWrap: {
-    justifyContent: 'flex-end',
-  },
-  subtitle: {
-    color: '#8E8E93',
-    fontSize: 13,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  title: {
-    color: '#1A1A1A',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-});
