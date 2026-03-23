@@ -40,6 +40,7 @@ describe('PhotoGrid', () => {
     render(
       <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
     );
+    expect(screen.getByTestId('photo-grid-root')).toBeTruthy();
     expect(screen.getByTestId('photo-grid')).toBeTruthy();
     expect(screen.getByTestId('photo-cell-0')).toBeTruthy();
     expect(screen.getByTestId('photo-cell-1')).toBeTruthy();

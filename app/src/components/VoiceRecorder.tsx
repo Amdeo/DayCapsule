@@ -7,7 +7,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   Modal,
   ActivityIndicator,
   Alert,
@@ -123,67 +122,71 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleCancel} />
+      <View className="flex-1 justify-end" testID="voice-recorder-root">
+        <TouchableOpacity className="absolute inset-0 bg-black/45" activeOpacity={1} onPress={handleCancel} />
 
-        <View style={styles.sheet}>
+        <View className="rounded-t-[24px] bg-white px-5 shadow-lg shadow-black/10">
           {/* 拖动条 */}
-          <View style={styles.handle} />
+          <View className="mb-1 mt-3 h-1 w-9 self-center rounded-full bg-neutral-200" />
 
           {/* 标题栏 */}
-          <View style={styles.header}>
-            <View style={styles.typeBadge}>
+          <View className="flex-row items-center justify-between py-4">
+            <View className="flex-row items-center gap-1.5 rounded-[10px] bg-[#FFF8EE] px-3 py-1.5">
               <Ionicons name="mic" size={14} color="#F5A623" />
-              <Text style={styles.typeBadgeText}>语音记录</Text>
+              <Text className="text-[13px] font-semibold text-[#F5A623]">语音记录</Text>
             </View>
-            <TouchableOpacity onPress={handleCancel} style={styles.closeBtn}>
+            <TouchableOpacity onPress={handleCancel} className="h-9 w-9 items-center justify-center rounded-full bg-neutral-100">
               <Ionicons name="close" size={20} color="#737373" />
             </TouchableOpacity>
           </View>
 
           {/* 内容区 */}
-          <View style={styles.body}>
+          <View className="min-h-[180px] items-center justify-center py-6">
             {!isRecording && !recordingUri ? (
               /* ── 待机状态 ── */
-              <View style={styles.idleContainer}>
-                <View style={styles.micCircle}>
+              <View className="items-center gap-3" testID="voice-recorder-idle">
+                <View className="mb-1 h-[88px] w-[88px] items-center justify-center rounded-full bg-[#FFF8EE]">
                   <Ionicons name="mic" size={40} color="#F5A623" />
                 </View>
-                <Text style={styles.idleTitle}>准备录音</Text>
-                <Text style={styles.idleSubtitle}>点击下方按钮开始</Text>
+                <Text className="text-[20px] font-bold text-[#1A1A1A]">准备录音</Text>
+                <Text className="text-sm text-copy-muted">点击下方按钮开始</Text>
               </View>
             ) : isRecording ? (
               /* ── 录音中 ── */
-              <View style={styles.recordingContainer}>
-                <Text style={styles.timer}>{formatMMSS(duration)}</Text>
-                <View style={styles.waveformBox}>
+              <View className="w-full items-center gap-4" testID="voice-recorder-recording">
+                <Text className="tabular-nums text-[52px] font-bold tracking-[2px] text-[#1A1A1A]">
+                  {formatMMSS(duration)}
+                </Text>
+                <View className="h-7 w-full">
                   <WaveformAnimation
                     isRecording={!isPaused}
                     color={isPaused ? '#D1D1D1' : '#F5A623'}
                   />
                 </View>
-                <Text style={styles.recordingHint}>
+                <Text className="text-[13px] font-medium text-copy-muted">
                   {isPaused ? '已暂停' : '录音中...'}
                 </Text>
               </View>
             ) : (
               /* ── 录音完成 ── */
-              <View style={styles.doneContainer}>
-                <View style={styles.doneCircle}>
+              <View className="items-center gap-3" testID="voice-recorder-done">
+                <View className="mb-1 h-[72px] w-[72px] items-center justify-center rounded-full bg-[#4CAF50]">
                   <Ionicons name="checkmark" size={36} color="#FFFFFF" />
                 </View>
-                <Text style={styles.doneTitle}>录音完成</Text>
-                <Text style={styles.doneDuration}>{formatMMSS(duration)}</Text>
+                <Text className="text-[20px] font-bold text-[#1A1A1A]">录音完成</Text>
+                <Text className="tabular-nums text-base text-neutral-500">{formatMMSS(duration)}</Text>
               </View>
             )}
           </View>
 
           {/* 操作按钮 */}
-          <View style={styles.actions}>
+          <View className="mt-2 flex-row gap-3">
             {!isRecording && !recordingUri ? (
               /* 开始录音 */
               <TouchableOpacity
-                style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
+                className={`h-[52px] flex-1 flex-row items-center justify-center gap-2 rounded-full ${
+                  isLoading ? 'bg-[#F5A623] opacity-50' : 'bg-[#F5A623] shadow-lg shadow-[#F5A623]/30'
+                }`}
                 onPress={handleStart}
                 disabled={isLoading}
                 activeOpacity={0.8}
@@ -193,7 +196,7 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
                 ) : (
                   <>
                     <Ionicons name="mic" size={20} color="#FFFFFF" />
-                    <Text style={styles.primaryBtnText}>开始录音</Text>
+                    <Text className="text-base font-semibold text-white">开始录音</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -201,7 +204,7 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
               /* 暂停 + 停止 */
               <>
                 <TouchableOpacity
-                  style={styles.secondaryBtn}
+                  className="h-[52px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-neutral-100"
                   onPress={isPaused ? handleResume : handlePause}
                   activeOpacity={0.8}
                 >
@@ -210,249 +213,52 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
                     size={20}
                     color="#4A4A4A"
                   />
-                  <Text style={styles.secondaryBtnText}>{isPaused ? '继续' : '暂停'}</Text>
+                  <Text className="text-base font-semibold text-[#4A4A4A]">{isPaused ? '继续' : '暂停'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.stopBtn, isLoading && styles.btnDisabled]}
+                  className={`h-[52px] flex-1 flex-row items-center justify-center gap-2 rounded-full ${
+                    isLoading ? 'bg-[#EF4444] opacity-50' : 'bg-[#EF4444] shadow-lg shadow-[#EF4444]/25'
+                  }`}
                   onPress={handleStop}
                   disabled={isLoading}
                   activeOpacity={0.8}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <View style={styles.stopIcon} />
-                      <Text style={styles.primaryBtnText}>停止</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                      <View className="h-[14px] w-[14px] rounded-[3px] bg-white" />
+                      <Text className="text-base font-semibold text-white">停止</Text>
+                  </>
+                )}
+              </TouchableOpacity>
               </>
             ) : (
               /* 重录 + 保存 */
               <>
                 <TouchableOpacity
-                  style={styles.secondaryBtn}
+                  className="h-[52px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-neutral-100"
                   onPress={handleRetry}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="refresh" size={20} color="#4A4A4A" />
-                  <Text style={styles.secondaryBtnText}>重新录制</Text>
+                  <Text className="text-base font-semibold text-[#4A4A4A]">重新录制</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.primaryBtn}
+                  className="h-[52px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#F5A623] shadow-lg shadow-[#F5A623]/30"
                   onPress={handleSave}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>保存</Text>
+                  <Text className="text-base font-semibold text-white">保存</Text>
                 </TouchableOpacity>
               </>
             )}
           </View>
 
-          <View style={{ height: 24 }} />
+          <View className="h-6" />
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E5E5',
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#FFF8EE',
-    borderRadius: 10,
-  },
-  typeBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F5A623',
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    minHeight: 180,
-    justifyContent: 'center',
-  },
-  // 待机
-  idleContainer: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  micCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#FFF8EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  idleTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  idleSubtitle: {
-    fontSize: 14,
-    color: '#A3A3A3',
-  },
-  // 录音中
-  recordingContainer: {
-    alignItems: 'center',
-    gap: 16,
-    width: '100%',
-  },
-  timer: {
-    fontSize: 52,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 2,
-  },
-  waveformBox: {
-    width: '100%',
-    height: 28,
-  },
-  recordingHint: {
-    fontSize: 13,
-    color: '#A3A3A3',
-    fontWeight: '500',
-  },
-  // 完成
-  doneContainer: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  doneCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#4CAF50',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  doneTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  doneDuration: {
-    fontSize: 16,
-    color: '#737373',
-    fontVariant: ['tabular-nums'],
-  },
-  // 按钮
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  primaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F5A623',
-    shadowColor: '#F5A623',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  stopBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  secondaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F5F5F5',
-  },
-  primaryBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  secondaryBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A4A4A',
-  },
-  stopIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  btnDisabled: {
-    opacity: 0.5,
-  },
-});

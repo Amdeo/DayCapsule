@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent, SectionList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent, SectionList, ActivityIndicator } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
@@ -23,6 +23,8 @@ import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore'
 import { FABMenu } from './FABMenu';
 import { PhotoResult } from '../services/photoService';
 import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
+import { TimelineSectionHeader } from './TimelineSectionHeader';
+import { TimelineEmptyState } from './TimelineEmptyState';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -83,6 +85,32 @@ const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
   { mode: 'calendar', icon: 'calendar', label: '日历' },
 ];
 
+function getEntryAccentClassName(type: Entry['type']) {
+  switch (type) {
+    case 'text':
+      return 'text-entry-text';
+    case 'photo':
+      return 'text-entry-photo';
+    case 'voice':
+      return 'text-entry-voice';
+    default:
+      return 'text-neutral-300';
+  }
+}
+
+function getEntryDotClassName(type: Entry['type']) {
+  switch (type) {
+    case 'text':
+      return 'bg-entry-text';
+    case 'photo':
+      return 'bg-entry-photo';
+    case 'voice':
+      return 'bg-entry-voice';
+    default:
+      return 'bg-neutral-300';
+  }
+}
+
 function ViewModeToggle({
   current,
   onChange,
@@ -91,13 +119,15 @@ function ViewModeToggle({
   onChange: (m: ViewMode) => void;
 }) {
   return (
-    <View style={vmStyles.container}>
+    <View className="flex-row border-b border-border-subtle bg-home-surface px-2">
       {VIEW_MODES.map(({ mode, icon, label }) => {
         const active = current === mode;
         return (
           <TouchableOpacity
             key={mode}
-            style={[vmStyles.tab, active && vmStyles.tabActive]}
+            className={`flex-1 flex-row items-center justify-center gap-1 border-b-2 py-2.5 ${
+              active ? 'border-primary' : 'border-transparent'
+            }`}
             onPress={() => onChange(mode)}
             activeOpacity={0.7}
           >
@@ -106,7 +136,11 @@ function ViewModeToggle({
               size={16}
               color={active ? '#6A89CC' : '#A3A3A3'}
             />
-            <Text style={[vmStyles.label, active && vmStyles.labelActive]}>
+            <Text
+              className={`text-xs ${
+                active ? 'font-bold text-primary' : 'font-medium text-copy-muted'
+              }`}
+            >
               {label}
             </Text>
           </TouchableOpacity>
@@ -115,104 +149,6 @@ function ViewModeToggle({
     </View>
   );
 }
-
-const vmStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    paddingHorizontal: 8,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: '#6A89CC',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#A3A3A3',
-  },
-  labelActive: {
-    color: '#6A89CC',
-    fontWeight: '700',
-  },
-});
-
-/**
- * 时间轴头部组件 - Sticky
- */
-interface TimelineHeaderProps {
-  title: string;
-  timestamp: number;
-}
-
-const TimelineHeader = React.memo(function TimelineHeader({ title, timestamp }: TimelineHeaderProps) {
-  const timelineLeft = 40;
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 64, height: 48, backgroundColor: '#FAF8F5' }}>
-      {/* 上方的线 - 从顶部到圆心，与主时间线对齐 */}
-      <View
-        style={{
-          position: 'absolute',
-          left: timelineLeft,
-          top: 0,
-          width: 2,
-          height: 24,
-          backgroundColor: '#E5E5E5',
-          zIndex: 1,
-        }}
-      />
-
-      {/* 时间轴圆形标记 - 小圆点，圆心在 x=41（线的中心） */}
-      <View
-        style={{
-          position: 'absolute',
-          left: timelineLeft - 7,
-          top: 16,
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: '#6A89CC',
-          shadowColor: '#6A89CC',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.3,
-          shadowRadius: 2,
-          elevation: 2,
-          zIndex: 10,
-        }}
-      />
-
-      {/* 下方的线 - 从圆心到底部，与主时间线对齐 */}
-      <View
-        style={{
-          position: 'absolute',
-          left: timelineLeft,
-          top: 24,
-          width: 2,
-          height: 24,
-          backgroundColor: '#E5E5E5',
-          zIndex: 1,
-        }}
-      />
-
-      {/* 标题文本 */}
-      <Text style={{ fontSize: 18, fontWeight: '600', color: '#4A4A4A' }}>
-        {title}
-      </Text>
-    </View>
-  );
-});
 
 /**
  * 记录项组件
@@ -242,46 +178,19 @@ const EntryMarker = React.memo(function EntryMarker({
   cardSpacing,
   enterDelay = 0,
 }: EntryMarkerProps) {
-  const timelineLeft = 40;
-
-  // 根据类型获取圆点颜色
-  const getDotColor = () => {
-    switch (entry.type) {
-      case 'text': return '#A491D3';
-      case 'photo': return '#77C9D4';
-      case 'voice': return '#F5A623';
-      default: return '#D1D1D1';
-    }
-  };
+  const accentTextClassName = getEntryAccentClassName(entry.type);
+  const dotClassName = getEntryDotClassName(entry.type);
 
   return (
-    <View
-      style={{ paddingLeft: 64, paddingRight: 24, paddingBottom: isLast ? 0 : cardSpacing, position: 'relative' }}
-    >
+    <View className="relative pl-16 pr-6" style={{ paddingBottom: isLast ? 0 : cardSpacing }}>
       {/* 时间点圆点（带外圈）- 固定在时间线上 */}
       <View
-        style={{
-          position: 'absolute',
-          left: timelineLeft - 7,
-          top: 1,
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: getDotColor(),
-          borderWidth: 2,
-          borderColor: '#FFFFFF',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
-          elevation: 2,
-          zIndex: 2,
-        }}
+        className={`absolute left-[33px] top-[1px] z-10 h-4 w-4 rounded-full border-2 border-home-surface shadow-sm ${dotClassName}`}
       />
 
       {/* 时间文本 - 与卡片开头对齐，颜色和圆点一致 */}
-      <View style={{ marginBottom: 8 }}>
-        <Text style={{ fontSize: 12, color: getDotColor(), fontWeight: '500' }}>
+      <View className="mb-2">
+        <Text className={`text-xs font-medium ${accentTextClassName}`}>
           {formatHHMM(entry.timestamp)}
         </Text>
       </View>
@@ -308,9 +217,9 @@ const DotsLoader: React.FC = () => {
   const dot2 = useRef(new RNAnimated.Value(0)).current;
   const dot3 = useRef(new RNAnimated.Value(0)).current;
   const loaderDots = [
-    { key: 'text', color: '#A491D3', translateY: dot1 },
-    { key: 'photo', color: '#77C9D4', translateY: dot2 },
-    { key: 'voice', color: '#F5A623', translateY: dot3 },
+    { key: 'text', translateY: dot1 },
+    { key: 'photo', translateY: dot2 },
+    { key: 'voice', translateY: dot3 },
   ];
 
   useEffect(() => {
@@ -344,56 +253,35 @@ const DotsLoader: React.FC = () => {
     };
   }, [dot1, dot2, dot3]);
 
-  const dotStyle = {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 3,
-  };
-
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <View className="flex-1 items-center justify-center">
+      <View className="flex-row items-center">
         {loaderDots.map((dot) => (
           <RNAnimated.View
             key={dot.key}
             testID={`loader-dot-${dot.key}`}
-            style={[
-              dotStyle,
-              { backgroundColor: dot.color },
-              { transform: [{ translateY: dot.translateY }] },
-            ]}
+            style={{
+              backgroundColor:
+                dot.key === 'text'
+                  ? '#A491D3'
+                  : dot.key === 'photo'
+                    ? '#77C9D4'
+                    : '#F5A623',
+              transform: [{ translateY: dot.translateY }],
+            }}
+            className={`mx-[3px] h-2 w-2 rounded-full ${
+              dot.key === 'text'
+                ? 'bg-entry-text'
+                : dot.key === 'photo'
+                  ? 'bg-entry-photo'
+                  : 'bg-entry-voice'
+            }`}
           />
         ))}
       </View>
     </View>
   );
 };
-
-/**
- * 空状态组件
- */
-function EmptyState() {
-  return (
-    <Animated.View
-      entering={FadeIn.duration(300).delay(200)}
-      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 24 }}
-    >
-      <Animated.View entering={FadeIn.delay(400).springify()}>
-        <Text style={{ fontSize: 48, marginBottom: 16 }}>📭</Text>
-      </Animated.View>
-
-      <Animated.View entering={FadeIn.delay(600)}>
-        <Text style={{ fontSize: 16, color: '#A3A3A3', textAlign: 'center' }}>
-          还没有记忆
-        </Text>
-        <Text style={{ fontSize: 14, color: '#D1D1D1', textAlign: 'center', marginTop: 8 }}>
-          点击右下角 + 按钮开始记录
-        </Text>
-      </Animated.View>
-    </Animated.View>
-  );
-}
 
 /**
  * 时间轴主组件
@@ -605,13 +493,11 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
 
   // 渲染分组头部 - Sticky
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
-    return <TimelineHeader title={section.title} timestamp={section.timestamp} />;
+    return <TimelineSectionHeader title={section.title} timestamp={section.timestamp} />;
   }, []);
 
-  const timelineLeft = 40;
-
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
+    <View className="flex-1 bg-home-background">
       {/* 搜索遮罩 */}
       <SearchOverlay
         visible={showSearchOverlay}
@@ -666,20 +552,12 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
           onActionSheetOpen={handleActionSheetOpen}
         />
       ) : !hasEntries ? (
-        <EmptyState />
+        <TimelineEmptyState />
       ) : (
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View className="relative flex-1">
           {/* 连续的时间线 - 仅列表模式显示 */}
           <View
-            style={{
-              position: 'absolute',
-              left: timelineLeft,
-              top: 0,
-              bottom: 0,
-              width: 2,
-              backgroundColor: '#E5E5E5',
-              zIndex: 0,
-            }}
+            className="absolute bottom-0 left-10 top-0 z-0 w-0.5 bg-timeline-line"
           />
           <SectionList<Entry, TimeSection>
             ref={sectionListRef}
@@ -695,7 +573,9 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
             onEndReached={() => { if (hasMore) loadMore(); }}
             onEndReachedThreshold={0.3}
             ListFooterComponent={isLoadingMore ? (
-              <ActivityIndicator size="small" color="#8B7355" style={{ paddingVertical: 16 }} />
+              <View className="py-4">
+                <ActivityIndicator size="small" color="#8B7355" />
+              </View>
             ) : null}
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
@@ -741,19 +621,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={0.8}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: '#FFFFFF',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
+            className="h-14 w-14 items-center justify-center rounded-full bg-home-surface shadow-lg"
           >
             <Ionicons name="arrow-up" size={24} color="#6A89CC" />
           </TouchableOpacity>
@@ -794,28 +662,42 @@ const DATE_LABEL: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = {
   text: '文字', photo: '照片', voice: '语音',
 };
+const FILTER_BAR_SCROLL_CONTENT_STYLE = {
+  paddingHorizontal: 12,
+  gap: 6,
+  alignItems: 'center' as const,
+};
 
 function ActiveFiltersBar({
   searchQuery, filterType, filterDateRange, selectedTags,
   resultCount, onClearQuery, onClearType, onClearDate, onClearTag, onClearAll, onOpenSearch,
 }: ActiveFiltersBarProps) {
   return (
-    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={filterBarStyles.container}>
+    <Animated.View
+      entering={FadeIn.duration(200)}
+      exiting={FadeOut.duration(150)}
+      className="flex-row items-center border-b border-border-filter bg-home-filter py-2"
+    >
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={filterBarStyles.scroll}
+        contentContainerStyle={FILTER_BAR_SCROLL_CONTENT_STYLE}
       >
         {/* 结果数 */}
-        <TouchableOpacity style={filterBarStyles.resultBadge} onPress={onOpenSearch}>
+        <TouchableOpacity
+          className="flex-row items-center gap-1 rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]"
+          onPress={onOpenSearch}
+        >
           <Ionicons name="search" size={13} color="#6A89CC" />
-          <Text style={filterBarStyles.resultText}>{resultCount} 条</Text>
+          <Text className="text-xs font-bold text-primary">{resultCount} 条</Text>
         </TouchableOpacity>
 
         {/* 关键词 chip */}
         {searchQuery.trim() ? (
-          <View style={filterBarStyles.chip}>
-            <Text style={filterBarStyles.chipText} numberOfLines={1}>"{searchQuery}"</Text>
+          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
+            <Text className="shrink text-xs font-semibold text-copy-accent" numberOfLines={1}>
+              "{searchQuery}"
+            </Text>
             <TouchableOpacity onPress={onClearQuery} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
             </TouchableOpacity>
@@ -824,8 +706,10 @@ function ActiveFiltersBar({
 
         {/* 类型 chip */}
         {filterType !== 'all' ? (
-          <View style={filterBarStyles.chip}>
-            <Text style={filterBarStyles.chipText}>{TYPE_LABEL[filterType] ?? filterType}</Text>
+          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
+            <Text className="shrink text-xs font-semibold text-copy-accent">
+              {TYPE_LABEL[filterType] ?? filterType}
+            </Text>
             <TouchableOpacity onPress={onClearType} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
             </TouchableOpacity>
@@ -834,8 +718,10 @@ function ActiveFiltersBar({
 
         {/* 时间 chip */}
         {filterDateRange !== 'all' ? (
-          <View style={filterBarStyles.chip}>
-            <Text style={filterBarStyles.chipText}>{DATE_LABEL[filterDateRange] ?? filterDateRange}</Text>
+          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
+            <Text className="shrink text-xs font-semibold text-copy-accent">
+              {DATE_LABEL[filterDateRange] ?? filterDateRange}
+            </Text>
             <TouchableOpacity onPress={onClearDate} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
             </TouchableOpacity>
@@ -844,8 +730,11 @@ function ActiveFiltersBar({
 
         {/* 标签 chips */}
         {selectedTags.map((tag) => (
-          <View key={tag} style={filterBarStyles.chip}>
-            <Text style={filterBarStyles.chipText}>#{tag}</Text>
+          <View
+            key={tag}
+            className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]"
+          >
+            <Text className="shrink text-xs font-semibold text-copy-accent">#{tag}</Text>
             <TouchableOpacity onPress={() => onClearTag(tag)} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
             </TouchableOpacity>
@@ -854,63 +743,9 @@ function ActiveFiltersBar({
       </ScrollView>
 
       {/* 清除全部 */}
-      <TouchableOpacity style={filterBarStyles.clearAll} onPress={onClearAll}>
+      <TouchableOpacity className="px-2.5 py-1.5" onPress={onClearAll}>
         <Ionicons name="close-circle" size={18} color="#A3A3A3" />
       </TouchableOpacity>
     </Animated.View>
   );
 }
-
-const filterBarStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F4FF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#DDE5F8',
-    paddingVertical: 8,
-  },
-  scroll: {
-    paddingHorizontal: 12,
-    gap: 6,
-    alignItems: 'center',
-  },
-  resultBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#C7D7F5',
-  },
-  resultText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6A89CC',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#C7D7F5',
-    maxWidth: 140,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4A6FA5',
-    flexShrink: 1,
-  },
-  clearAll: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-});

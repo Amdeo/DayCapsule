@@ -71,6 +71,8 @@ describe('TagManagementPage preset tags', () => {
   it('renders preset tags management copy', () => {
     const screen = render(<TagManagementPage visible onClose={() => {}} />);
 
+    expect(screen.getByTestId('tag-management-root')).toBeTruthy();
+    expect(screen.getByTestId('tag-management-tags-container')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
     expect(screen.getByText('当前预制标签')).toBeTruthy();
     expect(screen.getByText('这组标签会出现在快速选择区域')).toBeTruthy();

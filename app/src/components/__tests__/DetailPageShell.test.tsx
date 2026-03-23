@@ -30,6 +30,24 @@ describe('DetailPageShell', () => {
     expect(getByTestId('detail-page-scroll')).toBeTruthy();
   });
 
+  it('renders the shell header and headerRight slot when provided', () => {
+    const { getByTestId, getByText } = render(
+      <DetailPageShell
+        visible
+        title="关于"
+        onClose={jest.fn()}
+        headerRight={<Text>操作</Text>}
+      >
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    expect(getByTestId('detail-page-shell')).toBeTruthy();
+    expect(getByTestId('detail-page-header')).toBeTruthy();
+    expect(getByTestId('detail-page-header-right')).toBeTruthy();
+    expect(getByText('操作')).toBeTruthy();
+  });
+
   it('calls onClose from backdrop and back button', () => {
     const onClose = jest.fn();
     const { getByTestId } = render(
@@ -44,6 +62,16 @@ describe('DetailPageShell', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps rendering the static content container when scroll is disabled', () => {
+    const { getByTestId } = render(
+      <DetailPageShell visible title="帮助" onClose={jest.fn()} scrollEnabled={false}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    expect(getByTestId('detail-page-content')).toBeTruthy();
+  });
+
   it('uses screen height for the page instead of anchoring it to bottom', () => {
     const screenHeight = Dimensions.get('screen').height;
     let tree: renderer.ReactTestRenderer;
@@ -56,10 +84,7 @@ describe('DetailPageShell', () => {
       );
     });
 
-    const page = tree!.root.find((node) => {
-      const style = StyleSheet.flatten(node.props.style);
-      return style?.backgroundColor === '#FFFFFF' && style?.shadowColor === '#000';
-    });
+    const page = tree!.root.findByProps({ testID: 'detail-page-shell' });
     const pageStyle = StyleSheet.flatten(page.props.style);
 
     expect(pageStyle.height).toBe(screenHeight);

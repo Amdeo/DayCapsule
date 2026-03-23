@@ -22,11 +22,10 @@ jest.mock('@expo/vector-icons/FontAwesome', () => ({
 }));
 
 jest.mock('@react-navigation/native', () => {
-  const React = require('react');
   return {
     DarkTheme: {},
     DefaultTheme: {},
-    ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
@@ -35,9 +34,8 @@ jest.mock('expo-font', () => ({
 }));
 
 jest.mock('expo-router', () => {
-  const React = require('react');
   const Stack = Object.assign(
-    ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    ({ children }: { children?: React.ReactNode }) => children,
     {
       Screen: () => null,
     }
@@ -45,7 +43,7 @@ jest.mock('expo-router', () => {
 
   return {
     Stack,
-    ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
@@ -72,16 +70,14 @@ jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.require
 jest.mock('react-native-reanimated', () => ({}));
 
 jest.mock('react-native-gesture-handler', () => {
-  const React = require('react');
   return {
-    GestureHandlerRootView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    GestureHandlerRootView: 'GestureHandlerRootView',
   };
 });
 
 jest.mock('react-native-safe-area-context', () => {
-  const React = require('react');
   return {
-    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
 
@@ -113,7 +109,7 @@ jest.mock('@/src/database/migration', () => ({
 }));
 
 jest.mock('@/src/components/ErrorBoundary', () => ({
-  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock('@/src/components/FeedbackHost', () => ({
@@ -222,6 +218,7 @@ jest.mock('react-native', () => ({
     }),
   },
   LogBox: { ignoreLogs: jest.fn() },
+  StyleSheet: { flatten: (style: unknown) => style },
 }));
 
 import RootLayout from '../_layout';
@@ -244,11 +241,12 @@ describe('RootLayout photo upload triggers', () => {
   });
 
   it('flushes pending photo uploads on app bootstrap', async () => {
-    render(<RootLayout />);
+    const screen = render(<RootLayout />);
 
     await flushPromises();
 
     expect(mockFeedbackHost).toHaveBeenCalled();
+    expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });

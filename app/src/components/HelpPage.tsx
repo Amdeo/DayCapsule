@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DetailPageShell } from './DetailPageShell';
 
@@ -47,15 +47,17 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
     <TouchableOpacity
-      style={styles.faqItem}
+      className="border-b border-[#EBEBEB] px-4 py-[14px]"
       activeOpacity={0.7}
       onPress={() => setOpen((v) => !v)}
     >
-      <View style={styles.faqHeader}>
-        <Text style={styles.faqQ}>{q}</Text>
+      <View className="flex-row items-center justify-between">
+        <Text className="mr-2 flex-1 text-[15px] font-medium text-copy-primary">{q}</Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color="#A3A3A3" />
       </View>
-      {open && <Text style={styles.faqA}>{a}</Text>}
+      {open ? (
+        <Text className="mt-2.5 text-sm leading-5 text-neutral-500">{a}</Text>
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -63,46 +65,32 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export function HelpPage({ visible, onClose }: HelpPageProps) {
   return (
     <DetailPageShell visible={visible} title="帮助与反馈" onClose={onClose}>
-      <Text style={styles.sectionTitle}>常见问题</Text>
-      <View style={styles.faqList}>
-        {FAQ.map((item, i) => (
-          <FaqItem key={i} q={item.q} a={item.a} />
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>联系我们</Text>
-      <View style={styles.contactCard}>
-        <Text style={styles.contactText}>
-          如果您遇到问题或有功能建议，欢迎通过以下方式联系我们：
+      <View testID="help-page-root">
+        <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+          常见问题
         </Text>
-        <TouchableOpacity
-          style={styles.contactButton}
-          onPress={() => Linking.openURL('mailto:support@memorycapsule.app')}
-        >
-          <Ionicons name="mail-outline" size={18} color="#6A89CC" />
-          <Text style={styles.contactButtonText}>发送反馈邮件</Text>
-        </TouchableOpacity>
+        <View className="overflow-hidden rounded-chip bg-neutral-100">
+          {FAQ.map((item, i) => (
+            <FaqItem key={i} q={item.q} a={item.a} />
+          ))}
+        </View>
+
+        <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+          联系我们
+        </Text>
+        <View className="rounded-chip bg-neutral-100 p-4">
+          <Text className="mb-4 text-sm leading-5 text-neutral-500">
+            如果您遇到问题或有功能建议，欢迎通过以下方式联系我们：
+          </Text>
+          <TouchableOpacity
+            className="flex-row items-center gap-2 rounded-[10px] border border-border-subtle bg-background-elevated p-[14px]"
+            onPress={() => Linking.openURL('mailto:support@memorycapsule.app')}
+          >
+            <Ionicons name="mail-outline" size={18} color="#6A89CC" />
+            <Text className="text-[15px] font-medium text-primary">发送反馈邮件</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </DetailPageShell>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 13, fontWeight: '700', color: '#A3A3A3',
-    marginTop: 24, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  faqList: { backgroundColor: '#F5F5F5', borderRadius: 12, overflow: 'hidden' },
-  faqItem: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EBEBEB' },
-  faqHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  faqQ: { flex: 1, fontSize: 15, fontWeight: '500', color: '#4A4A4A', marginRight: 8 },
-  faqA: { fontSize: 14, color: '#737373', marginTop: 10, lineHeight: 20 },
-  contactCard: { backgroundColor: '#F5F5F5', borderRadius: 12, padding: 16 },
-  contactText: { fontSize: 14, color: '#737373', lineHeight: 20, marginBottom: 16 },
-  contactButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FFFFFF', borderRadius: 10, padding: 14,
-    borderWidth: 1, borderColor: '#E5E5E5',
-  },
-  contactButtonText: { fontSize: 15, color: '#6A89CC', fontWeight: '500' },
-});

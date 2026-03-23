@@ -20,8 +20,9 @@ describe('BackupExportSheet', () => {
   });
 
   it('renders export actions when visible', () => {
-    const { getByText, queryByText } = render(<BackupExportSheet {...baseProps} />);
+    const { getByTestId, getByText, queryByText } = render(<BackupExportSheet {...baseProps} />);
 
+    expect(getByTestId('backup-export-sheet')).toBeTruthy();
     expect(getByText('保存到文件')).toBeTruthy();
     expect(getByText('取消')).toBeTruthy();
     expect(queryByText('发送到微信')).toBeNull();

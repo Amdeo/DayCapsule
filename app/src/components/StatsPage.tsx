@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
 import { DetailPageShell } from './DetailPageShell';
@@ -44,13 +44,19 @@ interface StatCardProps {
 
 function StatCard({ icon, color, label, value }: StatCardProps) {
   return (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
+    <View
+      className="min-w-[45%] flex-1 flex-row items-center rounded-chip border-l-[3px] bg-neutral-100 p-[14px]"
+      style={{ borderLeftColor: color }}
+    >
+      <View
+        className="mr-2.5 h-9 w-9 items-center justify-center rounded-[10px]"
+        style={{ backgroundColor: `${color}20` }}
+      >
         <Ionicons name={icon as any} size={20} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
+      <View>
+        <Text className="text-[22px] font-bold text-copy-primary">{value}</Text>
+        <Text className="mt-0.5 text-xs text-copy-muted">{label}</Text>
       </View>
     </View>
   );
@@ -58,9 +64,9 @@ function StatCard({ icon, color, label, value }: StatCardProps) {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View className="flex-row items-center justify-between border-b border-[#EBEBEB] py-[14px]">
+      <Text className="text-[15px] text-neutral-500">{label}</Text>
+      <Text className="text-[15px] font-semibold text-copy-primary">{value}</Text>
     </View>
   );
 }
@@ -138,10 +144,12 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
 
   return (
     <DetailPageShell visible={visible} title="统计" onClose={onClose}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} testID="stats-page-root">
         {/* 总览 */}
-        <Text style={styles.sectionTitle}>总览</Text>
-        <View style={styles.grid}>
+        <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+          总览
+        </Text>
+        <View className="flex-row flex-wrap gap-3" testID="stats-overview-grid">
           <StatCard icon="document-text" color="#A491D3" label="文字记录" value={stats.text} />
           <StatCard icon="image" color="#77C9D4" label="照片记录" value={stats.photo} />
           <StatCard icon="mic" color="#F5A623" label="语音记录" value={stats.voice} />
@@ -149,8 +157,10 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
         </View>
 
         {/* 时间维度 */}
-        <Text style={styles.sectionTitle}>时间维度</Text>
-        <View style={styles.infoCard}>
+        <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+          时间维度
+        </Text>
+        <View className="rounded-chip bg-neutral-100 px-4">
           <Row label="本周新增" value={`${stats.thisWeek} 条`} />
           <Row label="本月新增" value={`${stats.thisMonth} 条`} />
           <Row label="最活跃的一天" value={stats.busiestDay} />
@@ -160,24 +170,24 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
         </View>
 
         {/* 近6个月趋势 */}
-        <Text style={styles.sectionTitle}>近6个月趋势</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.barChart}>
+        <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+          近6个月趋势
+        </Text>
+        <View className="rounded-chip bg-neutral-100 px-4" testID="stats-trend-card">
+          <View className="h-[120px] flex-row items-end gap-2 py-4">
             {stats.months.map((m, i) => {
               return (
-                <View key={i} style={styles.barItem}>
+                <View key={i} className="h-[88px] flex-1 items-center justify-end">
                   {m.count > 0 && (
-                    <Text style={styles.barCount}>{m.count}</Text>
+                    <Text className="mb-1 text-[11px] font-semibold text-primary">{m.count}</Text>
                   )}
-                  <View style={styles.barTrack}>
+                  <View className="flex-1 w-full justify-end overflow-hidden rounded-md bg-[#E8ECF5]">
                     <View
-                      style={[
-                        styles.barFill,
-                        { height: Math.max((m.count / stats.maxCount) * 88, 4) },
-                      ]}
+                      className="w-full rounded-md bg-primary"
+                      style={{ height: Math.max((m.count / stats.maxCount) * 88, 4) }}
                     />
                   </View>
-                  <Text style={styles.barLabel}>{m.label}</Text>
+                  <Text className="mt-1.5 text-[11px] text-copy-muted">{m.label}</Text>
                 </View>
               );
             })}
@@ -187,104 +197,27 @@ export function StatsPage({ visible, onClose }: StatsPageProps) {
         {/* 常用标签 */}
         {stats.topTags.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>常用标签</Text>
-            <View style={styles.infoCard}>
-              {stats.topTags.map(([tag, count]) => (
-                <Row key={tag} label={`#${tag}`} value={`${count} 条`} />
+            <Text className="mb-3 mt-6 text-[13px] font-bold uppercase tracking-[0.5px] text-copy-muted">
+              常用标签
+            </Text>
+            <View className="rounded-chip bg-neutral-100 px-4">
+              {stats.topTags.map(([tag, count], index) => (
+                <View
+                  key={tag}
+                  className={`flex-row items-center justify-between py-[14px] ${
+                    index === stats.topTags.length - 1 ? '' : 'border-b border-[#EBEBEB]'
+                  }`}
+                >
+                  <Text className="text-[15px] text-neutral-500">#{tag}</Text>
+                  <Text className="text-[15px] font-semibold text-copy-primary">{count} 条</Text>
+                </View>
               ))}
             </View>
           </>
         )}
 
-        <View style={styles.bottomPadding} />
+        <View className="h-10" />
       </ScrollView>
     </DetailPageShell>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#A3A3A3',
-    marginTop: 24,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 14,
-    borderLeftWidth: 3,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  statContent: {},
-  statValue: { fontSize: 22, fontWeight: '700', color: '#4A4A4A' },
-  statLabel: { fontSize: 12, color: '#A3A3A3', marginTop: 2 },
-  infoCard: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EBEBEB',
-  },
-  rowLabel: { fontSize: 15, color: '#737373' },
-  rowValue: { fontSize: 15, fontWeight: '600', color: '#4A4A4A' },
-  barChart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 120,
-    gap: 8,
-    paddingVertical: 16,
-  },
-  barItem: {
-    flex: 1,
-    alignItems: 'center',
-    height: 88,
-    justifyContent: 'flex-end',
-  },
-  barCount: {
-    fontSize: 11,
-    color: '#6A89CC',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  barTrack: {
-    width: '100%',
-    flex: 1,
-    backgroundColor: '#E8ECF5',
-    borderRadius: 6,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    backgroundColor: '#6A89CC',
-    borderRadius: 6,
-  },
-  barLabel: {
-    fontSize: 11,
-    color: '#A3A3A3',
-    marginTop: 6,
-  },
-  bottomPadding: { height: 40 },
-});

@@ -34,6 +34,16 @@ const mockRegister = jest.fn();
 beforeEach(() => jest.clearAllMocks());
 
 describe('LoginPage', () => {
+  it('renders the login page shell inside the existing detail shell', () => {
+    const { getByPlaceholderText, getByText, getByTestId } = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    expect(getByTestId('login-page-root')).toBeTruthy();
+    expect(getByPlaceholderText('邮箱')).toBeTruthy();
+    expect(getByText('登录')).toBeTruthy();
+  });
+
   it('renders login form by default', () => {
     const { getByPlaceholderText, getByText } = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />

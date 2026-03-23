@@ -71,13 +71,17 @@ describe('BackupPage', () => {
   });
 
   it('renders backup history and bottom iCloud section when backups exist', async () => {
-    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+    const { getByTestId, getByText } = render(<BackupPage visible onClose={jest.fn()} />);
 
     await waitFor(() => {
       expect(getByText('备份历史')).toBeTruthy();
       expect(getByText('iCloud 同步')).toBeTruthy();
       expect(getByText('2024-03-10 00:00:00')).toBeTruthy();
     });
+
+    expect(getByTestId('backup-page-root')).toBeTruthy();
+    expect(getByTestId('backup-page-storage-card')).toBeTruthy();
+    expect(getByTestId('backup-page-icloud-card')).toBeTruthy();
   });
 
   it('creates a backup and opens the save-only export sheet', async () => {

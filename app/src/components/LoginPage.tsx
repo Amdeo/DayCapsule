@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '@/src/store/authStore';
 import { DetailPageShell } from './DetailPageShell';
 import { logger } from '@/src/utils/logger';
@@ -61,9 +61,9 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
 
   return (
     <DetailPageShell visible={visible} title={isRegister ? '注册' : '登录'} onClose={onClose}>
-      <View style={styles.form}>
+      <View className="gap-4 pt-6" testID="login-page-root">
         <TextInput
-          style={styles.input}
+          className="rounded-chip bg-neutral-100 px-4 py-[14px] text-base text-copy-primary"
           placeholder="邮箱"
           placeholderTextColor="#A3A3A3"
           value={email}
@@ -73,7 +73,7 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
           autoCorrect={false}
         />
         <TextInput
-          style={styles.input}
+          className="rounded-chip bg-neutral-100 px-4 py-[14px] text-base text-copy-primary"
           placeholder="密码"
           placeholderTextColor="#A3A3A3"
           value={password}
@@ -82,7 +82,7 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
         />
         {isRegister && (
           <TextInput
-            style={styles.input}
+            className="rounded-chip bg-neutral-100 px-4 py-[14px] text-base text-copy-primary"
             placeholder="确认密码"
             placeholderTextColor="#A3A3A3"
             value={confirmPassword}
@@ -92,29 +92,35 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
         )}
 
         {isRegister && (
-          <Text style={styles.hint}>密码要求：8-64位，含大小写字母和数字</Text>
+          <Text className="px-1 text-xs text-copy-muted">
+            密码要求：8-64位，含大小写字母和数字
+          </Text>
         )}
 
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          className={`mt-2 items-center rounded-chip py-[14px] ${
+            isLoading ? 'bg-neutral-300' : 'bg-primary'
+          }`}
           onPress={handleSubmit}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.buttonText}>{isRegister ? '注册' : '登录'}</Text>
+            <Text className="text-base font-semibold text-white">
+              {isRegister ? '注册' : '登录'}
+            </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.switchButton}
+          className="items-center py-3"
           onPress={() => {
             setIsRegister(!isRegister);
             setConfirmPassword('');
           }}
         >
-          <Text style={styles.switchText}>
+          <Text className="text-sm text-primary">
             {isRegister ? '已有账户？登录' : '没有账户？注册'}
           </Text>
         </TouchableOpacity>
@@ -122,27 +128,3 @@ export function LoginPage({ visible, onClose, onSuccess }: LoginPageProps) {
     </DetailPageShell>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { paddingTop: 24, gap: 16 },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#4A4A4A',
-  },
-  hint: { fontSize: 12, color: '#A3A3A3', paddingHorizontal: 4 },
-  button: {
-    backgroundColor: '#6A89CC',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { backgroundColor: '#D1D1D1' },
-  buttonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-  switchButton: { alignItems: 'center', paddingVertical: 12 },
-  switchText: { fontSize: 14, color: '#6A89CC' },
-});

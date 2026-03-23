@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Modal,
   Pressable,
   TouchableOpacity,
@@ -20,6 +19,8 @@ interface TextEditorProps {
   onSave: (content: string, tags: string[]) => void;
   onCancel: () => void;
 }
+
+const TEXT_EDITOR_PLACEHOLDER_COLOR = '#A3A3A3';
 
 export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
   const [content, setContent] = useState('');
@@ -86,111 +87,127 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
       onRequestClose={handleCancel}
     >
       <KeyboardAvoidingView
-        style={styles.container}
+        className="flex-1 justify-end"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={handleCancel} />
+        <Pressable className="absolute inset-0 bg-black/50" onPress={handleCancel} />
 
-        <View style={styles.editor}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>添加文字记录</Text>
-            <Pressable onPress={handleCancel} style={styles.closeButton}>
+        <View
+          testID="text-editor-sheet"
+          className="h-[90%] w-full flex-col rounded-t-[24px] bg-background-elevated shadow-lg shadow-black/10"
+        >
+          <View className="flex-row items-center justify-between border-b border-border-subtle px-5 pb-4 pt-5">
+            <Text className="text-[20px] font-bold text-copy-primary">添加文字记录</Text>
+            <Pressable onPress={handleCancel} className="h-10 w-10 items-center justify-center rounded-full">
               <Ionicons name="close" size={24} color="#4A4A4A" />
             </Pressable>
           </View>
 
-          <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-            <View style={styles.typeTag}>
-              <Ionicons name="document-text" size={16} color="#6A89CC" />
-              <Text style={styles.typeText}>文本</Text>
-            </View>
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            <View className="px-5 pb-5 pt-5">
+              <View className="mb-5 self-start rounded-chip bg-home-filter px-3 py-1.5">
+                <View className="flex-row items-center">
+                  <Ionicons name="document-text" size={16} color="#6A89CC" />
+                  <Text className="ml-1.5 text-sm font-semibold text-primary">文本</Text>
+                </View>
+              </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>内容</Text>
-              <TextInput
-                style={styles.textInput}
-                value={content}
-                onChangeText={setContent}
-                placeholder="输入内容..."
-                placeholderTextColor="#A3A3A3"
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-                autoFocus
-              />
-            </View>
+              <View className="mb-6">
+                <Text className="mb-2 text-sm font-semibold text-copy-primary">内容</Text>
+                <TextInput
+                  testID="text-editor-content-input"
+                  className="min-h-[120px] rounded-chip bg-neutral-100 px-4 py-3 text-[15px] text-copy-primary"
+                  value={content}
+                  onChangeText={setContent}
+                  placeholder="输入内容..."
+                  placeholderTextColor={TEXT_EDITOR_PLACEHOLDER_COLOR}
+                  multiline
+                  numberOfLines={6}
+                  textAlignVertical="top"
+                  autoFocus
+                />
+              </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>标签</Text>
-              {commonTags.length > 0 && (
-                <View style={styles.commonTagsRow}>
-                  {commonTags.map((tag) => {
-                    const selected = currentTagsList.includes(tag);
-                    return (
+              <View className="mb-6">
+                <Text className="mb-2 text-sm font-semibold text-copy-primary">标签</Text>
+                {commonTags.length > 0 && (
+                  <View className="mb-2.5 flex-row flex-wrap gap-[7px]">
+                    {commonTags.map((tag) => {
+                      const selected = currentTagsList.includes(tag);
+                      return (
+                        <TouchableOpacity
+                          key={tag}
+                          className={selected
+                            ? 'rounded-full border border-text bg-text px-[11px] py-[5px]'
+                            : 'rounded-full border border-border-text-chip bg-text/10 px-[11px] py-[5px]'}
+                          onPress={() => selected ? handleRemoveTag(tag) : handleAddSuggestion(tag)}
+                        >
+                          <Text className={selected ? 'text-[13px] text-white' : 'text-[13px] text-editor-text-chip-accent'}>
+                            {tag}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                <TextInput
+                  testID="text-editor-tags-input"
+                  className="rounded-chip bg-neutral-100 px-4 py-3 text-[15px] text-copy-primary"
+                  value={tagsInput}
+                  onChangeText={setTagsInput}
+                  placeholder="用逗号分隔多个标签，如：生活, 工作"
+                  placeholderTextColor={TEXT_EDITOR_PLACEHOLDER_COLOR}
+                />
+                {tagsInput.length > 0 && (
+                  <View className="mt-3 flex-row flex-wrap gap-2">
+                    {tagsInput
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag.length > 0)
+                      .map((tag, index) => (
+                        <View key={index} className="rounded-chip bg-home-filter px-3 py-1.5">
+                          <Text className="text-[13px] font-medium text-primary">{tag}</Text>
+                        </View>
+                      ))}
+                  </View>
+                )}
+                {suggestions.length > 0 && (
+                  <View className="mt-2.5 flex-row flex-wrap items-center gap-1.5">
+                    <Text className="text-xs text-copy-muted">建议：</Text>
+                    {suggestions.map((tag) => (
                       <TouchableOpacity
                         key={tag}
-                        style={[styles.commonChip, selected && styles.commonChipSelected]}
-                        onPress={() => selected ? handleRemoveTag(tag) : handleAddSuggestion(tag)}
+                        className="flex-row items-center gap-[3px] rounded-[10px] border border-border-filter-strong bg-home-filter px-2.5 py-[5px]"
+                        onPress={() => handleAddSuggestion(tag)}
                       >
-                        <Text style={[styles.commonChipText, selected && styles.commonChipTextSelected]}>
-                          {tag}
-                        </Text>
+                        <Ionicons name="add" size={13} color="#6A89CC" />
+                        <Text className="text-xs font-medium text-primary">{tag}</Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-              <TextInput
-                style={styles.input}
-                value={tagsInput}
-                onChangeText={setTagsInput}
-                placeholder="用逗号分隔多个标签，如：生活, 工作"
-                placeholderTextColor="#A3A3A3"
-              />
-              {tagsInput.length > 0 && (
-                <View style={styles.tagsPreview}>
-                  {tagsInput
-                    .split(',')
-                    .map((tag) => tag.trim())
-                    .filter((tag) => tag.length > 0)
-                    .map((tag, index) => (
-                      <View key={index} style={styles.tag}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
                     ))}
-                </View>
-              )}
-              {suggestions.length > 0 && (
-                <View style={styles.suggestionsRow}>
-                  <Text style={styles.suggestionsLabel}>建议：</Text>
-                  {suggestions.map((tag) => (
-                    <TouchableOpacity
-                      key={tag}
-                      style={styles.suggestionChip}
-                      onPress={() => handleAddSuggestion(tag)}
-                    >
-                      <Ionicons name="add" size={13} color="#6A89CC" />
-                      <Text style={styles.suggestionChipText}>{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+                  </View>
+                )}
+              </View>
             </View>
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View className="flex-row gap-3 border-t border-border-subtle px-5 py-4">
             <Pressable
-              style={[styles.button, styles.cancelButton]}
+              className="h-12 flex-1 items-center justify-center rounded-full bg-neutral-100"
               onPress={handleCancel}
             >
-              <Text style={styles.cancelButtonText}>取消</Text>
+              <Text className="text-base font-semibold text-neutral-500">取消</Text>
             </Pressable>
             <Pressable
-              style={[styles.button, styles.saveButton, !content.trim() && styles.saveButtonDisabled]}
+              testID="text-editor-save-button"
+              className={content.trim()
+                ? 'h-12 flex-1 items-center justify-center rounded-full bg-primary'
+                : 'h-12 flex-1 items-center justify-center rounded-full bg-neutral-300'}
               onPress={handleSave}
               disabled={!content.trim()}
             >
-              <Text style={[styles.saveButtonText, !content.trim() && styles.saveButtonTextDisabled]}>保存</Text>
+              <Text className={content.trim() ? 'text-base font-semibold text-white' : 'text-base font-semibold text-copy-muted'}>
+                保存
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -198,209 +215,3 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  editor: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '90%',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    flexDirection: 'column',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  typeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#F0F4FF',
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  typeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6A89CC',
-    marginLeft: 6,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A4A4A',
-  },
-  textInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#4A4A4A',
-    minHeight: 120,
-  },
-  tagsPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#E8F0FE',
-    borderRadius: 12,
-  },
-  tagText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6A89CC',
-  },
-  suggestionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    marginTop: 10,
-    gap: 6,
-  },
-  suggestionsLabel: {
-    fontSize: 12,
-    color: '#A3A3A3',
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#F0F4FF',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#C7D7F5',
-    gap: 3,
-  },
-  suggestionChipText: {
-    fontSize: 12,
-    color: '#6A89CC',
-    fontWeight: '500',
-  },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
-  },
-  cancelButton: {
-    backgroundColor: '#F5F5F5',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#737373',
-  },
-  saveButton: {
-    backgroundColor: '#6A89CC',
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#D1D1D1',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  saveButtonTextDisabled: {
-    color: '#A3A3A3',
-  },
-  commonTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginBottom: 10,
-  },
-  commonChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: '#F5F3FF',
-    borderWidth: 1,
-    borderColor: '#E0DAFA',
-  },
-  commonChipSelected: {
-    backgroundColor: '#A491D3',
-    borderColor: '#A491D3',
-  },
-  commonChipText: {
-    fontSize: 13,
-    color: '#6A5ACD',
-  },
-  commonChipTextSelected: {
-    color: '#FFFFFF',
-  },
-});

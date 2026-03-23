@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   Pressable,
-  StyleSheet,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,39 +80,32 @@ export function CloudSyncStatusButton({ uiState, onPress }: CloudSyncStatusButto
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={styles.button}
+      className="h-12 w-12 items-center justify-center rounded-full bg-background-elevated shadow-sm shadow-black/10"
       testID="cloud-sync-button"
     >
       {uiState === 'syncing' ? (
         <>
           <Animated.View
-            style={[
-              styles.syncRing,
-              { transform: [{ rotate: rotation }] },
-            ]}
+            className="absolute h-7 w-7 rounded-full border-2 border-[rgba(106,137,204,0.18)] border-t-primary"
+            style={{ transform: [{ rotate: rotation }] }}
             testID="cloud-sync-spinner"
           />
           <Animated.View
-            style={[
-              styles.cloudWrap,
-              { transform: [{ scale: breathe }] },
-            ]}
+            className="h-6 w-6 items-center justify-center"
+            style={{ transform: [{ scale: breathe }] }}
+            testID="cloud-sync-shell"
           >
             <Ionicons name="cloud-outline" size={22} color="#6A89CC" />
           </Animated.View>
         </>
       ) : (
         <>
-          <View style={styles.cloudWrap}>
+          <View className="h-6 w-6 items-center justify-center" testID="cloud-sync-shell">
             <Ionicons name="cloud-outline" size={22} color="#6A89CC" />
           </View>
           <View
-            style={[
-              styles.statusDot,
-              uiState === 'synced' && { backgroundColor: DOT_COLORS.synced },
-              uiState === 'pending' && { backgroundColor: DOT_COLORS.pending },
-              uiState === 'failed' && { backgroundColor: DOT_COLORS.failed },
-            ]}
+            className="absolute right-[11px] top-[11px] h-[10px] w-[10px] rounded-full border-2 border-white"
+            style={{ backgroundColor: DOT_COLORS[uiState] }}
             testID={`cloud-sync-dot-${uiState}`}
           />
         </>
@@ -121,44 +113,3 @@ export function CloudSyncStatusButton({ uiState, onPress }: CloudSyncStatusButto
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cloudWrap: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  syncRing: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(106, 137, 204, 0.18)',
-    borderTopColor: '#6A89CC',
-  },
-  statusDot: {
-    position: 'absolute',
-    top: 11,
-    right: 11,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-});

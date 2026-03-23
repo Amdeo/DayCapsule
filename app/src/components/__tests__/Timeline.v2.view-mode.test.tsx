@@ -13,7 +13,7 @@ const mockSetSearchQuery = jest.fn();
 const mockSetFilterType = jest.fn();
 const mockSetFilterDateRange = jest.fn();
 
-const mockEntries: Entry[] = [
+const defaultEntries: Entry[] = [
   {
     id: 'entry-1',
     type: 'text',
@@ -31,6 +31,7 @@ const mockEntries: Entry[] = [
     syncStatus: 'synced',
   },
 ];
+let mockEntries: Entry[] = [...defaultEntries];
 
 let mockSelectedTags: string[] = [];
 let mockSearchQuery = '';
@@ -147,6 +148,7 @@ jest.mock('../EntryCard', () => ({
 describe('Timeline view mode switching', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockEntries = [...defaultEntries];
     mockSelectedTags = [];
     mockSearchQuery = '';
     mockFilterType = 'all';
@@ -190,6 +192,15 @@ describe('Timeline view mode switching', () => {
     expect(screen.getByTestId('loader-dot-text')).toHaveStyle({ backgroundColor: '#A491D3' });
     expect(screen.getByTestId('loader-dot-photo')).toHaveStyle({ backgroundColor: '#77C9D4' });
     expect(screen.getByTestId('loader-dot-voice')).toHaveStyle({ backgroundColor: '#F5A623' });
+  });
+
+  it('renders the extracted empty state shell when there are no entries', () => {
+    mockEntries = [];
+
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(screen.getByText('还没有记忆')).toBeTruthy();
   });
 
   it('clears only the pressed tag chip instead of clearing all tags', () => {

@@ -2,6 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { PanResponder, Text } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
+import { render } from '@testing-library/react-native';
 
 import { FABMenu } from '../FABMenu';
 
@@ -137,5 +138,15 @@ describe('FABMenu peek-hide', () => {
 
     withTimingSpy.mockRestore();
     withSpringSpy.mockRestore();
+  });
+
+  it('keeps the main FAB shell at 56x56 after migration', () => {
+    const { getByTestId } = render(<FABMenu onSelect={jest.fn()} />);
+
+    expect(getByTestId('fab-main-button')).toHaveStyle({
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+    });
   });
 });

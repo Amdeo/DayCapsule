@@ -57,6 +57,13 @@ describe('EntryActionSheet', () => {
     expect(getByText('取消')).toBeTruthy();
   });
 
+  it('renders the bottom sheet panel shell when visible', () => {
+    const { getByTestId } = render(<EntryActionSheet {...baseProps} visible={true} />);
+
+    expect(getByTestId('action-sheet-panel')).toBeTruthy();
+    expect(getByTestId('action-sheet-option-group')).toBeTruthy();
+  });
+
   it('does not render a standalone type bar', () => {
     const { queryByTestId } = render(<EntryActionSheet {...baseProps} visible={true} />);
 
@@ -115,6 +122,15 @@ describe('EntryActionSheet', () => {
 
     expect(getByText('确认删除这条记录？')).toBeTruthy();
     expect(getByText('此操作无法撤销')).toBeTruthy();
+  });
+
+  it('keeps the panel shell mounted in confirm mode', () => {
+    const { getByTestId } = render(<EntryActionSheet {...baseProps} visible={true} />);
+
+    fireEvent.press(getByTestId('action-sheet-delete'));
+
+    expect(getByTestId('action-sheet-panel')).toBeTruthy();
+    expect(getByTestId('action-sheet-handle')).toBeTruthy();
   });
 
   it('calls onDelete and onClose when confirm delete is pressed', () => {

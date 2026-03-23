@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import { logger } from '@/src/utils/logger';
 
@@ -42,13 +42,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <View style={styles.container}>
-          <Text style={styles.title}>应用遇到错误</Text>
-          <Text style={styles.message}>
+        <View testID="error-boundary-root" className="flex-1 items-center justify-center bg-[#121212] px-5">
+          <Text className="mb-4 text-2xl font-bold text-white">应用遇到错误</Text>
+          <Text className="mb-6 text-center text-sm text-[#AAAAAA]">
             {this.state.error?.message || '未知错误'}
           </Text>
-          <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-            <Text style={styles.buttonText}>重试</Text>
+          <TouchableOpacity
+            testID="error-boundary-reset"
+            className="rounded-lg bg-[#6200ee] px-6 py-3"
+            onPress={this.handleReset}
+          >
+            <Text className="text-base font-semibold text-white">重试</Text>
           </TouchableOpacity>
         </View>
       );
@@ -57,36 +61,3 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#121212',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#FFFFFF',
-  },
-  message: {
-    fontSize: 14,
-    marginBottom: 24,
-    textAlign: 'center',
-    color: '#AAAAAA',
-  },
-  button: {
-    backgroundColor: '#6200ee',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

@@ -9,7 +9,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Pressable,
   TouchableOpacity,
   ScrollView,
@@ -29,6 +28,9 @@ interface SearchOverlayProps {
 
 type FilterType = 'all' | 'text' | 'photo' | 'voice';
 type DateRange = 'all' | 'today' | 'week' | 'month';
+
+const SEARCH_SECTION_LABEL_CLASS_NAME =
+  'text-[11px] font-bold uppercase tracking-[0.8px] text-copy-muted';
 
 export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps) {
   const {
@@ -122,21 +124,25 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
 
   return (
     <Animated.View
+      testID="search-overlay-root"
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
-      style={styles.overlay}
+      className="absolute inset-0 z-[100] bg-home-background"
     >
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.container}>
+        <View className="flex-1 pt-[60px]">
           {/* 搜索输入框 */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchBox}>
+          <View className="mb-5 px-4">
+            <View
+              testID="search-overlay-input-shell"
+              className="h-[50px] flex-row items-center gap-[10px] rounded-full bg-background-elevated px-4 shadow-sm shadow-black/10"
+            >
               <Ionicons name="search" size={20} color="#A3A3A3" />
               <TextInput
-                style={styles.input}
+                className="flex-1 text-base text-home-mask"
                 placeholder="搜索记忆..."
                 placeholderTextColor="#A3A3A3"
                 value={localQuery}
@@ -155,20 +161,21 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
 
           {/* 筛选内容（可滚动） */}
           <ScrollView
-            style={styles.scroll}
+            className="flex-1 px-4"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {/* 类型 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>类型</Text>
-              <View style={styles.chips}>
+            <View className="mb-7">
+              <Text className={`${SEARCH_SECTION_LABEL_CLASS_NAME} mb-3`}>类型</Text>
+              <View className="flex-row flex-wrap gap-2">
                 {typeFilters.map((opt) => {
                   const active = localType === opt.key;
                   return (
                     <Pressable
                       key={opt.key}
-                      style={[styles.typeChip, active && { backgroundColor: opt.color }]}
+                      className="flex-row items-center gap-1.5 rounded-full bg-overlay-muted px-[14px] py-[9px]"
+                      style={active ? { backgroundColor: opt.color } : undefined}
                       onPress={() => setLocalType(opt.key)}
                     >
                       <Ionicons
@@ -176,7 +183,7 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
                         size={15}
                         color={active ? '#FFFFFF' : opt.color}
                       />
-                      <Text style={[styles.typeChipText, active && styles.activeText]}>
+                      <Text className={active ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-neutral-500'}>
                         {opt.label}
                       </Text>
                     </Pressable>
@@ -186,18 +193,20 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
             </View>
 
             {/* 时间 */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>时间</Text>
-              <View style={styles.chips}>
+            <View className="mb-7">
+              <Text className={`${SEARCH_SECTION_LABEL_CLASS_NAME} mb-3`}>时间</Text>
+              <View className="flex-row flex-wrap gap-2">
                 {dateOptions.map((opt) => {
                   const active = localDate === opt.key;
                   return (
                     <Pressable
                       key={opt.key}
-                      style={[styles.dateChip, active && styles.dateChipActive]}
+                      className={active
+                        ? 'rounded-full bg-primary px-4 py-[9px]'
+                        : 'rounded-full bg-overlay-muted px-4 py-[9px]'}
                       onPress={() => setLocalDate(opt.key)}
                     >
-                      <Text style={[styles.dateChipText, active && styles.activeText]}>
+                      <Text className={active ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-neutral-500'}>
                         {opt.label}
                       </Text>
                     </Pressable>
@@ -207,31 +216,35 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
             </View>
 
             {/* 标签 */}
-            <View style={styles.section}>
-              <View style={styles.sectionRow}>
-                <Text style={styles.sectionLabel}>标签</Text>
+            <View className="mb-7">
+              <View className="mb-3 flex-row items-center justify-between">
+                <Text className={SEARCH_SECTION_LABEL_CLASS_NAME}>标签</Text>
                 {localTags.length > 0 && (
                   <TouchableOpacity onPress={() => setLocalTags([])}>
-                    <Text style={styles.clearTagsText}>清除</Text>
+                    <Text className="text-[13px] font-semibold text-primary">清除</Text>
                   </TouchableOpacity>
                 )}
               </View>
               {allTagsList.length === 0 && extraCommonTags.length === 0 ? (
-                <Text style={styles.emptyTagsHint}>暂无标签，在编辑记录时添加</Text>
+                <Text className="text-[13px] italic text-copy-hint">暂无标签，在编辑记录时添加</Text>
               ) : (
-                <View style={styles.chips}>
+                <View className="flex-row flex-wrap gap-2">
                   {allTagsList.map((tag) => {
                     const selected = localTags.includes(tag);
                     return (
                       <Pressable
                         key={tag}
-                        style={[styles.tagChip, selected && styles.tagChipActive]}
+                        className={selected
+                          ? 'flex-row items-center rounded-full bg-primary px-[14px] py-[9px]'
+                          : 'flex-row items-center rounded-full bg-overlay-muted px-[14px] py-[9px]'}
                         onPress={() => handleToggleTag(tag)}
                       >
                         {selected && (
-                          <Ionicons name="checkmark" size={13} color="#FFFFFF" style={{ marginRight: 3 }} />
+                          <View className="mr-1">
+                            <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                          </View>
                         )}
-                        <Text style={[styles.tagChipText, selected && styles.activeText]}>
+                        <Text className={selected ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-copy-primary'}>
                           #{tag}
                         </Text>
                       </Pressable>
@@ -242,13 +255,17 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
                     return (
                       <Pressable
                         key={tag}
-                        style={[styles.tagChip, styles.tagChipCommon, selected && styles.tagChipActive]}
+                        className={selected
+                          ? 'flex-row items-center rounded-full bg-primary px-[14px] py-[9px]'
+                          : 'flex-row items-center rounded-full border border-border-subtle bg-overlay-subtle px-[14px] py-[9px]'}
                         onPress={() => handleToggleTag(tag)}
                       >
                         {selected && (
-                          <Ionicons name="checkmark" size={13} color="#FFFFFF" style={{ marginRight: 3 }} />
+                          <View className="mr-1">
+                            <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                          </View>
                         )}
-                        <Text style={[styles.tagChipText, styles.tagChipCommonText, selected && styles.activeText]}>
+                        <Text className={selected ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-copy-muted'}>
                           #{tag}
                         </Text>
                       </Pressable>
@@ -260,23 +277,31 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
 
             {/* 重置 */}
             {hasActiveFilters && (
-              <Pressable style={styles.resetButton} onPress={handleReset}>
+              <Pressable
+                testID="search-overlay-reset-button"
+                className="mb-2 flex-row items-center justify-center gap-1.5 rounded-xl bg-home-filter py-3"
+                onPress={handleReset}
+              >
                 <Ionicons name="refresh" size={15} color="#6A89CC" />
-                <Text style={styles.resetText}>重置全部</Text>
+                <Text className="text-sm font-semibold text-primary">重置全部</Text>
               </Pressable>
             )}
 
-            <View style={{ height: 100 }} />
+            <View className="h-[100px]" />
           </ScrollView>
 
           {/* 底部固定按钮 */}
-          <View style={styles.footer}>
-            <Pressable style={styles.cancelButton} onPress={handleCancel}>
-              <Text style={styles.cancelText}>取消</Text>
+          <View className="flex-row gap-3 border-t border-border-overlay bg-home-background px-4 pb-8 pt-4">
+            <Pressable className="h-[50px] flex-1 items-center justify-center rounded-full bg-overlay-muted" onPress={handleCancel}>
+              <Text className="text-base font-semibold text-neutral-500">取消</Text>
             </Pressable>
-            <Pressable style={styles.searchButton} onPress={handleSearch}>
+            <Pressable
+              testID="search-overlay-submit-button"
+              className="h-[50px] flex-[2] flex-row items-center justify-center gap-2 rounded-full bg-primary"
+              onPress={handleSearch}
+            >
               <Ionicons name="search" size={18} color="#FFFFFF" />
-              <Text style={styles.searchButtonText}>搜索</Text>
+              <Text className="text-base font-bold text-white">搜索</Text>
             </Pressable>
           </View>
         </View>
@@ -284,183 +309,3 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: '#FAF8F5',
-    zIndex: 100,
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  searchSection: {
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 50,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1A1A1A',
-  },
-  scroll: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  section: {
-    marginBottom: 28,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#A3A3A3',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 12,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
-    gap: 6,
-  },
-  typeChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#737373',
-  },
-  dateChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
-  },
-  dateChipActive: {
-    backgroundColor: '#6A89CC',
-  },
-  dateChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#737373',
-  },
-  activeText: {
-    color: '#FFFFFF',
-  },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
-  },
-  tagChipActive: {
-    backgroundColor: '#6A89CC',
-  },
-  tagChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4A4A4A',
-  },
-  clearTagsText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6A89CC',
-  },
-  emptyTagsHint: {
-    fontSize: 13,
-    color: '#C0C0C0',
-    fontStyle: 'italic',
-  },
-  tagChipCommon: {
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  tagChipCommonText: {
-    color: '#A3A3A3',
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    backgroundColor: '#F0F4FF',
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  resetText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6A89CC',
-  },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
-    backgroundColor: '#FAF8F5',
-  },
-  cancelButton: {
-    flex: 1,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 25,
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#737373',
-  },
-  searchButton: {
-    flex: 2,
-    height: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#6A89CC',
-    borderRadius: 25,
-    gap: 8,
-  },
-  searchButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-});

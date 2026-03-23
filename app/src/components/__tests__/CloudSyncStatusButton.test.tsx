@@ -14,6 +14,7 @@ describe('CloudSyncStatusButton', () => {
   it('renders static cloud with green dot for synced state', () => {
     const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
 
+    expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
     expect(screen.getByTestId('cloud-sync-dot-synced')).toBeTruthy();
   });
 
@@ -32,6 +33,7 @@ describe('CloudSyncStatusButton', () => {
   it('renders animated cloud shell for syncing state', () => {
     const screen = render(<CloudSyncStatusButton uiState="syncing" onPress={jest.fn()} />);
 
+    expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
     expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
   });
 

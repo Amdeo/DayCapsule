@@ -157,6 +157,14 @@ describe('CalendarView full-card behavior', () => {
     latestCalendarTimelineItemProps = undefined;
   });
 
+  it('renders calendar view shell and content header', () => {
+    const screen = render(<CalendarView {...calendarProps} />);
+
+    expect(screen.getByTestId('calendar-view-root')).toBeTruthy();
+    expect(screen.getByTestId('calendar-grid')).toBeTruthy();
+    expect(screen.getByTestId('calendar-content-header')).toBeTruthy();
+  });
+
   it('默认状态下显示当月记录且保留媒体卡片信息', () => {
     const { getByText, queryByText, getByTestId } = render(
       <CalendarView {...calendarProps} />
