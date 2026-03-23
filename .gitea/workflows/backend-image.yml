@@ -1,12 +1,16 @@
 name: Backend Image Bundle
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号（留空则使用 sha-<shortsha>）"
+        required: false
+        default: ""
+        type: string
+
+env:
+  PACKAGE_REGISTRY: ${{ vars.PACKAGE_REGISTRY }}
 
 jobs:
   build-backend-image:
@@ -26,6 +30,9 @@ jobs:
         with:
           go-version-file: backend/go.mod
 
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: 运行后端测试
         working-directory: backend
         run: go test ./...
@@ -36,58 +43,47 @@ jobs:
       - name: 计算镜像元数据
         id: meta
         env:
-          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          PACKAGE_REGISTRY: ${{ vars.PACKAGE_REGISTRY }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ -z "${REGISTRY_URL:-}" ]; then
-            echo "REGISTRY_URL secret is required" >&2
+          if [ -z "${PACKAGE_REGISTRY:-}" ]; then
+            echo "PACKAGE_REGISTRY variable is required" >&2
             exit 1
           fi
 
-          owner="${GITHUB_REPOSITORY%%/*}"
+          owner="${GITHUB_REPOSITORY_OWNER}"
           short_sha="${GITHUB_SHA::7}"
-          image_repo="${REGISTRY_URL}/${owner}/daycapsule-backend"
+          image_repo="${PACKAGE_REGISTRY}/${owner}/daycapsule-backend"
 
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            version="${GITHUB_REF#refs/tags/}"
-            image_tag="${version}"
-            extra_tag="sha-${short_sha}"
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            version="${INPUT_VERSION}"
           else
             version="sha-${short_sha}"
-            image_tag="latest"
-            extra_tag="${version}"
           fi
 
-          echo "owner=$owner" >> "$GITHUB_OUTPUT"
-          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
-          echo "image_ref=${image_repo}:${image_tag}" >> "$GITHUB_OUTPUT"
-          echo "extra_image_ref=${image_repo}:${extra_tag}" >> "$GITHUB_OUTPUT"
+          echo "image_ref=${image_repo}:${version}" >> "$GITHUB_OUTPUT"
+          echo "latest_ref=${image_repo}:latest" >> "$GITHUB_OUTPUT"
 
-      - name: 登录 Gitea Registry
-        env:
-          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-        run: |
-          if [ -z "${REGISTRY_USERNAME:-}" ] || [ -z "${REGISTRY_PASSWORD:-}" ]; then
-            echo "REGISTRY_USERNAME and REGISTRY_PASSWORD secrets are required" >&2
-            exit 1
-          fi
-
-          echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_URL" --username "$REGISTRY_USERNAME" --password-stdin
+      - name: 登录 Gitea 包仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.PACKAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PKG_TOKEN }}
 
       - name: 构建镜像
         run: |
           docker build \
             -t "${{ steps.meta.outputs.image_ref }}" \
-            -t "${{ steps.meta.outputs.extra_image_ref }}" \
+            -t "${{ steps.meta.outputs.latest_ref }}" \
             backend
 
       - name: 推送镜像
         run: |
           docker push "${{ steps.meta.outputs.image_ref }}"
-          docker push "${{ steps.meta.outputs.extra_image_ref }}"
+          docker push "${{ steps.meta.outputs.latest_ref }}"
 
       - name: 生成部署目录
         id: bundle

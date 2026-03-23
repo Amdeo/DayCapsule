@@ -164,15 +164,24 @@ Client -> Host:8080 -> nginx container:80 -> api container:3000
 
 ### 需要配置的 Gitea Secrets
 
-在 Gitea 仓库里配置以下 secrets：
+在 Gitea 仓库里配置以下变量和 secrets：
 
-| Secret | 说明 |
+| 类型 | 名称 | 说明 |
 | --- | --- |
-| `REGISTRY_URL` | Gitea Container Registry 主机名，例如 `git.example.com` |
-| `REGISTRY_USERNAME` | 用于推送镜像的用户名 |
-| `REGISTRY_PASSWORD` | 用于推送镜像的 PAT 或密码 |
+| Variable | `PACKAGE_REGISTRY` | Gitea 包仓库地址，例如 `gitea.example.com:3000` |
+| Secret | `PKG_TOKEN` | 具备推送包权限的 PAT |
 
-建议优先使用专门的 PAT，而不是依赖默认工作流 token。
+workflow 会参考 Gitea 包仓库方式，使用 `github.actor` + `PKG_TOKEN` 登录并推送镜像。
+
+### 手动触发参数
+
+当前 workflow 只支持手动触发。
+
+可选输入：
+
+| 输入 | 是否必填 | 说明 |
+| --- | --- | --- |
+| `version` | 否 | 留空时自动使用 `sha-<shortsha>`，也可以手动填写版本号 |
 
 ### 服务器部署步骤
 
