@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-23-shell-fallback-nativewind-migration-design.md`
 
+**Status:** 已完成实现、验证与文档回填
+
 ---
 
 ## 变更记录
@@ -17,6 +19,11 @@
 - 2026-03-23：基于已批准 spec 创建最终批实现计划，范围固定为 `app/app/_layout.tsx`、`app/app/(tabs)/_layout.tsx`、`app/app/(tabs)/two.tsx`、`app/app/+not-found.tsx`、`app/app/modal.tsx`、`src/components/ErrorBoundary.tsx`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：Chunk 1 完成，提交 `5401a70 refactor: migrate shell fallback pages to nativewind`。
+- 2026-03-23：Chunk 2 完成，提交 `00d854a refactor: migrate error boundary to nativewind`。
+- 2026-03-23：Chunk 3 完成，提交 `d383d61 refactor: migrate tabs layout to nativewind`。
+- 2026-03-23：Chunk 4 完成，提交 `ce8b5f9 refactor: migrate root layout to nativewind`。
+- 2026-03-23：Chunk 5 完成，最终批相关测试、全量 lint、typecheck 与全量测试全部通过。
 
 ## File Structure
 
@@ -69,7 +76,7 @@
 - Modify: `app/app/+not-found.tsx`
 - Modify: `app/app/modal.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定 3 个模板页根壳层**
+- [x] **Step 1: 先写失败测试，锁定 3 个模板页根壳层**
 
 新增 `app/app/__tests__/shell-fallback-pages.test.tsx`，至少覆盖：
 
@@ -79,13 +86,13 @@
 
 并保留现有模板文案断言。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/shell-fallback-pages.test.tsx`
 
 Expected: FAIL，原因应包含上述 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现模板页 NativeWind 迁移**
+- [x] **Step 3: 最小实现模板页 NativeWind 迁移**
 
 在 `app/app/(tabs)/two.tsx`、`app/app/+not-found.tsx`、`app/app/modal.tsx`：
 
@@ -96,7 +103,7 @@ Expected: FAIL，原因应包含上述 testID 尚不存在。
   - `not-found-root`
   - `modal-root`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/shell-fallback-pages.test.tsx`
 
@@ -114,7 +121,7 @@ Run: `cd app && npm run lint -- app/(tabs)/two.tsx app/+not-found.tsx app/modal.
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/app/(tabs)/two.tsx app/app/+not-found.tsx app/app/modal.tsx app/app/__tests__/shell-fallback-pages.test.tsx
@@ -130,7 +137,7 @@ git commit -m "refactor: migrate shell fallback pages to nativewind"
 - Create: `app/src/components/__tests__/ErrorBoundary.test.tsx`
 - Modify: `app/src/components/ErrorBoundary.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定报错态壳层和重试按钮**
+- [x] **Step 1: 先写失败测试，锁定报错态壳层和重试按钮**
 
 新增 `app/src/components/__tests__/ErrorBoundary.test.tsx`，至少覆盖：
 
@@ -138,13 +145,13 @@ git commit -m "refactor: migrate shell fallback pages to nativewind"
 - 显示错误信息
 - 点击 `error-boundary-reset` 后恢复正常内容
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/ErrorBoundary.test.tsx`
 
 Expected: FAIL，原因应包含 `error-boundary-root` / `error-boundary-reset` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `ErrorBoundary` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `ErrorBoundary` NativeWind 迁移**
 
 在 `app/src/components/ErrorBoundary.tsx`：
 
@@ -158,7 +165,7 @@ Expected: FAIL，原因应包含 `error-boundary-root` / `error-boundary-reset` 
   - `error-boundary-root`
   - `error-boundary-reset`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/ErrorBoundary.test.tsx`
 
@@ -174,7 +181,7 @@ Run: `cd app && npm run lint -- src/components/ErrorBoundary.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/ErrorBoundary.tsx app/src/components/__tests__/ErrorBoundary.test.tsx
@@ -190,20 +197,20 @@ git commit -m "refactor: migrate error boundary to nativewind"
 - Create: `app/app/(tabs)/__tests__/_layout.test.tsx`
 - Modify: `app/app/(tabs)/_layout.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定 tab icon 壳层**
+- [x] **Step 1: 先写失败测试，锁定 tab icon 壳层**
 
 新增 `app/app/(tabs)/__tests__/_layout.test.tsx`，mock `Tabs` 后至少覆盖：
 
 - 调用 `tabBarIcon` 时能找到 `tab-layout-icon-list`
 - 调用 `tabBarIcon` 时能找到 `tab-layout-icon-gear`
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/(tabs)/__tests__/_layout.test.tsx`
 
 Expected: FAIL，原因应包含 icon testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 tabs layout NativeWind 迁移**
+- [x] **Step 3: 最小实现 tabs layout NativeWind 迁移**
 
 在 `app/app/(tabs)/_layout.tsx`：
 
@@ -211,7 +218,7 @@ Expected: FAIL，原因应包含 icon testID 尚不存在。
 - 用外层 `View className` 表达 `marginBottom: -3`
 - 补图标壳层 `testID`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/(tabs)/__tests__/_layout.test.tsx`
 
@@ -227,7 +234,7 @@ Run: `cd app && npm run lint -- app/(tabs)/_layout.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/app/(tabs)/_layout.tsx app/app/(tabs)/__tests__/_layout.test.tsx
@@ -243,7 +250,7 @@ git commit -m "refactor: migrate tabs layout to nativewind"
 - Modify: `app/app/__tests__/_layout.photo-upload.test.tsx`
 - Modify: `app/app/_layout.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根布局壳层**
+- [x] **Step 1: 先写失败测试，锁定根布局壳层**
 
 在 `app/app/__tests__/_layout.photo-upload.test.tsx` 增加至少一条断言：
 
@@ -253,13 +260,13 @@ expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
 
 必要时调整 `GestureHandlerRootView` mock，使其能透传 `testID`。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
 Expected: FAIL，原因应包含 `root-layout-shell` 尚不存在。
 
-- [ ] **Step 3: 最小实现 root layout NativeWind 迁移**
+- [x] **Step 3: 最小实现 root layout NativeWind 迁移**
 
 在 `app/app/_layout.tsx`：
 
@@ -267,7 +274,7 @@ Expected: FAIL，原因应包含 `root-layout-shell` 尚不存在。
 - 仅把 `GestureHandlerRootView style={{ flex: 1 }}` 改成 `className="flex-1"`
 - 补 `testID="root-layout-shell"`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
@@ -283,7 +290,7 @@ Run: `cd app && npm run lint -- app/_layout.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/app/_layout.tsx app/app/__tests__/_layout.photo-upload.test.tsx
@@ -298,7 +305,7 @@ git commit -m "refactor: migrate root layout to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-shell-fallback-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-shell-fallback-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑最终批相关测试集合**
+- [x] **Step 1: 先跑最终批相关测试集合**
 
 Run:
 
@@ -312,7 +319,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -323,7 +330,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -333,7 +340,7 @@ Expected: PASS
 - allowlist 已清零
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-shell-fallback-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-shell-fallback-nativewind-migration.md
@@ -345,3 +352,28 @@ git commit -m "docs: backfill shell fallback nativewind migration"
 - 已按 chunk 检查最终批边界、现有测试基线、allowlist 清零路径和最终验收命令
 - 6 个剩余文件都可以独立完成“失败测试 -> 最小实现 -> lint 收口 -> 提交”的闭环
 - 未发现阻塞执行的问题
+
+## 执行结果
+
+- 已完成 [app/app/(tabs)/two.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/two.tsx)、[app/app/+not-found.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/+not-found.tsx)、[app/app/modal.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/modal.tsx)、[ErrorBoundary.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/ErrorBoundary.tsx)、[app/app/(tabs)/_layout.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/_layout.tsx)、[app/app/_layout.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/_layout.tsx) 的 NativeWind 迁移与 allowlist 清零
+- 已新增 [shell-fallback-pages.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/__tests__/shell-fallback-pages.test.tsx)、[_layout.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/(tabs)/__tests__/_layout.test.tsx)、[ErrorBoundary.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/ErrorBoundary.test.tsx)
+- 已扩充 [_layout.photo-upload.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/app/__tests__/_layout.photo-upload.test.tsx)
+- 四个实现提交已按顺序落地：
+  - `5401a70 refactor: migrate shell fallback pages to nativewind`
+  - `00d854a refactor: migrate error boundary to nativewind`
+  - `d383d61 refactor: migrate tabs layout to nativewind`
+  - `ce8b5f9 refactor: migrate root layout to nativewind`
+- [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 已清空：
+  - `legacyFiles: []`
+  - `ruleBaselines: {}`
+
+## 验证记录
+
+- `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/shell-fallback-pages.test.tsx src/components/__tests__/ErrorBoundary.test.tsx app/(tabs)/__tests__/_layout.test.tsx app/__tests__/_layout.photo-upload.test.tsx`：PASS，4 个 suite / 9 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，65 个 suite / 378 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
