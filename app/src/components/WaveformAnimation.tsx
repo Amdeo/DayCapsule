@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,10 +17,7 @@ interface WaveformAnimationProps {
 const WAVE_COUNT = 50;
 const BAR_WIDTH = 2;
 const BAR_GAP = 1;
-const BAR_RADIUS = 1;
-const MIN_HEIGHT = 3;
 const MAX_HEIGHT = 18;
-const CONTAINER_HEIGHT = 28;
 const BASE_WAVE = [4, 6, 9, 7, 5, 8, 11, 8, 6, 10, 7, 5];
 
 // 每个 bar 自管理 useSharedValue，避免在父组件循环中调用 Hook（违反 Rules of Hooks）
@@ -30,6 +27,7 @@ interface WaveBarProps {
 }
 
 const WaveBar = React.memo(function WaveBar({ isRecording, color }: WaveBarProps) {
+  const testID = React.useRef(`waveform-bar-${Math.random().toString(36).slice(2)}`).current;
   const barIndex = React.useRef(Math.floor(Math.random() * BASE_WAVE.length)).current;
   const baseHeight = BASE_WAVE[barIndex];
   const height = useSharedValue(baseHeight);
@@ -63,7 +61,13 @@ const WaveBar = React.memo(function WaveBar({ isRecording, color }: WaveBarProps
     backgroundColor: color,
   }));
 
-  return <Animated.View style={[styles.bar, animatedStyle]} />;
+  return (
+    <Animated.View
+      testID={testID}
+      className="rounded-[1px]"
+      style={[{ width: BAR_WIDTH }, animatedStyle]}
+    />
+  );
 });
 
 const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
@@ -71,29 +75,16 @@ const WaveformAnimation: React.FC<WaveformAnimationProps> = ({
   color = '#F5A623',
 }) => {
   return (
-    <View style={styles.container}>
+    <View
+      className="h-7 flex-row items-center justify-center overflow-hidden"
+      style={{ gap: BAR_GAP }}
+      testID="waveform-animation-root"
+    >
       {Array.from({ length: WAVE_COUNT }, (_, index) => (
         <WaveBar key={index} isRecording={isRecording} color={color} />
       ))}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    height: CONTAINER_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: BAR_GAP,
-    // 防止固定宽度（50根×3px=149px）超出父容器时覆盖相邻元素
-    // 注意：此属性在 iOS 上触发 clipsToBounds，在 Android 上禁用 elevation 阴影
-    overflow: 'hidden',
-  },
-  bar: {
-    width: BAR_WIDTH,
-    borderRadius: BAR_RADIUS,
-  },
-});
 
 export default WaveformAnimation;

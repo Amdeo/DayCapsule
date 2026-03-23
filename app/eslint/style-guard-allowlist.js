@@ -14,7 +14,6 @@ module.exports = {
     'src/components/ImageViewer.tsx',
     'src/components/PhotoGrid.tsx',
     'src/components/VoiceRecorder.tsx',
-    'src/components/WaveformAnimation.tsx',
   ],
   // 按文件+按规则记录实例级 fingerprint baseline，仅放行现存违规实例
   ruleBaselines: {
@@ -69,10 +68,6 @@ module.exports = {
     'src/components/VoiceRecorder.tsx': {
       'style-guard/no-new-stylesheet-create': ['ab721f944770'],
       'style-guard/no-static-inline-styles': ['601d8ff9b02a'],
-    },
-    'src/components/WaveformAnimation.tsx': {
-      'style-guard/no-new-stylesheet-create': ['9dbcfd23249c'],
-      'style-guard/no-static-inline-styles': [],
     },
   },
 };
