@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-23-timeline-interaction-nativewind-migration-design.md`
 
+**Status:** 已完成实现、验证与文档回填
+
 ---
 
 ## 变更记录
@@ -17,6 +19,11 @@
 - 2026-03-23：基于已批准 spec 创建第八批实现计划，范围固定为 `BottomToolbar`、`CalendarTimelineItem`、`CalendarView`、`FilterBar`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：Chunk 1 完成，提交 `9627b37 refactor: migrate bottom toolbar to nativewind`。
+- 2026-03-23：Chunk 2 完成，提交 `7fc0eb2 refactor: migrate calendar timeline item to nativewind`。
+- 2026-03-23：Chunk 3 完成，提交 `57cc2ca refactor: migrate calendar view to nativewind`。
+- 2026-03-23：Chunk 4 完成，提交 `e1db1c7 refactor: migrate filter bar to nativewind`。
+- 2026-03-23：Chunk 5 完成，第八批相关测试、全量 lint、typecheck 与全量测试全部通过。
 
 ## File Structure
 
@@ -66,7 +73,7 @@
 - Create: `app/src/components/__tests__/BottomToolbar.test.tsx`
 - Modify: `app/src/components/BottomToolbar.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层和 3 个按钮**
+- [x] **Step 1: 先写失败测试，锁定根壳层和 3 个按钮**
 
 新增 `app/src/components/__tests__/BottomToolbar.test.tsx`，至少包含：
 
@@ -86,13 +93,13 @@ it('renders toolbar shell and dispatches button types', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BottomToolbar.test.tsx`
 
 Expected: FAIL，原因应包含 `bottom-toolbar-root` 或按钮 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `BottomToolbar` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `BottomToolbar` NativeWind 迁移**
 
 在 `app/src/components/BottomToolbar.tsx`：
 
@@ -110,7 +117,7 @@ Expected: FAIL，原因应包含 `bottom-toolbar-root` 或按钮 testID 尚不�
   - `bottom-toolbar-button-photo`
   - `bottom-toolbar-button-voice`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BottomToolbar.test.tsx`
 
@@ -126,7 +133,7 @@ Run: `cd app && npm run lint -- src/components/BottomToolbar.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/BottomToolbar.tsx app/src/components/__tests__/BottomToolbar.test.tsx
@@ -142,7 +149,7 @@ git commit -m "refactor: migrate bottom toolbar to nativewind"
 - Create: `app/src/components/__tests__/CalendarTimelineItem.test.tsx`
 - Modify: `app/src/components/CalendarTimelineItem.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层、时间和透传**
+- [x] **Step 1: 先写失败测试，锁定根壳层、时间和透传**
 
 新增 `app/src/components/__tests__/CalendarTimelineItem.test.tsx`，至少包含：
 
@@ -160,13 +167,13 @@ it('renders timeline item shell and forwards calendar props', () => {
 
 再补一条断言，确认 `EntryCard` 收到 `variant="calendar"` 与 `calendarDensity="default"`。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CalendarTimelineItem.test.tsx`
 
 Expected: FAIL，原因应包含 `calendar-timeline-item-root` 等 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `CalendarTimelineItem` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `CalendarTimelineItem` NativeWind 迁移**
 
 在 `app/src/components/CalendarTimelineItem.tsx`：
 
@@ -192,7 +199,7 @@ Expected: FAIL，原因应包含 `calendar-timeline-item-root` 等 testID 尚不
   - `calendar-timeline-item-dot`
   - `calendar-timeline-item-time`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CalendarTimelineItem.test.tsx`
 
@@ -208,7 +215,7 @@ Run: `cd app && npm run lint -- src/components/CalendarTimelineItem.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/CalendarTimelineItem.tsx app/src/components/__tests__/CalendarTimelineItem.test.tsx
@@ -224,7 +231,7 @@ git commit -m "refactor: migrate calendar timeline item to nativewind"
 - Modify: `app/src/components/CalendarView.tsx`
 - Modify: `app/src/components/__tests__/CalendarView.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层和关键结构**
+- [x] **Step 1: 先写失败测试，锁定根壳层和关键结构**
 
 在 `app/src/components/__tests__/CalendarView.test.tsx` 增加至少一条断言：
 
@@ -240,13 +247,13 @@ it('renders calendar view shell and content header', () => {
 
 保留现有月份切换、日期选中和完整卡片能力测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CalendarView.test.tsx`
 
 Expected: FAIL，原因应包含 `calendar-view-root` 等 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `CalendarView` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `CalendarView` NativeWind 迁移**
 
 在 `app/src/components/CalendarView.tsx`：
 
@@ -273,7 +280,7 @@ Expected: FAIL，原因应包含 `calendar-view-root` 等 testID 尚不存在。
   - `calendar-grid`
   - `calendar-content-header`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/CalendarView.test.tsx`
 
@@ -289,7 +296,7 @@ Run: `cd app && npm run lint -- src/components/CalendarView.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/CalendarView.tsx app/src/components/__tests__/CalendarView.test.tsx
@@ -305,7 +312,7 @@ git commit -m "refactor: migrate calendar view to nativewind"
 - Create: `app/src/components/__tests__/FilterBar.test.tsx`
 - Modify: `app/src/components/FilterBar.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层、重置按钮和标签弹层**
+- [x] **Step 1: 先写失败测试，锁定根壳层、重置按钮和标签弹层**
 
 新增 `app/src/components/__tests__/FilterBar.test.tsx`，至少包含：
 
@@ -323,13 +330,13 @@ it('renders filter bar shell when visible', async () => {
 - 有筛选状态时显示 `filter-bar-reset-button`
 - 打开标签弹层后能找到 `filter-bar-tag-modal`
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FilterBar.test.tsx`
 
 Expected: FAIL，原因应包含 `filter-bar-root` / `filter-bar-tag-modal` 等 testID 尚不存在。
 
-- [ ] **Step 3: 最小实现 `FilterBar` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `FilterBar` NativeWind 迁移**
 
 在 `app/src/components/FilterBar.tsx`：
 
@@ -350,7 +357,7 @@ Expected: FAIL，原因应包含 `filter-bar-root` / `filter-bar-tag-modal` 等 
   - `filter-bar-reset-button`
   - `filter-bar-tag-modal`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FilterBar.test.tsx`
 
@@ -366,7 +373,7 @@ Run: `cd app && npm run lint -- src/components/FilterBar.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/FilterBar.tsx app/src/components/__tests__/FilterBar.test.tsx
@@ -381,7 +388,7 @@ git commit -m "refactor: migrate filter bar to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-timeline-interaction-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-timeline-interaction-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第八批相关测试集合**
+- [x] **Step 1: 先跑第八批相关测试集合**
 
 Run:
 
@@ -395,7 +402,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -406,7 +413,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -415,7 +422,7 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-timeline-interaction-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-timeline-interaction-nativewind-migration.md
@@ -427,3 +434,25 @@ git commit -m "docs: backfill timeline interaction nativewind migration"
 - 已按 chunk 检查时间轴交互链路边界、测试缺口、allowlist 收口点和最终验收命令
 - `BottomToolbar`、`CalendarTimelineItem`、`CalendarView`、`FilterBar` 都可以独立完成“失败测试 -> 最小实现 -> lint 收口 -> 提交”的闭环
 - 未发现阻塞执行的问题
+
+## 执行结果
+
+- 已完成 [BottomToolbar.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/BottomToolbar.tsx)、[CalendarTimelineItem.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/CalendarTimelineItem.tsx)、[CalendarView.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/CalendarView.tsx)、[FilterBar.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/FilterBar.tsx) 的 NativeWind 迁移与 allowlist 收口
+- 已新增 [BottomToolbar.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/BottomToolbar.test.tsx)、[CalendarTimelineItem.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/CalendarTimelineItem.test.tsx)、[FilterBar.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/FilterBar.test.tsx)
+- 已扩充 [CalendarView.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/CalendarView.test.tsx)
+- 四个实现提交已按顺序落地：
+  - `9627b37 refactor: migrate bottom toolbar to nativewind`
+  - `7fc0eb2 refactor: migrate calendar timeline item to nativewind`
+  - `57cc2ca refactor: migrate calendar view to nativewind`
+  - `e1db1c7 refactor: migrate filter bar to nativewind`
+
+## 验证记录
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BottomToolbar.test.tsx src/components/__tests__/CalendarTimelineItem.test.tsx src/components/__tests__/CalendarView.test.tsx src/components/__tests__/FilterBar.test.tsx`：PASS，4 个 suite / 14 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，62 个 suite / 372 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差

@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已完成实现并通过验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -12,6 +13,8 @@
 - 2026-03-23：已确认本轮目标仍然是把现有样式迁到 `NativeWind`，不借迁移之名改时间轴切换、日期选择、筛选或按钮行为。
 - 2026-03-23：用户已明确要求后续自动推进，不再逐项请示；本轮设计基于该授权直接落文并继续 planning。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 继续采用本地结构化 review 留痕。
+- 2026-03-23：`BottomToolbar`、`CalendarTimelineItem`、`CalendarView`、`FilterBar` 已全部迁到 `NativeWind`，并从 allowlist 中移除。
+- 2026-03-23：第八批相关测试、全量 lint、typecheck 与全量测试均已通过。
 
 ## 背景
 
@@ -270,3 +273,39 @@
 - 已检查第八批范围、组件关系、测试缺口和 allowlist 收口点
 - `BottomToolbar`、`CalendarTimelineItem`、`CalendarView`、`FilterBar` 可以组成一批边界稳定的时间轴交互样式迁移链路
 - 未发现阻塞进入 implementation plan 的问题
+
+## 实现结果
+
+- 已完成 [BottomToolbar.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/BottomToolbar.tsx)、[CalendarTimelineItem.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/CalendarTimelineItem.tsx)、[CalendarView.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/CalendarView.tsx)、[FilterBar.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/FilterBar.tsx) 的静态样式迁移，四者均不再依赖 `StyleSheet.create`
+- 已补稳定测试锚点：
+  - `bottom-toolbar-root`
+  - `bottom-toolbar-button-text`
+  - `bottom-toolbar-button-photo`
+  - `bottom-toolbar-button-voice`
+  - `calendar-timeline-item-root`
+  - `calendar-timeline-item-dot`
+  - `calendar-timeline-item-time`
+  - `calendar-view-root`
+  - `calendar-grid`
+  - `calendar-content-header`
+  - `filter-bar-root`
+  - `filter-bar-reset-button`
+  - `filter-bar-tag-modal`
+- 已新增 [BottomToolbar.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/BottomToolbar.test.tsx)、[CalendarTimelineItem.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/CalendarTimelineItem.test.tsx)、[FilterBar.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/FilterBar.test.tsx)，并扩充 [CalendarView.test.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/__tests__/CalendarView.test.tsx)
+- 已从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 删除这 4 个组件，完成第八批时间轴交互链路收口
+- 时间轴与筛选行为保持不变：
+  - `BottomToolbar` 仍上抛 `text / photo / voice`
+  - `CalendarTimelineItem` 仍透传 `EntryCard` 的 `calendar` variant 与密度
+  - `CalendarView` 的月份切换、日期选中、当天态和月内分组逻辑未调整
+  - `FilterBar` 的 store 筛选状态、标签查询和标签弹层动画语义未调整
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BottomToolbar.test.tsx src/components/__tests__/CalendarTimelineItem.test.tsx src/components/__tests__/CalendarView.test.tsx src/components/__tests__/FilterBar.test.tsx`：PASS，4 个 suite / 14 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，62 个 suite / 372 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
