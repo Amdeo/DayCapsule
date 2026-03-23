@@ -17,6 +17,7 @@
 - 2026-03-23：基于已批准 spec 创建第四批实现计划，范围固定为 `DetailPageShell`、`AboutPage`、`HelpPage`、`TagsPage`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：已按 TDD 顺序完成共享壳层与 3 个侧栏二级页的 NativeWind 迁移、allowlist 收口与文档回填。
 
 ## File Structure
 
@@ -64,7 +65,7 @@
 - Modify: `app/src/components/DetailPageShell.tsx`
 - Modify: `app/src/components/__tests__/DetailPageShell.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定共享壳层结构**
+- [x] **Step 1: 先写失败测试，锁定共享壳层结构**
 
 在 `app/src/components/__tests__/DetailPageShell.test.tsx` 增加至少两条断言：
 
@@ -98,13 +99,13 @@ it('keeps rendering the static content container when scroll is disabled', () =>
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/DetailPageShell.test.tsx`
 
 Expected: FAIL，原因应包含 `detail-page-shell` / `detail-page-header` / `detail-page-header-right` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `DetailPageShell` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `DetailPageShell` NativeWind 迁移**
 
 在 `app/src/components/DetailPageShell.tsx`：
 
@@ -135,7 +136,7 @@ Expected: FAIL，原因应包含 `detail-page-shell` / `detail-page-header` / `d
   - `detail-page-header`
   - `detail-page-header-right`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/DetailPageShell.test.tsx`
 
@@ -151,7 +152,7 @@ Run: `cd app && npm run lint -- src/components/DetailPageShell.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/DetailPageShell.tsx app/src/components/__tests__/DetailPageShell.test.tsx
@@ -167,7 +168,7 @@ git commit -m "refactor: migrate detail page shell to nativewind"
 - Modify: `app/eslint/style-guard-allowlist.js`
 - Modify: `app/src/components/TagsPage.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定空态与列表态**
+- [x] **Step 1: 先写失败测试，锁定空态与列表态**
 
 在 `app/src/components/__tests__/TagsPage.test.tsx` 新建测试，mock `useEntryStore` 和 `DetailPageShell`，至少覆盖：
 
@@ -200,13 +201,13 @@ it('renders tag counts and closes when a tag row is pressed', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagsPage.test.tsx`
 
 Expected: FAIL，原因应包含 `tags-page-root` / `tags-page-empty` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `TagsPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `TagsPage` NativeWind 迁移**
 
 在 `app/src/components/TagsPage.tsx`：
 
@@ -227,7 +228,7 @@ Expected: FAIL，原因应包含 `tags-page-root` / `tags-page-empty` 尚不存�
   - `tags-page-root`
   - `tags-page-empty`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagsPage.test.tsx`
 
@@ -243,7 +244,7 @@ Run: `cd app && npm run lint -- src/components/TagsPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/TagsPage.tsx app/src/components/__tests__/TagsPage.test.tsx
@@ -259,7 +260,7 @@ git commit -m "refactor: migrate tags page to nativewind"
 - Modify: `app/eslint/style-guard-allowlist.js`
 - Modify: `app/src/components/AboutPage.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定区块渲染和链接行为**
+- [x] **Step 1: 先写失败测试，锁定区块渲染和链接行为**
 
 在 `app/src/components/__tests__/AboutPage.test.tsx` 新建测试。mock `DetailPageShell` 和 `Linking.openURL`，至少覆盖：
 
@@ -285,13 +286,13 @@ it('opens the expected links from the info buttons', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/AboutPage.test.tsx`
 
 Expected: FAIL，原因应包含 `about-page-root` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `AboutPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `AboutPage` NativeWind 迁移**
 
 在 `app/src/components/AboutPage.tsx`：
 
@@ -310,7 +311,7 @@ Expected: FAIL，原因应包含 `about-page-root` 尚不存在。
 - 补以下 `testID`：
   - `about-page-root`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/AboutPage.test.tsx`
 
@@ -326,7 +327,7 @@ Run: `cd app && npm run lint -- src/components/AboutPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/AboutPage.tsx app/src/components/__tests__/AboutPage.test.tsx
@@ -342,7 +343,7 @@ git commit -m "refactor: migrate about page to nativewind"
 - Modify: `app/eslint/style-guard-allowlist.js`
 - Modify: `app/src/components/HelpPage.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定 FAQ 和联系卡片行为**
+- [x] **Step 1: 先写失败测试，锁定 FAQ 和联系卡片行为**
 
 在 `app/src/components/__tests__/HelpPage.test.tsx` 新建测试。mock `DetailPageShell` 和 `Linking.openURL`，至少覆盖：
 
@@ -373,13 +374,13 @@ it('opens the feedback mail link when pressed', () => {
 });
 ```
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/HelpPage.test.tsx`
 
 Expected: FAIL，原因应包含 `help-page-root` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `HelpPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `HelpPage` NativeWind 迁移**
 
 在 `app/src/components/HelpPage.tsx`：
 
@@ -399,7 +400,7 @@ Expected: FAIL，原因应包含 `help-page-root` 尚不存在。
 - 补以下 `testID`：
   - `help-page-root`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/HelpPage.test.tsx`
 
@@ -415,7 +416,7 @@ Run: `cd app && npm run lint -- src/components/HelpPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/HelpPage.tsx app/src/components/__tests__/HelpPage.test.tsx
@@ -430,7 +431,7 @@ git commit -m "refactor: migrate help page to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-sidebar-detail-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-sidebar-detail-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第四批相关测试集合**
+- [x] **Step 1: 先跑第四批相关测试集合**
 
 Run:
 
@@ -444,7 +445,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -455,7 +456,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -464,12 +465,30 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-sidebar-detail-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-sidebar-detail-nativewind-migration.md
 git commit -m "docs: backfill sidebar detail nativewind migration"
 ```
+
+## 执行结果
+
+- 已完成 `DetailPageShell`、`TagsPage`、`AboutPage`、`HelpPage` 的静态壳层 NativeWind 迁移，侧栏入口关系、FAQ 展开、链接跳转与 `contentContainerStyle` 接口保持不变。
+- 已新增 `app/src/components/__tests__/TagsPage.test.tsx`、`app/src/components/__tests__/AboutPage.test.tsx`、`app/src/components/__tests__/HelpPage.test.tsx`，并扩充 `DetailPageShell.test.tsx`。
+- 已从 `app/eslint/style-guard-allowlist.js` 移除：
+  - `src/components/DetailPageShell.tsx`
+  - `src/components/TagsPage.tsx`
+  - `src/components/AboutPage.tsx`
+  - `src/components/HelpPage.tsx`
+- 本轮未新增 Tailwind 语义 token；共享壳层和页面内容优先复用已有 `primary`、`neutral`、`copy.*`、`border.*`、`home.*`，个别边框色使用最小 arbitrary class 保持原视觉。
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/DetailPageShell.test.tsx src/components/__tests__/TagsPage.test.tsx src/components/__tests__/AboutPage.test.tsx src/components/__tests__/HelpPage.test.tsx`：PASS
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS
 
 ## 本地结构化 Review 结论
 
