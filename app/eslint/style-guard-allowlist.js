@@ -13,7 +13,6 @@ module.exports = {
     'src/components/CalendarView.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
-    'src/components/HelpPage.tsx',
     'src/components/ImageViewer.tsx',
     'src/components/LoginPage.tsx',
     'src/components/PhotoGrid.tsx',
@@ -79,10 +78,6 @@ module.exports = {
     'src/components/FilterBar.tsx': {
       'style-guard/no-new-stylesheet-create': ['df42cb1b0649'],
       'style-guard/no-static-inline-styles': ['320cdc180a8e', 'b971ed9161de'],
-    },
-    'src/components/HelpPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['a48bc858da4c'],
-      'style-guard/no-static-inline-styles': [],
     },
     'src/components/ImageViewer.tsx': {
       'style-guard/no-new-stylesheet-create': ['d5c476a36901'],
