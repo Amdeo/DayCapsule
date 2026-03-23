@@ -1,0 +1,50 @@
+import { StyleSheet } from 'react-native';
+
+export const searchBarStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FAF8F5',
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  placeholder: {
+    flex: 1,
+    fontSize: 15,
+    color: '#A3A3A3',
+  },
+  circularButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+});

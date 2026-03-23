@@ -3,19 +3,13 @@
  * 1 photo: full-width fixed height; 2-3 photos: N-column; 4+: 3-column, max 8 cells + overflow
  */
 
-import React, { useState } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { MediaInfo } from '@/src/types/entry';
-import { PhotoService } from '@/src/services/photoService';
-
-const GAP = 3;
-const MAX_DISPLAY = 8;
-
-type PhotoImageRadiusStyle = {
-  borderRadius?: number;
-  borderBottomLeftRadius?: number;
-  borderBottomRightRadius?: number;
-};
+import { GridCell, SinglePhoto } from './photo-grid/PhotoGridCells';
+import { photoGridStyles as styles } from './photo-grid/PhotoGrid.styles';
+import { PhotoImageRadiusStyle } from './photo-grid/photoGridTypes';
+import { usePhotoGridController } from './photo-grid/usePhotoGridController';
 
 interface PhotoGridProps {
   photos: MediaInfo[];
@@ -25,12 +19,17 @@ interface PhotoGridProps {
 }
 
 export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPress }: PhotoGridProps) {
-  const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
+  const {
+    cellSize,
+    displayPhotos,
+    handleLayout,
+    overflow,
+    shouldRenderSinglePhoto,
+  } = usePhotoGridController(photos);
 
   if (!photos || photos.length === 0) return null;
 
-  // Single photo: full-width, no grid wrapper
-  if (photos.length === 1) {
+  if (shouldRenderSinglePhoto) {
     return (
       <SinglePhoto
         photo={photos[0]}
@@ -41,20 +40,11 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
     );
   }
 
-  // Multi-photo grid
-  const numCols = photos.length <= 3 ? photos.length : 3;
-  const cellSize = containerWidth > 0
-    ? (containerWidth - GAP * (numCols - 1)) / numCols
-    : 0;
-
-  const overflow = photos.length > MAX_DISPLAY ? photos.length - (MAX_DISPLAY - 1) : 0;
-  const displayPhotos = overflow > 0 ? photos.slice(0, MAX_DISPLAY - 1) : photos;
-
   return (
     <View
       testID="photo-grid"
       style={styles.grid}
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      onLayout={handleLayout}
     >
       {displayPhotos.map((photo, index) => (
         <GridCell
@@ -76,93 +66,3 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
     </View>
   );
 }
-
-interface SinglePhotoProps {
-  photo: MediaInfo;
-  maxPhotoHeight: number;
-  photoImageRadius: PhotoImageRadiusStyle;
-  onPress: () => void;
-}
-
-function SinglePhoto({ photo, maxPhotoHeight, photoImageRadius, onPress }: SinglePhotoProps) {
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <View
-        testID="photo-image-0"
-        style={[styles.singleMissing, photoImageRadius, { height: maxPhotoHeight }]}
-      />
-    );
-  }
-
-  return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
-      <Image
-        testID="photo-image-0"
-        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
-        style={[{ width: '100%', height: maxPhotoHeight, backgroundColor: '#ECE7E0' }, photoImageRadius]}
-        resizeMode="cover"
-        onError={() => setError(true)}
-      />
-    </TouchableOpacity>
-  );
-}
-
-interface GridCellProps {
-  testID: string;
-  photo: MediaInfo;
-  cellSize: number;
-  onPress: () => void;
-}
-
-function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <View
-        testID={testID}
-        style={[styles.gridCellMissing, { width: cellSize, height: cellSize }]}
-      />
-    );
-  }
-
-  return (
-    <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
-      <Image
-        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
-        style={{ width: cellSize, height: cellSize }}
-        resizeMode="cover"
-        onError={() => setError(true)}
-      />
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-  },
-  overflowCell: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overflowText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  singleMissing: {
-    width: '100%',
-    backgroundColor: '#ECE7E0',
-  },
-  gridCellMissing: {
-    backgroundColor: '#ECE7E0',
-    borderRadius: 4,
-  },
-});

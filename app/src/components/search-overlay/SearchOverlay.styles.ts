@@ -1,0 +1,193 @@
+import { StyleSheet } from 'react-native';
+
+export const searchOverlayStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FAF8F5',
+    zIndex: 100,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    paddingTop: 60,
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  scroll: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  section: {
+    marginBottom: 28,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A3A3A3',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 20,
+    gap: 6,
+  },
+  typeChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  dateChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 20,
+  },
+  dateChipActive: {
+    backgroundColor: '#6A89CC',
+  },
+  dateChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  activeText: {
+    color: '#FFFFFF',
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 20,
+  },
+  tagChipActive: {
+    backgroundColor: '#6A89CC',
+  },
+  tagChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A4A4A',
+  },
+  clearTagsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6A89CC',
+  },
+  emptyTagsHint: {
+    fontSize: 13,
+    color: '#C0C0C0',
+    fontStyle: 'italic',
+  },
+  tagChipCommon: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  tagChipCommonText: {
+    color: '#A3A3A3',
+  },
+  tagChipCheckmark: {
+    marginRight: 3,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    backgroundColor: '#F0F4FF',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  resetText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6A89CC',
+  },
+  scrollBottomSpacer: {
+    height: 100,
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEFEF',
+    backgroundColor: '#FAF8F5',
+  },
+  cancelButton: {
+    flex: 1,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 25,
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  searchButton: {
+    flex: 2,
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6A89CC',
+    borderRadius: 25,
+    gap: 8,
+  },
+  searchButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});
