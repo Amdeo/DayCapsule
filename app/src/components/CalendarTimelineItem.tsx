@@ -1,8 +1,15 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Entry } from '@/src/types/entry';
-import { EntryCard } from './EntryCard';
 import { CalendarDensity } from '@/src/store/settingsStore';
+import { EntryCard } from './EntryCard';
+import {
+  getCalendarTimelineItemDotColor,
+  getCalendarTimelineItemSpacing,
+  formatCalendarTimelineTime,
+} from './calendar-timeline-item/calendarTimelineItemHelpers';
+import { CalendarTimelineItemMarker } from './calendar-timeline-item/CalendarTimelineItemMarker';
+import { calendarTimelineItemStyles as styles } from './calendar-timeline-item/CalendarTimelineItem.styles';
 
 interface CalendarTimelineItemProps {
   entry: Entry;
@@ -15,21 +22,6 @@ interface CalendarTimelineItemProps {
   onActionSheetOpen?: (id: string) => void;
 }
 
-const DENSITY_SPACING: Record<CalendarDensity, number> = {
-  comfortable: 20,
-  default: 14,
-  compact: 10,
-};
-
-const TYPE_COLORS: Record<Entry['type'], string> = {
-  text: '#A491D3',
-  photo: '#77C9D4',
-  voice: '#F5A623',
-};
-
-const formatHHMM = (timestamp: number) =>
-  new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-
 export function CalendarTimelineItem({
   entry,
   density,
@@ -40,31 +32,18 @@ export function CalendarTimelineItem({
   isActionSheetActive = false,
   onActionSheetOpen,
 }: CalendarTimelineItemProps) {
-  const spacing = DENSITY_SPACING[density];
-  const dotColor = TYPE_COLORS[entry.type];
+  const spacing = getCalendarTimelineItemSpacing(density);
+  const dotColor = getCalendarTimelineItemDotColor(entry.type);
 
   return (
-    <View
-      testID="calendar-timeline-item-root"
-      className="relative pl-16 pr-6"
-      style={{ paddingBottom: spacing }}
-    >
-      <View
-        testID="calendar-timeline-item-dot"
-        className="absolute left-[33px] top-px z-[2] h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm shadow-black/10"
-      >
-        <View className="h-[10px] w-[10px] rounded-full" style={{ backgroundColor: dotColor }} />
-      </View>
-      <View className="mb-2">
-        <Text
-          testID="calendar-timeline-item-time"
-          className="text-xs font-semibold"
-          style={{ color: dotColor }}
-        >
-          {formatHHMM(entry.timestamp)}
+    <View testID="calendar-timeline-item-root" style={[styles.container, { paddingBottom: spacing }]}>
+      <CalendarTimelineItemMarker color={dotColor} testID="calendar-timeline-item-dot" />
+      <View style={styles.timeWrap}>
+        <Text testID="calendar-timeline-item-time" style={[styles.timeText, { color: dotColor }]}>
+          {formatCalendarTimelineTime(entry.timestamp)}
         </Text>
       </View>
-      <View className="flex-1">
+      <View style={styles.cardWrap}>
         <EntryCard
           entry={entry}
           onDelete={onDeleteEntry ?? (() => {})}

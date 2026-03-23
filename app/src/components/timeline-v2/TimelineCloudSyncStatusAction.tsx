@@ -1,17 +1,21 @@
-import React, { useCallback } from 'react';
-import { CloudSyncStatusButton } from '../CloudSyncStatusButton';
+import React from 'react';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
+import { CloudSyncStatusButton } from '../CloudSyncStatusButton';
 
 export function TimelineCloudSyncStatusAction() {
-  const uiState = useCloudSyncIndicatorStore((state) => state.uiState);
-  const handlePress = useCallback(() => {
-    void showCloudSyncStatusAlert();
-  }, []);
+  const cloudSyncUiState = useCloudSyncIndicatorStore((state) => state.uiState);
 
-  if (uiState === 'hidden') {
+  if (cloudSyncUiState === 'hidden') {
     return null;
   }
 
-  return <CloudSyncStatusButton uiState={uiState} onPress={handlePress} />;
+  return (
+    <CloudSyncStatusButton
+      uiState={cloudSyncUiState}
+      onPress={() => {
+        void showCloudSyncStatusAlert();
+      }}
+    />
+  );
 }

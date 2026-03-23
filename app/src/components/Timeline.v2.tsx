@@ -3,285 +3,21 @@
  * 整合搜索栏和快速添加功能
  */
 
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Animated as RNAnimated, NativeScrollEvent, NativeSyntheticEvent, SectionList, ActivityIndicator } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { Entry } from '../types/entry';
-import { EntryCard } from './EntryCard';
-import { SearchBar } from './SearchBar';
-import { CloudSyncStatusButton } from './CloudSyncStatusButton';
-import { SearchOverlay } from './SearchOverlay';
-import { EntryEditor } from './EntryEditor';
-import { TextEntryDetailPage } from './TextEntryDetailPage';
-import { formatDateLabel, formatHHMM } from '../utils/timeUtils';
+import React from 'react';
+import { View } from 'react-native';
 import { useEntryStore } from '../store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarView } from './CalendarView';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
-import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { FABMenu } from './FABMenu';
 import { PhotoResult } from '../services/photoService';
-import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
-import { TimelineSectionHeader } from './TimelineSectionHeader';
-import { TimelineEmptyState } from './TimelineEmptyState';
-
-type ViewMode = 'list' | 'calendar';
-
-/**
- * 时间分组配置
- */
-interface TimeSection {
-  title: string;
-  timestamp: number;
-  data: Entry[];
-}
-
-/**
- * 生成时间分组数据
- */
-function generateTimeSections(
-  entries: Entry[]
-): TimeSection[] {
-  const sections: TimeSection[] = [];
-  let currentDateLabel = '';
-  let currentSection: TimeSection | null = null;
-
-  entries.forEach((entry) => {
-    const dateLabel = formatDateLabel(entry.timestamp);
-
-    // 如果日期标签变化，创建一个新的分组
-    if (dateLabel !== currentDateLabel) {
-      if (currentSection) {
-        sections.push(currentSection);
-      }
-      currentSection = {
-        title: dateLabel,
-        timestamp: entry.timestamp,
-        data: [],
-      };
-      currentDateLabel = dateLabel;
-    }
-
-    // 添加记录到当前分组
-    if (currentSection) {
-      currentSection.data.push(entry);
-    }
-  });
-
-  // 添加最后一个分组
-  if (currentSection) {
-    sections.push(currentSection);
-  }
-
-  return sections;
-}
-
-/**
- * 视图模式切换 Tab
- */
-const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
-  { mode: 'list', icon: 'list', label: '列表' },
-  { mode: 'calendar', icon: 'calendar', label: '日历' },
-];
-
-function getEntryAccentClassName(type: Entry['type']) {
-  switch (type) {
-    case 'text':
-      return 'text-entry-text';
-    case 'photo':
-      return 'text-entry-photo';
-    case 'voice':
-      return 'text-entry-voice';
-    default:
-      return 'text-neutral-300';
-  }
-}
-
-function getEntryDotClassName(type: Entry['type']) {
-  switch (type) {
-    case 'text':
-      return 'bg-entry-text';
-    case 'photo':
-      return 'bg-entry-photo';
-    case 'voice':
-      return 'bg-entry-voice';
-    default:
-      return 'bg-neutral-300';
-  }
-}
-
-function ViewModeToggle({
-  current,
-  onChange,
-}: {
-  current: ViewMode;
-  onChange: (m: ViewMode) => void;
-}) {
-  return (
-    <View className="flex-row border-b border-border-subtle bg-home-surface px-2">
-      {VIEW_MODES.map(({ mode, icon, label }) => {
-        const active = current === mode;
-        return (
-          <TouchableOpacity
-            key={mode}
-            className={`flex-1 flex-row items-center justify-center gap-1 border-b-2 py-2.5 ${
-              active ? 'border-primary' : 'border-transparent'
-            }`}
-            onPress={() => onChange(mode)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={icon as any}
-              size={16}
-              color={active ? '#6A89CC' : '#A3A3A3'}
-            />
-            <Text
-              className={`text-xs ${
-                active ? 'font-bold text-primary' : 'font-medium text-copy-muted'
-              }`}
-            >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-/**
- * 记录项组件
- */
-interface EntryMarkerProps {
-  entry: Entry;
-  onDeleteEntry: (id: string) => void;
-  onViewEntry?: (entry: Entry) => void;
-  onEditEntry?: (entry: Entry) => void;
-  onStopRecording?: (id: string) => void;
-  isActionSheetActive: boolean;
-  onActionSheetOpen: (id: string) => void;
-  isLast: boolean;
-  cardSpacing: number;
-  enterDelay?: number;
-}
-
-const EntryMarker = React.memo(function EntryMarker({
-  entry,
-  onDeleteEntry,
-  onViewEntry,
-  onEditEntry,
-  onStopRecording,
-  isActionSheetActive,
-  onActionSheetOpen,
-  isLast,
-  cardSpacing,
-  enterDelay = 0,
-}: EntryMarkerProps) {
-  const accentTextClassName = getEntryAccentClassName(entry.type);
-  const dotClassName = getEntryDotClassName(entry.type);
-
-  return (
-    <View className="relative pl-16 pr-6" style={{ paddingBottom: isLast ? 0 : cardSpacing }}>
-      {/* 时间点圆点（带外圈）- 固定在时间线上 */}
-      <View
-        className={`absolute left-[33px] top-[1px] z-10 h-4 w-4 rounded-full border-2 border-home-surface shadow-sm ${dotClassName}`}
-      />
-
-      {/* 时间文本 - 与卡片开头对齐，颜色和圆点一致 */}
-      <View className="mb-2">
-        <Text className={`text-xs font-medium ${accentTextClassName}`}>
-          {formatHHMM(entry.timestamp)}
-        </Text>
-      </View>
-
-      {/* 卡片 */}
-      <EntryCard
-        entry={entry}
-        onDelete={onDeleteEntry}
-        onView={onViewEntry}
-        onEdit={onEditEntry}
-        onStopRecording={onStopRecording}
-        isActionSheetActive={isActionSheetActive}
-        onActionSheetOpen={onActionSheetOpen}
-        variant="calendar"
-        cardSpacing={cardSpacing}
-        enterDelay={enterDelay}
-      />
-    </View>
-  );
-});
-
-const DotsLoader: React.FC = () => {
-  const dot1 = useRef(new RNAnimated.Value(0)).current;
-  const dot2 = useRef(new RNAnimated.Value(0)).current;
-  const dot3 = useRef(new RNAnimated.Value(0)).current;
-  const loaderDots = [
-    { key: 'text', translateY: dot1 },
-    { key: 'photo', translateY: dot2 },
-    { key: 'voice', translateY: dot3 },
-  ];
-
-  useEffect(() => {
-    const makeBounce = (anim: RNAnimated.Value) =>
-      RNAnimated.loop(
-        RNAnimated.sequence([
-          RNAnimated.timing(anim, { toValue: -8, duration: 200, useNativeDriver: true }),
-          RNAnimated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ])
-      );
-
-    const a1 = makeBounce(dot1);
-    let t2: ReturnType<typeof setTimeout>;
-    let t3: ReturnType<typeof setTimeout>;
-    let a2: RNAnimated.CompositeAnimation;
-    let a3: RNAnimated.CompositeAnimation;
-
-    a1.start();
-    t2 = setTimeout(() => { a2 = makeBounce(dot2); a2.start(); }, 150);
-    t3 = setTimeout(() => { a3 = makeBounce(dot3); a3.start(); }, 300);
-
-    return () => {
-      a1.stop();
-      clearTimeout(t2);
-      clearTimeout(t3);
-      if (a2) a2.stop();
-      if (a3) a3.stop();
-      dot1.setValue(0);
-      dot2.setValue(0);
-      dot3.setValue(0);
-    };
-  }, [dot1, dot2, dot3]);
-
-  return (
-    <View className="flex-1 items-center justify-center">
-      <View className="flex-row items-center">
-        {loaderDots.map((dot) => (
-          <RNAnimated.View
-            key={dot.key}
-            testID={`loader-dot-${dot.key}`}
-            style={{
-              backgroundColor:
-                dot.key === 'text'
-                  ? '#A491D3'
-                  : dot.key === 'photo'
-                    ? '#77C9D4'
-                    : '#F5A623',
-              transform: [{ translateY: dot.translateY }],
-            }}
-            className={`mx-[3px] h-2 w-2 rounded-full ${
-              dot.key === 'text'
-                ? 'bg-entry-text'
-                : dot.key === 'photo'
-                  ? 'bg-entry-photo'
-                  : 'bg-entry-voice'
-            }`}
-          />
-        ))}
-      </View>
-    </View>
-  );
-};
+import { TimelineCloudSyncStatusAction } from './timeline-v2/TimelineCloudSyncStatusAction';
+import { TimelineContent } from './timeline-v2/TimelineContent';
+import { TimelineDialogs } from './timeline-v2/TimelineDialogs';
+import { TimelineHeaderArea } from './timeline-v2/TimelineHeaderArea';
+import { TimelineScrollTopButton } from './timeline-v2/TimelineScrollTopButton';
+import { useTimelineController } from './timeline-v2/useTimelineController';
+import { useTimelineFilters } from './timeline-v2/useTimelineFilters';
+import { useTimelineList } from './timeline-v2/useTimelineList';
 
 /**
  * 时间轴主组件
@@ -300,452 +36,155 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
     loadMore, isLoadingMore, hasMore,
   } = useEntryStore();
   const insets = useSafeAreaInsets();
-  const [viewingEntry, setViewingEntry] = useState<Entry | null>(null);
-  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
-  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [displayMode, setDisplayMode] = useState<ViewMode>('list');
-  const skipTransitionRef = useRef(false);
-  const isInitialMountRef = useRef(true);
-  const [showViewToggle, setShowViewToggle] = useState(false);
-  const [activeActionSheetId, setActiveActionSheetId] = useState<string | null>(null);
-  const sectionListRef = useRef<SectionList<Entry, TimeSection>>(null);
-  const isTransitioning = viewMode !== displayMode;
+  const {
+    viewingEntry,
+    editingEntry,
+    showSearchOverlay,
+    showScrollTop,
+    viewMode,
+    setViewMode,
+    displayMode,
+    showViewToggle,
+    activeActionSheetId,
+    sectionListRef,
+    scrollTopOpacity,
+    scrollTopScale,
+    fabShouldHide,
+    isTransitioning,
+    handleSaveEdit,
+    handleSearchFocus,
+    handleCloseSearch,
+    handleToggleViewMode,
+    handleViewEntry,
+    handleEditEntry,
+    handleActionSheetOpen,
+    handleScroll,
+    scrollToTop,
+    handlePressIn,
+    handlePressOut,
+    closeViewingEntry,
+    closeEditingEntry,
+    handleDetailEdit,
+    revealFab,
+  } = useTimelineController({
+    updateEntry,
+  });
 
-  // 从共享 store 获取卡片间距设置（无需轮询，自动响应状态变化）
   const { cardSpacing: cardSpacingKey } = useSettingsStore();
   const cardSpacing = SPACING_VALUES[cardSpacingKey];
-
-  const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
-  const scrollTopScale = useRef(new RNAnimated.Value(1)).current;
-  const lastScrollY = useRef(0);
-  const [fabShouldHide, setFabShouldHide] = useState(false);
-
-  // 使用过滤后的记录：如果有搜索或过滤条件，显示过滤结果，否则显示所有记录
-  const hasFilters = !!(searchQuery.trim() || filterType !== 'all' || filterDateRange !== 'all' || selectedTags.length > 0);
-  const cloudSyncUiState = useCloudSyncIndicatorStore((state) => state.uiState);
-  const rightActions = useMemo(() => {
-    if (cloudSyncUiState === 'hidden') return null;
-
-    return (
-      <CloudSyncStatusButton
-        uiState={cloudSyncUiState}
-        onPress={() => {
-          void showCloudSyncStatusAlert();
-        }}
-      />
-    );
-  }, [cloudSyncUiState]);
   const displayEntries = entries;
 
-  // 视图切换圆点动画：viewMode 变化 → 显示圆点 600ms → 更新 displayMode → 直接渲染卡片
-  useEffect(() => {
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false;
-      return;
-    }
-    if (skipTransitionRef.current) {
-      skipTransitionRef.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      setDisplayMode(viewMode);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [viewMode]);
+  const {
+    hasFilters,
+    clearQuery,
+    clearType,
+    clearDate,
+    clearTag,
+    clearAll,
+  } = useTimelineFilters({
+    searchQuery,
+    filterType,
+    filterDateRange,
+    selectedTags,
+    setSearchQuery,
+    setFilterType,
+    setFilterDateRange,
+    toggleTag,
+    clearTags,
+  });
 
-  // 生成时间分组数据
-  const sections = useMemo(() => {
-    return generateTimeSections(displayEntries);
-  }, [displayEntries, displayMode]);
-
-  const globalIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    let i = 0;
-    for (const section of sections) {
-      for (const entry of section.data) {
-        map.set(entry.id, i++);
-      }
-    }
-    return map;
-  }, [sections]);
-
-  // 检查是否有记录
-  const hasEntries = displayEntries.length > 0;
-
-  // 处理编辑保存
-  const handleSaveEdit = (id: string, content: string, tags: string[]) => {
-    updateEntry(id, { content, tags });
-    setEditingEntry(null);
-  };
-
-  // 处理搜索框聚焦 - 显示搜索遮罩
-  const handleSearchFocus = () => setShowSearchOverlay(true);
-
-  // 处理搜索遮罩关闭（搜索完成和关闭共用）
-  const handleCloseSearch = () => setShowSearchOverlay(false);
-
-  // 切换视图模式面板：收起时若非列表模式则重置回列表
-  const handleToggleViewMode = () => {
-    if (showViewToggle && viewMode !== 'list') {
-      skipTransitionRef.current = true;
-      setViewMode('list');
-      setDisplayMode('list');
-    }
-    setShowViewToggle(v => !v);
-  };
-
-  const handleViewEntry = useCallback((entry: Entry) => {
-    if (entry.type !== 'text') return;
-    setViewingEntry(entry);
-  }, []);
-
-  const handleEditEntry = useCallback((entry: Entry) => setEditingEntry(entry), []);
-
-  const handleActionSheetOpen = useCallback((id: string) => {
-    setActiveActionSheetId(id);
-  }, []);
-
-  // 稳定的 keyExtractor，避免视图切换时整批卸载重建
-  const keyExtractor = useCallback((item: Entry) => item.id, []);
-
-  // 处理滚动事件
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const scrollDirection = offsetY > lastScrollY.current ? 'down' : 'up';
-    lastScrollY.current = offsetY;
-
-    // FAB peek-hide：向下滚动超过 50dp 时隐藏，向上滚动时显示
-    if (scrollDirection === 'down' && offsetY > 50) {
-      setFabShouldHide(true);
-    } else if (scrollDirection === 'up') {
-      setFabShouldHide(false);
-    }
-
-    // 当快速添加按钮区域滚出屏幕时显示"返回顶部"按钮
-    if (offsetY > 200 && !showScrollTop) {
-      setShowScrollTop(true);
-      RNAnimated.timing(scrollTopOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-    // 当快速添加按钮区域还在屏幕内时隐藏"返回顶部"按钮
-    else if (offsetY <= 200 && showScrollTop) {
-      RNAnimated.timing(scrollTopOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowScrollTop(false);
-      });
-    }
-  }, [showScrollTop, scrollTopOpacity]);
-
-  // 返回顶部函数
-  const scrollToTop = () => {
-    sectionListRef.current?.scrollToLocation({
-      sectionIndex: 0,
-      itemIndex: 0,
-      animated: true,
-    });
-  };
-
-  // 按钮按下动画
-  const handlePressIn = () => {
-    RNAnimated.spring(scrollTopScale, {
-      toValue: 0.9,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  // 按钮释放动画
-  const handlePressOut = () => {
-    RNAnimated.spring(scrollTopScale, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  // 渲染列表项
-  const renderItem = useCallback(({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
-    const isLast = index === section.data.length - 1;
-    const globalIndex = globalIndexMap.get(item.id) ?? 0;
-    const staggerIndex = Math.min(globalIndex, 8);
-    const enterDelay = staggerIndex * 90;
-    return (
-        <EntryMarker
-          entry={item}
-          onDeleteEntry={deleteEntry}
-          onViewEntry={handleViewEntry}
-          onEditEntry={handleEditEntry}
-        onStopRecording={onStopRecording}
-        isActionSheetActive={activeActionSheetId === item.id}
-        onActionSheetOpen={handleActionSheetOpen}
-        isLast={isLast}
-        cardSpacing={cardSpacing}
-        enterDelay={enterDelay}
-      />
-    );
-  }, [activeActionSheetId, cardSpacing, deleteEntry, globalIndexMap, handleActionSheetOpen, handleEditEntry, handleViewEntry, onStopRecording]);
-
-  // 渲染分组头部 - Sticky
-  const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
-    return <TimelineSectionHeader title={section.title} timestamp={section.timestamp} />;
-  }, []);
+  const {
+    sections,
+    renderItem,
+    renderSectionHeader,
+    keyExtractor,
+    hasEntries,
+  } = useTimelineList({
+    entries: displayEntries,
+    displayMode,
+    cardSpacing,
+    deleteEntry,
+    onViewEntry: handleViewEntry,
+    onEditEntry: handleEditEntry,
+    onStopRecording,
+    activeActionSheetId,
+    onActionSheetOpen: handleActionSheetOpen,
+  });
 
   return (
-    <View className="flex-1 bg-home-background">
-      {/* 搜索遮罩 */}
-      <SearchOverlay
-        visible={showSearchOverlay}
-        onClose={handleCloseSearch}
-        onSearch={handleCloseSearch}
-      />
-
-      {/* 搜索栏 */}
-      <SearchBar
-        onMenuPress={onMenuPress}
+    <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
+      <TimelineHeaderArea
+        showSearchOverlay={showSearchOverlay}
+        onCloseSearch={handleCloseSearch}
         onSearchFocus={handleSearchFocus}
-        onViewModePress={handleToggleViewMode}
-        showViewModeActive={showViewToggle}
-        rightActions={rightActions}
+        onMenuPress={onMenuPress}
+        onToggleViewMode={handleToggleViewMode}
+        showViewToggle={showViewToggle}
+        rightActions={<TimelineCloudSyncStatusAction />}
+        hasFilters={hasFilters}
+        searchQuery={searchQuery}
+        filterType={filterType}
+        filterDateRange={filterDateRange}
+        selectedTags={selectedTags}
+        resultCount={displayEntries.length}
+        onClearQuery={clearQuery}
+        onClearType={clearType}
+        onClearDate={clearDate}
+        onClearTag={clearTag}
+        onClearAll={clearAll}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
-      {/* 视图模式切换（按需展开） */}
-      {showViewToggle && <ViewModeToggle current={viewMode} onChange={setViewMode} />}
-
-      {/* 筛选状态条 */}
-      {hasFilters && (
-        <ActiveFiltersBar
-          searchQuery={searchQuery}
-          filterType={filterType}
-          filterDateRange={filterDateRange}
-          selectedTags={selectedTags}
-          resultCount={displayEntries.length}
-          onClearQuery={() => setSearchQuery('')}
-          onClearType={() => setFilterType('all')}
-          onClearDate={() => setFilterDateRange('all')}
-          onClearTag={(tag) => toggleTag(tag)}
-          onClearAll={() => {
-            setSearchQuery('');
-            setFilterType('all');
-            setFilterDateRange('all');
-            clearTags();
-          }}
-          onOpenSearch={handleSearchFocus}
-        />
-      )}
-
-      {isTransitioning ? (
-        <DotsLoader />
-      ) : displayMode === 'calendar' ? (
-        <CalendarView
-          entries={displayEntries}
-          onDeleteEntry={deleteEntry}
-          onViewEntry={handleViewEntry}
-          onEditEntry={handleEditEntry}
-          onStopRecording={onStopRecording}
-          activeActionSheetId={activeActionSheetId}
-          onActionSheetOpen={handleActionSheetOpen}
-        />
-      ) : !hasEntries ? (
-        <TimelineEmptyState />
-      ) : (
-        <View className="relative flex-1">
-          {/* 连续的时间线 - 仅列表模式显示 */}
-          <View
-            className="absolute bottom-0 left-10 top-0 z-0 w-0.5 bg-timeline-line"
-          />
-          <SectionList<Entry, TimeSection>
-            ref={sectionListRef}
-            sections={sections}
-            renderItem={renderItem}
-            renderSectionHeader={renderSectionHeader}
-            stickySectionHeadersEnabled={true}
-            keyExtractor={keyExtractor}
-            contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
-            onEndReached={() => { if (hasMore) loadMore(); }}
-            onEndReachedThreshold={0.3}
-            ListFooterComponent={isLoadingMore ? (
-              <View className="py-4">
-                <ActivityIndicator size="small" color="#8B7355" />
-              </View>
-            ) : null}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={10}
-            windowSize={21}
-          />
-        </View>
-      )}
-
-      {/* 编辑器模态框 */}
-      <TextEntryDetailPage
-        visible={viewingEntry !== null}
-        entry={viewingEntry}
-        onClose={() => setViewingEntry(null)}
-        onEdit={(entry) => {
-          setViewingEntry(null);
-          setEditingEntry(entry);
-        }}
+      <TimelineContent
+        isTransitioning={isTransitioning}
+        displayMode={displayMode}
+        displayEntries={displayEntries}
+        hasEntries={hasEntries}
+        deleteEntry={deleteEntry}
+        onViewEntry={handleViewEntry}
+        onEditEntry={handleEditEntry}
+        onStopRecording={onStopRecording}
+        activeActionSheetId={activeActionSheetId}
+        onActionSheetOpen={handleActionSheetOpen}
+        sectionListRef={sectionListRef}
+        sections={sections}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        keyExtractor={keyExtractor}
+        bottomInset={insets.bottom}
+        onScroll={handleScroll}
+        hasMore={hasMore}
+        loadMore={loadMore}
+        isLoadingMore={isLoadingMore}
       />
 
-      <EntryEditor
-        visible={editingEntry !== null}
-        entry={editingEntry}
-        onSave={handleSaveEdit}
-        onClose={() => setEditingEntry(null)}
+      <TimelineDialogs
+        viewingEntry={viewingEntry}
+        editingEntry={editingEntry}
+        onCloseViewing={closeViewingEntry}
+        onDetailEdit={handleDetailEdit}
+        onSaveEdit={handleSaveEdit}
+        onCloseEditing={closeEditingEntry}
       />
 
-      {/* 返回顶部按钮 */}
-      {showScrollTop && (
-        <RNAnimated.View
-          style={{
-            position: 'absolute',
-            bottom: 80,
-            right: 20,
-            zIndex: 999,
-            opacity: scrollTopOpacity,
-            transform: [{ scale: scrollTopScale }],
-          }}
-        >
-          <TouchableOpacity
-            onPress={scrollToTop}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            activeOpacity={0.8}
-            className="h-14 w-14 items-center justify-center rounded-full bg-home-surface shadow-lg"
-          >
-            <Ionicons name="arrow-up" size={24} color="#6A89CC" />
-          </TouchableOpacity>
-        </RNAnimated.View>
-      )}
+      <TimelineScrollTopButton
+        visible={showScrollTop}
+        opacity={scrollTopOpacity}
+        scale={scrollTopScale}
+        onPress={scrollToTop}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      />
 
       {/* FAB 浮动操作按钮（搜索界面时隐藏）- 花瓣展开动画 */}
       {!showSearchOverlay && displayMode === 'list' && (
         <FABMenu
           onSelect={onQuickAdd ?? (() => {})}
           shouldHide={fabShouldHide}
-          onRevealRequest={() => setFabShouldHide(false)}
+          onRevealRequest={revealFab}
         />
       )}
     </View>
-  );
-}
-
-// ─── 筛选状态条 ───────────────────────────────────────────────
-
-interface ActiveFiltersBarProps {
-  searchQuery: string;
-  filterType: string;
-  filterDateRange: string;
-  selectedTags: string[];
-  resultCount: number;
-  onClearQuery: () => void;
-  onClearType: () => void;
-  onClearDate: () => void;
-  onClearTag: (tag: string) => void;
-  onClearAll: () => void;
-  onOpenSearch: () => void;
-}
-
-const DATE_LABEL: Record<string, string> = {
-  today: '今天', week: '本周', month: '本月',
-};
-const TYPE_LABEL: Record<string, string> = {
-  text: '文字', photo: '照片', voice: '语音',
-};
-const FILTER_BAR_SCROLL_CONTENT_STYLE = {
-  paddingHorizontal: 12,
-  gap: 6,
-  alignItems: 'center' as const,
-};
-
-function ActiveFiltersBar({
-  searchQuery, filterType, filterDateRange, selectedTags,
-  resultCount, onClearQuery, onClearType, onClearDate, onClearTag, onClearAll, onOpenSearch,
-}: ActiveFiltersBarProps) {
-  return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      exiting={FadeOut.duration(150)}
-      className="flex-row items-center border-b border-border-filter bg-home-filter py-2"
-    >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={FILTER_BAR_SCROLL_CONTENT_STYLE}
-      >
-        {/* 结果数 */}
-        <TouchableOpacity
-          className="flex-row items-center gap-1 rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]"
-          onPress={onOpenSearch}
-        >
-          <Ionicons name="search" size={13} color="#6A89CC" />
-          <Text className="text-xs font-bold text-primary">{resultCount} 条</Text>
-        </TouchableOpacity>
-
-        {/* 关键词 chip */}
-        {searchQuery.trim() ? (
-          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
-            <Text className="shrink text-xs font-semibold text-copy-accent" numberOfLines={1}>
-              "{searchQuery}"
-            </Text>
-            <TouchableOpacity onPress={onClearQuery} hitSlop={6}>
-              <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* 类型 chip */}
-        {filterType !== 'all' ? (
-          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
-            <Text className="shrink text-xs font-semibold text-copy-accent">
-              {TYPE_LABEL[filterType] ?? filterType}
-            </Text>
-            <TouchableOpacity onPress={onClearType} hitSlop={6}>
-              <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* 时间 chip */}
-        {filterDateRange !== 'all' ? (
-          <View className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]">
-            <Text className="shrink text-xs font-semibold text-copy-accent">
-              {DATE_LABEL[filterDateRange] ?? filterDateRange}
-            </Text>
-            <TouchableOpacity onPress={onClearDate} hitSlop={6}>
-              <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* 标签 chips */}
-        {selectedTags.map((tag) => (
-          <View
-            key={tag}
-            className="max-w-[140px] flex-row items-center gap-[5px] rounded-chip border border-border-filter-strong bg-home-surface px-2.5 py-[5px]"
-          >
-            <Text className="shrink text-xs font-semibold text-copy-accent">#{tag}</Text>
-            <TouchableOpacity onPress={() => onClearTag(tag)} hitSlop={6}>
-              <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* 清除全部 */}
-      <TouchableOpacity className="px-2.5 py-1.5" onPress={onClearAll}>
-        <Ionicons name="close-circle" size={18} color="#A3A3A3" />
-      </TouchableOpacity>
-    </Animated.View>
   );
 }

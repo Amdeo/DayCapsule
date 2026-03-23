@@ -3,57 +3,27 @@
  * 支持文本、照片和语音等多种媒体类型
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-  Alert,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
-import Animated, {
-  FadeInRight,
-  Layout,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  Easing,
-  cancelAnimation,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import Animated, { FadeInRight, Layout } from 'react-native-reanimated';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Entry } from '@/src/types/entry';
 import { useEntryStore } from '@/src/store/entryStore';
-import * as FileSystem from 'expo-file-system';
-import { VoiceService } from '@/src/services/voiceService';
-import WaveformAnimation from './WaveformAnimation';
-import { logger } from '@/src/utils/logger';
-import { ImageViewer } from './ImageViewer';
-import { Swipeable } from 'react-native-gesture-handler';
-import { useSettingsStore, PHOTO_HEIGHT_VALUES } from '@/src/store/settingsStore';
-import { EntryActionSheet, ENTRY_ACTION_SHEET_EXIT_DURATION } from './EntryActionSheet';
-import { PhotoGrid } from './PhotoGrid';
-import { formatMMSS } from '@/src/utils/timeUtils';
-import { PhotoService } from '@/src/services/photoService';
-import { CalendarDensity } from '@/src/store/settingsStore';
-import { getEntryCardVariant } from './entryCardVariants';
-
-const ACTION_SHEET_OPEN_DELAY = 100;
-const RIGHT_ACTIONS_WIDTH = 96;
-const PLAY_ICON_CALENDAR_MARGIN_LEFT = 2;
-const PLAY_ICON_DEFAULT_MARGIN_LEFT = 3;
-const RIGHT_ACTIONS_STYLE = {
-  width: RIGHT_ACTIONS_WIDTH,
-};
-const CALENDAR_PLAY_ICON_STYLE = {
-  marginLeft: PLAY_ICON_CALENDAR_MARGIN_LEFT,
-};
-const DEFAULT_PLAY_ICON_STYLE = {
-  marginLeft: PLAY_ICON_DEFAULT_MARGIN_LEFT,
-};
-
+import { CalendarDensity, PHOTO_HEIGHT_VALUES, useSettingsStore } from '@/src/store/settingsStore';
+import { EntryCardCalendarContent } from './entry-card/EntryCardCalendarContent';
+import { EntryCardDialogs } from './entry-card/EntryCardDialogs';
+import { EntryCardDefaultContent } from './entry-card/EntryCardDefaultContent';
+import { entryCardStyles as styles } from './entry-card/EntryCard.styles';
+import {
+  getEntryCardBackgroundColor,
+  getEntryCardCalendarBorderColor,
+  getEntryCardPhotoImageRadius,
+  getEntryCardPressedBackgroundColor,
+  getEntryCardResolvedPhotoHeight,
+  getEntryCardSyncStatusMeta,
+} from './entry-card/entryCardAppearance';
+import { useEntryCardAudio } from './entry-card/useEntryCardAudio';
+import { useEntryCardController } from './entry-card/useEntryCardController';
 
 interface EntryCardProps {
   entry: Entry;
@@ -82,631 +52,62 @@ function EntryCard({
   variant = 'default',
   calendarDensity = 'default',
 }: EntryCardProps) {
-  type CardInteractionState = 'idle' | 'pendingSheet' | 'sheetOpen' | 'closing';
   const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
   const photoHeight = useSettingsStore((s) => s.photoHeight);
   const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
-  const calendarPhotoHeights: Record<CalendarDensity, number> = {
-    comfortable: 260,
-    default: 220,
-    compact: 180,
-  };
-  const resolvedPhotoHeight = variant === 'calendar'
-    ? Math.min(maxPhotoHeight, calendarPhotoHeights[calendarDensity])
-    : maxPhotoHeight;
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [playbackPosition, setPlaybackPosition] = useState(0);
-
-  // 当其他卡片开始播放时，重置本卡片状态
-  useEffect(() => {
-    logger.log('[EntryCard] currentPlayingId changed:', currentPlayingId, 'myId:', entry.id, 'isPlayingAudio:', isPlayingAudio);
-    if (currentPlayingId !== entry.id && isPlayingAudio) {
-      logger.log('[EntryCard] resetting card', entry.id);
-      setIsPlayingAudio(false);
-      setPlaybackPosition(0);
-    }
-  }, [currentPlayingId, entry.id]);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isPressed, setIsPressed] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const stopRequestInFlightRef = useRef(false);
-  const [showImageViewer, setShowImageViewer] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const swipeableRef = useRef<Swipeable>(null);
-  const [audioMissing, setAudioMissing] = useState(false);
-  const [showActionSheet, setShowActionSheet] = useState(false);
-  const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
-  const openSheetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resetCardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stopRecordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardTranslateX = useSharedValue(0);
-  const entryCardVariant = getEntryCardVariant(entry.type, variant);
-
-  // 红点闪烁动画
-  const redDotOpacity = useSharedValue(1);
-
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: cardTranslateX.value }],
-  }));
-
-  useEffect(() => {
-    if (entry.recordingStatus === 'recording') {
-      redDotOpacity.value = withRepeat(
-        withTiming(0.3, {
-          duration: 800,
-          easing: Easing.inOut(Easing.ease),
-        }),
-        -1,
-        true
-      );
-    } else {
-      cancelAnimation(redDotOpacity);
-      redDotOpacity.value = 1;
-    }
-
-    // 组件卸载时清理动画
-    return () => {
-      cancelAnimation(redDotOpacity);
-    };
-  }, [entry.recordingStatus]);
-
-  useEffect(() => {
-    if (isActionSheetActive === false && interactionState !== 'idle' && interactionState !== 'closing') {
-      logger.log('[EntryCard] inactive while non-idle, closing current interaction', entry.id, interactionState);
-      closeActionSheetAndResetCard();
-    }
-  }, [entry.id, interactionState, isActionSheetActive]);
-
-  useEffect(() => {
-    return () => {
-      if (openSheetTimeoutRef.current) {
-        clearTimeout(openSheetTimeoutRef.current);
-      }
-      if (resetCardTimeoutRef.current) {
-        clearTimeout(resetCardTimeoutRef.current);
-      }
-      if (stopRecordingTimeoutRef.current) {
-        clearTimeout(stopRecordingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // 停止音频播放
-  const handleStopAudio = async () => {
-    try {
-      await VoiceService.stopPlayback();
-    } catch (error) {
-      logger.error('Failed to stop audio:', error);
-    } finally {
-      setIsPlayingAudio(false);
-      setPlaybackPosition(0);
-      setCurrentPlayingId(null);
-    }
-  };
-
-  // 处理音频播放
-  const handlePlayAudio = async () => {
-    const uri = entry.media?.[0]?.uri || entry.content;
-
-    // 检查文件是否存在
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        setAudioMissing(true);
-        Alert.alert(
-          '文件不存在',
-          '音频文件已丢失或被删除，无法播放。',
-          [{ text: '知道了', style: 'default' }]
-        );
-        return;
-      }
-      setAudioMissing(false);
-    } catch {
-      // getInfoAsync 本身失败时降级到播放，让 VoiceService 处理错误
-    }
-
-    try {
-      setIsPlayingAudio(true);
-      setPlaybackPosition(0);
-      setCurrentPlayingId(entry.id);
-
-      await VoiceService.playAudio(
-        uri,
-        () => {
-          setIsPlayingAudio(false);
-          setPlaybackPosition(0);
-          setCurrentPlayingId(null);
-        },
-        (position) => {
-          setPlaybackPosition(position);
-        }
-      );
-    } catch (error) {
-      logger.error('Failed to play audio:', error);
-      Alert.alert('播放失败', '无法播放此音频，请重试');
-      setIsPlayingAudio(false);
-      setPlaybackPosition(0);
-      setCurrentPlayingId(null);
-    }
-  };
-
-  // 格式化录音时长
-  const formatDuration = (seconds: number) => formatMMSS(seconds);
-
-  // 照片卡片是否有底部内容（决定图片圆角）
-  const hasPhotoFooter = entry.type === 'photo'
-    ? !!(entry.content || (entry.tags && entry.tags.length > 0))
-    : false;
-
-  const photoImageRadius = hasPhotoFooter
-    ? { borderRadius: 10, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
-    : { borderRadius: 10 };
-
-  const getSyncIconName = () => {
-    switch (entry.syncStatus) {
-      case 'pending':
-      case 'pending_upload':
-        return 'cloud-upload-outline';
-      case 'uploading':
-        return 'sync-outline';
-      case 'failed':
-        return 'alert-circle-outline';
-      case 'pending_delete':
-        return 'trash-outline';
-      default:
-        return null;
-    }
-  };
-
-  const getSyncIconColor = () => {
-    switch (entry.syncStatus) {
-      case 'pending':
-      case 'pending_upload':
-        return '#6A89CC';
-      case 'uploading':
-        return '#F5A623';
-      case 'failed':
-        return '#D9534F';
-      case 'pending_delete':
-        return '#A94442';
-      default:
-        return '#A3A3A3';
-    }
-  };
-
-  const getSyncStatusText = () => {
-    switch (entry.syncStatus) {
-      case 'pending':
-        return '待同步';
-      case 'pending_upload':
-        return '待上传';
-      case 'uploading':
-        return '上传中';
-      case 'failed':
-        return entry.conflictedCopyOf ? '冲突副本' : '同步失败';
-      case 'pending_delete':
-        return '待删除';
-      default:
-        return null;
-    }
-  };
-
-  const syncIconName = getSyncIconName();
-  const syncStatusText = getSyncStatusText();
-
-  const renderCalendarPhotoBody = () => {
-    if (!entry.media || entry.media.length === 0) {
-      return (
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={handleCardPress}
-          style={[styles.calendarPhotoEmptyState, { height: resolvedPhotoHeight }]}
-        >
-          <View style={styles.calendarPhotoEmptyBadge}>
-            <Ionicons name="images-outline" size={26} color="#9F8F7C" />
-          </View>
-        </TouchableOpacity>
-      );
-    }
-
-    if (entry.media.length === 1) {
-      const photo = entry.media[0];
-      return (
-        <View testID={`calendar-photo-card-layout-single-${entry.id}`}>
-          <TouchableOpacity
-            activeOpacity={0.92}
-            onPress={() => handleImagePress(0)}
-            testID={`calendar-photo-primary-${entry.id}`}
-          >
-            <Image
-              source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
-              style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    const [primary, secondary, tertiary] = entry.media;
-    const overflow = entry.media.length - 3;
-
-    return (
-      <View
-        testID={`calendar-photo-card-layout-multi-${entry.id}`}
-        style={[styles.calendarPhotoMultiWrap, { height: resolvedPhotoHeight }]}
-      >
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={() => handleImagePress(0)}
-          style={styles.calendarPhotoPrimary}
-          testID={`calendar-photo-primary-${entry.id}`}
-        >
-          <Image
-            source={{ uri: PhotoService.resolvePhotoUri(primary.thumbnail || primary.uri) }}
-            style={styles.calendarPhotoImage}
-            resizeMode="cover"
-          />
-        </TouchableOpacity>
-        <View style={styles.calendarPhotoSecondaryColumn}>
-          {secondary ? (
-            <TouchableOpacity
-              activeOpacity={0.92}
-              onPress={() => handleImagePress(1)}
-              style={styles.calendarPhotoSecondaryCell}
-              testID={`calendar-photo-secondary-cell-1-${entry.id}`}
-            >
-              <Image
-                source={{ uri: PhotoService.resolvePhotoUri(secondary.thumbnail || secondary.uri) }}
-                style={styles.calendarPhotoImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.calendarPhotoSecondaryCell} />
-          )}
-          {tertiary ? (
-            <TouchableOpacity
-              activeOpacity={0.92}
-              onPress={() => handleImagePress(2)}
-              style={styles.calendarPhotoSecondaryCell}
-              testID={`calendar-photo-secondary-cell-2-${entry.id}`}
-            >
-              <Image
-                source={{ uri: PhotoService.resolvePhotoUri(tertiary.thumbnail || tertiary.uri) }}
-                style={styles.calendarPhotoImage}
-                resizeMode="cover"
-              />
-              {overflow > 0 && (
-                <View style={styles.calendarPhotoOverflowMask}>
-                  <Text style={styles.calendarPhotoOverflowText}>+{overflow}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.calendarPhotoSecondaryCell} />
-          )}
-        </View>
-      </View>
-    );
-  };
-
-  const renderCalendarTags = () => {
-    if (!entry.tags || entry.tags.length === 0) return null;
-
-    return (
-      <View
-        testID={entry.type === 'photo' ? 'photo-tags-container' : undefined}
-        style={[
-          styles.calendarTagsContainer,
-          entry.type === 'photo' && styles.calendarPhotoTagsContainer,
-        ]}
-      >
-        {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
-          <View
-            key={index}
-            style={[
-              styles.calendarTag,
-              entry.type === 'text' && styles.calendarTagTextTone,
-              entry.type === 'voice' && styles.calendarTagVoiceTone,
-            ]}
-          >
-            <Text
-              style={[
-                styles.calendarTagText,
-                entry.type === 'text' && styles.calendarTagTextTextTone,
-                entry.type === 'voice' && styles.calendarTagTextVoiceTone,
-              ]}
-            >
-              #{tag}
-            </Text>
-          </View>
-        ))}
-        {!isExpanded && entry.tags.length > 3 && (
-          <Text style={styles.calendarMoreTagsHint}>+{entry.tags.length - 3}</Text>
-        )}
-      </View>
-    );
-  };
-
-  const renderCalendarTranscription = () => {
-    if (!entry.transcription || entry.type === 'voice') return null;
-
-    return (
-      <View style={styles.calendarTranscriptionContainer}>
-        <Text
-          style={styles.calendarTranscriptionText}
-          numberOfLines={isExpanded ? undefined : 2}
-        >
-          {entry.transcription.text}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderCalendarContent = () => {
-    if (entry.type === 'text') {
-      return (
-        <View style={styles.calendarTextCard}>
-          <Text style={styles.calendarTextContent}>
-            {entry.content}
-          </Text>
-          {renderCalendarTags()}
-          {renderCalendarTranscription()}
-        </View>
-      );
-    }
-
-    if (entry.type === 'photo') {
-      const mediaCount = entry.media?.length ?? 0;
-      const hasMeta = !!(entry.content || (entry.tags && entry.tags.length > 0) || entry.transcription);
-      return (
-        <View style={styles.calendarPhotoCard}>
-          <View style={styles.calendarPhotoBodyWrap}>
-            {renderCalendarPhotoBody()}
-            {mediaCount > 1 ? (
-              <View style={styles.calendarPhotoCountOverlay}>
-                <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
-              </View>
-            ) : null}
-          </View>
-          {hasMeta ? (
-            <View style={styles.calendarPhotoMeta}>
-              {entry.content ? (
-                <Text
-                  style={styles.calendarPhotoCaption}
-                  numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
-                >
-                  {entry.content}
-                </Text>
-              ) : null}
-              {renderCalendarTags()}
-              {renderCalendarTranscription()}
-            </View>
-          ) : null}
-        </View>
-      );
-    }
-
-    if (entry.type === 'voice') {
-      if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping') {
-        const isStopping = entry.recordingStatus === 'stopping';
-        return (
-          <View
-            testID={`calendar-recording-status-${entry.id}`}
-            style={styles.calendarRecordingCard}
-          >
-            <View style={styles.calendarRecordingHeader}>
-              <TouchableOpacity
-                style={[styles.calendarStopButton, (isProcessing || isStopping) && styles.buttonDisabled]}
-                disabled={isProcessing || isStopping}
-                activeOpacity={0.7}
-                onPress={() => {
-                  void runStopRecording(entry.id, isStopping);
-                }}
-              >
-                <View style={styles.stopIconCompact} />
-              </TouchableOpacity>
-              <View style={styles.calendarVoiceTrack}>
-                <View style={styles.calendarVoiceTrackRow}>
-                  <View style={styles.calendarVoiceTrackActive}>
-                    <WaveformAnimation isRecording={!isStopping} color="#F1B463" />
-                  </View>
-                  <Text style={styles.calendarVoiceTime}>
-                    {isStopping ? '处理中...' : formatDuration(entry.recordingDuration || 0)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        );
-      }
-
-      if (!entry.media || entry.media.length === 0) return null;
-
-      return (
-        <View style={styles.calendarVoiceCard}>
-          <View style={styles.calendarVoiceHeader}>
-            {audioMissing ? (
-              <View style={styles.audioMissingRow}>
-                <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
-                <Text style={styles.audioMissingText}>音频文件已丢失</Text>
-              </View>
-            ) : (
-              <>
-                <TouchableOpacity
-                  testID={`calendar-voice-play-button-${entry.id}`}
-                  style={styles.calendarVoicePlayBtn}
-                  onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
-                  activeOpacity={0.85}
-                >
-                  {isPlayingAudio ? (
-                    <Ionicons name="stop" size={20} color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="play" size={22} color="#FFFFFF" style={CALENDAR_PLAY_ICON_STYLE} />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.calendarVoiceTrack}>
-                  <View style={styles.calendarVoiceTrackRow}>
-                    <View style={styles.calendarVoiceTrackActive}>
-                      <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F0A533' : '#EDC98D'} />
-                    </View>
-                    <Text style={styles.calendarVoiceTime}>
-                      {isPlayingAudio
-                        ? formatDuration(Math.floor(playbackPosition / 1000))
-                        : formatDuration(entry.media[0].duration ? Math.floor(entry.media[0].duration / 1000) : 0)}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-          {(entry.transcription?.text || entry.content) ? (
-            <Text
-              style={styles.calendarVoiceCaption}
-              numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
-            >
-              {entry.transcription?.text || entry.content}
-            </Text>
-          ) : null}
-          {renderCalendarTags()}
-        </View>
-      );
-    }
-
-    return null;
-  };
-
-  // 判断是否需要展开
-  const needsExpansion = useMemo(
-    () => entry.content.length > 150 || (entry.tags != null && entry.tags.length > 3),
-    [entry.content, entry.tags]
+  const resolvedPhotoHeight = getEntryCardResolvedPhotoHeight(
+    maxPhotoHeight,
+    variant,
+    calendarDensity,
   );
 
-  // 长按仅触发卡片展开，不再弹出 ActionSheet
-  const handleLongPress = () => {
-    setIsExpanded(true);
-  };
+  const {
+    audioMissing,
+    isPlayingAudio,
+    playbackPosition,
+    handlePlayAudio,
+    handleStopAudio,
+  } = useEntryCardAudio({
+    entry,
+    currentPlayingId,
+    setCurrentPlayingId,
+  });
 
-  const clearOpenSheetTimeout = () => {
-    if (openSheetTimeoutRef.current) {
-      clearTimeout(openSheetTimeoutRef.current);
-      openSheetTimeoutRef.current = null;
-    }
-  };
+  const {
+    swipeableRef,
+    isExpanded,
+    isPressed,
+    isProcessing,
+    showImageViewer,
+    selectedImageIndex,
+    showActionSheet,
+    needsExpansion,
+    setIsPressed,
+    handleLongPress,
+    handleSwipeTrigger,
+    handleImagePress,
+    handleCardPress,
+    runStopRecording,
+    handleActionSheetEdit,
+    handleActionSheetDelete,
+    closeActionSheetAndResetCard,
+    closeImageViewer,
+  } = useEntryCardController({
+    entry,
+    onDelete,
+    onView,
+    onEdit,
+    onStopRecording,
+    isActionSheetActive,
+    onActionSheetOpen,
+    isPlayingAudio,
+    onPlayAudio: handlePlayAudio,
+  });
 
-  const clearResetCardTimeout = () => {
-    if (resetCardTimeoutRef.current) {
-      clearTimeout(resetCardTimeoutRef.current);
-      resetCardTimeoutRef.current = null;
-    }
-  };
+  const photoImageRadius = getEntryCardPhotoImageRadius(entry);
+  const syncStatusMeta = getEntryCardSyncStatusMeta(entry);
 
-  const closeActionSheetAndResetCard = () => {
-    clearOpenSheetTimeout();
-    clearResetCardTimeout();
-    logger.log('[EntryCard] closing action sheet and resetting card', entry.id, interactionState);
-    setInteractionState('closing');
-    setShowActionSheet(false);
-    resetCardTimeoutRef.current = setTimeout(() => {
-      setInteractionState('idle');
-      resetCardTimeoutRef.current = null;
-    }, ENTRY_ACTION_SHEET_EXIT_DURATION);
-  };
-
-  const handleSwipeTrigger = (phase: 'willOpen' | 'open', direction?: 'left' | 'right') => {
-    logger.log('[EntryCard] swipe trigger', {
-      entryId: entry.id,
-      phase,
-      direction,
-      interactionState,
-      showActionSheet,
-    });
-
-    if (direction && direction !== 'right') {
-      logger.log('[EntryCard] ignore non-left swipe direction', entry.id, direction);
-      return;
-    }
-
-    if (interactionState !== 'idle' || showActionSheet) {
-      logger.log('[EntryCard] ignore duplicate swipe trigger', entry.id, interactionState);
-      return;
-    }
-
-    clearOpenSheetTimeout();
-    clearResetCardTimeout();
-    swipeableRef.current?.close();
-    onActionSheetOpen?.(entry.id);
-    setInteractionState('pendingSheet');
-    openSheetTimeoutRef.current = setTimeout(() => {
-      logger.log('[EntryCard] opening action sheet after delay', entry.id);
-      setShowActionSheet(true);
-      setInteractionState('sheetOpen');
-      openSheetTimeoutRef.current = null;
-    }, ACTION_SHEET_OPEN_DELAY);
-  };
-
-  const renderRightActions = () => <View style={RIGHT_ACTIONS_STYLE} />;
-
-  const handleImagePress = (index: number) => {
-    logger.log('图片被点击，打开图片查看器，index:', index);
-    setSelectedImageIndex(index);
-    setShowImageViewer(true);
-  };
-
-  const runStopRecording = async (entryId: string, isStopping: boolean) => {
-    if (isStopping || stopRequestInFlightRef.current) {
-      return;
-    }
-
-    stopRequestInFlightRef.current = true;
-    setIsProcessing(true);
-    try {
-      await onStopRecording?.(entryId);
-    } catch (error) {
-      logger.error('Failed to stop recording:', error);
-    } finally {
-      stopRecordingTimeoutRef.current = setTimeout(() => {
-        stopRequestInFlightRef.current = false;
-        setIsProcessing(false);
-      }, 300);
-    }
-  };
-
-  // 处理卡片点击 - 根据类型执行不同操作
-  const handleCardPress = () => {
-    logger.log('卡片被点击，entry.id:', entry.id, 'type:', entry.type);
-
-    // 录音中不允许点击
-    if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping') {
-      logger.log('录音中，忽略点击');
-      return;
-    }
-
-    switch (entry.type) {
-      case 'text':
-        logger.log('文本记录，触发查看');
-        onView?.(entry);
-        break;
-
-      case 'photo':
-        // 图片记录：点击打开图片查看器
-        logger.log('图片记录，打开图片查看器');
-        setShowImageViewer(true);
-        break;
-
-      case 'voice':
-        // 语音记录：点击播放
-        if (entry.media && entry.media.length > 0 && !isPlayingAudio) {
-          logger.log('语音记录，触发播放');
-          handlePlayAudio();
-        }
-        break;
-
-      default:
-        break;
-    }
-  };
+  const renderRightActions = () => <View style={{ width: 96 }} />;
 
   return (
     <Swipeable
@@ -725,840 +126,102 @@ function EntryCard({
           testID="entry-card-container"
           entering={FadeInRight.duration(360).delay(enterDelay)}
           layout={Layout.springify()}
-          className={variant === 'calendar' ? 'rounded-card' : undefined}
           style={[
             styles.cardShadow,
             variant === 'calendar' && styles.calendarCardShadow,
             { marginBottom: cardSpacing },
           ]}
         >
-          <Animated.View style={cardAnimatedStyle}>
-            <View
-              testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
-              className={variant === 'calendar' ? 'rounded-card' : undefined}
-              style={variant === 'calendar' ? styles.calendarCardShell : undefined}
+          <View
+            testID={variant === 'calendar' ? `calendar-card-shell-${entry.id}` : undefined}
+            style={variant === 'calendar' ? styles.calendarCardShell : undefined}
+          >
+            <Pressable
+              testID="entry-card"
+              onPressIn={() => setIsPressed(true)}
+              onPressOut={() => setIsPressed(false)}
+              onPress={handleCardPress}
+              onLongPress={handleLongPress}
+              style={[
+                styles.cardContainer,
+                variant === 'calendar' && styles.calendarCardContainer,
+                variant === 'calendar' && {
+                  borderColor: getEntryCardCalendarBorderColor(entry.type),
+                  borderWidth: 1,
+                },
+                {
+                  backgroundColor: isPressed
+                    ? getEntryCardPressedBackgroundColor(entry.type, variant)
+                    : getEntryCardBackgroundColor(entry.type, variant),
+                },
+              ]}
             >
-              <Pressable
-                testID="entry-card"
-                onPressIn={() => setIsPressed(true)}
-                onPressOut={() => setIsPressed(false)}
-                onPress={handleCardPress}
-                onLongPress={handleLongPress}
-                className={`${entryCardVariant.shellClassName} ${isPressed ? entryCardVariant.pressedClassName : ''}`}
-                style={[
-                  styles.cardContainer,
-                  variant === 'calendar' && styles.calendarCardContainer,
-                  variant === 'calendar' && { borderColor: entryCardVariant.calendarBorderColor, borderWidth: 1 },
-                  {
-                    backgroundColor: isPressed
-                      ? entryCardVariant.pressedBackgroundColor
-                      : entryCardVariant.shellBackgroundColor,
-                  },
-                ]}
-              >
-                <View>
-            {/* 卡片主内容 */}
-            <View style={[
-              entry.type === 'voice' ? styles.contentVoice : styles.content,
-              entry.type === 'text' && styles.contentText,
-              entry.type === 'photo' && styles.contentPhoto,
-              variant === 'calendar' && styles.calendarContent,
-            ]}>
-              {variant === 'calendar' ? (
-                renderCalendarContent()
-              ) : entry.type === 'text' ? (
-                // 文本内容
-                <Text
-                  style={styles.textContent}
-                  numberOfLines={isExpanded ? undefined : 4}
-                >
-                  {entry.content}
-                </Text>
-              ) : entry.type === 'photo' && entry.media && entry.media.length > 0 ? (
-                <>
-                  <PhotoGrid
-                    photos={entry.media}
-                    maxPhotoHeight={resolvedPhotoHeight}
-                    photoImageRadius={photoImageRadius}
-                    onPhotoPress={(index) => handleImagePress(index)}
-                  />
-                  {entry.content && (
-                    <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
-                      {entry.content}
-                    </Text>
-                  )}
-                </>
-               ) : entry.type === 'voice' ? (
-                 entry.recordingStatus === 'recording' || entry.recordingStatus === 'stopping' ? (
-                   <View
-                     style={styles.recordingContainer}
-                   >
-                     <View style={styles.recordingCompact}>
-                       {(() => {
-                         const isStopping = entry.recordingStatus === 'stopping';
-                         return (
-                       <TouchableOpacity
-                         testID={`voice-stop-button-${entry.id}`}
-                         style={[styles.stopButtonCompact, (isProcessing || isStopping) && styles.buttonDisabled]}
-                         disabled={isProcessing || isStopping}
-                         activeOpacity={0.7}
-                         onPress={() => {
-                           void runStopRecording(entry.id, isStopping);
-                         }}
-                       >
-                         <Ionicons name="stop" size={18} color="#FFFFFF" />
-                       </TouchableOpacity>
-                         );
-                       })()}
-
-                       <View style={styles.recordingCenter}>
-                         <View style={styles.waveformCompact}>
-                           <WaveformAnimation
-                             isRecording={entry.recordingStatus === 'recording'}
-                             color="#F5A68D"
-                           />
-                         </View>
-                         <Text style={styles.recordingLabel}>
-                           {entry.recordingStatus === 'stopping' ? '处理中...' : '录音中...'}
-                         </Text>
-                       </View>
-
-                       {/* 右侧：时长 */}
-                       <Text style={styles.recordingTimeCompact}>
-                         {formatDuration(entry.recordingDuration || 0)}
-                       </Text>
-                     </View>
-                    </View>
-               ) : entry.syncStatus === 'uploading' ? (
-                   <View style={styles.voiceCard}>
-                     <View style={styles.voicePlayRow}>
-                       <View
-                         testID={`voice-uploading-button-${entry.id}`}
-                         style={[styles.voicePlayBtn, styles.voicePlayBtnDisabled]}
-                       >
-                         <ActivityIndicator
-                           testID={`voice-uploading-spinner-${entry.id}`}
-                           size="small"
-                           color="#FFFFFF"
-                         />
-                       </View>
-
-                       <View style={styles.voiceWaveform}>
-                         <WaveformAnimation isRecording={false} color="#D9D9D9" />
-                       </View>
-
-                       <Text
-                         testID={`voice-uploading-label-${entry.id}`}
-                         style={styles.voiceUploadingText}
-                       >
-                         上传中
-                       </Text>
-                     </View>
-
-                     {(entry.transcription?.text || entry.content) ? (
-                       <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
-                         {entry.transcription?.text || entry.content}
-                       </Text>
-                     ) : null}
-                   </View>
-                ) : entry.media && entry.media.length > 0 ? (
-                  <View style={styles.voiceCard}>
-                    {/* 播放行：按钮 + 波形 + 时长 */}
-                    <View style={styles.voicePlayRow}>
-                       {audioMissing ? (
-                         <View style={styles.audioMissingRow}>
-                           <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
-                           <Text style={styles.audioMissingText}>音频文件已丢失</Text>
-                         </View>
-                       ) : (
-                         <>
-                           <TouchableOpacity
-                             style={styles.voicePlayBtn}
-                             onPress={isPlayingAudio ? handleStopAudio : handlePlayAudio}
-                             activeOpacity={0.8}
-                           >
-                             {isPlayingAudio ? (
-                               <Ionicons name="stop" size={22} color="#FFFFFF" />
-                             ) : (
-                               <Ionicons name="play" size={24} color="#FFFFFF" style={DEFAULT_PLAY_ICON_STYLE} />
-                             )}
-                           </TouchableOpacity>
-
-                           <View style={styles.voiceWaveform}>
-                             <WaveformAnimation isRecording={isPlayingAudio} color={isPlayingAudio ? '#F5A623' : '#C4C4C4'} />
-                           </View>
-
-                           <Text style={styles.voiceDuration}>
-                             {isPlayingAudio
-                               ? formatDuration(Math.floor(playbackPosition / 1000))
-                               : formatDuration(entry.media[0].duration ? Math.floor(entry.media[0].duration / 1000) : 0)
-                             }
-                           </Text>
-                         </>
-                      )}
-                    </View>
-
-                    {entry.syncStatus === 'pending_upload' && (
-                      <Text style={styles.voiceUploadingText}>待上传</Text>
-                    )}
-
-                    {/* 转录/描述文字 */}
-                    {(entry.transcription?.text || entry.content) ? (
-                       <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
-                         {entry.transcription?.text || entry.content}
-                       </Text>
-                     ) : null}
-                   </View>
-                ) : null
-              ) : null}
-
-              {/* 同步状态图标 */}
-              {syncIconName && variant !== 'calendar' && (
-                <View style={styles.syncStatusBadge}>
-                  {entry.syncStatus === 'uploading' ? (
-                    <ActivityIndicator size="small" color={getSyncIconColor()} />
-                  ) : (
-                    <Ionicons name={syncIconName as any} size={16} color={getSyncIconColor()} />
-                  )}
-                </View>
-              )}
-              {syncStatusText && variant !== 'calendar' && (
-                <View style={styles.syncStatusPill}>
-                  <Text style={styles.syncStatusPillText}>{syncStatusText}</Text>
-                </View>
-              )}
-
-              {/* 标签（如果有） */}
-              {variant !== 'calendar' && entry.tags && entry.tags.length > 0 && (
+              <View>
                 <View
-                  testID={entry.type === 'photo' ? 'photo-tags-container' : undefined}
-                  style={entry.type === 'photo' ? styles.photoTagsContainer : styles.tagsContainer}
+                  style={[
+                    entry.type === 'voice' ? styles.contentVoice : styles.content,
+                    entry.type === 'text' && styles.contentText,
+                    entry.type === 'photo' && styles.contentPhoto,
+                    variant === 'calendar' && styles.calendarContent,
+                  ]}
                 >
-                  {(isExpanded ? entry.tags : entry.tags.slice(0, 3)).map((tag, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>#{tag}</Text>
-                    </View>
-                  ))}
-                  {!isExpanded && entry.tags.length > 3 && (
-                    <Text style={styles.moreTagsHint}>+{entry.tags.length - 3}</Text>
+                  {variant === 'calendar' ? (
+                    <EntryCardCalendarContent
+                      entry={entry}
+                      isExpanded={isExpanded}
+                      resolvedPhotoHeight={resolvedPhotoHeight}
+                      calendarDensity={calendarDensity}
+                      audioMissing={audioMissing}
+                      isPlayingAudio={isPlayingAudio}
+                      playbackPosition={playbackPosition}
+                      isProcessing={isProcessing}
+                      onCardPress={handleCardPress}
+                      onImagePress={handleImagePress}
+                      onPlayAudio={handlePlayAudio}
+                      onStopAudio={handleStopAudio}
+                      onRunStopRecording={runStopRecording}
+                    />
+                  ) : (
+                    <EntryCardDefaultContent
+                      entry={entry}
+                      isExpanded={isExpanded}
+                      resolvedPhotoHeight={resolvedPhotoHeight}
+                      photoImageRadius={photoImageRadius}
+                      syncStatusMeta={syncStatusMeta}
+                      audioMissing={audioMissing}
+                      isPlayingAudio={isPlayingAudio}
+                      playbackPosition={playbackPosition}
+                      isProcessing={isProcessing}
+                      onImagePress={handleImagePress}
+                      onPlayAudio={handlePlayAudio}
+                      onStopAudio={handleStopAudio}
+                      onRunStopRecording={runStopRecording}
+                    />
                   )}
                 </View>
-              )}
 
-              {/* 转录文本（如果有） */}
-              {variant !== 'calendar' && entry.transcription && (
-                <View style={styles.transcriptionContainer}>
-                  <Text style={styles.transcriptionLabel}>转录</Text>
-                  <Text
-                    style={styles.transcriptionText}
-                    numberOfLines={isExpanded ? undefined : 2}
-                  >
-                    {entry.transcription.text}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* 展开提示（如果需要） */}
-            {needsExpansion && !isExpanded && variant !== 'calendar' && (
-              <Text style={styles.expandHint}>点击展开更多</Text>
-            )}
+                {needsExpansion && !isExpanded && variant !== 'calendar' ? (
+                  <Text style={styles.expandHint}>点击展开更多</Text>
+                ) : null}
               </View>
-
-                {/* 图片查看器 */}
-                {entry.type === 'photo' && entry.media?.[0]?.uri && (
-                  <ImageViewer
-                    visible={showImageViewer}
-                    imageUri={entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri}
-                    onClose={() => {
-                      setShowImageViewer(false);
-                    }}
-                  />
-                )}
-              </Pressable>
-            </View>
-          </Animated.View>
+            </Pressable>
+          </View>
         </Animated.View>
 
-        <EntryActionSheet
-          visible={showActionSheet}
-          entryType={entry.type}
-          onEdit={() => {
-            onEdit?.(entry);
-            closeActionSheetAndResetCard();
-          }}
-          onDelete={() => {
-            onDelete(entry.id);
-            closeActionSheetAndResetCard();
-          }}
-          onClose={closeActionSheetAndResetCard}
+        <EntryCardDialogs
+          entry={entry}
+          selectedImageIndex={selectedImageIndex}
+          showImageViewer={showImageViewer}
+          showActionSheet={showActionSheet}
+          onCloseImageViewer={closeImageViewer}
+          onEdit={handleActionSheetEdit}
+          onDelete={handleActionSheetDelete}
+          onCloseActionSheet={closeActionSheetAndResetCard}
         />
       </>
     </Swipeable>
   );
 }
 
-const styles: Record<string, any> = {
-  syncStatusBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    zIndex: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  syncStatusPill: {
-    position: 'absolute',
-    top: 12,
-    right: 42,
-    zIndex: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  syncStatusPillText: {
-    fontSize: 11,
-    color: '#666666',
-    fontWeight: '600',
-  },
-  cardShadow: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 115, 85, 0.15)',
-    elevation: 0,
-  },
-  calendarCardShadow: {
-    borderRadius: 10,
-    borderColor: 'rgba(139, 115, 85, 0.06)',
-    shadowColor: '#5A4330',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  cardContainer: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  calendarCardShell: {
-    borderRadius: 10,
-  },
-  calendarCardContainer: {
-    borderRadius: 10,
-  },
-  content: {
-    padding: 20,
-    gap: 12,
-  },
-  calendarContent: {
-    padding: 0,
-    gap: 0,
-  },
-  contentText: {
-    borderRadius: 12,
-  },
-  contentPhoto: {
-    padding: 0,
-    gap: 0,
-  },
-  contentVoice: {
-    padding: 0,
-  },
-  textContent: {
-    fontSize: 16,
-    lineHeight: 28,
-    color: '#1A1A1A',
-    letterSpacing: 0.3,
-  },
-  photoCaption: {
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#525252',
-  },
-  calendarKickerText: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: '#8B76C8',
-    marginBottom: 10,
-    fontWeight: '700',
-  },
-  calendarKickerPhoto: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: '#8A7E70',
-    marginBottom: 8,
-    fontWeight: '700',
-  },
-  calendarKickerVoice: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: '#B28646',
-    marginBottom: 10,
-    fontWeight: '700',
-  },
-  calendarTextCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  calendarTextContent: {
-    fontSize: 17,
-    lineHeight: 29,
-    color: '#3F374B',
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
-  calendarPhotoCard: {
-    padding: 10,
-  },
-  calendarPhotoBodyWrap: {
-    position: 'relative',
-  },
-  calendarPhotoCountOverlay: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(0,0,0,0.38)',
-  },
-  calendarPhotoMeta: {
-    paddingHorizontal: 6,
-    paddingTop: 10,
-    paddingBottom: 10,
-  },
-  calendarPhotoCountText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  calendarPhotoCaption: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#67584B',
-  },
-  calendarPhotoEmptyState: {
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FBF7F1',
-    borderWidth: 1,
-    borderColor: '#E7DDD0',
-    borderStyle: 'dashed',
-    paddingHorizontal: 24,
-  },
-  calendarPhotoEmptyBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 6,
-    backgroundColor: '#ECE1D5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  calendarSinglePhoto: {
-    width: '100%',
-    borderRadius: 6,
-    backgroundColor: '#ECE7E0',
-  },
-  calendarPhotoMultiWrap: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  calendarPhotoPrimary: {
-    flex: 1.35,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  calendarPhotoSecondaryColumn: {
-    flex: 0.75,
-    gap: 6,
-  },
-  calendarPhotoSecondaryCell: {
-    flex: 1,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: '#ECE7E0',
-  },
-  calendarPhotoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  calendarPhotoOverflowMask: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  calendarPhotoOverflowText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  calendarTagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  calendarPhotoTagsContainer: {
-    marginTop: 10,
-  },
-  calendarTag: {
-    backgroundColor: '#FFFCF7',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#EAE0D5',
-  },
-  calendarTagTextTone: {
-    borderColor: '#E2D7F0',
-    backgroundColor: '#FFFCF7',
-  },
-  calendarTagVoiceTone: {
-    borderColor: '#EFDDBE',
-    backgroundColor: '#FFFCF7',
-  },
-  calendarTagText: {
-    fontSize: 12,
-    color: '#7E7486',
-    fontWeight: '500',
-  },
-  calendarTagTextTextTone: {
-    color: '#7D69B8',
-  },
-  calendarTagTextVoiceTone: {
-    color: '#9A7D55',
-  },
-  calendarMoreTagsHint: {
-    fontSize: 12,
-    color: '#A3968A',
-    alignSelf: 'center',
-  },
-  calendarTranscriptionContainer: {
-    marginTop: 12,
-    borderRadius: 6,
-    backgroundColor: '#FBF7F1',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#ECE2D7',
-  },
-  calendarTranscriptionText: {
-    fontSize: 13,
-    lineHeight: 21,
-    color: '#64594F',
-  },
-  tag: {
-    backgroundColor: '#F9731620',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#F97316',
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#EA580C',
-    fontWeight: '500',
-  },
-  moreTagsHint: {
-    fontSize: 12,
-    color: '#A3A3A3',
-    alignSelf: 'center',
-  },
-  transcriptionContainer: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-  },
-  transcriptionLabel: {
-    fontSize: 11,
-    color: '#737373',
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  transcriptionText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#525252',
-  },
-  expandHint: {
-    fontSize: 12,
-    color: '#A3A3A3',
-    textAlign: 'center',
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  recordingContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-  },
-  recordingCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  recordingCenter: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  waveformCompact: {
-    width: '100%',
-    height: 28,
-  },
-  recordingLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#8E8E93',
-    marginTop: 4,
-  },
-  recordingTimeCompact: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    fontVariant: ['tabular-nums'],
-    minWidth: 60,
-    textAlign: 'right',
-  },
-  stopButtonCompact: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5A68D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F5A68D',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  stopIconCompact: {
-    width: 16,
-    height: 16,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  playButtonCompact: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5A623',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F5A623',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  voicePlayContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-  },
-  voicePlayCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  voiceWaveformCompact: {
-    flex: 1,
-    height: 28,
-  },
-  voiceTimeCompact: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    fontVariant: ['tabular-nums'],
-    minWidth: 60,
-    textAlign: 'right',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  photoTagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingTop: 0,
-    paddingBottom: 12,
-  },
-  // 新语音卡片样式
-  voiceCard: {
-    padding: 16,
-    gap: 14,
-    borderRadius: 12,
-  },
-  voicePlayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  voicePlayBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F5A623',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F5A623',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  voicePlayBtnDisabled: {
-    opacity: 0.7,
-  },
-  voiceWaveform: {
-    flex: 1,
-    height: 32,
-  },
-  voiceDuration: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8E8E93',
-    fontVariant: ['tabular-nums'],
-    minWidth: 38,
-    textAlign: 'right',
-  },
-  voiceUploadingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#B0822F',
-    minWidth: 58,
-    textAlign: 'right',
-  },
-  voiceCaption: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#1A1A1A',
-    letterSpacing: 0.2,
-  },
-  audioMissingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-  },
-  audioMissingText: {
-    fontSize: 13,
-    color: '#A3A3A3',
-  },
-  calendarVoiceCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  calendarVoiceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 1,
-  },
-  calendarVoicePlayBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F2A62A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F2A62A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  calendarVoiceTrack: {
-    flex: 1,
-  },
-  calendarVoiceTrackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  calendarVoiceTrackActive: {
-    flex: 1,
-    height: 12,
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  calendarVoiceHint: {
-    fontSize: 11,
-    color: '#9C8260',
-  },
-  calendarVoiceTime: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#A4865C',
-    fontVariant: ['tabular-nums'],
-    minWidth: 34,
-    textAlign: 'right',
-  },
-  calendarVoiceCaption: {
-    marginTop: 10,
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#8B735B',
-  },
-  calendarRecordingCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  calendarRecordingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 2,
-  },
-  calendarStopButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#EEAE78',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#EEAE78',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-};
-
-// 使用 React.memo 优化性能，避免不必要的重新渲染
-// 注意：以 named export 形式导出，与 Timeline.v2.tsx 的 import { EntryCard } 保持一致
 const MemoizedEntryCard = React.memo(EntryCard);
 export { MemoizedEntryCard as EntryCard };

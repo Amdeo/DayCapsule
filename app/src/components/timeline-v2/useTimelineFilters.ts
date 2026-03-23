@@ -1,13 +1,11 @@
-import { useCallback, useMemo } from 'react';
-
 interface UseTimelineFiltersOptions {
   searchQuery: string;
-  filterType: string;
-  filterDateRange: string;
+  filterType: 'all' | 'text' | 'photo' | 'voice';
+  filterDateRange: 'all' | 'today' | 'week' | 'month';
   selectedTags: string[];
   setSearchQuery: (value: string) => void;
-  setFilterType: (value: string) => void;
-  setFilterDateRange: (value: string) => void;
+  setFilterType: (value: 'all' | 'text' | 'photo' | 'voice') => void;
+  setFilterDateRange: (value: 'all' | 'today' | 'week' | 'month') => void;
   toggleTag: (tag: string) => void;
   clearTags: () => void;
 }
@@ -23,42 +21,23 @@ export function useTimelineFilters({
   toggleTag,
   clearTags,
 }: UseTimelineFiltersOptions) {
-  const hasFilters = useMemo(
-    () =>
-      !!(
-        searchQuery.trim() ||
-        filterType !== 'all' ||
-        filterDateRange !== 'all' ||
-        selectedTags.length > 0
-      ),
-    [searchQuery, filterType, filterDateRange, selectedTags],
+  const hasFilters = Boolean(
+    searchQuery.trim() ||
+      filterType !== 'all' ||
+      filterDateRange !== 'all' ||
+      selectedTags.length > 0,
   );
 
-  const clearQuery = useCallback(() => {
-    setSearchQuery('');
-  }, [setSearchQuery]);
-
-  const clearType = useCallback(() => {
-    setFilterType('all');
-  }, [setFilterType]);
-
-  const clearDate = useCallback(() => {
-    setFilterDateRange('all');
-  }, [setFilterDateRange]);
-
-  const clearTag = useCallback(
-    (tag: string) => {
-      toggleTag(tag);
-    },
-    [toggleTag],
-  );
-
-  const clearAll = useCallback(() => {
+  const clearQuery = () => setSearchQuery('');
+  const clearType = () => setFilterType('all');
+  const clearDate = () => setFilterDateRange('all');
+  const clearTag = (tag: string) => toggleTag(tag);
+  const clearAll = () => {
     setSearchQuery('');
     setFilterType('all');
     setFilterDateRange('all');
     clearTags();
-  }, [setSearchQuery, setFilterType, setFilterDateRange, clearTags]);
+  };
 
   return {
     hasFilters,
