@@ -1,0 +1,115 @@
+name: Backend Image Bundle
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-backend-image:
+    name: Build Backend Image And Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 设置 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: 运行后端测试
+        working-directory: backend
+        run: go test ./...
+
+      - name: 运行部署制品脚本测试
+        run: bash scripts/test-build-backend-deploy-bundle.sh
+
+      - name: 计算镜像元数据
+        id: meta
+        env:
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+        run: |
+          if [ -z "${REGISTRY_URL:-}" ]; then
+            echo "REGISTRY_URL secret is required" >&2
+            exit 1
+          fi
+
+          owner="${GITHUB_REPOSITORY%%/*}"
+          short_sha="${GITHUB_SHA::7}"
+          image_repo="${REGISTRY_URL}/${owner}/daycapsule-backend"
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+            image_tag="${version}"
+            extra_tag="sha-${short_sha}"
+          else
+            version="sha-${short_sha}"
+            image_tag="latest"
+            extra_tag="${version}"
+          fi
+
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
+          echo "image_ref=${image_repo}:${image_tag}" >> "$GITHUB_OUTPUT"
+          echo "extra_image_ref=${image_repo}:${extra_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: 登录 Gitea Registry
+        env:
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          if [ -z "${REGISTRY_USERNAME:-}" ] || [ -z "${REGISTRY_PASSWORD:-}" ]; then
+            echo "REGISTRY_USERNAME and REGISTRY_PASSWORD secrets are required" >&2
+            exit 1
+          fi
+
+          echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_URL" --username "$REGISTRY_USERNAME" --password-stdin
+
+      - name: 构建镜像
+        run: |
+          docker build \
+            -t "${{ steps.meta.outputs.image_ref }}" \
+            -t "${{ steps.meta.outputs.extra_image_ref }}" \
+            backend
+
+      - name: 推送镜像
+        run: |
+          docker push "${{ steps.meta.outputs.image_ref }}"
+          docker push "${{ steps.meta.outputs.extra_image_ref }}"
+
+      - name: 生成部署目录
+        id: bundle
+        env:
+          IMAGE_REF: ${{ steps.meta.outputs.image_ref }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          bundle_root="$RUNNER_TEMP/daycapsule-backend-deploy"
+          release_dir="$bundle_root/daycapsule-backend-${RELEASE_VERSION}"
+          mkdir -p "$bundle_root"
+
+          bash scripts/build-backend-deploy-bundle.sh "$release_dir" "$IMAGE_REF" "$RELEASE_VERSION"
+
+          JWT_SECRET=test-secret docker compose -f "$release_dir/docker-compose.yml" config >/dev/null
+
+          cd "$bundle_root"
+          zip -r "daycapsule-backend-${RELEASE_VERSION}.zip" "daycapsule-backend-${RELEASE_VERSION}"
+          echo "bundle_zip=$bundle_root/daycapsule-backend-${RELEASE_VERSION}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: 上传部署制品
+        uses: actions/upload-artifact@v3
+        with:
+          name: daycapsule-backend-${{ steps.meta.outputs.version }}
+          path: ${{ steps.bundle.outputs.bundle_zip }}
+          if-no-files-found: error

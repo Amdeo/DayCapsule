@@ -146,6 +146,91 @@ Client -> Host:8080 -> nginx container:80 -> api container:3000
 - [`nginx.conf`](/Users/cooper/Documents/code/MemoryCapsule/nginx.conf)
 - [`backend/Dockerfile`](/Users/cooper/Documents/code/MemoryCapsule/backend/Dockerfile)
 
+## 使用 Gitea Actions 部署制品
+
+如果你不想在服务器上 checkout 仓库，而是希望直接下载“可运行部署包”，可以使用 Gitea Actions 生成的后端部署制品。
+
+新增的 workflow 会做两件事：
+
+- 运行 `backend/` 测试
+- 构建并推送后端镜像到 Gitea Container Registry
+- 生成一个 `zip` 制品，里面包含：
+  - `docker-compose.yml`
+  - `.env.example`
+  - `nginx.conf`
+  - `README.md`
+
+这个 `docker-compose.yml` 已经固定指向本次发布对应的镜像 tag，不需要你在服务器上再手动改版本号。
+
+### 需要配置的 Gitea Secrets
+
+在 Gitea 仓库里配置以下 secrets：
+
+| Secret | 说明 |
+| --- | --- |
+| `REGISTRY_URL` | Gitea Container Registry 主机名，例如 `git.example.com` |
+| `REGISTRY_USERNAME` | 用于推送镜像的用户名 |
+| `REGISTRY_PASSWORD` | 用于推送镜像的 PAT 或密码 |
+
+建议优先使用专门的 PAT，而不是依赖默认工作流 token。
+
+### 服务器部署步骤
+
+1. 从 Gitea Actions 下载本次构建产生的 `zip`
+2. 解压到服务器目录
+3. 如镜像仓库为私有，先登录 registry
+4. 按需创建 `.env`
+5. 启动 compose
+
+示例：
+
+```bash
+unzip daycapsule-backend-sha-abcdef0.zip
+cd daycapsule-backend-sha-abcdef0
+
+docker login git.example.com
+
+cp .env.example .env
+# 编辑 .env，至少设置 JWT_SECRET 和 BASE_URL
+
+mkdir -p data logs
+docker compose up -d
+```
+
+### 关于 `.env`
+
+部署制品会携带 `.env.example`，但运行并不强依赖 `.env` 文件必须存在。
+
+当前 compose 中：
+
+- `PORT`、`BASE_URL`、`DATABASE_PATH`、`UPLOAD_DIR` 都有默认值
+- 只有 `JWT_SECRET` 是必填项
+
+因此你也可以不用 `.env`，改为在启动前直接导出变量：
+
+```bash
+export JWT_SECRET=replace-with-a-long-random-string
+export BASE_URL=http://YOUR_SERVER_IP:8080
+docker compose up -d
+```
+
+### 升级
+
+升级流程改为：
+
+1. 下载新的部署 `zip`
+2. 解压到新目录
+3. 将旧目录中的 `.env` 复制到新目录
+4. 在新目录执行 `docker compose up -d`
+
+### 回滚
+
+回滚方式也很直接：
+
+1. 找到旧版本的部署 `zip`
+2. 解压旧版本目录
+3. 使用旧版本目录中的 compose 重新启动
+
 ## 生产环境建议
 
 ### 1. 优先使用 HTTPS
