@@ -1,29 +1,36 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { Sidebar } from '../Sidebar';
 
+const mockSettingsPage = jest.fn(() => null);
+const mockAboutPage = jest.fn(() => null);
+const mockStatsPage = jest.fn(() => null);
+const mockTagsPage = jest.fn(() => null);
+const mockBackupPage = jest.fn(() => null);
+const mockHelpPage = jest.fn(() => null);
+
 jest.mock('../SettingsPage', () => ({
-  SettingsPage: () => null,
+  SettingsPage: (props: unknown) => mockSettingsPage(props),
 }));
 
 jest.mock('../AboutPage', () => ({
-  AboutPage: () => null,
+  AboutPage: (props: unknown) => mockAboutPage(props),
 }));
 
 jest.mock('../StatsPage', () => ({
-  StatsPage: () => null,
+  StatsPage: (props: unknown) => mockStatsPage(props),
 }));
 
 jest.mock('../TagsPage', () => ({
-  TagsPage: () => null,
+  TagsPage: (props: unknown) => mockTagsPage(props),
 }));
 
 jest.mock('../BackupPage', () => ({
-  BackupPage: () => null,
+  BackupPage: (props: unknown) => mockBackupPage(props),
 }));
 
 jest.mock('../HelpPage', () => ({
-  HelpPage: () => null,
+  HelpPage: (props: unknown) => mockHelpPage(props),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -45,7 +52,39 @@ jest.mock('react-native-reanimated', () => {
   return Reanimated;
 });
 
+function SidebarHarness() {
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [showAbout, setShowAbout] = React.useState(false);
+  const [showStats, setShowStats] = React.useState(false);
+  const [showTags, setShowTags] = React.useState(false);
+  const [showBackup, setShowBackup] = React.useState(false);
+  const [showHelp, setShowHelp] = React.useState(false);
+
+  return (
+    <Sidebar
+      drawerProgress={{ value: 1 }}
+      onClose={jest.fn()}
+      showSettings={showSettings}
+      setShowSettings={setShowSettings}
+      showAbout={showAbout}
+      setShowAbout={setShowAbout}
+      showStats={showStats}
+      setShowStats={setShowStats}
+      showTags={showTags}
+      setShowTags={setShowTags}
+      showBackup={showBackup}
+      setShowBackup={setShowBackup}
+      showHelp={showHelp}
+      setShowHelp={setShowHelp}
+    />
+  );
+}
+
 describe('Sidebar shell', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders the sidebar shell, menu items and safe-area footer', () => {
     const { getByTestId, getByText } = render(
       <Sidebar
@@ -69,5 +108,29 @@ describe('Sidebar shell', () => {
     expect(getByTestId('sidebar-shell')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });
+  });
+
+  it('does not mount hidden detail pages before a menu item is opened', () => {
+    render(<SidebarHarness />);
+
+    expect(mockSettingsPage).not.toHaveBeenCalled();
+    expect(mockAboutPage).not.toHaveBeenCalled();
+    expect(mockStatsPage).not.toHaveBeenCalled();
+    expect(mockTagsPage).not.toHaveBeenCalled();
+    expect(mockBackupPage).not.toHaveBeenCalled();
+    expect(mockHelpPage).not.toHaveBeenCalled();
+  });
+
+  it('only mounts the requested detail page when opening a menu item', () => {
+    const screen = render(<SidebarHarness />);
+
+    fireEvent.press(screen.getByText('统计'));
+
+    expect(mockStatsPage).toHaveBeenCalledTimes(1);
+    expect(mockSettingsPage).not.toHaveBeenCalled();
+    expect(mockAboutPage).not.toHaveBeenCalled();
+    expect(mockTagsPage).not.toHaveBeenCalled();
+    expect(mockBackupPage).not.toHaveBeenCalled();
+    expect(mockHelpPage).not.toHaveBeenCalled();
   });
 });

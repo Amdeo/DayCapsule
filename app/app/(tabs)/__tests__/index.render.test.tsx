@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import HomeScreen from '../index';
 
 const mockLoadEntries = jest.fn().mockResolvedValue(undefined);
@@ -14,6 +14,7 @@ const mockCompleteRecording = jest.fn().mockResolvedValue(undefined);
 const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
+let timelineRenderCount = 0;
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -93,14 +94,23 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
 jest.mock('@/src/components/Timeline.v2', () => {
   const { View } = require('react-native');
   return {
-    Timeline: () => <View testID="timeline-stub" />,
+    Timeline: () => {
+      timelineRenderCount += 1;
+      return <View testID="timeline-stub" />;
+    },
   };
 });
 
 jest.mock('@/src/components/Sidebar', () => {
-  const { View } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return {
-    Sidebar: () => <View testID="sidebar-stub" />,
+    Sidebar: ({ setShowStats }: { setShowStats: (value: boolean) => void }) => (
+      <View testID="sidebar-stub">
+        <Pressable testID="sidebar-open-stats" onPress={() => setShowStats(true)}>
+          <Text>打开统计</Text>
+        </Pressable>
+      </View>
+    ),
   };
 });
 
@@ -122,11 +132,22 @@ jest.mock('@/src/utils/fileSystem', () => ({
 describe('HomeScreen render shell', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    timelineRenderCount = 0;
   });
 
   it('keeps the home screen root container after nativewind migration', () => {
     const screen = render(<HomeScreen />);
 
     expect(screen.getByTestId('home-screen-root')).toHaveStyle({ flex: 1 });
+  });
+
+  it('does not rerender timeline when opening a sidebar detail page', () => {
+    const screen = render(<HomeScreen />);
+
+    expect(timelineRenderCount).toBe(1);
+
+    fireEvent.press(screen.getByTestId('sidebar-open-stats'));
+
+    expect(timelineRenderCount).toBe(1);
   });
 });

@@ -1,5 +1,5 @@
 import { View, Alert, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useRef, type ComponentProps } from 'react';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -44,6 +44,40 @@ const HOME_SCREEN_ROOT_STYLE = {
 const DRAWER_OVERLAY_STYLE = {
   left: MAIN_TRANSLATE_X,
 };
+
+const StableTimeline = memo(Timeline);
+
+type SidebarShellProps = Pick<ComponentProps<typeof Sidebar>, 'drawerProgress' | 'onClose'>;
+
+function SidebarShell({ drawerProgress, onClose }: SidebarShellProps) {
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showTags, setShowTags] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  return (
+    <Sidebar
+      drawerProgress={drawerProgress}
+      onClose={onClose}
+      showSettings={showSettings}
+      setShowSettings={setShowSettings}
+      showAbout={showAbout}
+      setShowAbout={setShowAbout}
+      showStats={showStats}
+      setShowStats={setShowStats}
+      showTags={showTags}
+      setShowTags={setShowTags}
+      showBackup={showBackup}
+      setShowBackup={setShowBackup}
+      showHelp={showHelp}
+      setShowHelp={setShowHelp}
+    />
+  );
+}
+
+const StableSidebarShell = memo(SidebarShell);
 
 export interface PhotoSelectDeps {
   savePhotoToStorage: (
@@ -229,12 +263,6 @@ export default function HomeScreen() {
   const [showTextEditor, setShowTextEditor] = useState(false);
   const drawerProgress = useSharedValue(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-  const [showTags, setShowTags] = useState(false);
-  const [showBackup, setShowBackup] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
 
   // 使用 ref 存储计时器和录音 ID，避免触发不必要的重渲染
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -537,7 +565,7 @@ export default function HomeScreen() {
       style={HOME_SCREEN_ROOT_STYLE}
     >
       <Animated.View className="flex-1" style={mainContentStyle}>
-        <Timeline
+        <StableTimeline
           onQuickAdd={handleMediaSelect}
           onMenuPress={openDrawer}
           onStopRecording={handleStopRecording}
@@ -550,15 +578,9 @@ export default function HomeScreen() {
         onCancel={() => setShowTextEditor(false)}
       />
 
-      <Sidebar
+      <StableSidebarShell
         drawerProgress={drawerProgress}
         onClose={closeDrawer}
-        showSettings={showSettings} setShowSettings={setShowSettings}
-        showAbout={showAbout} setShowAbout={setShowAbout}
-        showStats={showStats} setShowStats={setShowStats}
-        showTags={showTags} setShowTags={setShowTags}
-        showBackup={showBackup} setShowBackup={setShowBackup}
-        showHelp={showHelp} setShowHelp={setShowHelp}
       />
 
       {drawerOpen && (
