@@ -1,12 +1,16 @@
+const jestExpoPreset = require('jest-expo/jest-preset');
+
 module.exports = {
-  preset: 'jest-expo',
+  ...jestExpoPreset,
   setupFiles: [
+    ...(jestExpoPreset.setupFiles ?? []),
     'react-native-gesture-handler/jestSetup',
   ],
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],
   moduleNameMapper: {
+    ...(jestExpoPreset.moduleNameMapper ?? {}),
     '^@/(.*)$': '<rootDir>/$1',
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^react-native-worklets$': '<rootDir>/__mocks__/react-native-worklets.js',
