@@ -21,7 +21,6 @@ module.exports = {
     'src/components/SettingsPage.tsx',
     'src/components/StatsPage.tsx',
     'src/components/TagManagementPage.tsx',
-    'src/components/TagsPage.tsx',
     'src/components/VoiceRecorder.tsx',
     'src/components/WaveformAnimation.tsx',
   ],
@@ -112,10 +111,6 @@ module.exports = {
     },
     'src/components/TagManagementPage.tsx': {
       'style-guard/no-new-stylesheet-create': ['74dcfb1df32d'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/TagsPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['f19a19027f40'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/VoiceRecorder.tsx': {
