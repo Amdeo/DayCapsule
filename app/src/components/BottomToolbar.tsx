@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface BottomToolbarProps {
@@ -14,12 +14,16 @@ const TOOLBAR_BUTTONS = [
 
 export function BottomToolbar({ onPress }: BottomToolbarProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.toolbar}>
+    <View
+      testID="bottom-toolbar-root"
+      className="absolute bottom-[30px] left-0 right-0 items-center justify-center"
+    >
+      <View className="flex-row items-center gap-6 rounded-full bg-white px-5 py-3 shadow-lg shadow-black/10">
         {TOOLBAR_BUTTONS.map(({ type, icon }) => (
           <TouchableOpacity
             key={type}
-            style={styles.button}
+            testID={`bottom-toolbar-button-${type}`}
+            className="h-12 w-12 items-center justify-center rounded-full bg-[#F5F5F5]"
             onPress={() => onPress(type)}
             activeOpacity={0.7}
           >
@@ -30,38 +34,3 @@ export function BottomToolbar({ onPress }: BottomToolbarProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toolbar: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: 24,
-  },
-  button: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
