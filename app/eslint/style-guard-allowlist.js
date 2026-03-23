@@ -6,7 +6,6 @@ module.exports = {
     'app/+not-found.tsx',
     'app/_layout.tsx',
     'app/modal.tsx',
-    'src/components/ErrorBoundary.tsx',
   ],
   // 按文件+按规则记录实例级 fingerprint baseline，仅放行现存违规实例
   ruleBaselines: {
@@ -28,10 +27,6 @@ module.exports = {
     },
     'app/modal.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/ErrorBoundary.tsx': {
-      'style-guard/no-new-stylesheet-create': ['440908eff410'],
       'style-guard/no-static-inline-styles': [],
     },
   },
