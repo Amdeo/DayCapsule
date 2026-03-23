@@ -6,7 +6,6 @@ module.exports = {
     'app/+not-found.tsx',
     'app/_layout.tsx',
     'app/modal.tsx',
-    'src/components/AboutPage.tsx',
     'src/components/BackupExportSheet.tsx',
     'src/components/BackupPage.tsx',
     'src/components/BottomToolbar.tsx',
@@ -44,10 +43,6 @@ module.exports = {
     },
     'app/modal.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/AboutPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['2786db0ba155'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/BackupExportSheet.tsx': {
