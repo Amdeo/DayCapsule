@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-23-settings-account-nativewind-migration-design.md`
 
+**Status:** 已完成实现、验证与文档回填
+
 ---
 
 ## 变更记录
@@ -17,6 +19,10 @@
 - 2026-03-23：基于已批准 spec 创建第五批实现计划，范围固定为 `LoginPage`、`TagManagementPage`、`SettingsPage`。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 先采用本地结构化 review，并在文档中留痕。
 - 2026-03-23：已完成本地结构化 review，未发现阻塞执行的问题。
+- 2026-03-23：Chunk 1 完成，提交 `fae9bcd refactor: migrate login page to nativewind`。
+- 2026-03-23：Chunk 2 完成，提交 `9990099 refactor: migrate tag management page to nativewind`。
+- 2026-03-23：Chunk 3 完成，提交 `b2010c4 refactor: migrate settings page to nativewind`。
+- 2026-03-23：Chunk 4 完成，第五批相关测试、全量 lint、typecheck 与全量测试全部通过。
 
 ## File Structure
 
@@ -62,7 +68,7 @@
 - Modify: `app/src/components/LoginPage.tsx`
 - Modify: `app/src/components/__tests__/LoginPage.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定登录页根壳层和模式切换**
+- [x] **Step 1: 先写失败测试，锁定登录页根壳层和模式切换**
 
 在 `app/src/components/__tests__/LoginPage.test.tsx` 增加至少一条断言：
 
@@ -80,13 +86,13 @@ it('renders the login page shell inside the existing detail shell', () => {
 
 保留现有登录提交与切换注册模式测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx`
 
 Expected: FAIL，原因应包含 `login-page-root` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `LoginPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `LoginPage` NativeWind 迁移**
 
 在 `app/src/components/LoginPage.tsx`：
 
@@ -108,7 +114,7 @@ Expected: FAIL，原因应包含 `login-page-root` 尚不存在。
 - 补以下 `testID`：
   - `login-page-root`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx`
 
@@ -124,7 +130,7 @@ Run: `cd app && npm run lint -- src/components/LoginPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/LoginPage.tsx app/src/components/__tests__/LoginPage.test.tsx
@@ -140,7 +146,7 @@ git commit -m "refactor: migrate login page to nativewind"
 - Modify: `app/src/components/TagManagementPage.tsx`
 - Modify: `app/src/components/__tests__/TagManagementPage.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层与标签容器**
+- [x] **Step 1: 先写失败测试，锁定根壳层与标签容器**
 
 在 `app/src/components/__tests__/TagManagementPage.test.tsx` 增加至少一条断言：
 
@@ -156,13 +162,13 @@ it('renders the preset tag management shell and tag container', () => {
 
 保留现有添加标签与拖拽排序测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx`
 
 Expected: FAIL，原因应包含 `tag-management-root` 或 `tag-management-tags-container` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `TagManagementPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `TagManagementPage` NativeWind 迁移**
 
 在 `app/src/components/TagManagementPage.tsx`：
 
@@ -190,7 +196,7 @@ Expected: FAIL，原因应包含 `tag-management-root` 或 `tag-management-tags-
   - `tag-management-root`
   - `tag-management-tags-container`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx`
 
@@ -206,7 +212,7 @@ Run: `cd app && npm run lint -- src/components/TagManagementPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/TagManagementPage.tsx app/src/components/__tests__/TagManagementPage.test.tsx
@@ -222,7 +228,7 @@ git commit -m "refactor: migrate tag management page to nativewind"
 - Modify: `app/src/components/SettingsPage.tsx`
 - Modify: `app/src/components/__tests__/SettingsPage.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定根壳层与存储卡片**
+- [x] **Step 1: 先写失败测试，锁定根壳层与存储卡片**
 
 在 `app/src/components/__tests__/SettingsPage.test.tsx` 增加至少一条断言：
 
@@ -242,13 +248,13 @@ it('renders the settings shell and storage card inside the existing detail shell
 
 保留现有日历密度切换、预制标签入口、同步状态、云端模式切换等测试。
 
-- [ ] **Step 2: 运行目标测试，确认当前实现失败**
+- [x] **Step 2: 运行目标测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因应包含 `settings-page-root` / `settings-section-account` / `settings-storage-card` 尚不存在。
 
-- [ ] **Step 3: 最小实现 `SettingsPage` NativeWind 迁移**
+- [x] **Step 3: 最小实现 `SettingsPage` NativeWind 迁移**
 
 在 `app/src/components/SettingsPage.tsx`：
 
@@ -280,7 +286,7 @@ Expected: FAIL，原因应包含 `settings-page-root` / `settings-section-accoun
   - `settings-section-account`
   - `settings-storage-card`
 
-- [ ] **Step 4: 跑测试并移出 allowlist**
+- [x] **Step 4: 跑测试并移出 allowlist**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
@@ -296,7 +302,7 @@ Run: `cd app && npm run lint -- src/components/SettingsPage.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/eslint/style-guard-allowlist.js app/src/components/SettingsPage.tsx app/src/components/__tests__/SettingsPage.test.tsx
@@ -311,7 +317,7 @@ git commit -m "refactor: migrate settings page to nativewind"
 - Modify: `docs/superpowers/specs/2026-03-23-settings-account-nativewind-migration-design.md`
 - Modify: `docs/superpowers/plans/2026-03-23-settings-account-nativewind-migration.md`
 
-- [ ] **Step 1: 先跑第五批相关测试集合**
+- [x] **Step 1: 先跑第五批相关测试集合**
 
 Run:
 
@@ -324,7 +330,7 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 跑静态检查与全量测试**
+- [x] **Step 2: 跑静态检查与全量测试**
 
 Run: `cd app && npm run lint`
 Expected: PASS
@@ -335,7 +341,7 @@ Expected: PASS
 Run: `cd app && npm test -- --runInBand`
 Expected: PASS
 
-- [ ] **Step 3: 回填文档执行结果**
+- [x] **Step 3: 回填文档执行结果**
 
 在 spec 与 plan 中补：
 
@@ -344,12 +350,45 @@ Expected: PASS
 - 验证命令及结果
 - 若实现与计划有轻微偏差，记录原因
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-23-settings-account-nativewind-migration-design.md docs/superpowers/plans/2026-03-23-settings-account-nativewind-migration.md
 git commit -m "docs: backfill settings account nativewind migration"
 ```
+
+## 执行结果
+
+- 已完成 `LoginPage`、`TagManagementPage`、`SettingsPage` 的 NativeWind 迁移，并全部从 allowlist 中移除
+- 已新增并验证以下测试锚点：
+  - `login-page-root`
+  - `tag-management-root`
+  - `tag-management-tags-container`
+  - `settings-page-root`
+  - `settings-section-account`
+  - `settings-storage-card`
+- 已完成 3 次功能提交：
+  - `fae9bcd refactor: migrate login page to nativewind`
+  - `9990099 refactor: migrate tag management page to nativewind`
+  - `b2010c4 refactor: migrate settings page to nativewind`
+
+## 验证记录
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/LoginPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/TagManagementPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/SettingsPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`：PASS，3 个 suite / 13 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，56 个 suite / 358 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
+- `SettingsPage` 额外引入了少量 `className` 字符串常量复用公共卡片样式；这属于样式表达层面的收口，不影响业务逻辑和界面结构
 
 ## 本地结构化 Review 结论
 

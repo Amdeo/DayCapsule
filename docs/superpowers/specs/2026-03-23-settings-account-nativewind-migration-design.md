@@ -2,8 +2,9 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待进入 implementation plan
+- 当前状态：已完成实现并通过验证
 - 设计确认日期：2026-03-23
+- 实现完成日期：2026-03-23
 
 ## 评审记录
 
@@ -15,6 +16,8 @@
 - 2026-03-23：已确认云同步切换、通知调度、缓存清理、设置重置、登录/注册、预制标签拖拽等业务逻辑全部保持不变。
 - 2026-03-23：用户已明确要求后续自动推进，不再逐项请示；本轮设计基于该授权直接落文并继续 planning。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 spec review 先采用本地结构化 review 留痕。
+- 2026-03-23：`LoginPage`、`TagManagementPage`、`SettingsPage` 已全部迁到 `NativeWind`，并从 allowlist 中移除。
+- 2026-03-23：第五批相关测试、全量 lint、typecheck 与全量测试均已通过。
 
 ## 背景
 
@@ -207,3 +210,38 @@
 - 已对设置/账号链路范围、共享依赖关系、业务边界和测试策略做本地结构化 review
 - 当前范围适合继续按“失败测试 -> 最小实现 -> lint 收口 -> 提交”的节奏执行
 - 未发现阻塞进入 implementation plan 的问题
+
+## 实现结果
+
+- 已完成 [LoginPage.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/LoginPage.tsx)、[TagManagementPage.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/TagManagementPage.tsx)、[SettingsPage.tsx](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/components/SettingsPage.tsx) 的静态样式迁移，三者均不再依赖 `StyleSheet.create`
+- 已补稳定测试锚点：
+  - `login-page-root`
+  - `tag-management-root`
+  - `tag-management-tags-container`
+  - `settings-page-root`
+  - `settings-section-account`
+  - `settings-storage-card`
+- 已从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 删除这 3 个组件，完成第五批设置/账号链路收口
+- 入口关系和业务行为保持不变：
+  - `Sidebar -> SettingsPage`
+  - `SettingsPage -> LoginPage`
+  - `SettingsPage -> TagManagementPage`
+  - 云同步切换、通知调度、缓存清理、设置重置、登录/注册、拖拽重排逻辑均未调整
+
+## 验证结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/LoginPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/TagManagementPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`：PASS
+- `cd app && npm run lint -- src/components/SettingsPage.tsx`：PASS
+- `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`：PASS，3 个 suite / 13 个测试全部通过
+- `cd app && npm run lint`：PASS
+- `cd app && npm run typecheck`：PASS
+- `cd app && npm test -- --runInBand`：PASS，56 个 suite / 358 个测试全部通过
+
+## 偏差说明
+
+- 无功能性偏差
+- `SettingsPage` 中新增了少量 `className` 字符串常量，用于复用原本重复的卡片壳层样式；这只影响样式表达方式，不改变组件结构和行为
