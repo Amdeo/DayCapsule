@@ -161,6 +161,9 @@ describe('SettingsPage calendar density selector', () => {
       expect(screen.getByText('< 0.1 MB')).toBeTruthy();
     });
 
+    expect(screen.getByTestId('settings-page-root')).toBeTruthy();
+    expect(screen.getByTestId('settings-section-account')).toBeTruthy();
+    expect(screen.getByTestId('settings-storage-card')).toBeTruthy();
     expect(screen.getByText('日历内容区密度')).toBeTruthy();
     expect(screen.getByText('调整日历视图中卡片和时间轴的疏密程度')).toBeTruthy();
     expect(screen.getByText('标准')).toBeTruthy();

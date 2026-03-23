@@ -7,7 +7,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Pressable,
   Switch,
   Alert,
@@ -62,6 +61,19 @@ const CALENDAR_DENSITY_LABELS: Record<CalendarDensity, string> = {
   default: '标准',
   compact: '紧凑',
 };
+
+const SECTION_TITLE_CLASS_NAME =
+  'mb-3 text-[14px] font-bold uppercase tracking-[0.5px] text-copy-muted';
+const SETTING_CARD_CLASS_NAME =
+  'mb-2 flex-row items-center rounded-chip bg-neutral-100 px-4 py-4';
+const SETTING_ICON_CLASS_NAME =
+  'mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#F0F4FF]';
+const SETTING_TITLE_CLASS_NAME = 'mb-[2px] text-base font-semibold text-copy-primary';
+const SETTING_SUBTITLE_CLASS_NAME = 'text-[13px] text-copy-muted';
+const SEGMENTED_SELECTOR_CLASS_NAME =
+  'mb-2 flex-row items-center rounded-chip bg-neutral-100 px-4 py-4';
+const SEGMENTED_CONTROL_CLASS_NAME = 'flex-row rounded-lg bg-neutral-200 p-0.5';
+const STORAGE_CARD_CLASS_NAME = 'rounded-chip bg-neutral-100 p-4';
 
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const { entries } = useEntryStore();
@@ -421,166 +433,168 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   return (
     <DetailPageShell visible={visible} title="设置" onClose={onClose}>
-      {/* 账户 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>账户</Text>
-        {isAuthenticated ? (
-          <>
-            <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Ionicons name="person" size={20} color="#6A89CC" />
+      <View className="pt-6" testID="settings-page-root">
+        {/* 账户 */}
+        <View testID="settings-section-account">
+          <Text className={SECTION_TITLE_CLASS_NAME}>账户</Text>
+          {isAuthenticated ? (
+            <>
+              <View className={SETTING_CARD_CLASS_NAME}>
+                <View className={SETTING_ICON_CLASS_NAME}>
+                  <Ionicons name="person" size={20} color="#6A89CC" />
+                </View>
+                <View className="flex-1">
+                  <Text className={SETTING_TITLE_CLASS_NAME}>{user?.email}</Text>
+                  <Text className={SETTING_SUBTITLE_CLASS_NAME}>已登录</Text>
+                </View>
               </View>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>{user?.email}</Text>
-                <Text style={styles.settingSubtitle}>已登录</Text>
-              </View>
-            </View>
-            <SettingItem
-              icon="cloud"
-              title="云端模式"
-              subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
-              rightComponent={
-                <Switch
-                  value={cloudMode === true}
-                  onValueChange={handleCloudModeToggle}
-                  disabled={cloudMode === 'switching' || isSwitchingMode}
-                  trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-                  thumbColor="#FFFFFF"
-                />
-              }
-            />
+              <SettingItem
+                icon="cloud"
+                title="云端模式"
+                subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
+                rightComponent={
+                  <Switch
+                    value={cloudMode === true}
+                    onValueChange={handleCloudModeToggle}
+                    disabled={cloudMode === 'switching' || isSwitchingMode}
+                    trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+                    thumbColor="#FFFFFF"
+                  />
+                }
+              />
+              <SettingButton
+                icon="cloud-done"
+                title="同步状态"
+                subtitle="查看最近同步时间和待同步条数"
+                onPress={async () => {
+                  await showCloudSyncStatusAlert();
+                }}
+              />
+              <SettingButton
+                icon="log-out"
+                title="退出登录"
+                subtitle="退出当前账户"
+                onPress={handleLogout}
+                danger
+              />
+            </>
+          ) : (
             <SettingButton
-              icon="cloud-done"
-              title="同步状态"
-              subtitle="查看最近同步时间和待同步条数"
-              onPress={async () => {
-                await showCloudSyncStatusAlert();
-              }}
+              icon="person-add"
+              title="登录 / 注册"
+              subtitle="登录后可使用云端同步功能"
+              onPress={() => setShowLogin(true)}
             />
-            <SettingButton
-              icon="log-out"
-              title="退出登录"
-              subtitle="退出当前账户"
-              onPress={handleLogout}
-              danger
-            />
-          </>
-        ) : (
-          <SettingButton
-            icon="person-add"
-            title="登录 / 注册"
-            subtitle="登录后可使用云端同步功能"
-            onPress={() => setShowLogin(true)}
+          )}
+        </View>
+
+        {/* 通知设置 */}
+        <View className="mt-6">
+          <Text className={SECTION_TITLE_CLASS_NAME}>通知</Text>
+          <SettingItem
+            icon="notifications"
+            title="推送通知"
+            subtitle="接收提醒和更新"
+            rightComponent={
+              <Switch
+                value={notifications}
+                onValueChange={handleNotifications}
+                trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+                thumbColor="#FFFFFF"
+              />
+            }
           />
-        )}
-      </View>
+        </View>
 
-      {/* 通知设置 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>通知</Text>
-        <SettingItem
-          icon="notifications"
-          title="推送通知"
-          subtitle="接收提醒和更新"
-          rightComponent={
-            <Switch
-              value={notifications}
-              onValueChange={handleNotifications}
-              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-      </View>
+        {/* 数据设置 */}
+        <View className="mt-6">
+          <Text className={SECTION_TITLE_CLASS_NAME}>数据</Text>
+          <SettingItem
+            icon="cloud-upload"
+            title="自动备份"
+            subtitle="进入后台时自动保存到本地"
+            rightComponent={
+              <Switch
+                value={autoBackup}
+                onValueChange={handleAutoBackup}
+                trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          <SettingItem
+            icon="image"
+            title="高质量照片"
+            subtitle="保存原始质量照片"
+            rightComponent={
+              <Switch
+                value={highQualityPhotos}
+                onValueChange={handleHighQualityPhotos}
+                trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          <CardSpacingSelector
+            value={cardSpacing}
+            onChange={handleCardSpacing}
+          />
+          <CalendarDensitySelector
+            value={calendarDensity}
+            onChange={handleCalendarDensity}
+          />
+          <PhotoHeightSelector
+            value={photoHeight}
+            onChange={handlePhotoHeight}
+          />
+          <SettingButton
+            icon="trash"
+            title="清除缓存"
+            subtitle="释放存储空间"
+            onPress={handleClearCache}
+          />
+        </View>
 
-      {/* 数据设置 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>数据</Text>
-        <SettingItem
-          icon="cloud-upload"
-          title="自动备份"
-          subtitle="进入后台时自动保存到本地"
-          rightComponent={
-            <Switch
-              value={autoBackup}
-              onValueChange={handleAutoBackup}
-              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-        <SettingItem
-          icon="image"
-          title="高质量照片"
-          subtitle="保存原始质量照片"
-          rightComponent={
-            <Switch
-              value={highQualityPhotos}
-              onValueChange={handleHighQualityPhotos}
-              trackColor={{ false: '#D1D1D1', true: '#6A89CC' }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-        <CardSpacingSelector
-          value={cardSpacing}
-          onChange={handleCardSpacing}
-        />
-        <CalendarDensitySelector
-          value={calendarDensity}
-          onChange={handleCalendarDensity}
-        />
-        <PhotoHeightSelector
-          value={photoHeight}
-          onChange={handlePhotoHeight}
-        />
-        <SettingButton
-          icon="trash"
-          title="清除缓存"
-          subtitle="释放存储空间"
-          onPress={handleClearCache}
-        />
-      </View>
-
-      {/* 存储信息 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>存储</Text>
-        <View style={styles.storageInfo}>
-          <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>已用空间</Text>
-            <Text style={styles.storageValue}>{usedSpace}</Text>
-          </View>
-          <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>记录数量</Text>
-            <Text style={styles.storageValue}>{entries.length} 条</Text>
-          </View>
-          <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>照片数量</Text>
-            <Text style={styles.storageValue}>{photoCount} 张</Text>
-          </View>
-          <View style={styles.storageRow}>
-            <Text style={styles.storageLabel}>语音数量</Text>
-            <Text style={styles.storageValue}>{voiceCount} 条</Text>
+        {/* 存储信息 */}
+        <View className="mt-6">
+          <Text className={SECTION_TITLE_CLASS_NAME}>存储</Text>
+          <View className={STORAGE_CARD_CLASS_NAME} testID="settings-storage-card">
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-[15px] text-neutral-500">已用空间</Text>
+              <Text className="text-[15px] font-semibold text-copy-primary">{usedSpace}</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-[15px] text-neutral-500">记录数量</Text>
+              <Text className="text-[15px] font-semibold text-copy-primary">{entries.length} 条</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-[15px] text-neutral-500">照片数量</Text>
+              <Text className="text-[15px] font-semibold text-copy-primary">{photoCount} 张</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-2">
+              <Text className="text-[15px] text-neutral-500">语音数量</Text>
+              <Text className="text-[15px] font-semibold text-copy-primary">{voiceCount} 条</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* 其他设置 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>其他</Text>
-        <SettingButton
-          icon="pricetag"
-          title="预制标签管理"
-          subtitle="管理可快速选择的预制标签"
-          onPress={() => setShowTagMgmt(true)}
-        />
-        <SettingButton
-          icon="refresh"
-          title="重置设置"
-          subtitle="恢复默认设置"
-          onPress={handleResetSettings}
-          danger
-        />
+        {/* 其他设置 */}
+        <View className="mt-6">
+          <Text className={SECTION_TITLE_CLASS_NAME}>其他</Text>
+          <SettingButton
+            icon="pricetag"
+            title="预制标签管理"
+            subtitle="管理可快速选择的预制标签"
+            onPress={() => setShowTagMgmt(true)}
+          />
+          <SettingButton
+            icon="refresh"
+            title="重置设置"
+            subtitle="恢复默认设置"
+            onPress={handleResetSettings}
+            danger
+          />
+        </View>
       </View>
       <TagManagementPage visible={showTagMgmt} onClose={() => setShowTagMgmt(false)} />
       <LoginPage
@@ -602,22 +616,28 @@ function CalendarDensitySelector({
   const options: CalendarDensity[] = ['comfortable', 'default', 'compact'];
 
   return (
-    <View style={csStyles.container}>
-      <View style={csStyles.icon}>
+    <View className={SEGMENTED_SELECTOR_CLASS_NAME}>
+      <View className={SETTING_ICON_CLASS_NAME}>
         <Ionicons name="calendar-outline" size={20} color="#6A89CC" />
       </View>
-      <View style={csStyles.content}>
-        <Text style={csStyles.title}>日历内容区密度</Text>
-        <Text style={csStyles.subtitle}>调整日历视图中卡片和时间轴的疏密程度</Text>
+      <View className="flex-1">
+        <Text className={SETTING_TITLE_CLASS_NAME}>日历内容区密度</Text>
+        <Text className={SETTING_SUBTITLE_CLASS_NAME}>调整日历视图中卡片和时间轴的疏密程度</Text>
       </View>
-      <View style={csStyles.segmentContainer}>
+      <View className={SEGMENTED_CONTROL_CLASS_NAME}>
         {options.map((option) => (
           <Pressable
             key={option}
-            style={[csStyles.segment, value === option && csStyles.segmentActive]}
+            className={`rounded-md px-2.5 py-1.5 ${
+              value === option ? 'bg-white shadow-sm shadow-black/10' : ''
+            }`}
             onPress={() => onChange(option)}
           >
-            <Text style={[csStyles.segmentText, value === option && csStyles.segmentTextActive]}>
+            <Text
+              className={`text-xs font-medium ${
+                value === option ? 'font-semibold text-primary' : 'text-neutral-500'
+              }`}
+            >
               {CALENDAR_DENSITY_LABELS[option]}
             </Text>
           </Pressable>
@@ -640,13 +660,13 @@ function SettingItem({
   rightComponent: React.ReactNode;
 }) {
   return (
-    <View style={styles.settingItem}>
-      <View style={styles.settingIcon}>
+    <View className={SETTING_CARD_CLASS_NAME}>
+      <View className={SETTING_ICON_CLASS_NAME}>
         <Ionicons name={icon as any} size={20} color="#6A89CC" />
       </View>
-      <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        <Text style={styles.settingSubtitle}>{subtitle}</Text>
+      <View className="flex-1">
+        <Text className={SETTING_TITLE_CLASS_NAME}>{title}</Text>
+        <Text className={SETTING_SUBTITLE_CLASS_NAME}>{subtitle}</Text>
       </View>
       {rightComponent}
     </View>
@@ -664,22 +684,28 @@ function CardSpacingSelector({
   const options: CardSpacing[] = ['compact', 'default', 'loose'];
 
   return (
-    <View style={csStyles.container}>
-      <View style={csStyles.icon}>
+    <View className={SEGMENTED_SELECTOR_CLASS_NAME}>
+      <View className={SETTING_ICON_CLASS_NAME}>
         <Ionicons name="albums" size={20} color="#6A89CC" />
       </View>
-      <View style={csStyles.content}>
-        <Text style={csStyles.title}>卡片间距</Text>
-        <Text style={csStyles.subtitle}>调整记录卡片之间的间距</Text>
+      <View className="flex-1">
+        <Text className={SETTING_TITLE_CLASS_NAME}>卡片间距</Text>
+        <Text className={SETTING_SUBTITLE_CLASS_NAME}>调整记录卡片之间的间距</Text>
       </View>
-      <View style={csStyles.segmentContainer}>
+      <View className={SEGMENTED_CONTROL_CLASS_NAME}>
         {options.map((option) => (
           <Pressable
             key={option}
-            style={[csStyles.segment, value === option && csStyles.segmentActive]}
+            className={`rounded-md px-2.5 py-1.5 ${
+              value === option ? 'bg-white shadow-sm shadow-black/10' : ''
+            }`}
             onPress={() => onChange(option)}
           >
-            <Text style={[csStyles.segmentText, value === option && csStyles.segmentTextActive]}>
+            <Text
+              className={`text-xs font-medium ${
+                value === option ? 'font-semibold text-primary' : 'text-neutral-500'
+              }`}
+            >
               {SPACING_LABELS[option]}
             </Text>
           </Pressable>
@@ -688,68 +714,6 @@ function CardSpacingSelector({
     </View>
   );
 }
-
-const csStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  icon: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F4FF',
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#A3A3A3',
-  },
-  segmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E5E5',
-    borderRadius: 8,
-    padding: 2,
-  },
-  segment: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  segmentActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  segmentText: {
-    fontSize: 12,
-    color: '#737373',
-    fontWeight: '500',
-  },
-  segmentTextActive: {
-    color: '#6A89CC',
-    fontWeight: '600',
-  },
-});
 
 // 照片高度选择器组件
 function PhotoHeightSelector({
@@ -762,34 +726,41 @@ function PhotoHeightSelector({
   const options: PhotoHeightPreset[] = ['compact', 'default', 'large'];
 
   return (
-    <View style={phStyles.container}>
-      <View style={phStyles.header}>
-        <View style={phStyles.icon}>
+    <View className="mb-2 rounded-chip bg-neutral-100 p-4">
+      <View className="mb-[14px] flex-row items-center">
+        <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#E8F8FA]">
           <Ionicons name="image-outline" size={20} color="#77C9D4" />
         </View>
-        <View style={phStyles.headerText}>
-          <Text style={phStyles.title}>照片显示高度</Text>
-          <Text style={phStyles.subtitle}>限制时间轴中照片卡片的最大高度</Text>
+        <View className="flex-1">
+          <Text className={SETTING_TITLE_CLASS_NAME}>照片显示高度</Text>
+          <Text className={SETTING_SUBTITLE_CLASS_NAME}>限制时间轴中照片卡片的最大高度</Text>
         </View>
       </View>
-      <View style={phStyles.optionsRow}>
+      <View className="flex-row gap-2.5">
         {options.map((option) => {
           const isSelected = value === option;
           return (
             <Pressable
               key={option}
-              style={[phStyles.optionCard, isSelected && phStyles.optionCardSelected]}
+              className={`flex-1 items-center rounded-[10px] border-[1.5px] px-2.5 py-2.5 ${
+                isSelected
+                  ? 'border-[#77C9D4] bg-[#EEF8FA]'
+                  : 'border-transparent bg-white'
+              }`}
               onPress={() => onChange(option)}
             >
-              <View style={[
-                phStyles.previewBlock,
-                { height: PHOTO_HEIGHT_PREVIEW_HEIGHTS[option] },
-                isSelected && phStyles.previewBlockSelected,
-              ]} />
-              <Text style={[phStyles.optionLabel, isSelected && phStyles.optionLabelSelected]}>
+              <View
+                className={`w-full rounded-md ${isSelected ? 'bg-[#77C9D4]' : 'bg-[#D4EFF3]'}`}
+                style={{ height: PHOTO_HEIGHT_PREVIEW_HEIGHTS[option] }}
+              />
+              <Text
+                className={`mt-1.5 text-[13px] font-medium ${
+                  isSelected ? 'font-semibold text-[#4A9DAA]' : 'text-neutral-500'
+                }`}
+              >
                 {PHOTO_HEIGHT_LABELS[option]}
               </Text>
-              <Text style={[phStyles.optionValue, isSelected && phStyles.optionValueSelected]}>
+              <Text className={`text-[11px] ${isSelected ? 'text-[#77C9D4]' : 'text-[#B0B0B0]'}`}>
                 {PHOTO_HEIGHT_VALUES[option]}dp
               </Text>
             </Pressable>
@@ -799,84 +770,6 @@ function PhotoHeightSelector({
     </View>
   );
 }
-
-const phStyles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  icon: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E8F8FA',
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#A3A3A3',
-  },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  optionCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 10,
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  optionCardSelected: {
-    borderColor: '#77C9D4',
-    backgroundColor: '#EEF8FA',
-  },
-  previewBlock: {
-    width: '100%',
-    borderRadius: 6,
-    backgroundColor: '#D4EFF3',
-  },
-  previewBlockSelected: {
-    backgroundColor: '#77C9D4',
-  },
-  optionLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#737373',
-  },
-  optionLabelSelected: {
-    color: '#4A9DAA',
-    fontWeight: '600',
-  },
-  optionValue: {
-    fontSize: 11,
-    color: '#B0B0B0',
-  },
-  optionValueSelected: {
-    color: '#77C9D4',
-  },
-});
 
 // 设置按钮组件
 function SettingButton({
@@ -893,87 +786,23 @@ function SettingButton({
   danger?: boolean;
 }) {
   return (
-    <Pressable style={styles.settingItem} onPress={onPress}>
-      <View style={[styles.settingIcon, danger && styles.dangerIcon]}>
+    <Pressable className={SETTING_CARD_CLASS_NAME} onPress={onPress}>
+      <View
+        className={`mr-3 h-10 w-10 items-center justify-center rounded-full ${
+          danger ? 'bg-[#FEE2E2]' : 'bg-[#F0F4FF]'
+        }`}
+      >
         <Ionicons name={icon as any} size={20} color={danger ? '#EF4444' : '#6A89CC'} />
       </View>
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingTitle, danger && styles.dangerText]}>{title}</Text>
-        <Text style={styles.settingSubtitle}>{subtitle}</Text>
+      <View className="flex-1">
+        <Text className={`mb-[2px] text-base font-semibold ${danger ? 'text-[#EF4444]' : 'text-copy-primary'}`}>
+          {title}
+        </Text>
+        <Text className={SETTING_SUBTITLE_CLASS_NAME}>{subtitle}</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color="#D1D1D1" />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#A3A3A3',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F4FF',
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  dangerIcon: {
-    backgroundColor: '#FEE2E2',
-  },
-  settingContent: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 2,
-  },
-  dangerText: {
-    color: '#EF4444',
-  },
-  settingSubtitle: {
-    fontSize: 13,
-    color: '#A3A3A3',
-  },
-  storageInfo: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-  },
-  storageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  storageLabel: {
-    fontSize: 15,
-    color: '#737373',
-  },
-  storageValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#4A4A4A',
-  },
-});
 
 export { CardSpacing, SPACING_VALUES, PhotoHeightPreset, PHOTO_HEIGHT_VALUES };

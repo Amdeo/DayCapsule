@@ -15,7 +15,6 @@ module.exports = {
     'src/components/FilterBar.tsx',
     'src/components/ImageViewer.tsx',
     'src/components/PhotoGrid.tsx',
-    'src/components/SettingsPage.tsx',
     'src/components/StatsPage.tsx',
     'src/components/VoiceRecorder.tsx',
     'src/components/WaveformAnimation.tsx',
@@ -83,10 +82,6 @@ module.exports = {
     },
     'src/components/PhotoGrid.tsx': {
       'style-guard/no-new-stylesheet-create': ['e61b82be335d'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/SettingsPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['424dfdf4600e', 'b2ebf5636c74', 'dc9ccd86e21b'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/StatsPage.tsx': {
