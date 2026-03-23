@@ -13,7 +13,6 @@ module.exports = {
     'src/components/FilterBar.tsx',
     'src/components/ImageViewer.tsx',
     'src/components/PhotoGrid.tsx',
-    'src/components/StatsPage.tsx',
     'src/components/VoiceRecorder.tsx',
     'src/components/WaveformAnimation.tsx',
   ],
@@ -65,10 +64,6 @@ module.exports = {
     },
     'src/components/PhotoGrid.tsx': {
       'style-guard/no-new-stylesheet-create': ['e61b82be335d'],
-      'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/StatsPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['ab19677eb9c6'],
       'style-guard/no-static-inline-styles': [],
     },
     'src/components/VoiceRecorder.tsx': {
