@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Image, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 
@@ -51,28 +51,31 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
   const displayPhotos = overflow > 0 ? photos.slice(0, MAX_DISPLAY - 1) : photos;
 
   return (
-    <View
-      testID="photo-grid"
-      style={styles.grid}
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-    >
-      {displayPhotos.map((photo, index) => (
-        <GridCell
-          key={index}
-          testID={`photo-cell-${index}`}
-          photo={photo}
-          cellSize={cellSize}
-          onPress={() => onPhotoPress?.(index)}
-        />
-      ))}
-      {overflow > 0 && (
-        <View
-          testID="photo-overflow"
-          style={[styles.overflowCell, { width: cellSize, height: cellSize }]}
-        >
-          <Text style={styles.overflowText}>+{overflow}</Text>
-        </View>
-      )}
+    <View testID="photo-grid-root">
+      <View
+        className="flex-row flex-wrap gap-[3px]"
+        testID="photo-grid"
+        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      >
+        {displayPhotos.map((photo, index) => (
+          <GridCell
+            key={index}
+            testID={`photo-cell-${index}`}
+            photo={photo}
+            cellSize={cellSize}
+            onPress={() => onPhotoPress?.(index)}
+          />
+        ))}
+        {overflow > 0 && (
+          <View
+            testID="photo-overflow"
+            className="items-center justify-center rounded bg-black/45"
+            style={{ width: cellSize, height: cellSize }}
+          >
+            <Text className="text-[20px] font-bold text-white">+{overflow}</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -91,7 +94,8 @@ function SinglePhoto({ photo, maxPhotoHeight, photoImageRadius, onPress }: Singl
     return (
       <View
         testID="photo-image-0"
-        style={[styles.singleMissing, photoImageRadius, { height: maxPhotoHeight }]}
+        className="w-full bg-[#ECE7E0]"
+        style={[photoImageRadius, { height: maxPhotoHeight }]}
       />
     );
   }
@@ -123,7 +127,8 @@ function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
     return (
       <View
         testID={testID}
-        style={[styles.gridCellMissing, { width: cellSize, height: cellSize }]}
+        className="rounded bg-[#ECE7E0]"
+        style={{ width: cellSize, height: cellSize }}
       />
     );
   }
@@ -139,30 +144,3 @@ function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-  },
-  overflowCell: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overflowText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  singleMissing: {
-    width: '100%',
-    backgroundColor: '#ECE7E0',
-  },
-  gridCellMissing: {
-    backgroundColor: '#ECE7E0',
-    borderRadius: 4,
-  },
-});
