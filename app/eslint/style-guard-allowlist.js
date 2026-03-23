@@ -6,7 +6,6 @@ module.exports = {
     'app/+not-found.tsx',
     'app/_layout.tsx',
     'app/modal.tsx',
-    'src/components/CalendarView.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
   ],
@@ -31,10 +30,6 @@ module.exports = {
     'app/modal.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/CalendarView.tsx': {
-      'style-guard/no-new-stylesheet-create': ['d2620efc2aff'],
-      'style-guard/no-static-inline-styles': ['530a3dd3ea67'],
     },
     'src/components/ErrorBoundary.tsx': {
       'style-guard/no-new-stylesheet-create': ['440908eff410'],

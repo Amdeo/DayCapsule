@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types/entry';
@@ -127,8 +126,8 @@ export function CalendarView({
   };
 
   const renderTimelineItems = (items: Entry[]) => (
-    <View style={styles.timelineGroup}>
-      <View style={styles.timelineLine} />
+    <View className="relative pb-0.5 pt-1">
+      <View className="absolute bottom-0 left-10 top-0 w-0.5 bg-[#E7DED3]" />
       {items.map((entry) => (
         <CalendarTimelineItem
           key={entry.id}
@@ -147,36 +146,45 @@ export function CalendarView({
 
   return (
     <ScrollView
-      style={styles.container}
+      testID="calendar-view-root"
+      className="flex-1 bg-[#FAF8F5]"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
+      contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
     >
       {/* 月份导航 */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
+      <View className="flex-row items-center justify-between px-5 py-4">
+        <TouchableOpacity onPress={prevMonth} className="h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0]">
           <Ionicons name="chevron-back" size={20} color="#4A4A4A" />
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>
+        <Text className="text-lg font-bold text-[#4A4A4A]">
           {year}年{month + 1}月
         </Text>
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
+        <TouchableOpacity onPress={nextMonth} className="h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0]">
           <Ionicons name="chevron-forward" size={20} color="#4A4A4A" />
         </TouchableOpacity>
       </View>
 
       {/* 星期标题行 */}
-      <View style={styles.weekRow}>
+      <View className="mb-0.5 flex-row px-3">
         {WEEKDAYS.map((d) => (
-          <Text key={d} style={styles.weekday}>
+          <Text key={d} className="flex-1 py-1.5 text-center text-xs font-semibold text-[#A3A3A3]">
             {d}
           </Text>
         ))}
       </View>
 
       {/* 日历格子 */}
-      <View style={styles.grid}>
+      <View testID="calendar-grid" className="flex-row flex-wrap px-3 pb-1">
         {calendarDays.map((day, i) => {
-          if (!day) return <View key={`empty-${i}`} style={styles.dayCell} />;
+          if (!day) {
+            return (
+              <View
+                key={`empty-${i}`}
+                className="my-px h-[38px] items-center justify-center rounded-lg"
+                style={{ width: `${100 / 7}%` }}
+              />
+            );
+          }
           const key = `${year}-${month}-${day}`;
           const dayEntries = entryMap[key] ?? [];
           const hasEntries = dayEntries.length > 0;
@@ -187,36 +195,44 @@ export function CalendarView({
           return (
             <TouchableOpacity
               key={key}
-              style={[
-                styles.dayCell,
-                isSelected && styles.dayCellSelected,
-                isToday && !isSelected && styles.dayCellToday,
-              ]}
+              className={`my-px h-[38px] w-[14.285714%] items-center justify-center rounded-lg ${
+                isSelected
+                  ? 'bg-primary'
+                  : isToday
+                    ? 'border border-primary bg-[#F0F4FF]'
+                    : ''
+              }`}
               onPress={() => handleDayPress(day)}
               activeOpacity={0.7}
             >
               <Text
-                style={[
-                  styles.dayText,
-                  isSelected && styles.dayTextSelected,
-                  isToday && !isSelected && styles.dayTextToday,
-                ]}
+                className={`text-sm ${
+                  isSelected
+                    ? 'font-bold text-white'
+                    : isToday
+                      ? 'font-bold text-primary'
+                      : 'font-medium text-[#4A4A4A]'
+                }`}
               >
                 {day}
               </Text>
               {hasEntries && (
-                <View style={styles.dotsRow}>
+                <View className="mt-0.5 flex-row gap-0.5">
                   {['text', 'photo', 'voice'].map((type) => {
                     const count = dayEntries.filter((e) => e.type === type).length;
                     if (!count) return null;
                     return (
                       <View
                         key={type}
-                        style={[
-                          styles.dot,
-                          { backgroundColor: isSelected ? '#FFFFFF' : TYPE_COLOR[type] },
-                          isOtherSelected && { opacity: 0.3 },
-                        ]}
+                        className={`h-1 w-1 rounded-full ${
+                          isSelected
+                            ? 'bg-white'
+                            : type === 'text'
+                              ? 'bg-[#6A89CC]'
+                              : type === 'photo'
+                                ? 'bg-[#4ECDC4]'
+                                : 'bg-[#FF9F43]'
+                        } ${isOtherSelected ? 'opacity-30' : ''}`}
                       />
                     );
                   })}
@@ -227,11 +243,11 @@ export function CalendarView({
         })}
       </View>
 
-      <View style={styles.sectionDivider} />
+      <View className="mx-4 mt-2.5 h-px bg-[#E7DED3]" />
 
       {/* 内容区标题 */}
-      <View style={styles.contentHeader}>
-        <Text style={styles.contentTitle}>
+      <View testID="calendar-content-header" className="mb-2 mt-2 flex-row items-center justify-between mx-4">
+        <Text className="text-sm font-bold text-[#4A4A4A]">
           {selectedKey
             ? (() => {
                 const [, m, dd] = selectedKey!.split('-').map(Number);
@@ -243,9 +259,9 @@ export function CalendarView({
           <TouchableOpacity
             testID="calendar-deselect-btn"
             onPress={() => setSelectedKey(null)}
-            style={styles.deselectBtn}
+            className="rounded-xl bg-[#F0F0F0] px-2.5 py-1"
           >
-            <Text style={styles.deselectText}>✕ 取消</Text>
+            <Text className="text-xs text-[#A3A3A3]">✕ 取消</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -254,18 +270,18 @@ export function CalendarView({
       {selectedKey ? (
         // 单日模式：完整时间轴卡片
         selectedEntries.length === 0 ? (
-          <Text style={styles.emptyText}>当天无记录</Text>
+          <Text className="mt-6 text-center text-sm text-[#A3A3A3]">当天无记录</Text>
         ) : (
           renderTimelineItems([...selectedEntries].sort((a, b) => b.timestamp - a.timestamp))
         )
       ) : (
         // 全月模式：按日分组渲染完整时间轴卡片
         monthEntries.length === 0 ? (
-          <Text style={styles.emptyText}>本月暂无记录</Text>
+          <Text className="mt-6 text-center text-sm text-[#A3A3A3]">本月暂无记录</Text>
         ) : (
           monthDayGroups.map((group) => (
             <View key={group.dateKey}>
-              <Text style={styles.dayGroupLabel}>{group.label}</Text>
+              <Text className="mx-4 mb-1.5 mt-3.5 text-xs font-bold text-[#968878]">{group.label}</Text>
               {renderTimelineItems(group.entries)}
             </View>
           ))
@@ -274,136 +290,3 @@ export function CalendarView({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF8F5' },
-  content: { paddingBottom: 24 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    backgroundColor: '#F0F0F0',
-  },
-  monthTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    marginBottom: 2,
-  },
-  weekday: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A3A3A3',
-    paddingVertical: 6,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingBottom: 4,
-  },
-  dayCell: {
-    width: `${100 / 7}%`,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    marginVertical: 1,
-  },
-  dayCellSelected: {
-    backgroundColor: '#6A89CC',
-  },
-  dayCellToday: {
-    backgroundColor: '#F0F4FF',
-    borderWidth: 1,
-    borderColor: '#6A89CC',
-  },
-  dayText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#4A4A4A',
-  },
-  dayTextSelected: { color: '#FFFFFF', fontWeight: '700' },
-  dayTextToday: { color: '#6A89CC', fontWeight: '700' },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 2,
-    marginTop: 2,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  contentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  sectionDivider: {
-    height: 1,
-    marginTop: 10,
-    marginHorizontal: 16,
-    backgroundColor: '#E7DED3',
-  },
-  contentTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  deselectBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-  },
-  deselectText: {
-    fontSize: 12,
-    color: '#A3A3A3',
-  },
-  dayGroupLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#968878',
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#A3A3A3',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  timelineGroup: {
-    position: 'relative',
-    paddingTop: 4,
-    paddingBottom: 2,
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: 40,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: '#E7DED3',
-  },
-});
