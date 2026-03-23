@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Entry } from '@/src/types/entry';
 import { EntryCard } from './EntryCard';
 import { CalendarDensity } from '@/src/store/settingsStore';
@@ -44,14 +44,27 @@ export function CalendarTimelineItem({
   const dotColor = TYPE_COLORS[entry.type];
 
   return (
-    <View style={[styles.container, { paddingBottom: spacing }]}>
-      <View style={[styles.dotOuter, { borderColor: '#FFFFFF' }]}>
-        <View style={[styles.dot, { backgroundColor: dotColor }]} />
+    <View
+      testID="calendar-timeline-item-root"
+      className="relative pl-16 pr-6"
+      style={{ paddingBottom: spacing }}
+    >
+      <View
+        testID="calendar-timeline-item-dot"
+        className="absolute left-[33px] top-px z-[2] h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm shadow-black/10"
+      >
+        <View className="h-[10px] w-[10px] rounded-full" style={{ backgroundColor: dotColor }} />
       </View>
-      <View style={styles.timeWrap}>
-        <Text style={[styles.timeText, { color: dotColor }]}>{formatHHMM(entry.timestamp)}</Text>
+      <View className="mb-2">
+        <Text
+          testID="calendar-timeline-item-time"
+          className="text-xs font-semibold"
+          style={{ color: dotColor }}
+        >
+          {formatHHMM(entry.timestamp)}
+        </Text>
       </View>
-      <View style={styles.cardWrap}>
+      <View className="flex-1">
         <EntryCard
           entry={entry}
           onDelete={onDeleteEntry ?? (() => {})}
@@ -68,44 +81,3 @@ export function CalendarTimelineItem({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    paddingLeft: 64,
-    paddingRight: 24,
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  timeWrap: {
-    marginBottom: 8,
-  },
-  dotOuter: {
-    position: 'absolute',
-    left: 33,
-    top: 1,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    zIndex: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  cardWrap: {
-    flex: 1,
-  },
-});

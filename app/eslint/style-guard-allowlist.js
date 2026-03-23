@@ -6,7 +6,6 @@ module.exports = {
     'app/+not-found.tsx',
     'app/_layout.tsx',
     'app/modal.tsx',
-    'src/components/CalendarTimelineItem.tsx',
     'src/components/CalendarView.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
@@ -32,10 +31,6 @@ module.exports = {
     'app/modal.tsx': {
       'style-guard/no-new-stylesheet-create': ['5578ba11c544'],
       'style-guard/no-static-inline-styles': [],
-    },
-    'src/components/CalendarTimelineItem.tsx': {
-      'style-guard/no-new-stylesheet-create': ['40bd43c4b3c9'],
-      'style-guard/no-static-inline-styles': ['0d4e214a5925'],
     },
     'src/components/CalendarView.tsx': {
       'style-guard/no-new-stylesheet-create': ['d2620efc2aff'],
