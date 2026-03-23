@@ -12,7 +12,6 @@ module.exports = {
     'src/components/BottomToolbar.tsx',
     'src/components/CalendarTimelineItem.tsx',
     'src/components/CalendarView.tsx',
-    'src/components/DetailPageShell.tsx',
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
     'src/components/HelpPage.tsx',
@@ -78,10 +77,6 @@ module.exports = {
     'src/components/CalendarView.tsx': {
       'style-guard/no-new-stylesheet-create': ['d2620efc2aff'],
       'style-guard/no-static-inline-styles': ['530a3dd3ea67'],
-    },
-    'src/components/DetailPageShell.tsx': {
-      'style-guard/no-new-stylesheet-create': ['7dd23977c4e2'],
-      'style-guard/no-static-inline-styles': [],
     },
     'src/components/ErrorBoundary.tsx': {
       'style-guard/no-new-stylesheet-create': ['440908eff410'],

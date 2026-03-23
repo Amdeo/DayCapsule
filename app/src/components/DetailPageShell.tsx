@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleProp,
-  StyleSheet,
   Text,
   View,
   ViewStyle,
@@ -55,17 +54,17 @@ export function DetailPageShell({
 
   return (
     <Modal visible={shouldRender} transparent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={styles.container}>
+      <GestureHandlerRootView className="flex-1">
         <Pressable
           testID="detail-page-backdrop"
-          style={StyleSheet.absoluteFill}
+          className="absolute inset-0"
           onPress={onClose}
         >
           {isAnimating && (
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(200)}
-              style={styles.backdrop}
+              className="absolute inset-0 bg-black/50"
               pointerEvents="none"
             />
           )}
@@ -75,39 +74,56 @@ export function DetailPageShell({
           <Animated.View
             entering={SlideInRight.duration(300).springify()}
             exiting={SlideOutRight.duration(250)}
-            style={styles.page}
+            className="absolute inset-x-0 top-0 bg-background-elevated shadow-lg shadow-black/10"
+            style={{ height: SCREEN_HEIGHT }}
+            testID="detail-page-shell"
           >
-            <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+            <View
+              className="flex-row items-center justify-between border-b border-border-subtle px-4 pb-4"
+              style={{ paddingTop: insets.top + 20 }}
+              testID="detail-page-header"
+            >
               <Pressable
                 testID="detail-page-back-button"
                 onPress={onClose}
-                style={styles.backButton}
+                className="h-10 w-10 items-center justify-center rounded-full"
               >
                 <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
               </Pressable>
-              <Text style={styles.headerTitle}>{title}</Text>
-              {headerRight ? <View style={styles.headerRight}>{headerRight}</View> : <View style={styles.headerSpacer} />}
+              <Text className="text-lg font-bold text-copy-primary">{title}</Text>
+              {headerRight ? (
+                <View
+                  className="min-w-10 items-end justify-center"
+                  testID="detail-page-header-right"
+                >
+                  {headerRight}
+                </View>
+              ) : (
+                <View className="w-10" />
+              )}
             </View>
 
             {scrollEnabled ? (
               <ScrollView
                 testID="detail-page-scroll"
-                style={styles.content}
-                contentContainerStyle={[
-                  styles.contentContainer,
-                  { paddingBottom: 40 + insets.bottom },
-                  contentContainerStyle,
-                ]}
+                className="flex-1"
                 showsVerticalScrollIndicator={false}
               >
-                {children}
+                <View
+                  className="px-5"
+                  style={[
+                    { paddingBottom: 40 + insets.bottom },
+                    contentContainerStyle,
+                  ]}
+                >
+                  {children}
+                </View>
               </ScrollView>
             ) : (
               <View
                 testID="detail-page-content"
+                className="flex-1 px-5"
                 style={[
-                  styles.content,
-                  styles.staticContent,
                   { paddingBottom: 40 + insets.bottom },
                   contentContainerStyle,
                 ]}
@@ -121,56 +137,3 @@ export function DetailPageShell({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  page: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: SCREEN_HEIGHT,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4A4A4A',
-  },
-  headerSpacer: { width: 40 },
-  headerRight: {
-    minWidth: 40,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  content: { flex: 1 },
-  contentContainer: { paddingHorizontal: 20 },
-  staticContent: {
-    paddingHorizontal: 20,
-  },
-});
