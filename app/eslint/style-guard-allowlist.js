@@ -14,7 +14,6 @@ module.exports = {
     'src/components/ErrorBoundary.tsx',
     'src/components/FilterBar.tsx',
     'src/components/ImageViewer.tsx',
-    'src/components/LoginPage.tsx',
     'src/components/PhotoGrid.tsx',
     'src/components/SettingsPage.tsx',
     'src/components/StatsPage.tsx',
@@ -82,10 +81,6 @@ module.exports = {
     'src/components/ImageViewer.tsx': {
       'style-guard/no-new-stylesheet-create': ['d5c476a36901'],
       'style-guard/no-static-inline-styles': ['320cdc180a8e'],
-    },
-    'src/components/LoginPage.tsx': {
-      'style-guard/no-new-stylesheet-create': ['849b0c48d6d2'],
-      'style-guard/no-static-inline-styles': [],
     },
     'src/components/PhotoGrid.tsx': {
       'style-guard/no-new-stylesheet-create': ['e61b82be335d'],
