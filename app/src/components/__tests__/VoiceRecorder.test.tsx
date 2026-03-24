@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { VoiceRecorder } from '../VoiceRecorder';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import { VoiceService } from '@/src/services/voiceService';
 
 jest.mock('@expo/vector-icons', () => {
@@ -30,6 +31,10 @@ jest.mock('@/src/services/voiceService', () => ({
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), log: jest.fn() },
+}));
+
+jest.mock('@/src/services/showAppDialog', () => ({
+  showAppDialog: jest.fn(),
 }));
 
 describe('VoiceRecorder', () => {
@@ -66,6 +71,54 @@ describe('VoiceRecorder', () => {
       expect(VoiceService.stopRecording).toHaveBeenCalled();
       expect(screen.getByTestId('voice-recorder-done')).toBeTruthy();
       expect(screen.getByText('录音完成')).toBeTruthy();
+    });
+  });
+
+  it('shows blocking dialog when start recording fails', async () => {
+    (VoiceService.startRecording as jest.Mock).mockRejectedValueOnce(new Error('denied'));
+
+    const screen = render(
+      <VoiceRecorder visible onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('开始录音'));
+
+    await waitFor(() => {
+      expect(showAppDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '录音失败',
+          message: '无法启动录音，请检查麦克风权限',
+          tone: 'error',
+          blocking: true,
+        })
+      );
+    });
+  });
+
+  it('shows blocking dialog when stopping recording fails', async () => {
+    (VoiceService.stopRecording as jest.Mock).mockRejectedValueOnce(new Error('write failed'));
+
+    const screen = render(
+      <VoiceRecorder visible onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('开始录音'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('voice-recorder-recording')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('停止'));
+
+    await waitFor(() => {
+      expect(showAppDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '保存失败',
+          message: '保存录音失败，请重试',
+          tone: 'error',
+          blocking: true,
+        })
+      );
     });
   });
 });

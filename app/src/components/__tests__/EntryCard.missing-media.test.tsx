@@ -4,8 +4,16 @@
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
+let mockCurrentPlayingId: string | null = null;
+const mockSetCurrentPlayingId = jest.fn((id: string | null) => {
+  mockCurrentPlayingId = id;
+});
+
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({ currentPlayingId: null, setCurrentPlayingId: jest.fn() }),
+  useEntryStore: () => ({
+    currentPlayingId: mockCurrentPlayingId,
+    setCurrentPlayingId: mockSetCurrentPlayingId,
+  }),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -30,6 +38,10 @@ jest.mock('expo-file-system/legacy', () => ({
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+jest.mock('@/src/services/showAppDialog', () => ({
+  showAppDialog: jest.fn(),
 }));
 
 jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
@@ -133,8 +145,8 @@ jest.mock('react-native-gesture-handler', () => {
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as FileSystem from 'expo-file-system';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import { VoiceService } from '@/src/services/voiceService';
-import { Alert } from 'react-native';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -197,12 +209,8 @@ const longTextEntry: Entry = {
 describe('EntryCard — 媒体文件丢失', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCurrentPlayingId = null;
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   // ── 图片丢失 ──────────────────────────────────────────────────────────────
@@ -288,6 +296,14 @@ describe('EntryCard — 媒体文件丢失', () => {
     fireEvent.press(getByTestId('entry-card'));
 
     expect(await findByText('音频文件已丢失')).toBeTruthy();
+    expect(showAppDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '文件不存在',
+        message: '音频文件已丢失或被删除，无法播放。',
+        tone: 'error',
+        blocking: true,
+      })
+    );
   });
 
   it('音频丢失时点击卡片不应触发播放', async () => {
@@ -312,6 +328,27 @@ describe('EntryCard — 媒体文件丢失', () => {
 
     await waitFor(() => {
       expect(queryByText('音频文件已丢失')).toBeNull();
+    });
+  });
+
+  it('播放失败时应显示自定义错误对话框', async () => {
+    (VoiceService.playAudio as jest.Mock).mockRejectedValueOnce(new Error('decode failed'));
+
+    const { getByTestId } = render(
+      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('entry-card'));
+
+    await waitFor(() => {
+      expect(showAppDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '播放失败',
+          message: '无法播放此音频，请重试',
+          tone: 'error',
+          blocking: true,
+        })
+      );
     });
   });
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 import { buildNotificationPermissionFeedback } from '@/src/services/errorFeedbackPresets';
 import type {
   CalendarDensity,
@@ -18,6 +17,7 @@ import {
 import { testBackendConnection } from '@/src/services/backendConnectionService';
 import { switchBackendEnvironment } from '@/src/services/localEnvironmentDataManager';
 import { clearLocalAppData } from '@/src/services/localAppDataService';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import { useEntryStore } from '@/src/store/entryStore';
 
 interface UseSettingsPageControllerOptions {
@@ -66,6 +66,20 @@ export function useSettingsPageController({
   const [backendTestedUrl, setBackendTestedUrl] = useState<string | null>(null);
   const [backendTestErrorMessage, setBackendTestErrorMessage] = useState<string | null>(null);
   const [isSavingBackendServer, setIsSavingBackendServer] = useState(false);
+
+  const showBlockingNotice = useCallback((
+    title: string,
+    message: string,
+    tone: 'neutral' | 'accent' | 'success' | 'error' = 'neutral',
+  ) => {
+    showAppDialog({
+      title,
+      message,
+      tone,
+      blocking: true,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
 
   const loadBackendState = useCallback(async () => {
     const [nextCurrentServerUrl, nextRecentServerUrls] = await Promise.all([
@@ -188,40 +202,50 @@ export function useSettingsPageController({
   );
 
   const handleClearCache = useCallback(() => {
-    Alert.alert('清除缓存', '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '清除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setUsedSpace('计算中...');
-            await clearLocalAppData();
-            await useEntryStore.getState().loadEntries();
-            await refreshStorageStats();
-            Alert.alert('成功', '本地数据已清除');
-          } catch {
-            await refreshStorageStats();
-            Alert.alert('清除失败', '清理本地数据时发生错误');
-          }
+    showAppDialog({
+      title: '清除缓存',
+      message: '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。',
+      blocking: true,
+      actions: [
+        { label: '取消', role: 'secondary' },
+        {
+          label: '清除',
+          role: 'destructive',
+          onPress: async () => {
+            try {
+              setUsedSpace('计算中...');
+              await clearLocalAppData();
+              await useEntryStore.getState().loadEntries();
+              await refreshStorageStats();
+              showBlockingNotice('成功', '本地数据已清除', 'success');
+            } catch {
+              await refreshStorageStats();
+              showBlockingNotice('清除失败', '清理本地数据时发生错误', 'error');
+            }
+          },
         },
-      },
-    ]);
-  }, [refreshStorageStats]);
+      ],
+    });
+  }, [refreshStorageStats, showBlockingNotice]);
 
   const handleResetSettings = useCallback(() => {
-    Alert.alert('重置设置', '确定要重置所有设置为默认值吗？', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '重置',
-        style: 'destructive',
-        onPress: async () => {
-          await resetSettings();
-          Alert.alert('成功', '设置已重置');
+    showAppDialog({
+      title: '重置设置',
+      message: '确定要重置所有设置为默认值吗？',
+      blocking: true,
+      actions: [
+        { label: '取消', role: 'secondary' },
+        {
+          label: '重置',
+          role: 'destructive',
+          onPress: async () => {
+            await resetSettings();
+            showBlockingNotice('成功', '设置已重置', 'success');
+          },
         },
-      },
-    ]);
-  }, [resetSettings]);
+      ],
+    });
+  }, [resetSettings, showBlockingNotice]);
 
   const openTagManagement = useCallback(() => {
     setShowTagMgmt(true);
@@ -297,18 +321,21 @@ export function useSettingsPageController({
       await loadBackendState();
       setBackendTestStatus('success');
       setBackendTestedUrl(result.currentServerUrl);
-      Alert.alert(
-        result.switched ? '切换成功' : '保存成功',
-        result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
-      );
+      showAppDialog({
+        title: result.switched ? '切换成功' : '保存成功',
+        message: result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
+        tone: 'success',
+        blocking: true,
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } catch (error) {
       setBackendTestStatus('error');
       setBackendTestErrorMessage((error as Error).message ?? '切换失败');
-      Alert.alert('切换失败', (error as Error).message ?? '切换后端失败');
+      showBlockingNotice('切换失败', (error as Error).message ?? '切换后端失败', 'error');
     } finally {
       setIsSavingBackendServer(false);
     }
-  }, [backendDraftUrl, canSaveBackendServer, loadBackendState]);
+  }, [backendDraftUrl, canSaveBackendServer, loadBackendState, showBlockingNotice]);
 
   return {
     usedSpace,
