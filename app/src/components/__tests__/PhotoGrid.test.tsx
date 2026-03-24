@@ -19,10 +19,18 @@ import { Dimensions } from 'react-native';
 import { PhotoGrid } from '../PhotoGrid';
 import { MediaInfo } from '@/src/types/entry';
 
-const makePhoto = (i: number): MediaInfo => ({
+const makePhoto = (i: number, aspectRatio?: number): MediaInfo => ({
   uri: `file://photo${i}.jpg`,
   mimeType: 'image/jpeg',
   size: 1000,
+  metadata:
+    aspectRatio !== undefined
+      ? {
+          aspectRatio,
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        }
+      : undefined,
 });
 
 const radius = { borderRadius: 10 };
@@ -36,14 +44,67 @@ describe('PhotoGrid', () => {
     expect(screen.queryByTestId('photo-grid')).toBeNull();
   });
 
-  it('2 photos: renders photo-grid with 2 cells', () => {
+  it('2 photos: renders two-photo collage instead of square grid', () => {
     render(
-      <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
     );
-    expect(screen.getByTestId('photo-grid-root')).toBeTruthy();
-    expect(screen.getByTestId('photo-grid')).toBeTruthy();
-    expect(screen.getByTestId('photo-cell-0')).toBeTruthy();
-    expect(screen.getByTestId('photo-cell-1')).toBeTruthy();
+
+    expect(screen.getByTestId('photo-collage-root')).toBeTruthy();
+    expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
+    expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
+    expect(screen.queryByTestId('photo-grid')).toBeNull();
+  });
+
+  it('keeps the first photo as primary by default', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.1)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file://photo1.jpg',
+    });
+  });
+
+  it('promotes the second photo to primary when it fits the primary slot much better', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 2.8), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo1.jpg',
+    });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
+  });
+
+  it('does not reorder two photos when aspect ratio metadata is missing', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
   });
 
   it('3 photos: renders 3 cells', () => {
