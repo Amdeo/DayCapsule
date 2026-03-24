@@ -224,6 +224,7 @@ jest.mock('react-native', () => ({
 import RootLayout from '../_layout';
 import { initDatabase } from '@/src/database/sqlite';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
+import { Storage } from '@/src/utils/storage';
 
 const flushPromises = async () => {
   await act(async () => {
@@ -262,6 +263,24 @@ describe('RootLayout photo upload triggers', () => {
       expect.objectContaining({
         title: '初始化失败',
         dedupeKey: 'app-initialization-failed',
+      })
+    );
+  });
+
+  it('shows custom dialog when an interrupted cloud-mode switch is recovered', async () => {
+    (Storage.getString as jest.Mock).mockImplementation(async (key: string) => {
+      if (key === 'settings:cloudMode') return 'switching';
+      if (key === 'settings:autoBackup') return 'false';
+      return null;
+    });
+
+    render(<RootLayout />);
+
+    await flushPromises();
+
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '提示',
       })
     );
   });
