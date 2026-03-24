@@ -226,7 +226,7 @@ export function SettingsPageContent({
         <SettingButton
           icon="trash"
           title="清除缓存"
-          subtitle="释放存储空间"
+          subtitle="清空本地记录、媒体和缓存"
           onPress={onClearCache}
         />
       </SettingsSection>

@@ -17,6 +17,8 @@ import {
 } from '@/src/services/backendEnvironmentService';
 import { testBackendConnection } from '@/src/services/backendConnectionService';
 import { switchBackendEnvironment } from '@/src/services/localEnvironmentDataManager';
+import { clearLocalAppData } from '@/src/services/localAppDataService';
+import { useEntryStore } from '@/src/store/entryStore';
 
 interface UseSettingsPageControllerOptions {
   visible: boolean;
@@ -186,15 +188,22 @@ export function useSettingsPageController({
   );
 
   const handleClearCache = useCallback(() => {
-    Alert.alert('清除缓存', '确定要清除所有缓存数据吗？这不会删除您的记录。', [
+    Alert.alert('清除缓存', '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。', [
       { text: '取消', style: 'cancel' },
       {
         text: '清除',
         style: 'destructive',
         onPress: async () => {
-          setUsedSpace('计算中...');
-          await refreshStorageStats();
-          Alert.alert('成功', '缓存已清除');
+          try {
+            setUsedSpace('计算中...');
+            await clearLocalAppData();
+            await useEntryStore.getState().loadEntries();
+            await refreshStorageStats();
+            Alert.alert('成功', '本地数据已清除');
+          } catch {
+            await refreshStorageStats();
+            Alert.alert('清除失败', '清理本地数据时发生错误');
+          }
         },
       },
     ]);

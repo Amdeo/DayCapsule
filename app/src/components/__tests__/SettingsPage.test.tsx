@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, Switch } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SettingsPage } from '../SettingsPage';
 import * as DB from '@/src/database/operations';
 import { NotificationService } from '@/src/services/notificationService';
@@ -15,6 +15,8 @@ const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockClearAllEntries = jest.fn(async () => undefined);
 const mockRestoreEntries = jest.fn(async () => []);
+const mockClearDirectory = jest.fn(async () => undefined);
+const mockLoadEntries = jest.fn(async () => undefined);
 const mockCloudSyncGetStatus = jest.fn(async () => ({ lastSyncAt: 1700000000000, lastSyncError: null, initialSyncState: 'ready', pendingEntries: 2, failedEntries: 1, conflictCopies: 1 }));
 const mockCloudSyncNow = jest.fn(async () => undefined);
 const mockInspectInitialState = jest.fn(async () => ({ localCount: 0, cloudCount: 0 }));
@@ -36,9 +38,16 @@ let mockIsAuthenticated = false;
 let mockUser: { email: string } | null = null;
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    entries: [],
-  }),
+  useEntryStore: Object.assign(
+    () => ({
+      entries: [],
+    }),
+    {
+      getState: () => ({
+        loadEntries: mockLoadEntries,
+      }),
+    }
+  ),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -67,6 +76,16 @@ jest.mock('@/src/store/settingsStore', () => ({
 
 jest.mock('@/src/utils/fileSystem', () => ({
   getStorageStats: jest.fn(async () => ({ totalSize: 1024 })),
+  clearDirectory: (...args: unknown[]) => mockClearDirectory(...args),
+  getMediaPaths: jest.fn(() => ({
+    photoOriginal: 'file:///documents/photos/original/',
+    photoDisplay: 'file:///cache/photos/display/',
+    photoThumbnail: 'file:///cache/photos/thumbnails/',
+    voiceOriginal: 'file:///documents/voice/original/',
+    voiceCompressed: 'file:///cache/voice/compressed/',
+    temp: 'file:///cache/temp/',
+    database: 'file:///documents/db/',
+  })),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -188,6 +207,8 @@ describe('SettingsPage calendar density selector', () => {
       switched: true,
       currentServerUrl: 'https://server-c.example.com',
     });
+    mockClearDirectory.mockResolvedValue(undefined);
+    mockLoadEntries.mockResolvedValue(undefined);
     jest.spyOn(DB, 'getEntriesCount').mockResolvedValue(0);
     jest.spyOn(DB, 'clearAllEntries').mockImplementation(mockClearAllEntries);
     jest.spyOn(DB, 'restoreEntries').mockImplementation(mockRestoreEntries);
@@ -427,5 +448,32 @@ describe('SettingsPage calendar density selector', () => {
       expect(mockSwitchBackendEnvironment).toHaveBeenCalledWith('https://server-c.example.com');
     });
     expect(alertSpy).toHaveBeenCalledWith('切换成功', '后端已切换，请重新登录');
+  });
+
+  it('clears local app data when user confirms clear cache', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('清除缓存'));
+
+    const confirmActions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
+    const confirmAction = confirmActions.find((action) => action.text === '清除');
+    expect(confirmAction).toBeTruthy();
+
+    await act(async () => {
+      await confirmAction?.onPress?.();
+    });
+
+    await waitFor(() => {
+      expect(mockClearAllEntries).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockClearDirectory).toHaveBeenCalledTimes(6);
+    expect(mockLoadEntries).toHaveBeenCalledTimes(1);
+    expect(alertSpy).toHaveBeenCalledWith('成功', '本地数据已清除');
   });
 });
