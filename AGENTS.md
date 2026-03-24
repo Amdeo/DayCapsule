@@ -1,7 +1,7 @@
-# AGENTS
+# 智能体说明
 
-## Process Requirements
-- 所有走brainstorming技能的需求，默认调用 superpowers中创建 worktree,所有修改在 worktree 中实现
+## 流程要求
+- 所有使用 `brainstorming` 技能的需求，默认调用 `superpowers` 中创建 `worktree` 的流程，所有修改都在 `worktree` 中实现
 
 <skills_system priority="1">
 
@@ -50,26 +50,86 @@ Usage notes:
 </skill>
 
 <skill>
-<name>canvas-design</name>
-<description>Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.</description>
+<name>brainstorming</name>
+<description>"You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."</description>
 <location>global</location>
 </skill>
 
 <skill>
-<name>frontend-design</name>
-<description>Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.</description>
+<name>dispatching-parallel-agents</name>
+<description>Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies</description>
 <location>global</location>
 </skill>
 
 <skill>
-<name>react-best-practices</name>
-<description>React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.</description>
+<name>executing-plans</name>
+<description>Use when you have a written implementation plan to execute in a separate session with review checkpoints</description>
 <location>global</location>
 </skill>
 
 <skill>
-<name>react-native-skills</name>
-<description>React Native and Expo best practices for building performant mobile apps. Use</description>
+<name>finishing-a-development-branch</name>
+<description>Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>receiving-code-review</name>
+<description>Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>requesting-code-review</name>
+<description>Use when completing tasks, implementing major features, or before merging to verify work meets requirements</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>subagent-driven-development</name>
+<description>Use when executing implementation plans with independent tasks in the current session</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>systematic-debugging</name>
+<description>Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>test-driven-development</name>
+<description>Use when implementing any feature or bugfix, before writing implementation code</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>using-git-worktrees</name>
+<description>Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>using-superpowers</name>
+<description>Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>verification-before-completion</name>
+<description>Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>writing-plans</name>
+<description>Use when you have a spec or requirements for a multi-step task, before touching code</description>
+<location>global</location>
+</skill>
+
+<skill>
+<name>writing-skills</name>
+<description>Use when creating new skills, editing existing skills, or verifying skills work before deployment</description>
 <location>global</location>
 </skill>
 
