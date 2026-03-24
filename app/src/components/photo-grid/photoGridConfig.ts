@@ -1,2 +1,4 @@
 export const PHOTO_GRID_GAP = 3;
 export const PHOTO_GRID_MAX_DISPLAY = 8;
+export const PHOTO_GRID_TWO_PHOTO_PRIMARY_RATIO = 0.64;
+export const PHOTO_GRID_TWO_PHOTO_SWAP_THRESHOLD = 0.18;

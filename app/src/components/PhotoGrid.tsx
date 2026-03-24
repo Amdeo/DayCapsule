@@ -24,8 +24,15 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
     displayPhotos,
     handleLayout,
     overflow,
+    primaryPhoto,
+    primaryPhotoIndex,
+    primaryWidth,
+    secondaryPhoto,
+    secondaryPhotoIndex,
+    secondaryWidth,
     shouldRenderSinglePhoto,
-  } = usePhotoGridController(photos);
+    shouldRenderTwoPhotoCollage,
+  } = usePhotoGridController(photos, maxPhotoHeight);
 
   if (!photos || photos.length === 0) return null;
 
