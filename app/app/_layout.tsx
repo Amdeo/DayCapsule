@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Network from 'expo-network';
 import { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus, LogBox } from 'react-native';
+import { Alert, AppState, AppStateStatus, LogBox } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
@@ -110,13 +110,7 @@ export default function RootLayout() {
           logger.log(`✅ 数据迁移完成，迁移了 ${migrationResult.migratedCount} 条记录`);
         } else {
           logger.warn('⚠️ 数据迁移警告:', migrationResult.error);
-          showErrorFeedback({
-            title: '数据迁移警告',
-            message: '部分数据可能未正确导入，但应用可以正常使用',
-            tone: 'accent',
-            dedupeKey: 'migration-warning',
-            actions: [{ label: '知道了', role: 'primary' }],
-          });
+          Alert.alert('数据迁移警告', '部分数据可能未正确导入，但应用可以正常使用');
         }
 
         // Tags 规范化迁移（幂等，已迁移则跳过）
@@ -149,13 +143,7 @@ export default function RootLayout() {
         if (cloudModeRaw === 'switching') {
           logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
           await Storage.setString('settings:cloudMode', 'false');
-          showErrorFeedback({
-            title: '提示',
-            message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
-            tone: 'accent',
-            dedupeKey: 'cloud-mode-switch-interrupted',
-            actions: [{ label: '知道了', role: 'primary' }],
-          });
+          Alert.alert('提示', '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。');
         } else if (cloudModeRaw === 'true' && isAuthenticated) {
           try {
             logger.log('✅ 恢复云端模式，执行本地优先同步初始化');

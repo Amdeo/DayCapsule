@@ -71,7 +71,14 @@ export function EntryCardCalendarVoiceSection({
   }
 
   if (!entry.media || entry.media.length === 0) {
-    return null;
+    return (
+      <View style={styles.calendarVoiceCard}>
+        <View style={styles.audioMissingRow}>
+          <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
+          <Text style={styles.audioMissingText}>音频文件已丢失</Text>
+        </View>
+      </View>
+    );
   }
 
   return (

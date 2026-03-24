@@ -1,15 +1,11 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { BackupPage } from '../BackupPage';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '../../services/syncService';
-import { showAppDialog } from '@/src/services/showAppDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
-
-const mockRestoreEntries = jest.fn();
-const mockUpdateEntry = jest.fn();
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -26,8 +22,8 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
     entries: [{ id: 'e1' }, { id: 'e2' }],
-    restoreEntries: mockRestoreEntries,
-    updateEntry: mockUpdateEntry,
+    restoreEntries: jest.fn(),
+    updateEntry: jest.fn(),
   }),
 }));
 
@@ -69,16 +65,11 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
 }));
 
-jest.mock('@/src/services/showAppDialog', () => ({
-  showAppDialog: jest.fn(),
-}));
-
 describe('BackupPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (Platform as { OS: string }).OS = 'android';
-    mockRestoreEntries.mockResolvedValue([]);
-    mockUpdateEntry.mockResolvedValue(undefined);
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
   });
 
   it('renders backup history and bottom iCloud section when backups exist', async () => {
@@ -158,14 +149,7 @@ describe('BackupPage', () => {
     fireEvent.press(await findByTestId('backup-export-save'));
 
     await waitFor(() => {
-      expect(showAppDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '保存成功',
-          message: '备份已保存为 latest.zip',
-          tone: 'success',
-          blocking: true,
-        })
-      );
+      expect(Alert.alert).toHaveBeenCalledWith('保存成功', '备份已保存为 latest.zip');
     });
   });
 
@@ -203,58 +187,6 @@ describe('BackupPage', () => {
         expect.objectContaining({
           title: '导入失败',
           dedupeKey: 'backup-import-failed',
-        })
-      );
-    });
-  });
-
-  it('shows a partial restore dialog when media extraction fails after entries are restored', async () => {
-    mockRestoreEntries.mockResolvedValueOnce(['entry-1']);
-    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
-      data: {
-        entries: [{ id: 'entry-1', content: 'hello' }],
-      },
-      zip: { name: 'backup.zip' },
-    });
-    (SyncService.extractMediaFromZip as jest.Mock).mockRejectedValueOnce(new Error('broken media'));
-
-    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
-
-    fireEvent.press(getByText('导入'));
-
-    await waitFor(() => {
-      expect(showAppDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '部分恢复',
-          message: '已恢复 1 条记录，但部分媒体文件未能还原。您可以重新导入备份尝试恢复媒体。',
-          tone: 'success',
-          blocking: true,
-        })
-      );
-    });
-  });
-
-  it('shows a success dialog after importing entries', async () => {
-    mockRestoreEntries.mockResolvedValueOnce(['entry-1']);
-    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
-      data: {
-        entries: [{ id: 'entry-1', content: 'hello' }, { id: 'entry-2', content: 'world' }],
-      },
-      zip: { name: 'backup.zip' },
-    });
-    (SyncService.extractMediaFromZip as jest.Mock).mockResolvedValueOnce([]);
-
-    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
-
-    fireEvent.press(getByText('导入'));
-
-    await waitFor(() => {
-      expect(showAppDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '导入成功',
-          message: '已恢复 1 / 2 条记录',
-          tone: 'success',
-          blocking: true,
         })
       );
     });

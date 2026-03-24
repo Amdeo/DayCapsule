@@ -7,6 +7,59 @@ import { getDatabase } from './sqlite';
 import { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
+const normalizeEntryMedia = (media: unknown): import('@/src/types/entry').MediaInfo[] | undefined => {
+  if (Array.isArray(media)) {
+    return media as import('@/src/types/entry').MediaInfo[];
+  }
+
+  if (!media) {
+    return undefined;
+  }
+
+  if (typeof media === 'string') {
+    try {
+      return normalizeEntryMedia(JSON.parse(media));
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (typeof media === 'object') {
+    return [media as import('@/src/types/entry').MediaInfo];
+  }
+
+  return undefined;
+};
+
+const getLegacyEntryMedia = (row: any): import('@/src/types/entry').MediaInfo[] | undefined => {
+  if (!row.media_uri) {
+    return undefined;
+  }
+
+  let metadata: Record<string, unknown> | undefined;
+  if (row.media_metadata) {
+    try {
+      const parsed = JSON.parse(row.media_metadata);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        metadata = parsed as Record<string, unknown>;
+      }
+    } catch {
+      metadata = undefined;
+    }
+  }
+
+  return [
+    {
+      uri: row.media_uri,
+      mimeType: row.media_type ?? (row.type === 'voice' ? 'audio/m4a' : 'image/jpeg'),
+      size: 0,
+      duration: row.media_duration ?? undefined,
+      thumbnail: row.media_thumbnail ?? undefined,
+      metadata,
+    },
+  ];
+};
+
 /**
  * 将数据库行转换为 Entry 对象
  */
@@ -14,10 +67,14 @@ const rowToEntry = (row: any): Entry => {
   let media: import('@/src/types/entry').MediaInfo[] | undefined = undefined;
   if (row.media_json) {
     try {
-      media = JSON.parse(row.media_json);
+      media = normalizeEntryMedia(JSON.parse(row.media_json));
     } catch {
       media = undefined;
     }
+  }
+
+  if (!media || media.length === 0) {
+    media = getLegacyEntryMedia(row);
   }
 
   return {

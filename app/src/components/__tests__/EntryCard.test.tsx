@@ -834,4 +834,22 @@ describe('EntryCard calendar variant', () => {
     expect(screen.getByTestId('calendar-recording-status-calendar-stopping')).toBeTruthy();
     expect(screen.getByText('处理中...')).toBeTruthy();
   });
+
+  it('calendar 语音媒体缺失时显示明确提示而不是空白卡片', () => {
+    render(
+      <EntryCard
+        entry={{
+          ...calendarVoice,
+          id: 'calendar-voice-missing-media',
+          media: [],
+          transcription: undefined,
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-card-shell-calendar-voice-missing-media')).toBeTruthy();
+    expect(screen.getByText('音频文件已丢失')).toBeTruthy();
+  });
 });

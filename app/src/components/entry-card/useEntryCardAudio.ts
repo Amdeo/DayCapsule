@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import { showAppDialog } from '@/src/services/showAppDialog';
 import type { Entry } from '@/src/types/entry';
 import { VoiceService } from '@/src/services/voiceService';
 import { logger } from '@/src/utils/logger';
@@ -27,16 +27,6 @@ export function useEntryCardAudio({
   const [audioMissing, setAudioMissing] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
-
-  const showBlockingNotice = (title: string, message: string) => {
-    showAppDialog({
-      title,
-      message,
-      tone: 'error',
-      blocking: true,
-      actions: [{ label: '知道了', role: 'primary' }],
-    });
-  };
 
   useEffect(() => {
     logger.log(
@@ -73,7 +63,11 @@ export function useEntryCardAudio({
       const fileInfo = await FileSystem.getInfoAsync(uri);
       if (!fileInfo.exists) {
         setAudioMissing(true);
-        showBlockingNotice('文件不存在', '音频文件已丢失或被删除，无法播放。');
+        Alert.alert(
+          '文件不存在',
+          '音频文件已丢失或被删除，无法播放。',
+          [{ text: '知道了', style: 'default' }],
+        );
         return;
       }
       setAudioMissing(false);
@@ -99,7 +93,7 @@ export function useEntryCardAudio({
       );
     } catch (error) {
       logger.error('Failed to play audio:', error);
-      showBlockingNotice('播放失败', '无法播放此音频，请重试');
+      Alert.alert('播放失败', '无法播放此音频，请重试');
       setIsPlayingAudio(false);
       setPlaybackPosition(0);
       setCurrentPlayingId(null);

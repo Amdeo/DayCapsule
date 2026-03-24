@@ -85,4 +85,84 @@ describe('syncBootstrapService', () => {
       cloudCount: 4,
     });
   });
+
+  it('normalizes exported voice media into an array before restoring locally', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'voice-1',
+        type: 'voice',
+        content: '同步语音',
+        timestamp: 1700000000000,
+        media: JSON.stringify({
+          uri: 'https://cdn.example.com/voice-1.m4a',
+          mimeType: 'audio/m4a',
+          size: 1234,
+          duration: 5000,
+        }),
+        recordingDuration: 5,
+      },
+    ]);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('cloud');
+
+    expect(DB.restoreEntries).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'voice-1',
+        type: 'voice',
+        media: [
+          expect.objectContaining({
+            uri: 'https://cdn.example.com/voice-1.m4a',
+            mimeType: 'audio/m4a',
+            duration: 5000,
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('normalizes exported photo media string arrays before restoring locally', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'photo-1',
+        type: 'photo',
+        content: '同步图片',
+        timestamp: 1700000001000,
+        media: JSON.stringify([
+          {
+            uri: 'https://cdn.example.com/photo-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+            thumbnail: 'https://cdn.example.com/photo-1-thumb.jpg',
+          },
+          {
+            uri: 'https://cdn.example.com/photo-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 4096,
+            thumbnail: 'https://cdn.example.com/photo-2-thumb.jpg',
+          },
+        ]),
+      },
+    ]);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('cloud');
+
+    expect(DB.restoreEntries).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'photo-1',
+        type: 'photo',
+        media: [
+          expect.objectContaining({
+            uri: 'https://cdn.example.com/photo-1.jpg',
+            thumbnail: 'https://cdn.example.com/photo-1-thumb.jpg',
+          }),
+          expect.objectContaining({
+            uri: 'https://cdn.example.com/photo-2.jpg',
+            thumbnail: 'https://cdn.example.com/photo-2-thumb.jpg',
+          }),
+        ],
+      }),
+    ]);
+  });
 });

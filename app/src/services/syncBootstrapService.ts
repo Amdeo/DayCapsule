@@ -1,7 +1,7 @@
 import * as DB from '@/src/database/operations';
 import { getApiClient } from '@/src/services/apiClient';
 import { useSyncStore } from '@/src/store/syncStore';
-import type { Entry } from '@/src/types/entry';
+import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
 export interface InitialSyncInspection {
@@ -19,6 +19,60 @@ export interface SyncBootstrapServiceApi {
   runInitialFlow: (source: 'cloud' | 'local') => Promise<void>;
 }
 
+function normalizeImportedTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return tags.filter((tag): tag is string => typeof tag === 'string');
+  }
+
+  if (typeof tags !== 'string' || tags.trim() === '') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(tags);
+    return Array.isArray(parsed)
+      ? parsed.filter((tag): tag is string => typeof tag === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeImportedMedia(media: unknown): MediaInfo[] {
+  if (Array.isArray(media)) {
+    return media.filter(
+      (item): item is MediaInfo => Boolean(item) && typeof item === 'object'
+    );
+  }
+
+  if (!media) {
+    return [];
+  }
+
+  if (typeof media === 'string') {
+    try {
+      const parsed = JSON.parse(media);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (item): item is MediaInfo => Boolean(item) && typeof item === 'object'
+        );
+      }
+      if (parsed && typeof parsed === 'object') {
+        return [parsed as MediaInfo];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  if (typeof media === 'object') {
+    return [media as MediaInfo];
+  }
+
+  return [];
+}
+
 function normalizeImportedEntry(entry: Partial<Entry>): Entry {
   const timestamp = entry.timestamp ?? entry.updatedAt ?? Date.now();
 
@@ -27,8 +81,8 @@ function normalizeImportedEntry(entry: Partial<Entry>): Entry {
     type: entry.type ?? 'text',
     content: entry.content ?? '',
     timestamp,
-    tags: entry.tags ?? [],
-    media: entry.media ?? [],
+    tags: normalizeImportedTags(entry.tags),
+    media: normalizeImportedMedia(entry.media),
     recordingStatus: entry.recordingStatus,
     recordingDuration: entry.recordingDuration,
     syncStatus: 'synced',

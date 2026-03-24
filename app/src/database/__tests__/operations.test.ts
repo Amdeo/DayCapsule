@@ -112,6 +112,111 @@ describe('database/operations', () => {
       expect(result[0].syncStatus).toBe('pending_upload');
       expect(result[0].media?.[0]?.remoteUri).toBe('https://cdn.example.com/voice.m4a');
     });
+
+    it('应该把旧脏数据中的字符串 media_json 归一化为 media 数组', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        {
+          id: 'voice-legacy',
+          type: 'voice',
+          content: '同步语音',
+          timestamp: 1700000000000,
+          tags: null,
+          media_json: JSON.stringify(JSON.stringify({
+            uri: 'https://cdn.example.com/voice-legacy.m4a',
+            mimeType: 'audio/m4a',
+            size: 100,
+            duration: 12000,
+          })),
+          recording_status: 'completed',
+          recording_duration: 12,
+          sync_status: 'synced',
+        },
+      ]);
+
+      const result = await getAllEntries();
+
+      expect(result[0].media).toEqual([
+        expect.objectContaining({
+          uri: 'https://cdn.example.com/voice-legacy.m4a',
+          mimeType: 'audio/m4a',
+          duration: 12000,
+        }),
+      ]);
+    });
+
+    it('应该把旧脏数据中的图片 media_json 字符串数组归一化并保留缩略图', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        {
+          id: 'photo-legacy',
+          type: 'photo',
+          content: '同步图片',
+          timestamp: 1700000002000,
+          tags: null,
+          media_json: JSON.stringify(JSON.stringify([
+            {
+              uri: 'https://cdn.example.com/photo-legacy-1.jpg',
+              mimeType: 'image/jpeg',
+              size: 100,
+              thumbnail: 'https://cdn.example.com/photo-legacy-1-thumb.jpg',
+            },
+            {
+              uri: 'https://cdn.example.com/photo-legacy-2.jpg',
+              mimeType: 'image/jpeg',
+              size: 120,
+              thumbnail: 'https://cdn.example.com/photo-legacy-2-thumb.jpg',
+            },
+          ])),
+          recording_status: null,
+          recording_duration: null,
+          sync_status: 'synced',
+        },
+      ]);
+
+      const result = await getAllEntries();
+
+      expect(result[0].media).toEqual([
+        expect.objectContaining({
+          uri: 'https://cdn.example.com/photo-legacy-1.jpg',
+          thumbnail: 'https://cdn.example.com/photo-legacy-1-thumb.jpg',
+        }),
+        expect.objectContaining({
+          uri: 'https://cdn.example.com/photo-legacy-2.jpg',
+          thumbnail: 'https://cdn.example.com/photo-legacy-2-thumb.jpg',
+        }),
+      ]);
+    });
+
+    it('应该在 media_json 缺失时回退读取旧版 media_uri 录音字段', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        {
+          id: 'voice-media-uri-legacy',
+          type: 'voice',
+          content: '',
+          timestamp: 1700000003000,
+          tags: null,
+          media_json: null,
+          media_uri: 'file:///legacy/voice.m4a',
+          media_type: 'audio/m4a',
+          media_duration: 18000,
+          media_thumbnail: null,
+          media_metadata: JSON.stringify({ source: 'legacy-db' }),
+          recording_status: 'completed',
+          recording_duration: 18,
+          sync_status: 'synced',
+        },
+      ]);
+
+      const result = await getAllEntries();
+
+      expect(result[0].media).toEqual([
+        expect.objectContaining({
+          uri: 'file:///legacy/voice.m4a',
+          mimeType: 'audio/m4a',
+          duration: 18000,
+          metadata: expect.objectContaining({ source: 'legacy-db' }),
+        }),
+      ]);
+    });
   });
 
   // ─── getEntriesPage ─────────────────────────────────────────────────────────

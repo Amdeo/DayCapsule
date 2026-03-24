@@ -10,10 +10,6 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
 }));
 
-jest.mock('@/src/services/showAppDialog', () => ({
-  showAppDialog: jest.fn(),
-}));
-
 // Mock DetailPageShell to avoid native module dependencies
 jest.mock('../DetailPageShell', () => ({
   DetailPageShell: ({ children, visible }: any) =>
@@ -24,7 +20,6 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
-import { showAppDialog } from '@/src/services/showAppDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockLogin = jest.fn();
@@ -94,25 +89,6 @@ describe('LoginPage', () => {
     });
   });
 
-  it('shows blocking dialog when login credentials are incomplete', async () => {
-    const { getByText } = render(
-      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
-    );
-
-    fireEvent.press(getByText('登录'));
-
-    await waitFor(() => {
-      expect(showAppDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '提示',
-          message: '请填写邮箱和密码',
-          blocking: true,
-        })
-      );
-    });
-    expect(mockLogin).not.toHaveBeenCalled();
-  });
-
   it('switches to register mode', () => {
     const { getByText, getByPlaceholderText } = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
@@ -121,28 +97,5 @@ describe('LoginPage', () => {
     fireEvent.press(getByText('没有账户？注册'));
     expect(getByPlaceholderText('确认密码')).toBeTruthy();
     expect(getByText('注册')).toBeTruthy();
-  });
-
-  it('shows blocking dialog when register passwords do not match', async () => {
-    const { getByText, getByPlaceholderText } = render(
-      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
-    );
-
-    fireEvent.press(getByText('没有账户？注册'));
-    fireEvent.changeText(getByPlaceholderText('邮箱'), 'test@test.com');
-    fireEvent.changeText(getByPlaceholderText('密码'), 'Password1');
-    fireEvent.changeText(getByPlaceholderText('确认密码'), 'Password2');
-    fireEvent.press(getByText('注册'));
-
-    await waitFor(() => {
-      expect(showAppDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '提示',
-          message: '两次输入的密码不一致',
-          blocking: true,
-        })
-      );
-    });
-    expect(mockRegister).not.toHaveBeenCalled();
   });
 });

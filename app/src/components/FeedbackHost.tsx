@@ -1,17 +1,17 @@
 import React from 'react';
-import { AppDialogModal } from '@/src/components/AppDialogModal';
-import { useAppDialogStore } from '@/src/store/appDialogStore';
+import { ErrorFeedbackModal } from '@/src/components/ErrorFeedbackModal';
+import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
 
 export function FeedbackHost() {
-  const current = useAppDialogStore((state) => state.current);
-  const dismiss = useAppDialogStore((state) => state.dismiss);
+  const current = useErrorFeedbackStore((state) => state.current);
+  const dismiss = useErrorFeedbackStore((state) => state.dismiss);
 
   if (!current) {
     return null;
   }
 
   return (
-    <AppDialogModal
+    <ErrorFeedbackModal
       visible
       request={{
         ...current,

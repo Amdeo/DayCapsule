@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { showAppDialog } from '@/src/services/showAppDialog';
+import { Alert } from 'react-native';
 import { VoiceService } from '@/src/services/voiceService';
 import { logger } from '@/src/utils/logger';
 
@@ -19,16 +19,6 @@ export function useVoiceRecorderController({
   const [isPaused, setIsPaused] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const showBlockingNotice = useCallback((title: string, message: string) => {
-    showAppDialog({
-      title,
-      message,
-      tone: 'error',
-      blocking: true,
-      actions: [{ label: '知道了', role: 'primary' }],
-    });
-  }, []);
 
   useEffect(() => {
     if (!isRecording || isPaused) {
@@ -61,11 +51,11 @@ export function useVoiceRecorderController({
       setIsPaused(false);
     } catch (error) {
       logger.error('Failed to start recording:', error);
-      showBlockingNotice('录音失败', '无法启动录音，请检查麦克风权限');
+      Alert.alert('录音失败', '无法启动录音，请检查麦克风权限');
     } finally {
       setIsLoading(false);
     }
-  }, [showBlockingNotice]);
+  }, []);
 
   const handlePause = useCallback(async () => {
     try {
@@ -94,11 +84,11 @@ export function useVoiceRecorderController({
       setIsPaused(false);
     } catch (error) {
       logger.error('Failed to stop recording:', error);
-      showBlockingNotice('保存失败', '保存录音失败，请重试');
+      Alert.alert('保存失败', '保存录音失败，请重试');
     } finally {
       setIsLoading(false);
     }
-  }, [showBlockingNotice]);
+  }, []);
 
   const handleCancel = useCallback(async () => {
     try {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import {
   buildBackupCreateFailedFeedback,
   buildBackupExportFailedFeedback,
@@ -8,7 +8,6 @@ import {
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '@/src/services/syncService';
-import { showAppDialog } from '@/src/services/showAppDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
 import type { Entry } from '@/src/types/entry';
@@ -42,20 +41,6 @@ export function useBackupPageController({
   const [exportTarget, setExportTarget] = useState<ExportTarget>(null);
   const [showExportSheet, setShowExportSheet] = useState(false);
   const primaryActionLabel = Platform.OS === 'ios' ? '导出/分享' : '保存到文件';
-
-  const showBlockingNotice = useCallback((
-    title: string,
-    message: string,
-    tone: 'neutral' | 'accent' | 'success' | 'error' = 'neutral',
-  ) => {
-    showAppDialog({
-      title,
-      message,
-      tone,
-      blocking: true,
-      actions: [{ label: '知道了', role: 'primary' }],
-    });
-  }, []);
 
   const refreshStorageInfo = useCallback(async () => {
     try {
@@ -126,7 +111,7 @@ export function useBackupPageController({
         return;
       }
       if (result.saved && result.fileName) {
-        showBlockingNotice('保存成功', `备份已保存为 ${result.fileName}`, 'success');
+        Alert.alert('保存成功', `备份已保存为 ${result.fileName}`);
         closeExportSheet();
         return;
       }
@@ -167,10 +152,9 @@ export function useBackupPageController({
           }
         } catch (mediaError) {
           logger.warn('[BackupPage] 媒体文件提取失败:', mediaError);
-          showBlockingNotice(
+          Alert.alert(
             '部分恢复',
             `已恢复 ${insertedIds.length} 条记录，但部分媒体文件未能还原。您可以重新导入备份尝试恢复媒体。`,
-            'success',
           );
           await refreshBackupInfo();
           return;
@@ -178,13 +162,13 @@ export function useBackupPageController({
       }
 
       await refreshBackupInfo();
-      showBlockingNotice('导入成功', `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`, 'success');
+      Alert.alert('导入成功', `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`);
     } catch (error: any) {
       showErrorFeedback(buildBackupImportFailedFeedback(error));
     } finally {
       setIsImporting(false);
     }
-  }, [refreshBackupInfo, restoreEntries, showBlockingNotice, updateEntry]);
+  }, [refreshBackupInfo, restoreEntries, updateEntry]);
 
   return {
     usedSpace,
