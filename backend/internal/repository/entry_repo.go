@@ -281,6 +281,12 @@ func (r *EntryRepository) Count(userID string) (int, error) {
 	return count, err
 }
 
+func (r *EntryRepository) CountByType(userID, entryType string) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM entries WHERE user_id = ? AND type = ?", userID, entryType).Scan(&count)
+	return count, err
+}
+
 func (r *EntryRepository) GetAll(userID string) ([]*models.Entry, error) {
 	query := `
 		SELECT id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at

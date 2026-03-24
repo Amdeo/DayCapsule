@@ -97,3 +97,13 @@ func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, err
 	}
 	return files, rows.Err()
 }
+
+func (r *MediaRepository) CountAndBytes(userID string) (int, int64, error) {
+	var count int
+	var totalBytes int64
+	err := r.db.QueryRow("SELECT COUNT(*), COALESCE(SUM(size), 0) FROM media_files WHERE user_id = ?", userID).Scan(&count, &totalBytes)
+	if err != nil {
+		return 0, 0, err
+	}
+	return count, totalBytes, nil
+}

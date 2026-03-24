@@ -10,11 +10,12 @@ import (
 )
 
 type SyncHandler struct {
-	syncService *service.SyncService
+	syncService         *service.SyncService
+	syncOverviewService *service.SyncOverviewService
 }
 
-func NewSyncHandler(syncService *service.SyncService) *SyncHandler {
-	return &SyncHandler{syncService: syncService}
+func NewSyncHandler(syncService *service.SyncService, syncOverviewService *service.SyncOverviewService) *SyncHandler {
+	return &SyncHandler{syncService: syncService, syncOverviewService: syncOverviewService}
 }
 
 func (h *SyncHandler) Status(c *gin.Context) {
@@ -24,7 +25,7 @@ func (h *SyncHandler) Status(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": gin.H{"code": "INTERNAL_ERROR", "message": "failed to get backup status"},
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to get backup status"},
 		})
 		return
 	}
@@ -39,7 +40,7 @@ func (h *SyncHandler) Upload(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()},
+			"error":   gin.H{"code": "INVALID_REQUEST", "message": err.Error()},
 		})
 		return
 	}
@@ -47,7 +48,7 @@ func (h *SyncHandler) Upload(c *gin.Context) {
 	if err := h.syncService.Upload(userID, &req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": gin.H{"code": "INTERNAL_ERROR", "message": "failed to upload backup"},
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to upload backup"},
 		})
 		return
 	}
@@ -69,13 +70,13 @@ func (h *SyncHandler) Download(c *gin.Context) {
 		if err.Error() == "backup not found" {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
-				"error": gin.H{"code": "BACKUP_NOT_FOUND", "message": "backup not found"},
+				"error":   gin.H{"code": "BACKUP_NOT_FOUND", "message": "backup not found"},
 			})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": gin.H{"code": "INTERNAL_ERROR", "message": "failed to download backup"},
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to download backup"},
 		})
 		return
 	}
@@ -96,10 +97,28 @@ func (h *SyncHandler) Delete(c *gin.Context) {
 	if err := h.syncService.Delete(userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": gin.H{"code": "INTERNAL_ERROR", "message": "failed to delete backup"},
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to delete backup"},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "backup deleted"})
+}
+
+func (h *SyncHandler) Overview(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	overview, err := h.syncOverviewService.GetByUser(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to get sync overview"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    overview,
+	})
 }

@@ -46,11 +46,12 @@ func main() {
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret, cfg.JWTExpiry, cfg.RefreshExpiry)
 	syncService := service.NewSyncService(backupRepo)
+	syncOverviewService := service.NewSyncOverviewService(entryRepo, mediaRepo)
 	syncV2Service := service.NewSyncV2Service(entryRepo, changeRepo)
 	entryService := service.NewEntryService(entryRepo, mediaRepo, cfg.BaseURL)
 
 	authHandler := handlers.NewAuthHandler(authService)
-	syncHandler := handlers.NewSyncHandler(syncService)
+	syncHandler := handlers.NewSyncHandler(syncService, syncOverviewService)
 	syncV2Handler := handlers.NewSyncV2Handler(syncV2Service)
 	entryHandler := handlers.NewEntryHandler(entryService)
 	mediaHandler := handlers.NewMediaHandler(mediaRepo, cfg.UploadDir)
@@ -82,6 +83,7 @@ func main() {
 		{
 			authorized.GET("/auth/me", authHandler.Me)
 			authorized.GET("/sync/status", syncHandler.Status)
+			authorized.GET("/sync/overview", syncHandler.Overview)
 			authorized.POST("/sync/upload", syncHandler.Upload)
 			authorized.GET("/sync/download", syncHandler.Download)
 			authorized.DELETE("/sync/backup", syncHandler.Delete)
