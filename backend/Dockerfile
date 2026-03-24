@@ -3,6 +3,9 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
+ARG TARGETOS=linux
+ARG TARGETARCH
+
 RUN apk add --no-cache git ca-certificates
 
 COPY go.mod go.sum ./
@@ -10,7 +13,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+RUN echo "Building server for ${TARGETOS}/${TARGETARCH}" \
+  && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -a -installsuffix cgo -o server ./cmd/server
 
 # Final stage
 FROM alpine:latest

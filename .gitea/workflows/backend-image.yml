@@ -33,6 +33,9 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: 运行后端测试
         working-directory: backend
         run: go test ./...
@@ -73,17 +76,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.PKG_TOKEN }}
 
-      - name: 构建镜像
+      - name: 构建并推送多架构镜像
         run: |
-          docker build \
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
             -t "${{ steps.meta.outputs.image_ref }}" \
             -t "${{ steps.meta.outputs.latest_ref }}" \
+            --push \
             backend
 
-      - name: 推送镜像
+      - name: 校验镜像平台
         run: |
-          docker push "${{ steps.meta.outputs.image_ref }}"
-          docker push "${{ steps.meta.outputs.latest_ref }}"
+          inspect_output="$(docker buildx imagetools inspect "${{ steps.meta.outputs.image_ref }}")"
+          printf '%s\n' "$inspect_output"
+
+          printf '%s\n' "$inspect_output" | grep -F "linux/amd64" >/dev/null
+          printf '%s\n' "$inspect_output" | grep -F "linux/arm64" >/dev/null
 
       - name: 生成部署目录
         id: bundle
