@@ -7,9 +7,12 @@ import { getDatabase } from './sqlite';
 import { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
-const normalizeEntryMedia = (media: unknown): import('@/src/types/entry').MediaInfo[] | undefined => {
+type EntryMediaInfo = import('@/src/types/entry').MediaInfo;
+type EntryMediaMetadata = NonNullable<EntryMediaInfo['metadata']>;
+
+const normalizeEntryMedia = (media: unknown): EntryMediaInfo[] | undefined => {
   if (Array.isArray(media)) {
-    return media as import('@/src/types/entry').MediaInfo[];
+    return media as EntryMediaInfo[];
   }
 
   if (!media) {
@@ -25,24 +28,45 @@ const normalizeEntryMedia = (media: unknown): import('@/src/types/entry').MediaI
   }
 
   if (typeof media === 'object') {
-    return [media as import('@/src/types/entry').MediaInfo];
+    return [media as EntryMediaInfo];
   }
 
   return undefined;
 };
 
-const getLegacyEntryMedia = (row: any): import('@/src/types/entry').MediaInfo[] | undefined => {
+const normalizeLegacyMediaMetadata = (metadata: unknown): EntryMediaMetadata | undefined => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return undefined;
+  }
+
+  const candidate = metadata as Record<string, unknown>;
+  if (
+    typeof candidate.createdAt !== 'number' ||
+    typeof candidate.modifiedAt !== 'number'
+  ) {
+    return undefined;
+  }
+
+  return {
+    createdAt: candidate.createdAt,
+    modifiedAt: candidate.modifiedAt,
+    width: typeof candidate.width === 'number' ? candidate.width : undefined,
+    height: typeof candidate.height === 'number' ? candidate.height : undefined,
+    aspectRatio: typeof candidate.aspectRatio === 'number' ? candidate.aspectRatio : undefined,
+    bitrate: typeof candidate.bitrate === 'number' ? candidate.bitrate : undefined,
+    sampleRate: typeof candidate.sampleRate === 'number' ? candidate.sampleRate : undefined,
+  };
+};
+
+const getLegacyEntryMedia = (row: any): EntryMediaInfo[] | undefined => {
   if (!row.media_uri) {
     return undefined;
   }
 
-  let metadata: Record<string, unknown> | undefined;
+  let metadata: EntryMediaMetadata | undefined;
   if (row.media_metadata) {
     try {
-      const parsed = JSON.parse(row.media_metadata);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        metadata = parsed as Record<string, unknown>;
-      }
+      metadata = normalizeLegacyMediaMetadata(JSON.parse(row.media_metadata));
     } catch {
       metadata = undefined;
     }
@@ -64,7 +88,7 @@ const getLegacyEntryMedia = (row: any): import('@/src/types/entry').MediaInfo[] 
  * 将数据库行转换为 Entry 对象
  */
 const rowToEntry = (row: any): Entry => {
-  let media: import('@/src/types/entry').MediaInfo[] | undefined = undefined;
+  let media: EntryMediaInfo[] | undefined = undefined;
   if (row.media_json) {
     try {
       media = normalizeEntryMedia(JSON.parse(row.media_json));

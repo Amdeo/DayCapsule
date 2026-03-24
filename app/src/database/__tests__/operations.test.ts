@@ -199,7 +199,11 @@ describe('database/operations', () => {
           media_type: 'audio/m4a',
           media_duration: 18000,
           media_thumbnail: null,
-          media_metadata: JSON.stringify({ source: 'legacy-db' }),
+          media_metadata: JSON.stringify({
+            createdAt: 1700000000000,
+            modifiedAt: 1700000001000,
+            bitrate: 128000,
+          }),
           recording_status: 'completed',
           recording_duration: 18,
           sync_status: 'synced',
@@ -213,7 +217,11 @@ describe('database/operations', () => {
           uri: 'file:///legacy/voice.m4a',
           mimeType: 'audio/m4a',
           duration: 18000,
-          metadata: expect.objectContaining({ source: 'legacy-db' }),
+          metadata: expect.objectContaining({
+            createdAt: 1700000000000,
+            modifiedAt: 1700000001000,
+            bitrate: 128000,
+          }),
         }),
       ]);
     });
