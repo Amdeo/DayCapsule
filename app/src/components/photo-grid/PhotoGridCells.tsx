@@ -19,6 +19,17 @@ interface GridCellProps {
   onPress: () => void;
 }
 
+interface TwoPhotoCellProps {
+  testID: string;
+  imageTestID: string;
+  missingTestID: string;
+  photo: MediaInfo;
+  width: number;
+  height: number;
+  imageRadiusStyle: PhotoImageRadiusStyle;
+  onPress: () => void;
+}
+
 export function SinglePhoto({
   photo,
   maxPhotoHeight,
@@ -69,6 +80,43 @@ export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
       <Image
         source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
         style={{ width: cellSize, height: cellSize }}
+        resizeMode="cover"
+        onError={() => setError(true)}
+      />
+    </TouchableOpacity>
+  );
+}
+
+export function TwoPhotoCell({
+  testID,
+  imageTestID,
+  missingTestID,
+  photo,
+  width,
+  height,
+  imageRadiusStyle,
+  onPress,
+}: TwoPhotoCellProps) {
+  const [error, setError] = useState(false);
+  const cellStyle = [{ width, height, backgroundColor: '#ECE7E0' }, imageRadiusStyle];
+
+  if (error) {
+    return (
+      <View testID={testID}>
+        <View
+          testID={missingTestID}
+          style={[styles.twoPhotoMissing, ...cellStyle]}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
+      <Image
+        testID={imageTestID}
+        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+        style={cellStyle}
         resizeMode="cover"
         onError={() => setError(true)}
       />

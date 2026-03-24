@@ -14,15 +14,23 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 import { PhotoGrid } from '../PhotoGrid';
 import { MediaInfo } from '@/src/types/entry';
 
-const makePhoto = (i: number): MediaInfo => ({
+const makePhoto = (i: number, aspectRatio?: number): MediaInfo => ({
   uri: `file://photo${i}.jpg`,
   mimeType: 'image/jpeg',
   size: 1000,
+  metadata:
+    aspectRatio !== undefined
+      ? {
+          aspectRatio,
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        }
+      : undefined,
 });
 
 const radius = { borderRadius: 10 };
@@ -36,14 +44,116 @@ describe('PhotoGrid', () => {
     expect(screen.queryByTestId('photo-grid')).toBeNull();
   });
 
-  it('2 photos: renders photo-grid with 2 cells', () => {
+  it('2 photos: renders two-photo collage instead of square grid', () => {
     render(
-      <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
     );
-    expect(screen.getByTestId('photo-grid-root')).toBeTruthy();
-    expect(screen.getByTestId('photo-grid')).toBeTruthy();
-    expect(screen.getByTestId('photo-cell-0')).toBeTruthy();
-    expect(screen.getByTestId('photo-cell-1')).toBeTruthy();
+
+    expect(screen.getByTestId('photo-collage-root')).toBeTruthy();
+    expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
+    expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
+    expect(screen.queryByTestId('photo-grid')).toBeNull();
+  });
+
+  it('keeps the first photo as primary by default', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.1)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file://photo1.jpg',
+    });
+  });
+
+  it('promotes the second photo to primary when it fits the primary slot much better', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 2.8), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo1.jpg',
+    });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
+  });
+
+  it('does not reorder two photos when aspect ratio metadata is missing', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file://photo0.jpg',
+    });
+  });
+
+  it('maps taps back to original indexes after swapping display order', () => {
+    const onPhotoPress = jest.fn();
+
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 2.8), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+        onPhotoPress={onPhotoPress}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('photo-primary-cell'));
+    fireEvent.press(screen.getByTestId('photo-secondary-cell'));
+
+    expect(onPhotoPress).toHaveBeenNthCalledWith(1, 1);
+    expect(onPhotoPress).toHaveBeenNthCalledWith(2, 0);
+  });
+
+  it('keeps the primary slot when the primary image fails to load', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
+
+    expect(screen.getByTestId('photo-primary-missing')).toBeTruthy();
+    expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
+  });
+
+  it('keeps the secondary slot when the secondary image fails to load', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
+
+    expect(screen.getByTestId('photo-secondary-missing')).toBeTruthy();
+    expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
   });
 
   it('3 photos: renders 3 cells', () => {
@@ -68,16 +178,40 @@ describe('PhotoGrid', () => {
     expect(screen.getByText('+2')).toBeTruthy();
   });
 
-  it('首帧渲染时应使用窗口宽度估算网格尺寸', () => {
+  it('uses window width to estimate two-photo collage widths on first render', () => {
     const windowWidth = Dimensions.get('window').width;
     render(
-      <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
     );
 
-    const expectedCellSize = (windowWidth - 3) / 2;
-    expect(screen.getByTestId('photo-cell-0').children[0].props.style).toEqual({
-      width: expectedCellSize,
-      height: expectedCellSize,
-    });
+    const expectedPrimaryWidth = (windowWidth - 3) * 0.64;
+    expect(screen.getByTestId('photo-primary-image').props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          width: expectedPrimaryWidth,
+          height: 280,
+        }),
+      ])
+    );
+  });
+
+  it('stretches the two-photo collage root to the available card width', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-collage-root').props.style).toEqual(
+      expect.objectContaining({
+        width: '100%',
+      })
+    );
   });
 });
