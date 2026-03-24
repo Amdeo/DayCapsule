@@ -250,6 +250,7 @@ describe('SettingsPage calendar density selector', () => {
 
     expect(screen.getByText('预制标签管理')).toBeTruthy();
     expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
+    expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
   });
 
   it('shows sync status alert for authenticated cloud users', async () => {

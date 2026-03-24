@@ -29,6 +29,7 @@ export function SearchBarActions({
   return (
     <>
       <Pressable
+        testID="searchbar-menu-button-pressable"
         onPress={onMenuPress}
         onPressIn={onMenuPressIn}
         onPressOut={onMenuPressOut}

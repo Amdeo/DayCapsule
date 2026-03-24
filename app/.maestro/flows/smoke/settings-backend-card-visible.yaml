@@ -1,0 +1,11 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/open-settings.yaml
+- assertVisible:
+    id: settings-backend-card
+- assertVisible:
+    id: settings-backend-input
+- assertVisible:
+    id: settings-backend-test-button
+- assertVisible:
+    id: settings-backend-save-button

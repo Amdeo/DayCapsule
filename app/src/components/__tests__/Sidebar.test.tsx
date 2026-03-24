@@ -106,6 +106,9 @@ describe('Sidebar shell', () => {
     );
 
     expect(getByTestId('sidebar-shell')).toBeTruthy();
+    expect(getByTestId('sidebar-menu-stats')).toBeTruthy();
+    expect(getByTestId('sidebar-menu-settings')).toBeTruthy();
+    expect(getByTestId('sidebar-menu-tags')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
     expect(getByText('DayCapsule v1.0.0')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });

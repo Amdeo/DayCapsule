@@ -1,0 +1,8 @@
+appId: com.memorycapsule.app
+---
+- assertVisible:
+    id: searchbar-menu-button-pressable
+- tapOn:
+    id: searchbar-menu-button-pressable
+- assertVisible:
+    id: sidebar-shell

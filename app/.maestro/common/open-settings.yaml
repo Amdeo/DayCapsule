@@ -1,0 +1,7 @@
+appId: com.memorycapsule.app
+---
+- runFlow: open-sidebar.yaml
+- tapOn:
+    id: sidebar-menu-settings
+- assertVisible:
+    id: settings-page-root

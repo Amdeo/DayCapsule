@@ -33,6 +33,7 @@ export function SidebarPanel({
           <React.Fragment key={item.action}>
             {item.dividerBefore ? <View style={styles.divider} /> : null}
             <TouchableOpacity
+              testID={`sidebar-menu-${item.action}`}
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => onPressMenuItem(item.action)}

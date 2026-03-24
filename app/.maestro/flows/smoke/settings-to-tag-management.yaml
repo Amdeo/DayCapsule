@@ -1,0 +1,15 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/open-settings.yaml
+- tapOn:
+    id: settings-open-tag-management
+- assertVisible:
+    id: tag-management-root
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: settings-page-root
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: searchbar-menu-button

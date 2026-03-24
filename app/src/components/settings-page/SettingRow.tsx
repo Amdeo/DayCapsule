@@ -36,6 +36,7 @@ interface SettingButtonProps {
   subtitle: string;
   onPress: () => void;
   danger?: boolean;
+  testID?: string;
 }
 
 export function SettingButton({
@@ -44,9 +45,10 @@ export function SettingButton({
   subtitle,
   onPress,
   danger,
+  testID,
 }: SettingButtonProps) {
   return (
-    <Pressable style={styles.settingItem} onPress={onPress}>
+    <Pressable testID={testID} style={styles.settingItem} onPress={onPress}>
       <View style={[styles.settingIcon, danger && styles.dangerIcon]}>
         <Ionicons name={icon as any} size={20} color={danger ? '#EF4444' : '#6A89CC'} />
       </View>

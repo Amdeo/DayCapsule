@@ -69,6 +69,7 @@ describe('SearchBar 安全区适配', () => {
   it('keeps the menu button and search shell dimensions after nativewind migration', () => {
     const { getByTestId } = render(<SearchBar />);
 
+    expect(getByTestId('searchbar-menu-button-pressable')).toBeTruthy();
     expect(getByTestId('searchbar-menu-button')).toHaveStyle({
       width: 48,
       height: 48,

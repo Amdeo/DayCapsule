@@ -1,0 +1,11 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/open-sidebar.yaml
+- tapOn:
+    id: sidebar-menu-stats
+- assertVisible:
+    id: stats-page-root
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: searchbar-menu-button

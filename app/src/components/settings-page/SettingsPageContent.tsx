@@ -245,6 +245,7 @@ export function SettingsPageContent({
           icon="pricetag"
           title="预制标签管理"
           subtitle="管理可快速选择的预制标签"
+          testID="settings-open-tag-management"
           onPress={onOpenTagManagement}
         />
         <SettingButton
