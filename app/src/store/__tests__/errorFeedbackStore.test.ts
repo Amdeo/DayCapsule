@@ -1,8 +1,14 @@
 import { useErrorFeedbackStore } from '../errorFeedbackStore';
+import { useAppDialogStore } from '../appDialogStore';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 describe('errorFeedbackStore', () => {
   beforeEach(() => {
     useErrorFeedbackStore.setState({
+      current: null,
+      activeDedupeKey: null,
+    });
+    useAppDialogStore.setState({
       current: null,
       activeDedupeKey: null,
     });
@@ -66,5 +72,19 @@ describe('errorFeedbackStore', () => {
 
     expect(useErrorFeedbackStore.getState().current?.title).toBe('保存失败');
     expect(useErrorFeedbackStore.getState().activeDedupeKey).toBe('save-failed');
+  });
+
+  it('maps error feedback requests into the generic dialog store', () => {
+    showErrorFeedback({
+      title: '同步失败',
+      message: '请检查网络连接后重试。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+
+    expect(useAppDialogStore.getState().current).toMatchObject({
+      title: '同步失败',
+      message: '请检查网络连接后重试。',
+      tone: 'error',
+    });
   });
 });
