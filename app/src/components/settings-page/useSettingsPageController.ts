@@ -10,6 +10,13 @@ import type { Entry } from '@/src/types/entry';
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { NotificationService } from '@/src/services/notificationService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import {
+  getCurrentServerUrl,
+  getRecentServerUrls,
+  normalizeServerUrl,
+} from '@/src/services/backendEnvironmentService';
+import { testBackendConnection } from '@/src/services/backendConnectionService';
+import { switchBackendEnvironment } from '@/src/services/localEnvironmentDataManager';
 
 interface UseSettingsPageControllerOptions {
   visible: boolean;
@@ -50,6 +57,27 @@ export function useSettingsPageController({
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [showTagMgmt, setShowTagMgmt] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [currentServerUrl, setCurrentServerUrl] = useState('');
+  const [backendDraftUrl, setBackendDraftUrl] = useState('');
+  const [recentServerUrls, setRecentServerUrls] = useState<string[]>([]);
+  const [backendTestStatus, setBackendTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [backendTestedUrl, setBackendTestedUrl] = useState<string | null>(null);
+  const [backendTestErrorMessage, setBackendTestErrorMessage] = useState<string | null>(null);
+  const [isSavingBackendServer, setIsSavingBackendServer] = useState(false);
+
+  const loadBackendState = useCallback(async () => {
+    const [nextCurrentServerUrl, nextRecentServerUrls] = await Promise.all([
+      getCurrentServerUrl(),
+      getRecentServerUrls(),
+    ]);
+
+    setCurrentServerUrl(nextCurrentServerUrl);
+    setBackendDraftUrl(nextCurrentServerUrl);
+    setRecentServerUrls(nextRecentServerUrls);
+    setBackendTestStatus('idle');
+    setBackendTestedUrl(null);
+    setBackendTestErrorMessage(null);
+  }, []);
 
   const refreshStorageStats = useCallback(async () => {
     try {
@@ -93,7 +121,8 @@ export function useSettingsPageController({
       return;
     }
     void refreshStorageStats();
-  }, [refreshStorageStats, visible]);
+    void loadBackendState();
+  }, [loadBackendState, refreshStorageStats, visible]);
 
   const handleNotifications = useCallback(
     async (value: boolean) => {
@@ -206,12 +235,85 @@ export function useSettingsPageController({
     await enableCloudMode();
   }, [enableCloudMode]);
 
+  const handleBackendDraftUrlChange = useCallback((value: string) => {
+    setBackendDraftUrl(value);
+    setBackendTestStatus('idle');
+    setBackendTestedUrl(null);
+    setBackendTestErrorMessage(null);
+  }, []);
+
+  const handleSelectRecentBackendServer = useCallback((url: string) => {
+    setBackendDraftUrl(url);
+    setBackendTestStatus('idle');
+    setBackendTestedUrl(null);
+    setBackendTestErrorMessage(null);
+  }, []);
+
+  const handleTestBackendServer = useCallback(async () => {
+    setBackendTestStatus('testing');
+    setBackendTestErrorMessage(null);
+
+    const result = await testBackendConnection(backendDraftUrl);
+    if (!result.success) {
+      setBackendTestStatus('error');
+      setBackendTestedUrl(null);
+      setBackendTestErrorMessage(result.message ?? '连接失败，请检查地址或网络');
+      return;
+    }
+
+    setBackendTestStatus('success');
+    setBackendTestedUrl(normalizeServerUrl(backendDraftUrl));
+  }, [backendDraftUrl]);
+
+  const canSaveBackendServer = useMemo(() => {
+    if (backendTestStatus !== 'success' || !backendTestedUrl) {
+      return false;
+    }
+
+    try {
+      return normalizeServerUrl(backendDraftUrl) === backendTestedUrl;
+    } catch {
+      return false;
+    }
+  }, [backendDraftUrl, backendTestStatus, backendTestedUrl]);
+
+  const handleSaveBackendServer = useCallback(async () => {
+    if (!canSaveBackendServer) {
+      return;
+    }
+
+    setIsSavingBackendServer(true);
+    try {
+      const result = await switchBackendEnvironment(backendDraftUrl);
+      await loadBackendState();
+      setBackendTestStatus('success');
+      setBackendTestedUrl(result.currentServerUrl);
+      Alert.alert(
+        result.switched ? '切换成功' : '保存成功',
+        result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
+      );
+    } catch (error) {
+      setBackendTestStatus('error');
+      setBackendTestErrorMessage((error as Error).message ?? '切换失败');
+      Alert.alert('切换失败', (error as Error).message ?? '切换后端失败');
+    } finally {
+      setIsSavingBackendServer(false);
+    }
+  }, [backendDraftUrl, canSaveBackendServer, loadBackendState]);
+
   return {
     usedSpace,
     showTagMgmt,
     showLogin,
     photoCount,
     voiceCount,
+    currentServerUrl,
+    backendDraftUrl,
+    recentServerUrls,
+    backendTestStatus,
+    backendTestErrorMessage,
+    isSavingBackendServer,
+    canSaveBackendServer,
     openTagManagement,
     closeTagManagement,
     openLogin,
@@ -223,6 +325,10 @@ export function useSettingsPageController({
     handleCardSpacing,
     handlePhotoHeight,
     handleCalendarDensity,
+    handleBackendDraftUrlChange,
+    handleTestBackendServer,
+    handleSaveBackendServer,
+    handleSelectRecentBackendServer,
     handleClearCache,
     handleResetSettings,
   };

@@ -8,15 +8,29 @@ jest.mock('@/src/utils/storage', () => ({
     setString: jest.fn(),
     delete:    jest.fn(),
   },
+  withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
+  getServerKey: jest.fn((url: string) =>
+    url === 'https://server-b.example.com'
+      ? 'env_https_server_b_example_com'
+      : 'env_https_server_a_example_com'
+  ),
+}));
+
 import { useSettingsStore } from '../settingsStore';
+import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
 
 const { Storage } = require('@/src/utils/storage');
+const SERVER_A_SCOPE = 'env_https_server_a_example_com';
+const SERVER_B_SCOPE = 'env_https_server_b_example_com';
+const scopedKey = (scope: string, key: string) => `${scope}:${key}`;
 
 const resetStore = () =>
   useSettingsStore.setState({
@@ -25,6 +39,7 @@ const resetStore = () =>
     highQualityPhotos: true,
     cardSpacing: 'default',
     photoHeight: 'default',
+    calendarDensity: 'default',
     lastAddType: null,
     cloudMode: false,
     isLoaded: false,
@@ -32,6 +47,7 @@ const resetStore = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
   resetStore();
 });
 
@@ -44,7 +60,7 @@ describe('loadSettings — photoHeight', () => {
 
   it('loads "compact" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:photoHeight' ? 'compact' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:photoHeight') ? 'compact' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().photoHeight).toBe('compact');
@@ -52,7 +68,7 @@ describe('loadSettings — photoHeight', () => {
 
   it('loads "large" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:photoHeight' ? 'large' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:photoHeight') ? 'large' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().photoHeight).toBe('large');
@@ -60,10 +76,23 @@ describe('loadSettings — photoHeight', () => {
 
   it('falls back to "default" for invalid stored value', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:photoHeight' ? 'invalid_value' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:photoHeight') ? 'invalid_value' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().photoHeight).toBe('default');
+  });
+
+  it('loads values from the current backend environment only', async () => {
+    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-b.example.com');
+    Storage.getString.mockImplementation((key: string) => {
+      if (key === scopedKey(SERVER_A_SCOPE, 'settings:photoHeight')) return Promise.resolve('compact');
+      if (key === scopedKey(SERVER_B_SCOPE, 'settings:photoHeight')) return Promise.resolve('large');
+      return Promise.resolve(null);
+    });
+
+    await useSettingsStore.getState().loadSettings();
+
+    expect(useSettingsStore.getState().photoHeight).toBe('large');
   });
 });
 
@@ -71,7 +100,10 @@ describe('setPhotoHeight', () => {
   it('saves value to storage and updates state', async () => {
     Storage.setString.mockResolvedValue(undefined);
     await useSettingsStore.getState().setPhotoHeight('compact');
-    expect(Storage.setString).toHaveBeenCalledWith('settings:photoHeight', 'compact');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'settings:photoHeight'),
+      'compact'
+    );
     expect(useSettingsStore.getState().photoHeight).toBe('compact');
   });
 });
@@ -83,7 +115,7 @@ describe('resetSettings — photoHeight', () => {
 
     await useSettingsStore.getState().resetSettings();
 
-    expect(Storage.delete).toHaveBeenCalledWith('settings:photoHeight');
+    expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'settings:photoHeight'));
     expect(useSettingsStore.getState().photoHeight).toBe('default');
   });
 });
@@ -97,7 +129,7 @@ describe('loadSettings — lastAddType', () => {
 
   it('loads "text" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:lastAddType' ? 'text' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:lastAddType') ? 'text' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().lastAddType).toBe('text');
@@ -105,7 +137,7 @@ describe('loadSettings — lastAddType', () => {
 
   it('loads "camera" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:lastAddType' ? 'camera' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:lastAddType') ? 'camera' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().lastAddType).toBe('camera');
@@ -113,7 +145,7 @@ describe('loadSettings — lastAddType', () => {
 
   it('loads "photo" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:lastAddType' ? 'photo' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:lastAddType') ? 'photo' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().lastAddType).toBe('photo');
@@ -121,7 +153,7 @@ describe('loadSettings — lastAddType', () => {
 
   it('loads "voice" from storage', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:lastAddType' ? 'voice' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:lastAddType') ? 'voice' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().lastAddType).toBe('voice');
@@ -129,7 +161,7 @@ describe('loadSettings — lastAddType', () => {
 
   it('falls back to null for invalid stored value', async () => {
     Storage.getString.mockImplementation((key: string) =>
-      Promise.resolve(key === 'settings:lastAddType' ? 'invalid' : null)
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:lastAddType') ? 'invalid' : null)
     );
     await useSettingsStore.getState().loadSettings();
     expect(useSettingsStore.getState().lastAddType).toBeNull();
@@ -140,7 +172,10 @@ describe('setLastAddType', () => {
   it('saves value to storage and updates state', async () => {
     Storage.setString.mockResolvedValue(undefined);
     await useSettingsStore.getState().setLastAddType('camera');
-    expect(Storage.setString).toHaveBeenCalledWith('settings:lastAddType', 'camera');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'settings:lastAddType'),
+      'camera'
+    );
     expect(useSettingsStore.getState().lastAddType).toBe('camera');
   });
 
@@ -160,7 +195,7 @@ describe('resetSettings — lastAddType', () => {
 
     await useSettingsStore.getState().resetSettings();
 
-    expect(Storage.delete).toHaveBeenCalledWith('settings:lastAddType');
+    expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'settings:lastAddType'));
     expect(useSettingsStore.getState().lastAddType).toBeNull();
   });
 });
@@ -172,11 +207,17 @@ describe('cloudMode', () => {
 
   it('setCloudMode persists to MMKV', async () => {
     await useSettingsStore.getState().setCloudMode('switching');
-    expect(Storage.setString).toHaveBeenCalledWith('settings:cloudMode', 'switching');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'settings:cloudMode'),
+      'switching'
+    );
     expect(useSettingsStore.getState().cloudMode).toBe('switching');
 
     await useSettingsStore.getState().setCloudMode(true);
-    expect(Storage.setString).toHaveBeenCalledWith('settings:cloudMode', 'true');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'settings:cloudMode'),
+      'true'
+    );
     expect(useSettingsStore.getState().cloudMode).toBe(true);
   });
 });

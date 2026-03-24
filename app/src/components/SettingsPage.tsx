@@ -68,6 +68,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     showLogin,
     photoCount,
     voiceCount,
+    currentServerUrl,
+    backendDraftUrl,
+    recentServerUrls,
+    backendTestStatus,
+    backendTestErrorMessage,
+    isSavingBackendServer,
+    canSaveBackendServer,
     openTagManagement,
     closeTagManagement,
     openLogin,
@@ -79,6 +86,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     handleCardSpacing,
     handlePhotoHeight,
     handleCalendarDensity,
+    handleBackendDraftUrlChange,
+    handleTestBackendServer,
+    handleSaveBackendServer,
+    handleSelectRecentBackendServer,
     handleClearCache,
     handleResetSettings,
   } = useSettingsPageController({
@@ -115,6 +126,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           entryCount={entries.length}
           photoCount={photoCount}
           voiceCount={voiceCount}
+          currentServerUrl={currentServerUrl}
+          backendDraftUrl={backendDraftUrl}
+          recentServerUrls={recentServerUrls}
+          backendTestStatus={backendTestStatus}
+          backendTestErrorMessage={backendTestErrorMessage}
+          isSavingBackendServer={isSavingBackendServer}
+          canSaveBackendServer={canSaveBackendServer}
           onCloudModeToggle={handleCloudModeToggle}
           onShowSyncStatus={() => {
             void showCloudSyncStatusAlert();
@@ -127,6 +145,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onCardSpacingChange={handleCardSpacing}
           onPhotoHeightChange={handlePhotoHeight}
           onCalendarDensityChange={handleCalendarDensity}
+          onBackendDraftUrlChange={handleBackendDraftUrlChange}
+          onTestBackendServer={handleTestBackendServer}
+          onSaveBackendServer={handleSaveBackendServer}
+          onSelectRecentBackendServer={handleSelectRecentBackendServer}
           onClearCache={handleClearCache}
           onOpenTagManagement={openTagManagement}
           onResetSettings={handleResetSettings}

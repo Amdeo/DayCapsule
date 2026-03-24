@@ -23,6 +23,13 @@ const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSwitchDataSource = jest.fn();
 const mockCreateRemoteDataSource = jest.fn(() => ({}));
 const mockShowCloudSyncStatusAlert = jest.fn(async () => undefined);
+const mockGetCurrentServerUrl = jest.fn(async () => 'https://server-a.example.com');
+const mockGetRecentServerUrls = jest.fn(async () => ['https://server-b.example.com']);
+const mockTestBackendConnection = jest.fn(async () => ({ success: true }));
+const mockSwitchBackendEnvironment = jest.fn(async () => ({
+  switched: true,
+  currentServerUrl: 'https://server-c.example.com',
+}));
 
 let mockCloudMode: boolean | 'switching' = false;
 let mockIsAuthenticated = false;
@@ -89,6 +96,20 @@ jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
 
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: { clearSoundCache: jest.fn() },
+}));
+
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  getCurrentServerUrl: () => mockGetCurrentServerUrl(),
+  getRecentServerUrls: () => mockGetRecentServerUrls(),
+  normalizeServerUrl: (url: string) => url.trim().replace(/\/+$/, ''),
+}));
+
+jest.mock('@/src/services/backendConnectionService', () => ({
+  testBackendConnection: (url: string) => mockTestBackendConnection(url),
+}));
+
+jest.mock('@/src/services/localEnvironmentDataManager', () => ({
+  switchBackendEnvironment: (url: string) => mockSwitchBackendEnvironment(url),
 }));
 
 jest.mock('@/src/services/notificationService', () => ({
@@ -160,6 +181,13 @@ describe('SettingsPage calendar density selector', () => {
     mockCloudMode = false;
     mockIsAuthenticated = false;
     mockUser = null;
+    mockGetCurrentServerUrl.mockResolvedValue('https://server-a.example.com');
+    mockGetRecentServerUrls.mockResolvedValue(['https://server-b.example.com']);
+    mockTestBackendConnection.mockResolvedValue({ success: true });
+    mockSwitchBackendEnvironment.mockResolvedValue({
+      switched: true,
+      currentServerUrl: 'https://server-c.example.com',
+    });
     jest.spyOn(DB, 'getEntriesCount').mockResolvedValue(0);
     jest.spyOn(DB, 'clearAllEntries').mockImplementation(mockClearAllEntries);
     jest.spyOn(DB, 'restoreEntries').mockImplementation(mockRestoreEntries);
@@ -328,5 +356,76 @@ describe('SettingsPage calendar density selector', () => {
 
     expect(mockSwitchDataSource).not.toHaveBeenCalled();
     expect(mockCreateRemoteDataSource).not.toHaveBeenCalled();
+  });
+
+  it('shows current backend server and recent history options', async () => {
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('https://server-a.example.com')).toBeTruthy();
+    });
+
+    expect(screen.getByText('后端连接')).toBeTruthy();
+    expect(screen.getByText('https://server-b.example.com')).toBeTruthy();
+  });
+
+  it('tests backend connectivity for the current draft url and enables save after success', async () => {
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    const input = await screen.findByDisplayValue('https://server-a.example.com');
+    fireEvent.changeText(input, 'https://server-c.example.com');
+
+    const saveButton = screen.getByTestId('settings-backend-save-button');
+    expect(saveButton.props.accessibilityState.disabled).toBe(true);
+
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(mockTestBackendConnection).toHaveBeenCalledWith('https://server-c.example.com');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('连接成功')).toBeTruthy();
+    });
+    expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('invalidates previous success after draft changes or selecting history', async () => {
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+    const input = await screen.findByDisplayValue('https://server-a.example.com');
+
+    fireEvent.changeText(input, 'https://server-c.example.com');
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    fireEvent.changeText(input, 'https://server-d.example.com');
+    expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(true);
+
+    fireEvent.press(screen.getByText('https://server-b.example.com'));
+    expect(screen.getByDisplayValue('https://server-b.example.com')).toBeTruthy();
+    expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('saves and switches backend only after a successful test', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+    const input = await screen.findByDisplayValue('https://server-a.example.com');
+
+    fireEvent.changeText(input, 'https://server-c.example.com');
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    fireEvent.press(screen.getByTestId('settings-backend-save-button'));
+
+    await waitFor(() => {
+      expect(mockSwitchBackendEnvironment).toHaveBeenCalledWith('https://server-c.example.com');
+    });
+    expect(alertSpy).toHaveBeenCalledWith('切换成功', '后端已切换，请重新登录');
   });
 });

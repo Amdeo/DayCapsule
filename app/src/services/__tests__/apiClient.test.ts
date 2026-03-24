@@ -9,23 +9,35 @@ jest.mock('@/src/utils/storage', () => ({
     setString: jest.fn().mockResolvedValue(undefined),
     delete: jest.fn().mockResolvedValue(undefined),
   },
+  withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  getCurrentServerUrlSync: jest.fn(() => null),
+  getServerKey: jest.fn((url: string) =>
+    url === 'https://two.example.com'
+      ? 'env_https_two_example_com'
+      : 'env_https_server_example_com'
+  ),
+}));
+
 // Mock global fetch
 const mockFetch = jest.fn();
 (global as any).fetch = mockFetch;
 
-import { createApiClient, ApiError } from '../apiClient';
+import { createApiClient, ApiError, getApiClient, resetApiClient } from '../apiClient';
 import { Storage } from '@/src/utils/storage';
 import { normalizeApiBaseURL } from '../apiClient';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrlSync } from '@/src/services/backendEnvironmentService';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  resetApiClient();
 });
 
 describe('apiClient', () => {
@@ -176,5 +188,58 @@ describe('apiClient', () => {
       code: 'NETWORK_ERROR',
       message: 'Network request failed',
     });
+  });
+
+  it('uses the current backend server url when available', async () => {
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server.example.com');
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true, data: { ok: true } }),
+    });
+
+    await getApiClient().get('/entries');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://server.example.com/api/entries',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('recreates the client after backend server changes', async () => {
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://one.example.com');
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true, data: { ok: true } }),
+    });
+
+    await getApiClient().get('/entries');
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://two.example.com');
+    resetApiClient();
+    await getApiClient().get('/entries');
+
+    expect(mockFetch.mock.calls[0][0]).toBe('https://one.example.com/api/entries');
+    expect(mockFetch.mock.calls[1][0]).toBe('https://two.example.com/api/entries');
+  });
+
+  it('falls back to EXPO_PUBLIC_API_URL when no current backend server exists', async () => {
+    const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = 'https://fallback.example.com/api';
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue(null);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true, data: { ok: true } }),
+    });
+
+    await getApiClient().get('/entries');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://fallback.example.com/api/entries',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
   });
 });

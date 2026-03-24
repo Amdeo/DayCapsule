@@ -73,6 +73,91 @@ export const settingsPageStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#4A4A4A',
   },
+  backendCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 16,
+    gap: 10,
+  },
+  backendInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D8D8D8',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#4A4A4A',
+  },
+  backendActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  backendSecondaryButton: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#77C9D4',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  backendSecondaryButtonText: {
+    color: '#4A9DAA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  backendPrimaryButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#77C9D4',
+  },
+  backendPrimaryButtonDisabled: {
+    backgroundColor: '#CFE8EC',
+  },
+  backendPrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  backendStatusText: {
+    fontSize: 13,
+    color: '#8A8A8A',
+  },
+  backendStatusSuccess: {
+    color: '#2F855A',
+  },
+  backendStatusError: {
+    color: '#D64545',
+  },
+  backendHistorySection: {
+    gap: 8,
+  },
+  backendHistoryTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#737373',
+  },
+  backendHistoryList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  backendHistoryChip: {
+    borderRadius: 999,
+    backgroundColor: '#E8F8FA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  backendHistoryChipText: {
+    color: '#4A9DAA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 export const segmentedSelectorStyles = StyleSheet.create({

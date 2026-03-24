@@ -8,7 +8,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
 import { Share, Platform } from 'react-native';
 import { Entry } from '@/src/types/entry';
-import { MEDIA_PATHS } from '@/src/utils/fileSystem';
+import { getMediaPaths } from '@/src/utils/fileSystem';
 import { BackupService, BackupManifest } from './backupService';
 import { logger } from '@/src/utils/logger';
 
@@ -160,8 +160,9 @@ export class SyncService {
         try {
           const base64 = await zipFile.async('base64');
           const filename = (media.relativeUri as string).split('/').pop()!;
+          const mediaPaths = getMediaPaths();
           const targetDir =
-            e.type === 'voice' ? MEDIA_PATHS.voiceOriginal : MEDIA_PATHS.photoOriginal;
+            e.type === 'voice' ? mediaPaths.voiceOriginal : mediaPaths.photoOriginal;
 
           const dirInfo = await FileSystem.getInfoAsync(targetDir);
           if (!dirInfo.exists) {

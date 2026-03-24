@@ -17,11 +17,28 @@ jest.mock('@/src/utils/storage', () => ({
     setString: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined),
   },
+  withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));
+
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
+  getServerKey: jest.fn((url: string) =>
+    url === 'https://server-b.example.com'
+      ? 'env_https_server_b_example_com'
+      : 'env_https_server_a_example_com'
+  ),
+}));
+
+import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
+
+const SERVER_A_SCOPE = 'env_https_server_a_example_com';
+const SERVER_B_SCOPE = 'env_https_server_b_example_com';
+const scopedKey = (scope: string, key: string) => `${scope}:${key}`;
 
 describe('syncStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
     useSyncStore.setState({
       syncCursor: 0,
       lastSyncAt: null,
@@ -35,13 +52,13 @@ describe('syncStore', () => {
   it('loads persisted sync cursor and initial sync state from storage', async () => {
     (Storage.getString as jest.Mock).mockImplementation(async (key: string) => {
       switch (key) {
-        case 'cloudSync:cursor':
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:cursor'):
           return '12';
-        case 'cloudSync:lastSyncAt':
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:lastSyncAt'):
           return '1700000000000';
-        case 'cloudSync:lastSyncError':
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:lastSyncError'):
           return 'network timeout';
-        case 'cloudSync:initialSyncState':
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:initialSyncState'):
           return 'needs-decision';
         default:
           return null;
@@ -55,6 +72,30 @@ describe('syncStore', () => {
       lastSyncAt: 1700000000000,
       lastSyncError: 'network timeout',
       initialSyncState: 'needs-decision',
+      isLoaded: true,
+    });
+  });
+
+  it('loads sync state from the current backend environment only', async () => {
+    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-b.example.com');
+    (Storage.getString as jest.Mock).mockImplementation(async (key: string) => {
+      switch (key) {
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:cursor'):
+          return '12';
+        case scopedKey(SERVER_B_SCOPE, 'cloudSync:cursor'):
+          return '99';
+        case scopedKey(SERVER_B_SCOPE, 'cloudSync:initialSyncState'):
+          return 'ready';
+        default:
+          return null;
+      }
+    });
+
+    await useSyncStore.getState().load();
+
+    expect(useSyncStore.getState()).toMatchObject({
+      syncCursor: 99,
+      initialSyncState: 'ready',
       isLoaded: true,
     });
   });
@@ -75,7 +116,7 @@ describe('syncStore', () => {
       lastSyncAt: 1700000000123,
       lastSyncError: null,
     });
-    expect(Storage.delete).toHaveBeenCalledWith('cloudSync:lastSyncError');
+    expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'cloudSync:lastSyncError'));
   });
 
   it('toggles isSyncing when sync starts and finishes', async () => {

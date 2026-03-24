@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import type { Entry, MediaInfo } from '@/src/types/entry';
-import { MEDIA_PATHS } from '@/src/utils/fileSystem';
+import { getMediaPaths } from '@/src/utils/fileSystem';
 import { logger } from '@/src/utils/logger';
 
 type MediaKind = 'photo' | 'voice';
@@ -37,10 +37,11 @@ function extensionFromMimeType(mimeType?: string): string {
 }
 
 function getTargetDir(kind: MediaKind, variant: 'main' | 'thumb' = 'main'): string {
+  const mediaPaths = getMediaPaths();
   if (kind === 'photo') {
-    return variant === 'thumb' ? MEDIA_PATHS.photoThumbnail : MEDIA_PATHS.photoDisplay;
+    return variant === 'thumb' ? mediaPaths.photoThumbnail : mediaPaths.photoDisplay;
   }
-  return MEDIA_PATHS.voiceCompressed;
+  return mediaPaths.voiceCompressed;
 }
 
 async function ensureDir(dir: string): Promise<void> {
@@ -122,4 +123,3 @@ export class MediaCacheService {
     return Promise.all(entries.map((entry) => this.hydrateEntry(entry)));
   }
 }
-

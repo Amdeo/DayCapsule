@@ -3,20 +3,42 @@
  * 使用 Expo SQLite
  */
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
 
-const DB_NAME = 'MemoryCapsule.db';
+const DB_NAME_PREFIX = 'MemoryCapsule';
+const DEFAULT_SERVER_SCOPE = 'env_default';
 
 // 单例连接，避免每次调用重复打开
-let _db: SQLite.SQLiteDatabase | null = null;
+let _db: SQLiteDatabase | null = null;
+let _dbName: string | null = null;
+
+const getCurrentServerScope = (): string => {
+  const serverUrl = getCurrentServerUrlSync();
+  return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
+};
+
+export const getDatabaseName = (): string => `${DB_NAME_PREFIX}-${getCurrentServerScope()}.db`;
+
+export const resetDatabase = (): void => {
+  const maybeClosable = _db as SQLiteDatabase & { closeSync?: () => void };
+  maybeClosable?.closeSync?.();
+  _db = null;
+  _dbName = null;
+};
 
 /**
  * 打开数据库连接（单例）
  */
-export const openDatabase = (): SQLite.SQLiteDatabase => {
-  if (!_db) {
-    _db = SQLite.openDatabaseSync(DB_NAME);
+export const openDatabase = (): SQLiteDatabase => {
+  const nextDbName = getDatabaseName();
+
+  if (!_db || _dbName !== nextDbName) {
+    const maybeClosable = _db as SQLiteDatabase & { closeSync?: () => void };
+    maybeClosable?.closeSync?.();
+    _db = openDatabaseSync(nextDbName);
+    _dbName = nextDbName;
   }
   return _db;
 };
@@ -88,4 +110,4 @@ export const initDatabase = async () => {
 /**
  * 获取数据库实例（单例）
  */
-export const getDatabase = (): SQLite.SQLiteDatabase => openDatabase();
+export const getDatabase = (): SQLiteDatabase => openDatabase();

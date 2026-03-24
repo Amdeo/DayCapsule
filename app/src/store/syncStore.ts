@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { Storage } from '@/src/utils/storage';
+import { Storage, withScope } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
 
 export type InitialSyncState =
   | 'idle'
@@ -43,6 +44,11 @@ const DEFAULT_SYNC_STATE = {
   isLoaded: false,
 };
 
+const getScopedSyncKey = async (key: string): Promise<string> => {
+  const serverUrl = await getCurrentServerUrl();
+  return withScope(getServerKey(serverUrl), key);
+};
+
 const parseNumber = (raw: string | null): number | null => {
   if (!raw) return null;
   const parsed = Number(raw);
@@ -67,11 +73,17 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
 
   load: async () => {
     try {
+      const [cursorKey, lastSyncAtKey, lastSyncErrorKey, initialSyncStateKey] = await Promise.all([
+        getScopedSyncKey(SYNC_STORAGE_KEYS.cursor),
+        getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
+        getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
+        getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
+      ]);
       const [cursorRaw, lastSyncAtRaw, lastSyncError, initialSyncStateRaw] = await Promise.all([
-        Storage.getString(SYNC_STORAGE_KEYS.cursor),
-        Storage.getString(SYNC_STORAGE_KEYS.lastSyncAt),
-        Storage.getString(SYNC_STORAGE_KEYS.lastSyncError),
-        Storage.getString(SYNC_STORAGE_KEYS.initialSyncState),
+        Storage.getString(cursorKey),
+        Storage.getString(lastSyncAtKey),
+        Storage.getString(lastSyncErrorKey),
+        Storage.getString(initialSyncStateKey),
       ]);
 
       set({
@@ -89,7 +101,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
   },
 
   setCursor: async (cursor) => {
-    await Storage.setString(SYNC_STORAGE_KEYS.cursor, String(cursor));
+    await Storage.setString(await getScopedSyncKey(SYNC_STORAGE_KEYS.cursor), String(cursor));
     set({ syncCursor: cursor });
   },
 
@@ -102,9 +114,13 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
   },
 
   markSyncSuccess: async (timestamp = Date.now()) => {
+    const [lastSyncAtKey, lastSyncErrorKey] = await Promise.all([
+      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
+      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
+    ]);
     await Promise.all([
-      Storage.setString(SYNC_STORAGE_KEYS.lastSyncAt, String(timestamp)),
-      Storage.delete(SYNC_STORAGE_KEYS.lastSyncError),
+      Storage.setString(lastSyncAtKey, String(timestamp)),
+      Storage.delete(lastSyncErrorKey),
     ]);
     set({
       lastSyncAt: timestamp,
@@ -113,21 +129,27 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
   },
 
   markSyncFailure: async (message) => {
-    await Storage.setString(SYNC_STORAGE_KEYS.lastSyncError, message);
+    await Storage.setString(await getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError), message);
     set({ lastSyncError: message });
   },
 
   setInitialSyncState: async (state) => {
-    await Storage.setString(SYNC_STORAGE_KEYS.initialSyncState, state);
+    await Storage.setString(await getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState), state);
     set({ initialSyncState: state });
   },
 
   reset: async () => {
+    const [cursorKey, lastSyncAtKey, lastSyncErrorKey, initialSyncStateKey] = await Promise.all([
+      getScopedSyncKey(SYNC_STORAGE_KEYS.cursor),
+      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
+      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
+      getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
+    ]);
     await Promise.all([
-      Storage.delete(SYNC_STORAGE_KEYS.cursor),
-      Storage.delete(SYNC_STORAGE_KEYS.lastSyncAt),
-      Storage.delete(SYNC_STORAGE_KEYS.lastSyncError),
-      Storage.delete(SYNC_STORAGE_KEYS.initialSyncState),
+      Storage.delete(cursorKey),
+      Storage.delete(lastSyncAtKey),
+      Storage.delete(lastSyncErrorKey),
+      Storage.delete(initialSyncStateKey),
     ]);
     set({ ...DEFAULT_SYNC_STATE, isLoaded: true });
   },

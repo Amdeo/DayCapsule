@@ -5,6 +5,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
 
 /**
  * 应用文件目录路径
@@ -20,37 +21,52 @@ export const MEDIA_DIRS = {
   temp: FileSystem.cacheDirectory || '',
 };
 
+export interface MediaPaths {
+  photoOriginal: string;
+  photoDisplay: string;
+  photoThumbnail: string;
+  voiceOriginal: string;
+  voiceCompressed: string;
+  temp: string;
+  database: string;
+}
+
+const DEFAULT_SERVER_SCOPE = 'env_default';
+
+const getCurrentServerScope = (): string => {
+  const serverUrl = getCurrentServerUrlSync();
+  return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
+};
+
+const joinDir = (baseDir: string, relativePath: string): string => `${baseDir}${relativePath}`;
+
 /**
  * 媒体存储路径配置
  */
-export const MEDIA_PATHS = {
-  // 原始照片（高质量）
-  photoOriginal: `${MEDIA_DIRS.documents}media/photos/original/`,
+export const getMediaPaths = (): MediaPaths => {
+  const scope = getCurrentServerScope();
+  const documentsBase = joinDir(MEDIA_DIRS.documents, `environments/${scope}/`);
+  const cacheBase = joinDir(MEDIA_DIRS.cache, `environments/${scope}/`);
+  const tempBase = joinDir(MEDIA_DIRS.temp, `environments/${scope}/`);
 
-  // 优化后的照片（显示用）
-  photoDisplay: `${MEDIA_DIRS.cache}media/photos/display/`,
-
-  // 照片缩略图
-  photoThumbnail: `${MEDIA_DIRS.cache}media/photos/thumbnails/`,
-
-  // 原始语音
-  voiceOriginal: `${MEDIA_DIRS.documents}media/voice/original/`,
-
-  // 压缩语音
-  voiceCompressed: `${MEDIA_DIRS.cache}media/voice/compressed/`,
-
-  // 临时文件
-  temp: `${MEDIA_DIRS.temp}media/temp/`,
-
-  // 数据库
-  database: `${MEDIA_DIRS.documents}db/`,
+  return {
+    photoOriginal: `${documentsBase}media/photos/original/`,
+    photoDisplay: `${cacheBase}media/photos/display/`,
+    photoThumbnail: `${cacheBase}media/photos/thumbnails/`,
+    voiceOriginal: `${documentsBase}media/voice/original/`,
+    voiceCompressed: `${cacheBase}media/voice/compressed/`,
+    temp: `${tempBase}media/temp/`,
+    database: `${documentsBase}db/`,
+  };
 };
+
+export const MEDIA_PATHS = getMediaPaths();
 
 /**
  * 确保目录存在
  */
 export async function ensureDirectories(): Promise<void> {
-  const directories = Object.values(MEDIA_PATHS);
+  const directories = Object.values(getMediaPaths());
   await Promise.all(
     directories.map(async (dir) => {
       const dirInfo = await FileSystem.getInfoAsync(dir);
@@ -183,14 +199,15 @@ export async function getStorageStats(): Promise<{
   available: number;
 }> {
   try {
+    const mediaPaths = getMediaPaths();
     const [photoOriginalSize, photoDisplaySize, voiceOriginalSize, voiceCompressedSize, databaseSize, tempSize] =
       await Promise.all([
-        getDirectorySize(MEDIA_PATHS.photoOriginal),
-        getDirectorySize(MEDIA_PATHS.photoDisplay),
-        getDirectorySize(MEDIA_PATHS.voiceOriginal),
-        getDirectorySize(MEDIA_PATHS.voiceCompressed),
-        getDirectorySize(MEDIA_PATHS.database),
-        getDirectorySize(MEDIA_PATHS.temp),
+        getDirectorySize(mediaPaths.photoOriginal),
+        getDirectorySize(mediaPaths.photoDisplay),
+        getDirectorySize(mediaPaths.voiceOriginal),
+        getDirectorySize(mediaPaths.voiceCompressed),
+        getDirectorySize(mediaPaths.database),
+        getDirectorySize(mediaPaths.temp),
       ]);
 
     return {

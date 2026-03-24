@@ -29,6 +29,11 @@ jest.mock('@/src/utils/fileSystem', () => ({
     photoDisplay: 'file:///cache/media/photos/display/',
     photoThumbnail: 'file:///cache/media/photos/thumbnails/',
   },
+  getMediaPaths: jest.fn(() => ({
+    photoOriginal: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/',
+    photoDisplay: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/',
+    photoThumbnail: 'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/',
+  })),
   generateUniqueFilename: jest
     .fn()
     .mockReturnValueOnce('entry_photo.jpg')
@@ -75,10 +80,10 @@ describe('PhotoService', () => {
 
     (copyFile as jest.Mock)
       .mockResolvedValueOnce(
-        'file:///documents/media/photos/original/entry_photo.jpg'
+        'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg'
       )
       .mockResolvedValueOnce(
-        'file:///documents/media/photos/original/entry_thumb.jpg'
+        'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_thumb.jpg'
       );
   });
 
@@ -121,18 +126,18 @@ describe('PhotoService', () => {
     expect(copyFile).toHaveBeenNthCalledWith(
       1,
       'file:///compressed.jpg',
-      'file:///documents/media/photos/original/',
+      'file:///documents/environments/env_https_server_a_example_com/media/photos/original/',
       'entry_photo.jpg'
     );
     expect(copyFile).toHaveBeenNthCalledWith(
       2,
       'file:///thumbnail.jpg',
-      'file:///documents/media/photos/original/',
+      'file:///documents/environments/env_https_server_a_example_com/media/photos/original/',
       'entry_thumb.jpg'
     );
     expect(result).toEqual({
-      originalUri: 'file:///documents/media/photos/original/entry_photo.jpg',
-      thumbnailUri: 'file:///documents/media/photos/original/entry_thumb.jpg',
+      originalUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
+      thumbnailUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_thumb.jpg',
       aspectRatio: 1200 / 900,
       width: 1200,
       height: 900,
@@ -154,8 +159,8 @@ describe('PhotoService', () => {
 
     (copyFile as jest.Mock)
       .mockReset()
-      .mockResolvedValueOnce('file:///cache/media/photos/display/entry_photo.jpg')
-      .mockResolvedValueOnce('file:///cache/media/photos/thumbnails/entry_thumb.jpg');
+      .mockResolvedValueOnce('file:///cache/environments/env_https_server_a_example_com/media/photos/display/entry_photo.jpg')
+      .mockResolvedValueOnce('file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/entry_thumb.jpg');
 
     const result = await PhotoService.savePhotoToCache(
       'file:///source.jpg',
@@ -166,18 +171,18 @@ describe('PhotoService', () => {
     expect(copyFile).toHaveBeenNthCalledWith(
       1,
       'file:///compressed.jpg',
-      'file:///cache/media/photos/display/',
+      'file:///cache/environments/env_https_server_a_example_com/media/photos/display/',
       'entry_photo.jpg'
     );
     expect(copyFile).toHaveBeenNthCalledWith(
       2,
       'file:///thumbnail.jpg',
-      'file:///cache/media/photos/thumbnails/',
+      'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/',
       'entry_thumb.jpg'
     );
     expect(result).toEqual({
-      originalUri: 'file:///cache/media/photos/display/entry_photo.jpg',
-      thumbnailUri: 'file:///cache/media/photos/thumbnails/entry_thumb.jpg',
+      originalUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/entry_photo.jpg',
+      thumbnailUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/entry_thumb.jpg',
       aspectRatio: 1200 / 900,
       width: 1200,
       height: 900,
