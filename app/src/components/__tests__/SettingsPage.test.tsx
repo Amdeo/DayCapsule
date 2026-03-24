@@ -1,9 +1,10 @@
 import React from 'react';
-import { Alert, Switch } from 'react-native';
+import { Switch } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SettingsPage } from '../SettingsPage';
 import * as DB from '@/src/database/operations';
 import { NotificationService } from '@/src/services/notificationService';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockSetCalendarDensity = jest.fn();
@@ -100,6 +101,10 @@ jest.mock('@/src/utils/logger', () => ({
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
+}));
+
+jest.mock('@/src/services/showAppDialog', () => ({
+  showAppDialog: jest.fn(),
 }));
 
 jest.mock('@/src/services/cloudSyncService', () => ({
@@ -214,6 +219,12 @@ describe('SettingsPage calendar density selector', () => {
     jest.spyOn(DB, 'restoreEntries').mockImplementation(mockRestoreEntries);
   });
 
+  const getLastDialogRequest = () => {
+    const calls = (showAppDialog as jest.Mock).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    return calls[calls.length - 1][0];
+  };
+
   it('renders calendar density setting with default option selected', async () => {
     const screen = render(<SettingsPage visible onClose={() => {}} />);
 
@@ -325,7 +336,6 @@ describe('SettingsPage calendar density selector', () => {
     mockApiGet.mockResolvedValueOnce({ entryCount: 0 });
     jest.spyOn(DB, 'getEntriesCount').mockResolvedValueOnce(3);
 
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const screen = render(<SettingsPage visible onClose={() => {}} />);
 
     await waitFor(() => {
@@ -336,20 +346,25 @@ describe('SettingsPage calendar density selector', () => {
     fireEvent(switches[0], 'valueChange', false);
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(
-        '切换到离线模式',
-        expect.stringContaining('云端当前为空'),
-        expect.any(Array),
+      expect(showAppDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '切换到离线模式',
+          blocking: true,
+          message: expect.stringContaining('云端当前为空'),
+        }),
       );
     });
 
-    const actions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const keepLocal = actions.find((action) => action.text === '保留本地并切回离线');
-    const cloudToLocal = actions.find((action) => action.text === '云端 → 本地');
+    const dialog = getLastDialogRequest();
+    const actions = dialog.actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    const keepLocal = actions.find((action) => action.label === '保留本地并切回离线');
+    const cloudToLocal = actions.find((action) => action.label === '云端 → 本地');
     expect(keepLocal).toBeTruthy();
     expect(cloudToLocal).toBeUndefined();
 
-    await keepLocal?.onPress?.();
+    await act(async () => {
+      await keepLocal?.onPress?.();
+    });
 
     expect(mockClearAllEntries).not.toHaveBeenCalled();
   });
@@ -432,7 +447,6 @@ describe('SettingsPage calendar density selector', () => {
   });
 
   it('saves and switches backend only after a successful test', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const screen = render(<SettingsPage visible onClose={() => {}} />);
     const input = await screen.findByDisplayValue('https://server-a.example.com');
 
@@ -448,11 +462,17 @@ describe('SettingsPage calendar density selector', () => {
     await waitFor(() => {
       expect(mockSwitchBackendEnvironment).toHaveBeenCalledWith('https://server-c.example.com');
     });
-    expect(alertSpy).toHaveBeenCalledWith('切换成功', '后端已切换，请重新登录');
+    expect(getLastDialogRequest()).toEqual(
+      expect.objectContaining({
+        title: '切换成功',
+        message: '后端已切换，请重新登录',
+        tone: 'success',
+        blocking: true,
+      }),
+    );
   });
 
   it('clears local app data when user confirms clear cache', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const screen = render(<SettingsPage visible onClose={() => {}} />);
 
     await waitFor(() => {
@@ -461,8 +481,16 @@ describe('SettingsPage calendar density selector', () => {
 
     fireEvent.press(screen.getByText('清除缓存'));
 
-    const confirmActions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const confirmAction = confirmActions.find((action) => action.text === '清除');
+    const confirmDialog = getLastDialogRequest();
+    expect(confirmDialog).toEqual(
+      expect.objectContaining({
+        title: '清除缓存',
+        blocking: true,
+        message: '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。',
+      }),
+    );
+    const confirmActions = confirmDialog.actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    const confirmAction = confirmActions.find((action) => action.label === '清除');
     expect(confirmAction).toBeTruthy();
 
     await act(async () => {
@@ -475,6 +503,39 @@ describe('SettingsPage calendar density selector', () => {
 
     expect(mockClearDirectory).toHaveBeenCalledTimes(6);
     expect(mockLoadEntries).toHaveBeenCalledTimes(1);
-    expect(alertSpy).toHaveBeenCalledWith('成功', '本地数据已清除');
+    expect(getLastDialogRequest()).toEqual(
+      expect.objectContaining({
+        title: '成功',
+        message: '本地数据已清除',
+        tone: 'success',
+        blocking: true,
+      }),
+    );
+  });
+
+  it('shows blocking logout confirmation dialog for authenticated users', async () => {
+    mockCloudMode = true;
+    mockIsAuthenticated = true;
+    mockUser = { email: 'logout@test.com' };
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('logout@test.com')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('退出登录'));
+
+    expect(getLastDialogRequest()).toEqual(
+      expect.objectContaining({
+        title: '退出登录',
+        message: '确定要退出登录吗？如果当前是云端模式，将自动切换到离线模式。',
+        blocking: true,
+        actions: expect.arrayContaining([
+          expect.objectContaining({ label: '取消', role: 'secondary' }),
+          expect.objectContaining({ label: '退出', role: 'destructive' }),
+        ]),
+      }),
+    );
   });
 });

@@ -1,10 +1,10 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
+import { useAppDialogStore } from '@/src/store/appDialogStore';
 import { FeedbackHost } from '../FeedbackHost';
 
-jest.mock('../ErrorFeedbackModal', () => ({
-  ErrorFeedbackModal: ({ visible, request }: any) => {
+jest.mock('../AppDialogModal', () => ({
+  AppDialogModal: ({ visible, request }: any) => {
     const { Text } = require('react-native');
     return visible && request ? <Text>{request.title}</Text> : null;
   },
@@ -12,14 +12,14 @@ jest.mock('../ErrorFeedbackModal', () => ({
 
 describe('FeedbackHost', () => {
   beforeEach(() => {
-    useErrorFeedbackStore.setState({
+    useAppDialogStore.setState({
       current: null,
       activeDedupeKey: null,
     });
   });
 
   it('renders the current feedback request from store state', () => {
-    useErrorFeedbackStore.getState().show({
+    useAppDialogStore.getState().show({
       title: '初始化失败',
       message: '应用启动遇到问题，请重启应用。',
       actions: [{ label: '知道了', role: 'primary' }],

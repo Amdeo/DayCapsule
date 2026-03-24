@@ -1,5 +1,6 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
+import { showAppDialog } from '@/src/services/showAppDialog';
 
 interface UseImageViewerActionsOptions {
   imageUri: string;
@@ -10,6 +11,20 @@ export function useImageViewerActions({
   imageUri,
   onHideActionSheet,
 }: UseImageViewerActionsOptions) {
+  const showBlockingNotice = (
+    title: string,
+    message: string,
+    tone: 'neutral' | 'accent' | 'success' | 'error',
+  ) => {
+    showAppDialog({
+      title,
+      message,
+      tone,
+      blocking: true,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  };
+
   const handleSaveToAlbum = async () => {
     onHideActionSheet();
 
@@ -18,15 +33,15 @@ export function useImageViewerActions({
       if (!granted) {
         const { granted: asked } = await MediaLibrary.requestPermissionsAsync();
         if (!asked) {
-          Alert.alert('权限不足', '请在设置中允许访问相册');
+          showBlockingNotice('权限不足', '请在设置中允许访问相册', 'error');
           return;
         }
       }
 
       await MediaLibrary.saveToLibraryAsync(imageUri);
-      Alert.alert('已保存', '图片已保存到相册');
+      showBlockingNotice('已保存', '图片已保存到相册', 'success');
     } catch {
-      Alert.alert('保存失败', '无法保存图片，请重试');
+      showBlockingNotice('保存失败', '无法保存图片，请重试', 'error');
     }
   };
 

@@ -1,54 +1,19 @@
-import { create } from 'zustand';
+import {
+  useAppDialogStore,
+  type AppDialogAction,
+  type AppDialogDetail,
+  type AppDialogRequest,
+} from '@/src/store/appDialogStore';
 
-export type ErrorFeedbackAction = {
-  label: string;
+export type ErrorFeedbackAction = Omit<AppDialogAction, 'role'> & {
   role: 'primary' | 'secondary';
-  onPress?: () => void | Promise<void>;
 };
 
-export type ErrorFeedbackDetail = {
-  label: string;
-  value: string;
-};
+export type ErrorFeedbackDetail = AppDialogDetail;
 
-export type ErrorFeedbackRequest = {
-  title: string;
-  message?: string;
-  details?: ErrorFeedbackDetail[];
+export type ErrorFeedbackRequest = Omit<AppDialogRequest, 'tone' | 'actions' | 'blocking'> & {
   tone?: 'error' | 'accent';
-  dedupeKey?: string;
   actions: ErrorFeedbackAction[];
 };
 
-type ErrorFeedbackState = {
-  current: ErrorFeedbackRequest | null;
-  activeDedupeKey: string | null;
-  show: (request: ErrorFeedbackRequest) => void;
-  dismiss: () => void;
-};
-
-export const useErrorFeedbackStore = create<ErrorFeedbackState>((set, get) => ({
-  current: null,
-  activeDedupeKey: null,
-
-  show: (request) => {
-    const nextDedupeKey = request.dedupeKey ?? null;
-    const { current, activeDedupeKey } = get();
-
-    if (current && nextDedupeKey && activeDedupeKey === nextDedupeKey) {
-      return;
-    }
-
-    set({
-      current: request,
-      activeDedupeKey: nextDedupeKey,
-    });
-  },
-
-  dismiss: () => {
-    set({
-      current: null,
-      activeDedupeKey: null,
-    });
-  },
-}));
+export const useErrorFeedbackStore = useAppDialogStore;

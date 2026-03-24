@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import { buildLoginFailedFeedback } from '@/src/services/errorFeedbackPresets';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
 
@@ -30,6 +30,15 @@ export function useLoginPageController({ login, onSuccess, register }: UseLoginP
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const showBlockingHint = useCallback((message: string) => {
+    showAppDialog({
+      title: '提示',
+      message,
+      blocking: true,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
+
   const resetForm = useCallback(() => {
     setEmail('');
     setPassword('');
@@ -39,12 +48,12 @@ export function useLoginPageController({ login, onSuccess, register }: UseLoginP
 
   const handleSubmit = useCallback(async () => {
     if (!email.trim() || !password) {
-      Alert.alert('提示', '请填写邮箱和密码');
+      showBlockingHint('请填写邮箱和密码');
       return;
     }
 
     if (isRegister && password !== confirmPassword) {
-      Alert.alert('提示', '两次输入的密码不一致');
+      showBlockingHint('两次输入的密码不一致');
       return;
     }
 
@@ -63,7 +72,7 @@ export function useLoginPageController({ login, onSuccess, register }: UseLoginP
     } finally {
       setIsLoading(false);
     }
-  }, [confirmPassword, email, isRegister, login, onSuccess, register, resetForm, password]);
+  }, [confirmPassword, email, isRegister, login, onSuccess, password, register, resetForm, showBlockingHint]);
 
   const handleToggleMode = useCallback(() => {
     setIsRegister((prev) => !prev);

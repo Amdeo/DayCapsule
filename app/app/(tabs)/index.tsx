@@ -1,4 +1,4 @@
-import { View, Alert, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
+import { View, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
 import { memo, useState, useEffect, useCallback, useRef, type ComponentProps } from 'react';
 import Animated, {
   useSharedValue,
@@ -19,6 +19,8 @@ import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { showAppDialog } from '@/src/services/showAppDialog';
+import type { AppDialogRequest } from '@/src/store/appDialogStore';
 import type { Entry } from '@/src/types/entry';
 import { deleteFile } from '@/src/utils/fileSystem';
 import {
@@ -139,6 +141,41 @@ function buildTemporaryVoiceEntry(now: number): Entry {
     recordingDuration: 0,
     media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
   };
+}
+
+function buildBlockingErrorDialogRequest(title: string, message: string): AppDialogRequest {
+  return {
+    title,
+    message,
+    tone: 'error',
+    blocking: true,
+    actions: [{ label: '知道了', role: 'primary' }],
+  };
+}
+
+export function buildActiveRecordingDialogForTest(): AppDialogRequest {
+  return buildBlockingErrorDialogRequest('录音进行中', '请先完成当前录音，再开始新的录音。');
+}
+
+export function buildMicrophonePermissionDialogForTest(openSettings: () => void): AppDialogRequest {
+  return {
+    title: '需要麦克风权限',
+    message: '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
+    tone: 'error',
+    blocking: true,
+    actions: [
+      { label: '取消', role: 'secondary' },
+      { label: '去设置', role: 'primary', onPress: openSettings },
+    ],
+  };
+}
+
+export function buildRecordingSaveFailedDialogForTest(): AppDialogRequest {
+  return buildBlockingErrorDialogRequest('录音保存失败', '录音文件保存失败，请重试。');
+}
+
+export function buildPhotoSaveFailedDialogForTest(): AppDialogRequest {
+  return buildBlockingErrorDialogRequest('保存失败', '照片保存失败，请重试');
 }
 
 export async function startCloudVoiceRecordingForTest(deps: VoiceCloudStartDeps): Promise<Entry> {
@@ -433,7 +470,7 @@ export default function HomeScreen() {
           }
         } catch (error) {
           if ((error as any)?.code === 'ACTIVE_RECORDING_IN_PROGRESS') {
-            Alert.alert('录音进行中', '请先完成当前录音，再开始新的录音。');
+            showAppDialog(buildActiveRecordingDialogForTest());
             return;
           }
 
@@ -455,17 +492,9 @@ export default function HomeScreen() {
           }
           // 权限被拒绝时引导用户去设置
           if ((error as any)?.code === 'PERMISSION_DENIED') {
-            Alert.alert(
-              '需要麦克风权限',
-              '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
-              [
-                { text: '取消', style: 'cancel' },
-                {
-                  text: '去设置',
-                  onPress: () => Linking.openURL('app-settings:'),
-                },
-              ]
-            );
+            showAppDialog(buildMicrophonePermissionDialogForTest(() => {
+              void Linking.openURL('app-settings:');
+            }));
           }
         }
         break;
@@ -495,7 +524,7 @@ export default function HomeScreen() {
     } catch (error) {
       logger.error('[HomeScreen] Failed to stop recording:', error);
       if (isCloudModeEnabled()) {
-        Alert.alert('录音保存失败', '录音文件保存失败，请重试。');
+        showAppDialog(buildRecordingSaveFailedDialogForTest());
       }
     } finally {
       currentRecordingIdRef.current = null;
@@ -524,7 +553,7 @@ export default function HomeScreen() {
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
-      Alert.alert('保存失败', '照片保存失败，请重试');
+      showAppDialog(buildPhotoSaveFailedDialogForTest());
     }
   }, [addLocalEntry, isCloudModeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated } from 'react-native';
+import { Animated } from 'react-native';
+import { showAppDialog } from '@/src/services/showAppDialog';
 import {
   useCommonTagsStore,
   DEFAULT_PRESET_TAGS,
@@ -39,6 +40,15 @@ export function useTagManagementController({
   const dragStateRef = useRef<DragState | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const showBlockingNotice = useCallback((title: string, message: string) => {
+    showAppDialog({
+      title,
+      message,
+      blocking: true,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
+
   useEffect(() => {
     dragStateRef.current = dragState;
   }, [dragState]);
@@ -64,33 +74,39 @@ export function useTagManagementController({
     }
 
     if (tags.length >= MAX_TAGS) {
-      Alert.alert('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
+      showBlockingNotice('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
       return;
     }
 
     await addCommonTag(trimmed);
     setInputValue('');
-  }, [addCommonTag, inputValue, tags.length]);
+  }, [addCommonTag, inputValue, showBlockingNotice, tags.length]);
 
   const handleDelete = useCallback(
     (tag: string) => {
-      Alert.alert('删除标签', `确认删除「${tag}」吗？`, [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: () => removeCommonTag(tag) },
-      ]);
+      showAppDialog({
+        title: '删除标签',
+        message: `确认删除「${tag}」吗？`,
+        blocking: true,
+        actions: [
+          { label: '取消', role: 'secondary' },
+          { label: '删除', role: 'destructive', onPress: () => removeCommonTag(tag) },
+        ],
+      });
     },
     [removeCommonTag],
   );
 
   const handleReset = useCallback(() => {
-    Alert.alert(
-      '恢复初始预制标签',
-      `将恢复为 ${DEFAULT_PRESET_TAGS.length} 个初始预制标签，当前修改将丢失。`,
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '恢复', style: 'destructive', onPress: () => resetToDefaults() },
+    showAppDialog({
+      title: '恢复初始预制标签',
+      message: `将恢复为 ${DEFAULT_PRESET_TAGS.length} 个初始预制标签，当前修改将丢失。`,
+      blocking: true,
+      actions: [
+        { label: '取消', role: 'secondary' },
+        { label: '恢复', role: 'destructive', onPress: () => resetToDefaults() },
       ],
-    );
+    });
   }, [resetToDefaults]);
 
   const clearLongPressTimer = useCallback(() => {
