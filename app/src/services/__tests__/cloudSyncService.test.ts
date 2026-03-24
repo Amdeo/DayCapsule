@@ -20,6 +20,12 @@ jest.mock('@/src/utils/storage', () => ({
     setString: jest.fn(async () => undefined),
     delete: jest.fn(async () => undefined),
   },
+  withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
+}));
+
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
+  getServerKey: jest.fn(() => 'env_https_server_a_example_com'),
 }));
 
 jest.mock('@/src/database/sqlite', () => ({
@@ -45,7 +51,7 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
 }));
 
 const mockPost = jest.fn();
-jest.mock('../apiClient', () => {
+jest.mock('@/src/services/apiClient', () => {
   class MockApiError extends Error {
     code: string;
     status: number;
