@@ -14,7 +14,7 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 import { PhotoGrid } from '../PhotoGrid';
 import { MediaInfo } from '@/src/types/entry';
@@ -107,6 +107,55 @@ describe('PhotoGrid', () => {
     });
   });
 
+  it('maps taps back to original indexes after swapping display order', () => {
+    const onPhotoPress = jest.fn();
+
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 2.8), makePhoto(1, 0.8)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+        onPhotoPress={onPhotoPress}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('photo-primary-cell'));
+    fireEvent.press(screen.getByTestId('photo-secondary-cell'));
+
+    expect(onPhotoPress).toHaveBeenNthCalledWith(1, 1);
+    expect(onPhotoPress).toHaveBeenNthCalledWith(2, 0);
+  });
+
+  it('keeps the primary slot when the primary image fails to load', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
+
+    expect(screen.getByTestId('photo-primary-missing')).toBeTruthy();
+    expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
+  });
+
+  it('keeps the secondary slot when the secondary image fails to load', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
+
+    expect(screen.getByTestId('photo-secondary-missing')).toBeTruthy();
+    expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
+  });
+
   it('3 photos: renders 3 cells', () => {
     const photos = [makePhoto(0), makePhoto(1), makePhoto(2)];
     render(<PhotoGrid photos={photos} maxPhotoHeight={280} photoImageRadius={radius} />);
@@ -129,16 +178,24 @@ describe('PhotoGrid', () => {
     expect(screen.getByText('+2')).toBeTruthy();
   });
 
-  it('首帧渲染时应使用窗口宽度估算网格尺寸', () => {
+  it('uses window width to estimate two-photo collage widths on first render', () => {
     const windowWidth = Dimensions.get('window').width;
     render(
-      <PhotoGrid photos={[makePhoto(0), makePhoto(1)]} maxPhotoHeight={280} photoImageRadius={radius} />
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
     );
 
-    const expectedCellSize = (windowWidth - 3) / 2;
-    expect(screen.getByTestId('photo-cell-0').children[0].props.style).toEqual({
-      width: expectedCellSize,
-      height: expectedCellSize,
-    });
+    const expectedPrimaryWidth = (windowWidth - 3) * 0.64;
+    expect(screen.getByTestId('photo-primary-image').props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          width: expectedPrimaryWidth,
+          height: 280,
+        }),
+      ])
+    );
   });
 });
