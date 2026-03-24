@@ -14,6 +14,7 @@ jest.mock('@/src/utils/logger', () => ({
 
 import { Storage } from '@/src/utils/storage';
 import {
+  clearCurrentServerUrl,
   getCurrentServerUrl,
   getRecentServerUrls,
   getServerKey,
@@ -54,6 +55,12 @@ describe('backendEnvironmentService', () => {
     await setCurrentServerUrl('https://api.example.com/');
 
     expect(Storage.setString).toHaveBeenCalledWith('backend:currentServerUrl', 'https://api.example.com');
+  });
+
+  it('clears the persisted current server url', async () => {
+    await clearCurrentServerUrl();
+
+    expect(Storage.delete).toHaveBeenCalledWith('backend:currentServerUrl');
   });
 
   it('keeps recent urls unique and ordered by most recent first', async () => {

@@ -1,4 +1,5 @@
 import {
+  clearCurrentServerUrl,
   getCurrentServerUrl,
   normalizeServerUrl,
   rememberServerUrl,
@@ -40,9 +41,17 @@ export const switchBackendEnvironment = async (
   nextServerUrl: string,
 ): Promise<BackendEnvironmentSwitchResult> => {
   const normalizedNextServerUrl = normalizeServerUrl(nextServerUrl);
-  const currentServerUrl = await getCurrentServerUrl();
+  let currentServerUrl: string | null = null;
 
-  if (normalizedNextServerUrl === currentServerUrl) {
+  try {
+    currentServerUrl = await getCurrentServerUrl();
+  } catch (error) {
+    if ((error as Error).message !== 'No server URL configured') {
+      throw error;
+    }
+  }
+
+  if (currentServerUrl && normalizedNextServerUrl === currentServerUrl) {
     await rememberServerUrl(normalizedNextServerUrl);
     return {
       switched: false,
@@ -62,7 +71,11 @@ export const switchBackendEnvironment = async (
       currentServerUrl: normalizedNextServerUrl,
     };
   } catch (error) {
-    await setCurrentServerUrl(currentServerUrl);
+    if (currentServerUrl) {
+      await setCurrentServerUrl(currentServerUrl);
+    } else {
+      await clearCurrentServerUrl();
+    }
     await initializeEnvironmentRuntime();
     await reloadEnvironmentState();
     throw error;

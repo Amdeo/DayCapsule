@@ -64,6 +64,11 @@ export const setCurrentServerUrl = async (url: string): Promise<void> => {
   await Storage.setString(CURRENT_SERVER_URL_KEY, normalizedUrl);
 };
 
+export const clearCurrentServerUrl = async (): Promise<void> => {
+  currentServerUrlCache = null;
+  await Storage.delete(CURRENT_SERVER_URL_KEY);
+};
+
 export const getCurrentServerUrlSync = (): string | null => {
   if (currentServerUrlCache) {
     return currentServerUrlCache;

@@ -2,6 +2,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
   normalizeServerUrl: jest.fn((url: string) => url.trim().replace(/\/+$/, '')),
   rememberServerUrl: jest.fn().mockResolvedValue(undefined),
+  clearCurrentServerUrl: jest.fn().mockResolvedValue(undefined),
   setCurrentServerUrl: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -62,6 +63,7 @@ jest.mock('@/src/store/entryStore', () => ({
 }));
 
 import {
+  clearCurrentServerUrl,
   getCurrentServerUrl,
   rememberServerUrl,
   setCurrentServerUrl,
@@ -95,5 +97,30 @@ describe('localEnvironmentDataManager', () => {
     expect(setCurrentServerUrl).not.toHaveBeenCalled();
     expect(mockResetApiClient).not.toHaveBeenCalled();
     expect(rememberServerUrl).toHaveBeenCalledWith('https://server-a.example.com');
+  });
+
+  it('allows first-time server save when no current server is configured yet', async () => {
+    (getCurrentServerUrl as jest.Mock).mockRejectedValueOnce(new Error('No server URL configured'));
+
+    await expect(switchBackendEnvironment('https://server-b.example.com/')).resolves.toEqual({
+      switched: true,
+      currentServerUrl: 'https://server-b.example.com',
+    });
+
+    expect(setCurrentServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
+    expect(clearCurrentServerUrl).not.toHaveBeenCalled();
+    expect(rememberServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
+  });
+
+  it('rolls back to unconfigured state when first-time save fails during initialization', async () => {
+    (getCurrentServerUrl as jest.Mock).mockRejectedValueOnce(new Error('No server URL configured'));
+    mockInitDatabase.mockResolvedValueOnce(false);
+
+    await expect(switchBackendEnvironment('https://server-b.example.com/')).rejects.toThrow(
+      '初始化数据库失败'
+    );
+
+    expect(setCurrentServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
+    expect(clearCurrentServerUrl).toHaveBeenCalledTimes(1);
   });
 });
