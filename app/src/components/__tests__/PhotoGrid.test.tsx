@@ -198,4 +198,20 @@ describe('PhotoGrid', () => {
       ])
     );
   });
+
+  it('stretches the two-photo collage root to the available card width', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-collage-root').props.style).toEqual(
+      expect.objectContaining({
+        width: '100%',
+      })
+    );
+  });
 });
