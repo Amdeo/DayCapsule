@@ -12,7 +12,7 @@ import {
   ERROR_MESSAGES,
 } from '@/src/utils/constants';
 import {
-  MEDIA_PATHS,
+  getMediaPaths,
   generateUniqueFilename,
   deleteFile,
   getFileInfo,
@@ -103,7 +103,7 @@ export class PhotoService {
     if (uri.includes(photoOriginalRelative)) {
       const filename = uri.split(photoOriginalRelative).pop();
       if (filename) {
-        return `${MEDIA_PATHS.photoOriginal}${filename}`;
+        return `${getMediaPaths().photoOriginal}${filename}`;
       }
     }
     return uri;
@@ -290,7 +290,8 @@ export class PhotoService {
     quality: 'low' | 'medium' | 'high' = 'medium',
     aspectRatio?: number
   ): Promise<SavedPhotoResult> {
-    return this.savePhoto(sourceUri, entryId, MEDIA_PATHS.photoOriginal, MEDIA_PATHS.photoOriginal, quality, aspectRatio);
+    const mediaPaths = getMediaPaths();
+    return this.savePhoto(sourceUri, entryId, mediaPaths.photoOriginal, mediaPaths.photoOriginal, quality, aspectRatio);
   }
 
   static async savePhotoToCache(
@@ -299,7 +300,8 @@ export class PhotoService {
     quality: 'low' | 'medium' | 'high' = 'medium',
     aspectRatio?: number
   ): Promise<SavedPhotoResult> {
-    return this.savePhoto(sourceUri, entryId, MEDIA_PATHS.photoDisplay, MEDIA_PATHS.photoThumbnail, quality, aspectRatio);
+    const mediaPaths = getMediaPaths();
+    return this.savePhoto(sourceUri, entryId, mediaPaths.photoDisplay, mediaPaths.photoThumbnail, quality, aspectRatio);
   }
 
   private static async savePhoto(
@@ -433,7 +435,7 @@ export class PhotoService {
       if (filename) {
         // 将 _photo_ 替换为 _thumb_ 获取缩略图文件名
         const thumbFilename = filename.replace('_photo_', '_thumb_');
-        return `${MEDIA_PATHS.photoOriginal}${thumbFilename}`;
+        return `${getMediaPaths().photoOriginal}${thumbFilename}`;
       }
     }
     return null;

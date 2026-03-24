@@ -8,6 +8,7 @@ import type {
 import {
   SETTINGS_SWITCH_TRACK_COLORS,
 } from './SettingsPage.styles';
+import { SettingsBackendServerCard } from './SettingsBackendServerCard';
 import { SettingButton, SettingItem } from './SettingRow';
 import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
 import { SettingsSection } from './SettingsSection';
@@ -33,6 +34,13 @@ interface SettingsPageContentProps {
   entryCount: number;
   photoCount: number;
   voiceCount: number;
+  currentServerUrl: string;
+  backendDraftUrl: string;
+  recentServerUrls: string[];
+  backendTestStatus: 'idle' | 'testing' | 'success' | 'error';
+  backendTestErrorMessage: string | null;
+  isSavingBackendServer: boolean;
+  canSaveBackendServer: boolean;
   onCloudModeToggle: (value: boolean) => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
   onLogout: () => void;
@@ -43,6 +51,10 @@ interface SettingsPageContentProps {
   onCardSpacingChange: (value: CardSpacing) => void | Promise<void>;
   onPhotoHeightChange: (value: PhotoHeightPreset) => void | Promise<void>;
   onCalendarDensityChange: (value: CalendarDensity) => void | Promise<void>;
+  onBackendDraftUrlChange: (value: string) => void;
+  onTestBackendServer: () => void | Promise<void>;
+  onSaveBackendServer: () => void | Promise<void>;
+  onSelectRecentBackendServer: (url: string) => void;
   onClearCache: () => void;
   onOpenTagManagement: () => void;
   onResetSettings: () => void;
@@ -63,6 +75,13 @@ export function SettingsPageContent({
   entryCount,
   photoCount,
   voiceCount,
+  currentServerUrl,
+  backendDraftUrl,
+  recentServerUrls,
+  backendTestStatus,
+  backendTestErrorMessage,
+  isSavingBackendServer,
+  canSaveBackendServer,
   onCloudModeToggle,
   onShowSyncStatus,
   onLogout,
@@ -73,12 +92,32 @@ export function SettingsPageContent({
   onCardSpacingChange,
   onPhotoHeightChange,
   onCalendarDensityChange,
+  onBackendDraftUrlChange,
+  onTestBackendServer,
+  onSaveBackendServer,
+  onSelectRecentBackendServer,
   onClearCache,
   onOpenTagManagement,
   onResetSettings,
 }: SettingsPageContentProps) {
   return (
     <>
+      <SettingsSection title="后端">
+        <SettingsBackendServerCard
+          currentServerUrl={currentServerUrl}
+          draftServerUrl={backendDraftUrl}
+          recentServerUrls={recentServerUrls}
+          testStatus={backendTestStatus}
+          testErrorMessage={backendTestErrorMessage}
+          isSaving={isSavingBackendServer}
+          canSave={canSaveBackendServer}
+          onChangeDraftUrl={onBackendDraftUrlChange}
+          onTestConnection={onTestBackendServer}
+          onSave={onSaveBackendServer}
+          onSelectRecentServer={onSelectRecentBackendServer}
+        />
+      </SettingsSection>
+
       <SettingsSection title="账户">
         {isAuthenticated ? (
           <>

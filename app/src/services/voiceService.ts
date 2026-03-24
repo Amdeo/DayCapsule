@@ -20,7 +20,7 @@ import {
   ERROR_MESSAGES,
 } from '@/src/utils/constants';
 import {
-  MEDIA_PATHS,
+  getMediaPaths,
   generateUniqueFilename,
   deleteFile,
   getFileInfo,
@@ -361,11 +361,11 @@ export class VoiceService {
     if (uri.includes(voiceOriginalRelative)) {
       const filename = uri.split(voiceOriginalRelative).pop();
       if (filename) {
-        return `${MEDIA_PATHS.voiceOriginal}${filename}`;
+        return `${getMediaPaths().voiceOriginal}${filename}`;
       }
     }
     if (!uri.includes('/')) {
-      return `${MEDIA_PATHS.voiceOriginal}${uri}`;
+      return `${getMediaPaths().voiceOriginal}${uri}`;
     }
     return uri;
   }
@@ -660,7 +660,7 @@ export class VoiceService {
     entryId: string,
     quality: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<string> {
-    return this.saveVoice(sourceUri, entryId, MEDIA_PATHS.voiceOriginal, quality);
+    return this.saveVoice(sourceUri, entryId, getMediaPaths().voiceOriginal, quality);
   }
 
   static async saveVoiceToCache(
@@ -668,7 +668,7 @@ export class VoiceService {
     entryId: string,
     quality: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<string> {
-    return this.saveVoice(sourceUri, entryId, MEDIA_PATHS.voiceCompressed, quality);
+    return this.saveVoice(sourceUri, entryId, getMediaPaths().voiceCompressed, quality);
   }
 
   private static async saveVoice(

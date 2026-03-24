@@ -4,8 +4,9 @@
  */
 
 import { create } from 'zustand';
-import { Storage } from '@/src/utils/storage';
+import { Storage, withScope } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
 
 export type CardSpacing = 'compact' | 'default' | 'loose';
 
@@ -80,21 +81,37 @@ const DEFAULT_SETTINGS = {
   cloudMode: false as boolean | 'switching',
 };
 
+const getScopedSettingsKey = async (key: string): Promise<string> => {
+  const serverUrl = await getCurrentServerUrl();
+  return withScope(getServerKey(serverUrl), key);
+};
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
   isLoaded: false,
 
   loadSettings: async () => {
     try {
+      const scopedKeys = await Promise.all([
+        getScopedSettingsKey(SETTINGS_KEYS.notifications),
+        getScopedSettingsKey(SETTINGS_KEYS.autoBackup),
+        getScopedSettingsKey(SETTINGS_KEYS.highQualityPhotos),
+        getScopedSettingsKey(SETTINGS_KEYS.cardSpacing),
+        getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
+        getScopedSettingsKey(SETTINGS_KEYS.calendarDensity),
+        getScopedSettingsKey(SETTINGS_KEYS.lastAddType),
+        getScopedSettingsKey(SETTINGS_KEYS.cloudMode),
+      ]);
+
       const [notif, backup, hq, spacing, ph, density, lat, cm] = await Promise.all([
-        Storage.getString(SETTINGS_KEYS.notifications),
-        Storage.getString(SETTINGS_KEYS.autoBackup),
-        Storage.getString(SETTINGS_KEYS.highQualityPhotos),
-        Storage.getString(SETTINGS_KEYS.cardSpacing),
-        Storage.getString(SETTINGS_KEYS.photoHeight),
-        Storage.getString(SETTINGS_KEYS.calendarDensity),
-        Storage.getString(SETTINGS_KEYS.lastAddType),
-        Storage.getString(SETTINGS_KEYS.cloudMode),
+        Storage.getString(scopedKeys[0]),
+        Storage.getString(scopedKeys[1]),
+        Storage.getString(scopedKeys[2]),
+        Storage.getString(scopedKeys[3]),
+        Storage.getString(scopedKeys[4]),
+        Storage.getString(scopedKeys[5]),
+        Storage.getString(scopedKeys[6]),
+        Storage.getString(scopedKeys[7]),
       ]);
 
       const validSpacing = (value: string | null): CardSpacing => {
@@ -135,55 +152,65 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   setNotifications: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.notifications, String(value));
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.notifications), String(value));
     set({ notifications: value });
   },
 
   setAutoBackup: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.autoBackup, String(value));
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.autoBackup), String(value));
     set({ autoBackup: value });
   },
 
   setHighQualityPhotos: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.highQualityPhotos, String(value));
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.highQualityPhotos), String(value));
     set({ highQualityPhotos: value });
   },
 
   setCardSpacing: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.cardSpacing, value);
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.cardSpacing), value);
     set({ cardSpacing: value });
   },
 
   setPhotoHeight: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.photoHeight, value);
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.photoHeight), value);
     set({ photoHeight: value });
   },
 
   setCalendarDensity: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.calendarDensity, value);
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.calendarDensity), value);
     set({ calendarDensity: value });
   },
 
   setLastAddType: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.lastAddType, value);
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.lastAddType), value);
     set({ lastAddType: value });
   },
 
   setCloudMode: async (value) => {
-    await Storage.setString(SETTINGS_KEYS.cloudMode, String(value));
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.cloudMode), String(value));
     set({ cloudMode: value });
   },
 
   resetSettings: async () => {
+    const scopedKeys = await Promise.all([
+      getScopedSettingsKey(SETTINGS_KEYS.notifications),
+      getScopedSettingsKey(SETTINGS_KEYS.autoBackup),
+      getScopedSettingsKey(SETTINGS_KEYS.highQualityPhotos),
+      getScopedSettingsKey(SETTINGS_KEYS.cardSpacing),
+      getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
+      getScopedSettingsKey(SETTINGS_KEYS.calendarDensity),
+      getScopedSettingsKey(SETTINGS_KEYS.lastAddType),
+      getScopedSettingsKey(SETTINGS_KEYS.cloudMode),
+    ]);
     await Promise.all([
-      Storage.delete(SETTINGS_KEYS.notifications),
-      Storage.delete(SETTINGS_KEYS.autoBackup),
-      Storage.delete(SETTINGS_KEYS.highQualityPhotos),
-      Storage.delete(SETTINGS_KEYS.cardSpacing),
-      Storage.delete(SETTINGS_KEYS.photoHeight),
-      Storage.delete(SETTINGS_KEYS.calendarDensity),
-      Storage.delete(SETTINGS_KEYS.lastAddType),
-      Storage.delete(SETTINGS_KEYS.cloudMode),
+      Storage.delete(scopedKeys[0]),
+      Storage.delete(scopedKeys[1]),
+      Storage.delete(scopedKeys[2]),
+      Storage.delete(scopedKeys[3]),
+      Storage.delete(scopedKeys[4]),
+      Storage.delete(scopedKeys[5]),
+      Storage.delete(scopedKeys[6]),
+      Storage.delete(scopedKeys[7]),
     ]);
     set({ ...DEFAULT_SETTINGS });
   },

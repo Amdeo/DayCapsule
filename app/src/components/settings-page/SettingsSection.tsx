@@ -13,6 +13,7 @@ const SETTINGS_SECTION_TEST_IDS: Record<string, string> = {
   数据: 'settings-section-data',
   存储: 'settings-section-storage',
   其他: 'settings-section-other',
+  后端: 'settings-section-backend',
 };
 
 export function SettingsSection({ title, children }: SettingsSectionProps) {

@@ -6,6 +6,8 @@
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
 import { Platform } from 'react-native';
+import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
+import { withScope } from '@/src/utils/storage';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -51,6 +53,15 @@ export function normalizeApiBaseURL(
 export function createApiClient(baseURL: string): ApiClient {
   let refreshPromise: Promise<boolean> | null = null;
 
+  const getScopedAuthKey = (key: string): string => {
+    const currentServerUrl = getCurrentServerUrlSync();
+    if (!currentServerUrl) {
+      return key;
+    }
+
+    return withScope(getServerKey(currentServerUrl), key);
+  };
+
   const buildUrl = (path: string, params?: Record<string, string>): string => {
     const url = `${baseURL}${path}`;
     if (!params || Object.keys(params).length === 0) return url;
@@ -59,7 +70,7 @@ export function createApiClient(baseURL: string): ApiClient {
   };
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    const token = await Storage.getString('auth:token');
+    const token = await Storage.getString(getScopedAuthKey('auth:token'));
     if (!token) return {};
     return { Authorization: `Bearer ${token}` };
   };
@@ -104,7 +115,9 @@ export function createApiClient(baseURL: string): ApiClient {
 
   const refreshToken = async (): Promise<boolean> => {
     try {
-      const rt = await Storage.getString('auth:refreshToken');
+      const refreshTokenKey = getScopedAuthKey('auth:refreshToken');
+      const tokenKey = getScopedAuthKey('auth:token');
+      const rt = await Storage.getString(refreshTokenKey);
       if (!rt) return false;
 
       const refreshUrl = `${baseURL}/auth/refresh`;
@@ -119,8 +132,8 @@ export function createApiClient(baseURL: string): ApiClient {
       const json = await parseApiResponse<{ token: string; refreshToken: string }>(res, refreshUrl);
       if (!json.success || !json.data) return false;
 
-      await Storage.setString('auth:token', json.data.token);
-      await Storage.setString('auth:refreshToken', json.data.refreshToken);
+      await Storage.setString(tokenKey, json.data.token);
+      await Storage.setString(refreshTokenKey, json.data.refreshToken);
       return true;
     } catch (e) {
       logger.error('[apiClient] Token refresh failed:', e);
@@ -280,18 +293,31 @@ export function createApiClient(baseURL: string): ApiClient {
 /** Singleton instance — initialized lazily from env var */
 let _client: ApiClient | null = null;
 
+const toApiBaseURL = (serverUrl: string): string => `${serverUrl.replace(/\/+$/, '')}/api`;
+
+const resolveApiBaseURL = (): string => {
+  const currentServerUrl = getCurrentServerUrlSync();
+  if (currentServerUrl) {
+    return normalizeApiBaseURL(toApiBaseURL(currentServerUrl));
+  }
+
+  const configuredBaseURL = process.env.EXPO_PUBLIC_API_URL;
+  if (!configuredBaseURL) {
+    logger.warn('[apiClient] EXPO_PUBLIC_API_URL 未设置，回退到 http://localhost:8080/api');
+  }
+
+  return normalizeApiBaseURL(configuredBaseURL ?? 'http://localhost:8080/api');
+};
+
 export function getApiClient(): ApiClient {
   if (!_client) {
-    const configuredBaseURL = process.env.EXPO_PUBLIC_API_URL;
-    if (!configuredBaseURL) {
-      logger.warn('[apiClient] EXPO_PUBLIC_API_URL 未设置，回退到 http://localhost:8080/api');
-    }
-
-    const baseURL = normalizeApiBaseURL(
-      configuredBaseURL ?? 'http://localhost:8080/api'
-    );
+    const baseURL = resolveApiBaseURL();
     logger.info('[apiClient] Using base URL:', baseURL);
     _client = createApiClient(baseURL);
   }
   return _client;
+}
+
+export function resetApiClient(): void {
+  _client = null;
 }

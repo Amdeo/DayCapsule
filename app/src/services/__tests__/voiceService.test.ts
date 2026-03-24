@@ -43,6 +43,10 @@ jest.mock('react-native', () => ({
 
 jest.mock('@/src/utils/fileSystem', () => ({
   MEDIA_PATHS: { voiceOriginal: 'file:///documents/media/voice/original/' },
+  getMediaPaths: jest.fn(() => ({
+    voiceOriginal: 'file:///documents/environments/env_https_server_a_example_com/media/voice/original/',
+    voiceCompressed: 'file:///cache/environments/env_https_server_a_example_com/media/voice/compressed/',
+  })),
   getFileInfo: jest.fn(),
   deleteFile: jest.fn(),
   copyFile: jest.fn(),
@@ -88,7 +92,7 @@ describe('VoiceService remote audio handling', () => {
   it('keeps local file resolution behavior for persisted voice files', () => {
     expect(
       VoiceService.resolveAudioUri('foo.m4a')
-    ).toBe('file:///documents/media/voice/original/foo.m4a');
+    ).toBe('file:///documents/environments/env_https_server_a_example_com/media/voice/original/foo.m4a');
   });
 
   it('preloadAudio skips local file existence check for remote URLs', async () => {

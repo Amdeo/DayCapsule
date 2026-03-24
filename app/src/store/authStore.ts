@@ -4,9 +4,10 @@
  */
 
 import { create } from 'zustand';
-import { Storage } from '@/src/utils/storage';
+import { Storage, withScope } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
+import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
 
 interface AuthUser {
   id: string;
@@ -21,7 +22,7 @@ interface AuthState {
 
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string): Promise<void>;
-  logout(): void;
+  logout(): Promise<void>;
   refreshAuth(): Promise<boolean>;
   loadAuth(): Promise<void>;
 }
@@ -32,19 +33,34 @@ interface AuthResponse {
   refreshToken: string;
 }
 
+const getScopedAuthKey = async (key: string): Promise<string> => {
+  const serverUrl = await getCurrentServerUrl();
+  return withScope(getServerKey(serverUrl), key);
+};
+
 const persistTokens = async (token: string, refreshToken: string, user: AuthUser) => {
+  const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
+    getScopedAuthKey('auth:token'),
+    getScopedAuthKey('auth:refreshToken'),
+    getScopedAuthKey('auth:user'),
+  ]);
   await Promise.all([
-    Storage.setString('auth:token', token),
-    Storage.setString('auth:refreshToken', refreshToken),
-    Storage.setObject('auth:user', user),
+    Storage.setString(tokenKey, token),
+    Storage.setString(refreshTokenKey, refreshToken),
+    Storage.setObject(userKey, user),
   ]);
 };
 
 const clearTokens = async () => {
+  const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
+    getScopedAuthKey('auth:token'),
+    getScopedAuthKey('auth:refreshToken'),
+    getScopedAuthKey('auth:user'),
+  ]);
   await Promise.all([
-    Storage.delete('auth:token'),
-    Storage.delete('auth:refreshToken'),
-    Storage.delete('auth:user'),
+    Storage.delete(tokenKey),
+    Storage.delete(refreshTokenKey),
+    Storage.delete(userKey),
   ]);
 };
 
@@ -74,9 +90,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     logger.log('✅ 注册成功:', email);
   },
 
-  logout: () => {
+  logout: async () => {
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
-    clearTokens();
+    await clearTokens();
     logger.log('✅ 已退出登录');
   },
 
@@ -90,25 +106,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         refreshToken: rt,
       });
       set({ token: data.token, refreshToken: data.refreshToken });
-      await Storage.setString('auth:token', data.token);
-      await Storage.setString('auth:refreshToken', data.refreshToken);
+      const [tokenKey, refreshTokenKey] = await Promise.all([
+        getScopedAuthKey('auth:token'),
+        getScopedAuthKey('auth:refreshToken'),
+      ]);
+      await Storage.setString(tokenKey, data.token);
+      await Storage.setString(refreshTokenKey, data.refreshToken);
       return true;
     } catch {
-      get().logout();
+      await get().logout();
       return false;
     }
   },
 
   loadAuth: async () => {
+    const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
+      getScopedAuthKey('auth:token'),
+      getScopedAuthKey('auth:refreshToken'),
+      getScopedAuthKey('auth:user'),
+    ]);
     const [token, refreshToken, user] = await Promise.all([
-      Storage.getString('auth:token'),
-      Storage.getString('auth:refreshToken'),
-      Storage.getObject<AuthUser>('auth:user'),
+      Storage.getString(tokenKey),
+      Storage.getString(refreshTokenKey),
+      Storage.getObject<AuthUser>(userKey),
     ]);
 
     if (token && user) {
       set({ user, token, refreshToken, isAuthenticated: true });
       logger.log('✅ 已恢复登录状态:', user.email);
+      return;
     }
+
+    set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
   },
 }));

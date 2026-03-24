@@ -14,6 +14,11 @@ jest.mock('@/src/utils/fileSystem', () => ({
     photoThumbnail: 'file:///cache/media/photos/thumbnails/',
     voiceCompressed: 'file:///cache/media/voice/compressed/',
   },
+  getMediaPaths: jest.fn(() => ({
+    photoDisplay: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/',
+    photoThumbnail: 'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/',
+    voiceCompressed: 'file:///cache/environments/env_https_server_a_example_com/media/voice/compressed/',
+  })),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -45,7 +50,7 @@ describe('MediaCacheService', () => {
     }]);
 
     expect(FileSystem.downloadAsync).toHaveBeenCalled();
-    expect(entry.media?.[0].uri).toContain('file:///cache/media/voice/compressed/');
+    expect(entry.media?.[0].uri).toContain('file:///cache/environments/env_https_server_a_example_com/media/voice/compressed/');
     expect(entry.media?.[0].remoteUri).toBe('http://10.0.2.2:3000/api/media/1');
   });
 
