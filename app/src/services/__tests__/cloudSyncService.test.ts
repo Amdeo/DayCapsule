@@ -34,6 +34,12 @@ jest.mock('@/src/database/sqlite', () => ({
 
 jest.mock('@/src/database/operations', () => ({
   getEntriesBySyncStatus: jest.fn(async () => []),
+  getCloudSyncIndicatorSummary: jest.fn(async () => ({
+    pendingEntries: 0,
+    pendingUploads: 0,
+    uploadingEntries: 0,
+    failedEntries: 0,
+  })),
   getAllEntries: jest.fn(async () => []),
   getEntryById: jest.fn(async () => null),
   restoreEntries: jest.fn(async () => []),
@@ -224,12 +230,15 @@ describe('cloudSyncService', () => {
       isSyncing: false,
       isLoaded: true,
     });
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockResolvedValueOnce({
+      pendingEntries: 2,
+      pendingUploads: 3,
+      uploadingEntries: 1,
+      failedEntries: 1,
+    });
     (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
       { id: 'a', type: 'text', content: '', timestamp: 1, syncStatus: 'synced' },
       { id: 'b', type: 'text', content: '', timestamp: 2, syncStatus: 'conflict-local-copy', conflictedCopyOf: 'a' },
-    ]);
-    (DB.getEntriesBySyncStatus as jest.Mock).mockResolvedValueOnce([
-      { id: 'c', type: 'text', content: '', timestamp: 3, syncStatus: 'failed' },
     ]);
 
     const service = createCloudSyncService();
@@ -239,6 +248,9 @@ describe('cloudSyncService', () => {
       lastSyncAt: 1700000000000,
       lastSyncError: 'network timeout',
       initialSyncState: 'ready',
+      pendingEntries: 2,
+      pendingUploads: 3,
+      uploadingEntries: 1,
       failedEntries: 1,
       conflictCopies: 1,
     });

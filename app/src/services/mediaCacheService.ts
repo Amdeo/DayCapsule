@@ -1,16 +1,64 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import type { Entry, MediaInfo } from '@/src/types/entry';
+import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
 import { getMediaPaths } from '@/src/utils/fileSystem';
 import { logger } from '@/src/utils/logger';
+import { Storage, withScope } from '@/src/utils/storage';
 
 type MediaKind = 'photo' | 'voice';
+const MEDIA_API_PATH_RE = /^\/api\/media(?:\/|$)/i;
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
 function isRemoteUri(uri: string | undefined): boolean {
-  return !!uri && /^https?:\/\//i.test(uri);
+  return !!uri && (/^https?:\/\//i.test(uri) || MEDIA_API_PATH_RE.test(uri));
+}
+
+function getConfiguredServerUrl(): string | null {
+  return getCurrentServerUrlSync()?.replace(/\/+$/, '') ?? null;
+}
+
+function buildConfiguredMediaUrl(uri: string, configuredServerUrl: string): string {
+  if (MEDIA_API_PATH_RE.test(uri)) {
+    return `${configuredServerUrl}${uri}`;
+  }
+
+  const parsed = new URL(uri);
+  return `${configuredServerUrl}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+function getScopedAuthHeaders(): Record<string, string> | undefined {
+  const currentServerUrl = getCurrentServerUrlSync();
+  const scopedKey = currentServerUrl
+    ? withScope(getServerKey(currentServerUrl), 'auth:token')
+    : 'auth:token';
+  const token = Storage.getStringSync(scopedKey) ?? (scopedKey === 'auth:token' ? null : Storage.getStringSync('auth:token'));
+  if (!token) {
+    return undefined;
+  }
+
+  return { Authorization: `Bearer ${token}` };
 }
 
 function normalizeRemoteUri(uri: string): string {
+  const configuredServerUrl = getConfiguredServerUrl();
+  if (configuredServerUrl) {
+    if (MEDIA_API_PATH_RE.test(uri)) {
+      return buildConfiguredMediaUrl(uri, configuredServerUrl);
+    }
+
+    if (/^https?:\/\//i.test(uri)) {
+      try {
+        const parsed = new URL(uri);
+        if (LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) {
+          return buildConfiguredMediaUrl(uri, configuredServerUrl);
+        }
+      } catch {
+        return uri;
+      }
+    }
+  }
+
   if (Platform.OS !== 'android') return uri;
   return uri
     .replace(/^http:\/\/localhost(?=[:/])/i, 'http://10.0.2.2')
@@ -64,10 +112,36 @@ async function ensureCachedFile(
   await ensureDir(targetDir);
   const info = await FileSystem.getInfoAsync(targetUri);
   if (info.exists) {
+    logger.log('[mediaCache] cache hit', {
+      remoteUri,
+      normalizedUri: normalized,
+      targetUri,
+      kind,
+      variant,
+    });
     return targetUri;
   }
 
-  await FileSystem.downloadAsync(normalized, targetUri);
+  const authHeaders = getScopedAuthHeaders();
+  logger.log('[mediaCache] downloading media', {
+    remoteUri,
+    normalizedUri: normalized,
+    targetUri,
+    kind,
+    variant,
+    hasAuth: !!authHeaders?.Authorization,
+  });
+  await FileSystem.downloadAsync(
+    normalized,
+    targetUri,
+    authHeaders ? { headers: authHeaders } : undefined,
+  );
+  logger.log('[mediaCache] media download complete', {
+    normalizedUri: normalized,
+    targetUri,
+    kind,
+    variant,
+  });
   return targetUri;
 }
 
@@ -85,8 +159,14 @@ async function hydrateMedia(entryType: Entry['type'], media: MediaInfo): Promise
     try {
       nextUri = await ensureCachedFile(remoteUri, media.mimeType, kind, 'main');
     } catch (error) {
-      logger.warn('[mediaCache] failed to cache main media, fallback to remote uri:', error);
-      nextUri = normalizeRemoteUri(remoteUri);
+      const normalizedRemoteUri = normalizeRemoteUri(remoteUri);
+      logger.warn('[mediaCache] failed to cache main media, fallback to remote uri:', {
+        remoteUri,
+        normalizedUri: normalizedRemoteUri,
+        kind,
+        variant: 'main',
+      }, error);
+      nextUri = normalizedRemoteUri;
     }
   }
 
@@ -94,8 +174,14 @@ async function hydrateMedia(entryType: Entry['type'], media: MediaInfo): Promise
     try {
       nextThumbnail = await ensureCachedFile(remoteThumbnail, 'image/jpeg', 'photo', 'thumb');
     } catch (error) {
-      logger.warn('[mediaCache] failed to cache thumbnail, fallback to remote uri:', error);
-      nextThumbnail = normalizeRemoteUri(remoteThumbnail);
+      const normalizedRemoteThumbnail = normalizeRemoteUri(remoteThumbnail);
+      logger.warn('[mediaCache] failed to cache thumbnail, fallback to remote uri:', {
+        remoteUri: remoteThumbnail,
+        normalizedUri: normalizedRemoteThumbnail,
+        kind: 'photo',
+        variant: 'thumb',
+      }, error);
+      nextThumbnail = normalizedRemoteThumbnail;
     }
   }
 

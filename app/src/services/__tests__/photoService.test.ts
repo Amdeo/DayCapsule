@@ -43,6 +43,13 @@ jest.mock('@/src/utils/fileSystem', () => ({
   copyFile: jest.fn(),
 }));
 
+jest.mock('../mediaCacheService', () => ({
+  MediaCacheService: {
+    isRemoteUri: (uri?: string) => !!uri && /^https?:\/\//.test(uri ?? ''),
+    normalizeRemoteUri: (uri: string) => uri,
+  },
+}));
+
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import {

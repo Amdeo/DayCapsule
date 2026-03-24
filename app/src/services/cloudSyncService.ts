@@ -10,6 +10,8 @@ export interface SyncStatus {
   lastSyncError: string | null;
   initialSyncState: InitialSyncState;
   pendingEntries: number;
+  pendingUploads: number;
+  uploadingEntries: number;
   failedEntries: number;
   conflictCopies: number;
 }
@@ -331,21 +333,22 @@ export function createCloudSyncService(): SyncServiceApi {
   const getStatus = async (): Promise<SyncStatus> => {
     await ensureSyncStoreLoaded();
 
-    const [{ lastSyncAt, lastSyncError, initialSyncState }, pending, allEntries] = await Promise.all([
+    const [{ lastSyncAt, lastSyncError, initialSyncState }, summary, allEntries] = await Promise.all([
       Promise.resolve(useSyncStore.getState()),
-      collectPendingChanges(),
+      DB.getCloudSyncIndicatorSummary(),
       DB.getAllEntries(),
     ]);
 
-    const failed = pending.filter((entry) => entry.syncStatus === 'failed').length;
     const conflictCopies = allEntries.filter((entry) => entry.syncStatus === 'conflict-local-copy' || !!entry.conflictedCopyOf).length;
 
     return {
       lastSyncAt,
       lastSyncError,
       initialSyncState,
-      pendingEntries: pending.length,
-      failedEntries: failed,
+      pendingEntries: summary.pendingEntries,
+      pendingUploads: summary.pendingUploads,
+      uploadingEntries: summary.uploadingEntries,
+      failedEntries: summary.failedEntries,
       conflictCopies,
     };
   };

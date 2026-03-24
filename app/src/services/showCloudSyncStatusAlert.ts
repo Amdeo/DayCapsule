@@ -9,7 +9,19 @@ function formatCloudSyncStatusMessage(status: Awaited<ReturnType<ReturnType<type
     ? new Date(status.lastSyncAt).toLocaleString()
     : '从未同步';
 
-  return `上次同步：${last}\n待同步条数：${status.pendingEntries}\n失败条数：${status.failedEntries}\n冲突副本：${status.conflictCopies}`;
+  const lines = [
+    `上次同步：${last}`,
+    `待同步条数：${status.pendingEntries}`,
+    `待上传媒体：${status.pendingUploads}`,
+    `上传中：${status.uploadingEntries}`,
+    `失败条数：${status.failedEntries}`,
+    `冲突副本：${status.conflictCopies}`,
+  ];
+  if (status.lastSyncError) {
+    lines.push(`最近错误：${status.lastSyncError}`);
+  }
+
+  return lines.join('\n');
 }
 
 function buildCloudSyncStatusFeedback(
@@ -20,15 +32,21 @@ function buildCloudSyncStatusFeedback(
   const last = status.lastSyncAt
     ? new Date(status.lastSyncAt).toLocaleString()
     : '从未同步';
+  const hasFailure = !!status.lastSyncError || status.failedEntries > 0;
 
   return {
     title,
-    tone: 'accent',
+    tone: hasFailure ? 'error' : 'accent',
     details: [
       { label: '上次同步', value: last },
       { label: '待同步条数', value: String(status.pendingEntries) },
+      { label: '待上传媒体', value: String(status.pendingUploads) },
+      { label: '上传中', value: String(status.uploadingEntries) },
       { label: '失败条数', value: String(status.failedEntries) },
       { label: '冲突副本', value: String(status.conflictCopies) },
+      ...(status.lastSyncError
+        ? [{ label: '最近错误', value: status.lastSyncError }]
+        : []),
     ],
     actions: [
       { label: '关闭', role: 'secondary' },

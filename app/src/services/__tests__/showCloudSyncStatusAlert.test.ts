@@ -33,7 +33,10 @@ describe('showCloudSyncStatusAlert', () => {
   it('shows the same summary fields and offers syncNow action', async () => {
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000000000,
+      lastSyncError: 'network timeout',
       pendingEntries: 2,
+      pendingUploads: 3,
+      uploadingEntries: 1,
       failedEntries: 1,
       conflictCopies: 1,
     });
@@ -43,9 +46,12 @@ describe('showCloudSyncStatusAlert', () => {
     expect(showErrorFeedback).toHaveBeenCalledWith(
       expect.objectContaining({
         title: '云同步状态',
-        tone: 'accent',
+        tone: 'error',
         details: expect.arrayContaining([
           expect.objectContaining({ label: '待同步条数', value: '2' }),
+          expect.objectContaining({ label: '待上传媒体', value: '3' }),
+          expect.objectContaining({ label: '上传中', value: '1' }),
+          expect.objectContaining({ label: '最近错误', value: 'network timeout' }),
           expect.objectContaining({ label: '冲突副本', value: '1' }),
         ]),
       }),
@@ -58,7 +64,10 @@ describe('showCloudSyncStatusAlert', () => {
 
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000001000,
+      lastSyncError: null,
       pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
       failedEntries: 0,
       conflictCopies: 1,
     });
@@ -72,6 +81,7 @@ describe('showCloudSyncStatusAlert', () => {
         tone: 'accent',
         details: expect.arrayContaining([
           expect.objectContaining({ label: '待同步条数', value: '0' }),
+          expect.objectContaining({ label: '待上传媒体', value: '0' }),
         ]),
       }),
     );
@@ -93,7 +103,10 @@ describe('showCloudSyncStatusAlert', () => {
   it('uses branded feedback when syncNow fails inside the status alert action', async () => {
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000000000,
+      lastSyncError: null,
       pendingEntries: 2,
+      pendingUploads: 0,
+      uploadingEntries: 0,
       failedEntries: 1,
       conflictCopies: 1,
     });
