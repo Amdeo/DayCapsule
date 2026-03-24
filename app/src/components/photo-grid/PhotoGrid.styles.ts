@@ -7,6 +7,10 @@ export const photoGridStyles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: PHOTO_GRID_GAP,
   },
+  twoPhotoRow: {
+    flexDirection: 'row',
+    gap: PHOTO_GRID_GAP,
+  },
   overflowCell: {
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderRadius: 4,
@@ -25,5 +29,8 @@ export const photoGridStyles = StyleSheet.create({
   gridCellMissing: {
     backgroundColor: '#ECE7E0',
     borderRadius: 4,
+  },
+  twoPhotoMissing: {
+    backgroundColor: '#ECE7E0',
   },
 });

@@ -6,7 +6,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { MediaInfo } from '@/src/types/entry';
-import { GridCell, SinglePhoto } from './photo-grid/PhotoGridCells';
+import { GridCell, SinglePhoto, TwoPhotoCell } from './photo-grid/PhotoGridCells';
 import { photoGridStyles as styles } from './photo-grid/PhotoGrid.styles';
 import { PhotoImageRadiusStyle } from './photo-grid/photoGridTypes';
 import { usePhotoGridController } from './photo-grid/usePhotoGridController';
@@ -44,6 +44,41 @@ export function PhotoGrid({ photos, maxPhotoHeight, photoImageRadius, onPhotoPre
         photoImageRadius={photoImageRadius}
         onPress={() => onPhotoPress?.(0)}
       />
+    );
+  }
+
+  if (shouldRenderTwoPhotoCollage && primaryPhoto && secondaryPhoto) {
+    return (
+      <View testID="photo-collage-root" style={styles.twoPhotoRow} onLayout={handleLayout}>
+        <TwoPhotoCell
+          testID="photo-primary-cell"
+          imageTestID="photo-primary-image"
+          missingTestID="photo-primary-missing"
+          photo={primaryPhoto}
+          width={primaryWidth}
+          height={maxPhotoHeight}
+          imageRadiusStyle={{
+            ...photoImageRadius,
+            borderTopRightRadius: 0,
+            borderBottomRightRadius: 0,
+          }}
+          onPress={() => onPhotoPress?.(primaryPhotoIndex)}
+        />
+        <TwoPhotoCell
+          testID="photo-secondary-cell"
+          imageTestID="photo-secondary-image"
+          missingTestID="photo-secondary-missing"
+          photo={secondaryPhoto}
+          width={secondaryWidth}
+          height={maxPhotoHeight}
+          imageRadiusStyle={{
+            ...photoImageRadius,
+            borderTopLeftRadius: 0,
+            borderBottomLeftRadius: 0,
+          }}
+          onPress={() => onPhotoPress?.(secondaryPhotoIndex)}
+        />
+      </View>
     );
   }
 
