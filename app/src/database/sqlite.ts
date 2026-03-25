@@ -63,6 +63,7 @@ export const initDatabase = async () => {
         media_duration INTEGER,
         media_thumbnail TEXT,
         media_metadata TEXT,
+        media_json TEXT,
         recording_status TEXT,
         recording_duration INTEGER,
         sync_status TEXT DEFAULT 'synced',

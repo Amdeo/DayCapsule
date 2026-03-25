@@ -253,18 +253,16 @@ export const migrateMediaMetadataColumns = async (): Promise<void> => {
  * Idempotent: skips if already migrated
  */
 export const migrateToMediaJson = async (): Promise<void> => {
-  if (migrationStore.getString('media_json_migrated') === 'true') return;
-
   const db = getDatabase();
   try {
-    // Add column if not exists
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
-    if (!tableInfo.some(col => col.name === 'media_json')) {
+    const hasMediaJson = tableInfo.some((col) => col.name === 'media_json');
+
+    if (!hasMediaJson) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN media_json TEXT`);
       logger.log('✅ 添加 media_json 列');
     }
 
-    // Migrate existing media_uri rows to JSON array
     const rows = await db.getAllAsync<{
       id: string;
       media_uri: string | null;
@@ -294,9 +292,7 @@ export const migrateToMediaJson = async (): Promise<void> => {
       );
     }
 
-    // Invalidate column cache so operations.ts picks up the new column
     invalidateColumnCache();
-
     migrationStore.set('media_json_migrated', 'true');
     logger.log('✅ media_json 迁移完成，共处理', rows.length, '条记录');
   } catch (error) {
