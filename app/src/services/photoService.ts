@@ -91,13 +91,38 @@ export interface PickPhotoOptions {
  * 照片服务类
  */
 export class PhotoService {
+  private static isCurrentManagedPhotoUri(uri: string | undefined): boolean {
+    if (!uri || MediaCacheService.isRemoteUri(uri)) {
+      return false;
+    }
+
+    const { photoOriginal, photoDisplay, photoThumbnail } = getMediaPaths();
+    return uri.startsWith(photoOriginal)
+      || uri.startsWith(photoDisplay)
+      || uri.startsWith(photoThumbnail);
+  }
+
   private static buildPhotoUriCandidates(
     media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
     kind: 'thumbnail' | 'full'
   ): string[] {
+    const localThumbnail = media.thumbnail && !MediaCacheService.isRemoteUri(media.thumbnail)
+      ? media.thumbnail
+      : undefined;
+    const remoteThumbnail = media.remoteThumbnail
+      ?? (media.thumbnail && MediaCacheService.isRemoteUri(media.thumbnail) ? media.thumbnail : undefined);
+    const remoteMain = media.remoteUri
+      ?? (media.uri && MediaCacheService.isRemoteUri(media.uri) ? media.uri : undefined);
+    const localMain = media.uri && this.isCurrentManagedPhotoUri(media.uri)
+      ? media.uri
+      : undefined;
+    const fallbackLocalMain = media.uri && !MediaCacheService.isRemoteUri(media.uri) && !this.isCurrentManagedPhotoUri(media.uri)
+      ? media.uri
+      : undefined;
+
     const rawCandidates = kind === 'thumbnail'
-      ? [media.thumbnail, media.remoteThumbnail, media.remoteUri, media.uri]
-      : [media.remoteUri, media.uri];
+      ? [localThumbnail, localMain, remoteThumbnail, remoteMain, fallbackLocalMain]
+      : [localMain, remoteMain, fallbackLocalMain];
 
     return rawCandidates
       .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.trim().length > 0)

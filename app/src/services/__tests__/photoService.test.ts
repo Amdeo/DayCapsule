@@ -199,23 +199,23 @@ describe('PhotoService', () => {
     expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
   });
 
-  it('full 图在存在 remoteUri 时优先使用远端大图地址', () => {
+  it('full 图在当前设备已有本地缓存时优先使用本地大图地址', () => {
     expect(
       PhotoService.getPreferredPhotoUri(
         {
-          uri: 'file:///cache/photo.jpg',
+          uri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg',
           remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
           mimeType: 'image/jpeg',
           size: 1,
         },
         'full'
       )
-    ).toBe('http://101.43.120.134:8081/api/media/photo-1');
+    ).toBe('file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg');
     expect(logger.log).toHaveBeenCalledWith(
       '[photoService] preferred photo uri',
       expect.objectContaining({
         kind: 'full',
-        selectedUri: 'http://101.43.120.134:8081/api/media/photo-1',
+        selectedUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg',
       }),
     );
   });
@@ -258,7 +258,20 @@ describe('PhotoService', () => {
     );
   });
 
-  it('thumbnail: prefers remoteUri over stale local uri when thumbnail fields are absent', () => {
+  it('thumbnail 在没有缩略图字段时优先使用当前设备本地缓存原图', () => {
+    const media = {
+      uri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg',
+      remoteUri: 'https://cdn.example.com/photo.jpg',
+      thumbnail: undefined as string | undefined,
+      remoteThumbnail: undefined as string | undefined,
+      mimeType: 'image/jpeg',
+      size: 1000,
+    };
+    const result = PhotoService.getPreferredPhotoUri(media, 'thumbnail');
+    expect(result).toBe('file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg');
+  });
+
+  it('thumbnail 在只有旧本地路径时回退使用远端原图地址', () => {
     const media = {
       uri: 'file:///old-device/media/photos/original/photo.jpg',
       remoteUri: 'https://cdn.example.com/photo.jpg',
