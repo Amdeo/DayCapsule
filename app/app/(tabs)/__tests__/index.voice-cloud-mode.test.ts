@@ -100,6 +100,11 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
+jest.mock('@/src/services/photoIntegrityService', () => ({
+  buildPhotoLogPayload: jest.fn(() => ({})),
+  fingerprintPhotoFile: jest.fn(),
+}));
+
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 

@@ -155,7 +155,14 @@ describe('RemoteDataSource', () => {
       syncStatus: 'synced',
     });
 
-    expect(mockApiClient.uploadFile).toHaveBeenCalledWith('/media/upload', 'file:///local/photo.jpg', 'file');
+    expect(mockApiClient.uploadFile).toHaveBeenCalledWith(
+      '/media/upload',
+      'file:///local/photo.jpg',
+      'file',
+      {
+        metadata: expect.objectContaining({ size: 100 }),
+      }
+    );
     expect(result.id).toBe('r2');
     expect(result.media?.[0]).toMatchObject({
       uri: 'file:///local/photo.jpg',
