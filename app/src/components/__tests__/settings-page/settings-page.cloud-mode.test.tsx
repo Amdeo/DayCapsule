@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Switch } from 'react-native';
+import { Alert } from 'react-native';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderSettingsPage,
@@ -23,8 +23,7 @@ describe('SettingsPage cloud mode', () => {
       expect(screen.getByText('tester@example.com')).toBeTruthy();
     });
 
-    const switches = screen.UNSAFE_getAllByType(Switch);
-    fireEvent(switches[0], 'valueChange', true);
+    fireEvent(screen.getByTestId('settings-switch-cloud-mode'), 'valueChange', true);
 
     await waitFor(() => {
       expect(mocks.showErrorFeedback).toHaveBeenCalled();
@@ -45,8 +44,8 @@ describe('SettingsPage cloud mode', () => {
     });
     mocks.apiClient.get.mockResolvedValueOnce({ entryCount: 0 });
 
-    const switches = await waitFor(() => screen.UNSAFE_getAllByType(Switch));
-    fireEvent(switches[0], 'valueChange', false);
+    const cloudModeSwitch = await screen.findByTestId('settings-switch-cloud-mode');
+    fireEvent(cloudModeSwitch, 'valueChange', false);
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(

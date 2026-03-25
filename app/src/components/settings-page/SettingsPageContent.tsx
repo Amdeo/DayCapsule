@@ -139,6 +139,7 @@ export function SettingsPageContent({
               subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
               rightComponent={(
                 <Switch
+                  testID="settings-switch-cloud-mode"
                   value={cloudMode === true}
                   onValueChange={onCloudModeToggle}
                   disabled={cloudMode === 'switching' || isSwitchingMode}
@@ -179,6 +180,7 @@ export function SettingsPageContent({
           subtitle="接收提醒和更新"
           rightComponent={(
             <Switch
+              testID="settings-switch-notifications"
               value={notifications}
               onValueChange={onNotificationsChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
@@ -195,6 +197,7 @@ export function SettingsPageContent({
           subtitle="进入后台时自动保存到本地"
           rightComponent={(
             <Switch
+              testID="settings-switch-auto-backup"
               value={autoBackup}
               onValueChange={onAutoBackupChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
@@ -208,6 +211,7 @@ export function SettingsPageContent({
           subtitle="保存原始质量照片"
           rightComponent={(
             <Switch
+              testID="settings-switch-high-quality-photos"
               value={highQualityPhotos}
               onValueChange={onHighQualityPhotosChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Switch } from 'react-native';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderSettingsPage,
@@ -18,14 +17,13 @@ describe('SettingsPage preferences', () => {
       expect(screen.getByText('自动备份')).toBeTruthy();
     });
 
-    const switches = screen.UNSAFE_getAllByType(Switch);
-    fireEvent(switches[1], 'valueChange', true);
+    fireEvent(screen.getByTestId('settings-switch-auto-backup'), 'valueChange', true);
     unmount();
 
     const reopened = renderSettingsPage();
 
     await waitFor(() => {
-      expect(reopened.screen.UNSAFE_getAllByType(Switch)[1].props.value).toBe(true);
+      expect(reopened.screen.getByTestId('settings-switch-auto-backup').props.value).toBe(true);
     });
   });
 });
