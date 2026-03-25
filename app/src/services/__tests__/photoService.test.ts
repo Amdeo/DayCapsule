@@ -257,4 +257,17 @@ describe('PhotoService', () => {
       }),
     );
   });
+
+  it('thumbnail: prefers remoteUri over stale local uri when thumbnail fields are absent', () => {
+    const media = {
+      uri: 'file:///old-device/media/photos/original/photo.jpg',
+      remoteUri: 'https://cdn.example.com/photo.jpg',
+      thumbnail: undefined as string | undefined,
+      remoteThumbnail: undefined as string | undefined,
+      mimeType: 'image/jpeg',
+      size: 1000,
+    };
+    const result = PhotoService.getPreferredPhotoUri(media, 'thumbnail');
+    expect(result).toBe('https://cdn.example.com/photo.jpg');
+  });
 });

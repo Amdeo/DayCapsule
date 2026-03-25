@@ -96,7 +96,7 @@ export class PhotoService {
     kind: 'thumbnail' | 'full'
   ): string[] {
     const rawCandidates = kind === 'thumbnail'
-      ? [media.thumbnail, media.remoteThumbnail, media.uri, media.remoteUri]
+      ? [media.thumbnail, media.remoteThumbnail, media.remoteUri, media.uri]
       : [media.remoteUri, media.uri];
 
     return rawCandidates
