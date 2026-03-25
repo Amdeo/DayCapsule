@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Entry } from '@/src/types/entry';
+import { PhotoService } from '@/src/services/photoService';
 import { EntryActionSheet } from '../EntryActionSheet';
 import { ImageViewer } from '../ImageViewer';
 
@@ -29,7 +30,9 @@ export function EntryCardDialogs({
       {entry.type === 'photo' && entry.media?.[0]?.uri ? (
         <ImageViewer
           visible={showImageViewer}
-          imageUri={entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri}
+          imageUri={PhotoService.resolvePhotoUri(
+            entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri
+          )}
           onClose={onCloseImageViewer}
         />
       ) : null}

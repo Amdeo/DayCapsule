@@ -634,6 +634,29 @@ describe('EntryCard photo edge-to-edge', () => {
 
     expect(getByTestId('image-viewer-uri').props.children).toBe('file://photo-2.jpg');
   });
+
+  it('图片查看器应复用照片 URI 归一化结果', () => {
+    const { PhotoService } = require('@/src/services/photoService');
+    const resolveSpy = jest
+      .spyOn(PhotoService, 'resolvePhotoUri')
+      .mockImplementation((uri: string) => `resolved:${uri}`);
+
+    const remotePhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-remote-1',
+      media: [
+        { uri: 'http://localhost:8081/api/media/1', mimeType: 'image/jpeg', size: 1 },
+      ],
+    };
+
+    const { getByTestId } = render(<EntryCard entry={remotePhotoEntry} onDelete={jest.fn()} />);
+    fireEvent.press(getByTestId('photo-image-0'));
+
+    expect(resolveSpy).toHaveBeenCalledWith('http://localhost:8081/api/media/1');
+    expect(getByTestId('image-viewer-uri').props.children).toBe('resolved:http://localhost:8081/api/media/1');
+
+    resolveSpy.mockRestore();
+  });
 });
 
 describe('EntryCard calendar variant', () => {
