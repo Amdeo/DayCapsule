@@ -3,6 +3,7 @@ import { getApiClient } from '@/src/services/apiClient';
 import { useSyncStore } from '@/src/store/syncStore';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
+import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
 
 export interface InitialSyncInspection {
   localCount: number;
@@ -49,7 +50,7 @@ function normalizeImportedMedia(media: unknown): MediaInfo[] {
   if (Array.isArray(media)) {
     return media.filter(
       (item): item is MediaInfo => Boolean(item) && typeof item === 'object'
-    );
+    ).map(normalizeCloudMediaItem);
   }
 
   if (!media) {
@@ -62,10 +63,10 @@ function normalizeImportedMedia(media: unknown): MediaInfo[] {
       if (Array.isArray(parsed)) {
         return parsed.filter(
           (item): item is MediaInfo => Boolean(item) && typeof item === 'object'
-        );
+        ).map(normalizeCloudMediaItem);
       }
       if (parsed && typeof parsed === 'object') {
-        return [parsed as MediaInfo];
+        return [normalizeCloudMediaItem(parsed as MediaInfo)];
       }
       return [];
     } catch {
@@ -74,7 +75,7 @@ function normalizeImportedMedia(media: unknown): MediaInfo[] {
   }
 
   if (typeof media === 'object') {
-    return [media as MediaInfo];
+    return [normalizeCloudMediaItem(media as MediaInfo)];
   }
 
   return [];

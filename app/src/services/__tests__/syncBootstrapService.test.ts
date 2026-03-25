@@ -221,6 +221,32 @@ describe('syncBootstrapService', () => {
     );
   });
 
+  it('normalizes stale local uri to remoteUri when restoring from cloud', async () => {
+    const cloudEntry = {
+      id: 'entry1',
+      type: 'photo' as const,
+      content: '',
+      media: [
+        {
+          uri: 'file:///old-device/media/photos/original/photo.jpg',
+          remoteUri: 'https://cdn.example.com/photo.jpg',
+          mimeType: 'image/jpeg',
+          size: 1000,
+        },
+      ],
+      syncStatus: 'synced' as const,
+      timestamp: Date.now(),
+      updatedAt: Date.now(),
+    };
+    mockApiGet.mockResolvedValueOnce([cloudEntry]);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('cloud');
+
+    const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0][0];
+    expect(restoredEntries[0].media[0].uri).toBe('https://cdn.example.com/photo.jpg');
+  });
+
   it('does not re-upload media that already has a remote uri during first cloud backup', async () => {
     (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
       {
