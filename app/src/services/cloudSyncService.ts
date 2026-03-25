@@ -3,6 +3,7 @@ import * as DB from '@/src/database/operations';
 import type { Entry } from '@/src/types/entry';
 import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { createCloudMediaSyncService } from './cloudMediaSyncService';
 import { logger } from '@/src/utils/logger';
 import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
 
@@ -127,6 +128,21 @@ function mapEntryToServer(entry: Entry) {
   };
 }
 
+const REMOTE_URI_RE = /^(?:https?:\/\/|\/api\/media(?:\/|$))/i;
+
+function isRemoteMediaUri(uri: string | undefined): boolean {
+  return !!uri && REMOTE_URI_RE.test(uri);
+}
+
+function hasRemoteMedia(entry: Entry): boolean {
+  return (entry.media ?? []).some((media) =>
+    isRemoteMediaUri(media.remoteUri)
+    || isRemoteMediaUri(media.uri)
+    || isRemoteMediaUri(media.remoteThumbnail)
+    || isRemoteMediaUri(media.thumbnail)
+  );
+}
+
 export function createCloudSyncService(): SyncServiceApi {
   const api = getApiClient();
 
@@ -167,12 +183,12 @@ export function createCloudSyncService(): SyncServiceApi {
     };
   };
 
-  const createConflictCopy = async (conflict: ConflictPayload): Promise<void> => {
-    if (!conflict.serverEntry?.id || !conflict.clientEntry?.id) return;
+  const createConflictCopy = async (conflict: ConflictPayload): Promise<Entry | null> => {
+    if (!conflict.serverEntry?.id || !conflict.clientEntry?.id) return null;
 
     const existing = await DB.getEntryById(conflict.serverEntry.id);
     const mainEntry = await mapServerEntryToLocal(conflict.serverEntry);
-    if (!mainEntry) return;
+    if (!mainEntry) return null;
 
     if (existing) {
       await DB.updateEntry(conflict.serverEntry.id, mainEntry);
@@ -196,10 +212,15 @@ export function createCloudSyncService(): SyncServiceApi {
       deleted: false,
     };
     await DB.addEntry(conflictCopy);
+    return mainEntry;
   };
 
-  const applyServerChanges = async (changes: ServerChangePayload[]): Promise<Set<string>> => {
+  const applyServerChanges = async (changes: ServerChangePayload[]): Promise<{
+    appliedEntryIds: Set<string>;
+    mediaValidationEntries: Entry[];
+  }> => {
     const appliedEntryIds = new Set<string>();
+    const mediaValidationEntries: Entry[] = [];
 
     for (const change of changes) {
       const entry = change.entry;
@@ -217,6 +238,9 @@ export function createCloudSyncService(): SyncServiceApi {
 
       const mapped = await mapServerEntryToLocal(entry);
       if (!mapped) continue;
+      if (hasRemoteMedia(mapped)) {
+        mediaValidationEntries.push(mapped);
+      }
 
       if (existing) {
         await DB.updateEntry(entry.id, mapped);
@@ -225,7 +249,7 @@ export function createCloudSyncService(): SyncServiceApi {
       }
     }
 
-    return appliedEntryIds;
+    return { appliedEntryIds, mediaValidationEntries };
   };
 
   const settleResults = async (
@@ -293,16 +317,25 @@ export function createCloudSyncService(): SyncServiceApi {
     };
 
     const data = await api.post<SyncResponsePayload>('/sync', body);
-    const serverAppliedEntryIds = await applyServerChanges(data.serverChanges ?? []);
+    const { appliedEntryIds: serverAppliedEntryIds, mediaValidationEntries } = await applyServerChanges(data.serverChanges ?? []);
+    const validationEntries = [...mediaValidationEntries];
 
     if (data.conflicts?.length) {
       for (const conflict of data.conflicts) {
-        await createConflictCopy(conflict);
+        const conflictEntry = await createConflictCopy(conflict);
+        if (conflictEntry && hasRemoteMedia(conflictEntry)) {
+          validationEntries.push(conflictEntry);
+        }
       }
       logger.warn('[cloudSync] 冲突数:', data.conflicts.length);
     }
 
     await settleResults(data.results ?? [], pendingByChangeId, pendingByEntryId, serverAppliedEntryIds);
+    if (validationEntries.length > 0) {
+      await useSyncStore.getState().markMediaValidationRunning(validationEntries.length);
+      const mediaValidationSummary = await createCloudMediaSyncService().validateEntries(validationEntries);
+      await useSyncStore.getState().setMediaValidationSummary(mediaValidationSummary);
+    }
     await useSyncStore.getState().setCursor(data.newCursor ?? syncCursor);
     await useSyncStore.getState().markSyncSuccess(Date.now());
   };

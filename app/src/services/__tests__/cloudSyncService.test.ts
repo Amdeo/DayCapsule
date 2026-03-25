@@ -75,6 +75,13 @@ jest.mock('@/src/services/apiClient', () => {
   };
 });
 
+const mockValidateEntries = jest.fn();
+jest.mock('../cloudMediaSyncService', () => ({
+  createCloudMediaSyncService: jest.fn(() => ({
+    validateEntries: mockValidateEntries,
+  })),
+}));
+
 describe('cloudSyncService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -290,6 +297,168 @@ describe('cloudSyncService', () => {
     // restoreEntries 被调用时，media[0].uri 应已归一化
     const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0]?.[0];
     expect(restoredEntries?.[0]?.media?.[0]?.uri).toBe('https://cdn.example.com/photo.jpg');
+  });
+
+  it('stores a partial media summary when inbound server media fails validation', async () => {
+    const photoServerChange = {
+      changeId: 1,
+      op: 'create' as const,
+      entry: {
+        id: 'entry-photo-validate',
+        type: 'photo' as const,
+        content: '',
+        media: JSON.stringify([
+          {
+            uri: 'file:///old-device/media/photos/original/photo.jpg',
+            remoteUri: 'https://cdn.example.com/photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 1000,
+          },
+        ]),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    mockPost.mockResolvedValueOnce({
+      newCursor: 10,
+      results: [],
+      serverChanges: [photoServerChange],
+      conflicts: [],
+    });
+
+    mockValidateEntries.mockResolvedValueOnce({
+      status: 'partial',
+      total: 1,
+      downloaded: 0,
+      missing: 1,
+      failed: 0,
+      lastError: 'missing file',
+      lastValidatedAt: 1234,
+    });
+
+    await createCloudSyncService().syncNow();
+
+    expect(useSyncStore.getState().lastMediaValidationSummary?.status).toBe('partial');
+  });
+
+  it('includes conflicted server entries with remote media in media validation', async () => {
+    const conflictPayload = {
+      changeId: 'change-conflict-photo',
+      entryId: 'entry-conflict-photo',
+      reason: 'media conflict',
+      serverEntry: {
+        id: 'entry-conflict-photo',
+        type: 'photo' as const,
+        content: '',
+        media: JSON.stringify([
+          {
+            uri: 'file:///old-device/media/photos/original/conflict-photo.jpg',
+            remoteUri: 'https://cdn.example.com/conflict-photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+          },
+        ]),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      clientEntry: {
+        id: 'entry-conflict-photo',
+        type: 'photo' as const,
+        content: '',
+        media: JSON.stringify([
+          {
+            uri: 'file:///current-device/media/photos/original/conflict-photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+          },
+        ]),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    mockPost.mockResolvedValueOnce({
+      newCursor: 11,
+      results: [
+        { changeId: 'change-conflict-photo', status: 'conflicted', entryId: 'entry-conflict-photo' },
+      ],
+      serverChanges: [],
+      conflicts: [conflictPayload],
+    });
+    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-conflict-photo', media: [] });
+    mockValidateEntries.mockResolvedValueOnce({
+      status: 'success',
+      total: 1,
+      downloaded: 1,
+      missing: 0,
+      failed: 0,
+      lastError: null,
+      lastValidatedAt: 2345,
+    });
+
+    await createCloudSyncService().syncNow();
+
+    expect(mockValidateEntries).toHaveBeenCalledTimes(1);
+    expect(mockValidateEntries).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'entry-conflict-photo',
+        type: 'photo',
+        media: [
+          expect.objectContaining({
+            remoteUri: 'https://cdn.example.com/conflict-photo.jpg',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('preserves the existing media summary when no synced media needs validation', async () => {
+    useSyncStore.setState({
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 3,
+        downloaded: 1,
+        missing: 2,
+        failed: 0,
+        lastError: 'missing file',
+        lastValidatedAt: 1000,
+      },
+    });
+
+    mockPost.mockResolvedValueOnce({
+      newCursor: 12,
+      results: [],
+      serverChanges: [
+        {
+          changeId: 1,
+          op: 'update' as const,
+          entry: {
+            id: 'entry-text-only',
+            type: 'text' as const,
+            content: 'server text',
+            tags: ['note'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      ],
+      conflicts: [],
+    });
+
+    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-text-only' });
+
+    await createCloudSyncService().syncNow();
+
+    expect(mockValidateEntries).not.toHaveBeenCalled();
+    expect(useSyncStore.getState().lastMediaValidationSummary).toEqual({
+      status: 'partial',
+      total: 3,
+      downloaded: 1,
+      missing: 2,
+      failed: 0,
+      lastError: 'missing file',
+      lastValidatedAt: 1000,
+    });
   });
 
   it('sends remoteUri as uri in server payload when remoteUri exists', async () => {
