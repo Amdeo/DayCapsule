@@ -245,3 +245,74 @@ func TestEntryServiceRecoversHistoricalFileMediaFromUploadedFile(t *testing.T) {
 		t.Fatalf("expected recovered media to be linked to entry, got %#v", linkedFiles)
 	}
 }
+
+func TestEntryServiceRecoversMissingMediaWhenOnlyPartiallyLinked(t *testing.T) {
+	db := setupEntryTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("recover-partial-media@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	svc := NewEntryService(entryRepo, mediaRepo, "http://101.43.120.134:8081")
+
+	now := time.Now().UTC()
+	firstMedia, err := mediaRepo.Create(user.ID, "photo-1.jpg", "image/jpeg", "/tmp/photo-1.jpg", 1024)
+	if err != nil {
+		t.Fatalf("create first media: %v", err)
+	}
+	secondMedia, err := mediaRepo.Create(user.ID, "photo-2.jpg", "image/jpeg", "/tmp/photo-2.jpg", 2048)
+	if err != nil {
+		t.Fatalf("create second media: %v", err)
+	}
+
+	rawMedia := `[{"uri":"file:///data/user/0/com.memorycapsule.app/cache/environments/env_http_101_43_120_134_8081/media/photos/display/photo-1.jpg","mimeType":"image/jpeg","size":1024},{"uri":"file:///data/user/0/com.memorycapsule.app/cache/environments/env_http_101_43_120_134_8081/media/photos/display/photo-2.jpg","mimeType":"image/jpeg","size":2048}]`
+	if _, err := entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:         "photo-entry-partial-1",
+		UserID:     user.ID,
+		Type:       "photo",
+		Content:    "",
+		Tags:       "[]",
+		Media:      rawMedia,
+		SyncStatus: "synced",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("insert from sync: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(firstMedia.ID, "photo-entry-partial-1"); err != nil {
+		t.Fatalf("link first media: %v", err)
+	}
+
+	entries, err := svc.Export(user.ID)
+	if err != nil {
+		t.Fatalf("export entries: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if len(entries[0].Media) != 2 {
+		t.Fatalf("expected 2 media items after partial recovery, got %d", len(entries[0].Media))
+	}
+
+	wantFirstURI := "http://101.43.120.134:8081/api/media/" + firstMedia.ID
+	wantSecondURI := "http://101.43.120.134:8081/api/media/" + secondMedia.ID
+	if entries[0].Media[0].URI != wantFirstURI {
+		t.Fatalf("expected first media uri %q, got %q", wantFirstURI, entries[0].Media[0].URI)
+	}
+	if entries[0].Media[1].URI != wantSecondURI {
+		t.Fatalf("expected second media uri %q, got %q", wantSecondURI, entries[0].Media[1].URI)
+	}
+
+	linkedFiles, err := mediaRepo.GetByEntryID("photo-entry-partial-1")
+	if err != nil {
+		t.Fatalf("get linked media: %v", err)
+	}
+	if len(linkedFiles) != 2 {
+		t.Fatalf("expected both media files to be linked after recovery, got %#v", linkedFiles)
+	}
+}

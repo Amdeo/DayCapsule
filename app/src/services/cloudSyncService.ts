@@ -77,7 +77,10 @@ function parseTags(tags: ServerEntryPayload['tags']): string[] {
   }
 }
 
-function parseMedia(media: ServerEntryPayload['media'], fallback?: Entry['media']): Entry['media'] {
+function parseMedia(
+  media: ServerEntryPayload['media'],
+  fallback?: Entry['media']
+): NonNullable<Entry['media']> {
   if (Array.isArray(media)) return media;
   if (typeof media !== 'string' || media.trim() === '') return fallback ?? [];
 

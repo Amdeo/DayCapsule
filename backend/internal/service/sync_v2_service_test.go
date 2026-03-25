@@ -541,6 +541,102 @@ func TestSyncV2ServiceLinksMediaFilesReferencedByRemoteURI(t *testing.T) {
 	}
 }
 
+func TestSyncV2ServiceUnlinksMediaFilesRemovedByUpdate(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("media-unlink@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	changeRepo := repository.NewChangeRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+
+	firstMedia, err := mediaRepo.Create(user.ID, "photo-1.jpg", "image/jpeg", "/tmp/photo-1.jpg", 100)
+	if err != nil {
+		t.Fatalf("create first media: %v", err)
+	}
+	secondMedia, err := mediaRepo.Create(user.ID, "photo-2.jpg", "image/jpeg", "/tmp/photo-2.jpg", 200)
+	if err != nil {
+		t.Fatalf("create second media: %v", err)
+	}
+
+	createdAt := time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC)
+	_, err = entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:      "entry-update-media-1",
+		Type:    "photo",
+		Content: "",
+		Tags:    "[]",
+		Media: fmt.Sprintf(
+			`[{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":100},{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":200}]`,
+			firstMedia.ID,
+			firstMedia.ID,
+			secondMedia.ID,
+			secondMedia.ID,
+		),
+		SyncStatus: "synced",
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	})
+	if err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(firstMedia.ID, "entry-update-media-1"); err != nil {
+		t.Fatalf("link first media: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(secondMedia.ID, "entry-update-media-1"); err != nil {
+		t.Fatalf("link second media: %v", err)
+	}
+
+	svc := NewSyncV2Service(entryRepo, changeRepo, mediaRepo)
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID:      "local-update-media-1",
+				Op:            "update",
+				BaseUpdatedAt: &updatedAt,
+				Entry: models.Entry{
+					ID:      "entry-update-media-1",
+					Type:    "photo",
+					Content: "",
+					Tags:    "[]",
+					Media: fmt.Sprintf(
+						`[{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":200}]`,
+						secondMedia.ID,
+						secondMedia.ID,
+					),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied update result, got %#v", view.Results)
+	}
+
+	firstEntryID := getMediaEntryID(t, db, firstMedia.ID)
+	if firstEntryID.Valid {
+		t.Fatalf("expected removed media to be unlinked, got %#v", firstEntryID)
+	}
+
+	secondEntryID := getMediaEntryID(t, db, secondMedia.ID)
+	if !secondEntryID.Valid || secondEntryID.String != "entry-update-media-1" {
+		t.Fatalf("expected remaining media to stay linked, got %#v", secondEntryID)
+	}
+}
+
 func TestSyncV2Service_EmptyClientChangesSerializesResultsAsEmptyArray(t *testing.T) {
 	db := setupSyncV2TestDB(t)
 	t.Cleanup(func() {

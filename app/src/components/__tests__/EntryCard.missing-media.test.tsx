@@ -18,7 +18,23 @@ jest.mock('@/src/services/voiceService', () => ({
 }));
 
 jest.mock('@/src/services/photoService', () => ({
-  PhotoService: { resolvePhotoUri: (uri: string) => uri },
+  PhotoService: {
+    resolvePhotoUri: (uri: string) => uri,
+    getPreferredPhotoUri: (media: any, kind: 'thumbnail' | 'full') => {
+      const candidates = kind === 'thumbnail'
+        ? [media.thumbnail, media.remoteThumbnail, media.remoteUri, media.uri]
+        : [media.remoteUri, media.uri];
+      return candidates.find((uri) => typeof uri === 'string' && uri.length > 0) ?? '';
+    },
+    getFallbackPhotoUri: (media: any, failedUri: string, kind: 'thumbnail' | 'full') => {
+      const candidates = (kind === 'thumbnail'
+        ? [media.thumbnail, media.remoteThumbnail, media.remoteUri, media.uri]
+        : [media.remoteUri, media.uri]
+      ).filter((uri): uri is string => typeof uri === 'string' && uri.length > 0);
+      const failedIndex = candidates.findIndex((uri) => uri === failedUri);
+      return failedIndex >= 0 ? candidates[failedIndex + 1] ?? null : candidates[0] ?? null;
+    },
+  },
 }));
 
 jest.mock('expo-file-system', () => ({

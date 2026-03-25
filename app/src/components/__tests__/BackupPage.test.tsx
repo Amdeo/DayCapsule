@@ -7,6 +7,9 @@ import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '../../services/syncService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
+const mockRestoreEntries = jest.fn();
+const mockUpdateEntry = jest.fn();
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -22,8 +25,8 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
     entries: [{ id: 'e1' }, { id: 'e2' }],
-    restoreEntries: jest.fn(),
-    updateEntry: jest.fn(),
+    restoreEntries: mockRestoreEntries,
+    updateEntry: mockUpdateEntry,
   }),
 }));
 
@@ -70,6 +73,8 @@ describe('BackupPage', () => {
     jest.clearAllMocks();
     (Platform as { OS: string }).OS = 'android';
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    mockRestoreEntries.mockResolvedValue([]);
+    mockUpdateEntry.mockResolvedValue(undefined);
   });
 
   it('renders backup history and bottom iCloud section when backups exist', async () => {
@@ -189,6 +194,38 @@ describe('BackupPage', () => {
           dedupeKey: 'backup-import-failed',
         })
       );
+    });
+  });
+
+  it('persists restored media arrays after import extracts files from zip', async () => {
+    mockRestoreEntries.mockResolvedValueOnce(['entry-1']);
+    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
+      data: {
+        entries: [
+          {
+            id: 'entry-1',
+            type: 'photo',
+            media: [{ relativeUri: 'media/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+          },
+        ],
+      },
+      zip: {},
+    });
+    (SyncService.extractMediaFromZip as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'entry-1',
+        media: [{ uri: 'file:///documents/media/photos/original/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+      },
+    ]);
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(mockUpdateEntry).toHaveBeenCalledWith('entry-1', {
+        media: [{ uri: 'file:///documents/media/photos/original/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+      });
     });
   });
 });

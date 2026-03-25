@@ -556,7 +556,11 @@ func (s *SyncV2Service) linkEntryMedia(entry *models.Entry) error {
 		return nil
 	}
 
-	for _, mediaID := range mediaIDsFromJSON(entry.Media) {
+	mediaIDs := mediaIDsFromJSON(entry.Media)
+	if err := s.mediaRepo.UnlinkEntryMediaExcept(entry.ID, mediaIDs); err != nil {
+		return err
+	}
+	for _, mediaID := range mediaIDs {
 		if err := s.mediaRepo.LinkToEntry(mediaID, entry.ID); err != nil {
 			return err
 		}
@@ -569,7 +573,11 @@ func (s *SyncV2Service) linkEntryMediaTx(tx *sql.Tx, entry *models.Entry) error 
 		return nil
 	}
 
-	for _, mediaID := range mediaIDsFromJSON(entry.Media) {
+	mediaIDs := mediaIDsFromJSON(entry.Media)
+	if err := s.mediaRepo.UnlinkEntryMediaExceptTx(tx, entry.ID, mediaIDs); err != nil {
+		return err
+	}
+	for _, mediaID := range mediaIDs {
 		if err := s.mediaRepo.LinkToEntryTx(tx, mediaID, entry.ID); err != nil {
 			return err
 		}

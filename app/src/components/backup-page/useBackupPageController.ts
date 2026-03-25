@@ -144,7 +144,11 @@ export function useBackupPageController({
           const insertedIdSet = new Set(insertedIds);
 
           for (const entry of entriesWithMedia) {
-            if (entry.id && insertedIdSet.has(entry.id) && entry.media?.uri) {
+            const hasRestoredMedia = Array.isArray(entry.media)
+              ? entry.media.length > 0
+              : Boolean(entry.media);
+
+            if (entry.id && insertedIdSet.has(entry.id) && hasRestoredMedia) {
               await updateEntry(entry.id as string, {
                 media: entry.media as any,
               });

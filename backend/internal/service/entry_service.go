@@ -121,9 +121,7 @@ func (s *EntryService) toResponse(entry *models.Entry) (*models.EntryResponse, e
 	if err != nil {
 		media = []models.Media{}
 	}
-	if len(media) == 0 {
-		media = s.recoverFallbackMedia(entry, fallbackMediaList(entry.Media))
-	}
+	media = s.resolveResponseMedia(entry, media)
 
 	return &models.EntryResponse{
 		ID:                entry.ID,
@@ -156,6 +154,19 @@ func (s *EntryService) buildMediaList(entryID string) ([]models.Media, error) {
 		return []models.Media{}, nil
 	}
 	return media, nil
+}
+
+func (s *EntryService) resolveResponseMedia(entry *models.Entry, linkedMedia []models.Media) []models.Media {
+	fallbackMedia := fallbackMediaList(entry.Media)
+	if len(fallbackMedia) == 0 {
+		if linkedMedia == nil {
+			return []models.Media{}
+		}
+		return linkedMedia
+	}
+
+	recoveredFallback := s.recoverFallbackMedia(entry, fallbackMedia)
+	return mergeResolvedMedia(linkedMedia, recoveredFallback)
 }
 
 func (s *EntryService) recoverFallbackMedia(entry *models.Entry, media []models.Media) []models.Media {
@@ -197,6 +208,71 @@ func (s *EntryService) recoverFallbackMedia(entry *models.Entry, media []models.
 		return []models.Media{}
 	}
 	return recovered
+}
+
+func mergeResolvedMedia(linkedMedia, fallbackMedia []models.Media) []models.Media {
+	if len(fallbackMedia) == 0 {
+		if linkedMedia == nil {
+			return []models.Media{}
+		}
+		return linkedMedia
+	}
+
+	linkedByID := make(map[string]models.Media, len(linkedMedia))
+	linkedByURI := make(map[string]models.Media, len(linkedMedia))
+	for _, item := range linkedMedia {
+		if mediaID := extractMediaIDFromURI(item.URI); mediaID != "" {
+			linkedByID[mediaID] = item
+		}
+		if item.URI != "" {
+			linkedByURI[item.URI] = item
+		}
+	}
+
+	seenIDs := make(map[string]struct{}, len(linkedMedia)+len(fallbackMedia))
+	seenURIs := make(map[string]struct{}, len(linkedMedia)+len(fallbackMedia))
+	result := make([]models.Media, 0, len(linkedMedia)+len(fallbackMedia))
+	appendUnique := func(item models.Media) {
+		mediaID := extractMediaIDFromURI(item.URI)
+		if mediaID != "" {
+			if _, exists := seenIDs[mediaID]; exists {
+				return
+			}
+			seenIDs[mediaID] = struct{}{}
+		}
+
+		if item.URI != "" {
+			if _, exists := seenURIs[item.URI]; exists {
+				return
+			}
+			seenURIs[item.URI] = struct{}{}
+		}
+
+		result = append(result, item)
+	}
+
+	for _, item := range fallbackMedia {
+		if mediaID := extractMediaIDFromURI(item.URI); mediaID != "" {
+			if linkedItem, ok := linkedByID[mediaID]; ok {
+				appendUnique(linkedItem)
+				continue
+			}
+		}
+		if linkedItem, ok := linkedByURI[item.URI]; ok {
+			appendUnique(linkedItem)
+			continue
+		}
+		appendUnique(item)
+	}
+
+	for _, item := range linkedMedia {
+		appendUnique(item)
+	}
+
+	if result == nil {
+		return []models.Media{}
+	}
+	return result
 }
 
 type rawEntryMedia struct {

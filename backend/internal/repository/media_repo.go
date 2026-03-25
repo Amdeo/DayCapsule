@@ -3,11 +3,17 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/daycapsule/backend/internal/models"
 	"github.com/google/uuid"
 )
+
+type entryMediaExecer interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
 
 type MediaRepository struct {
 	db *sql.DB
@@ -67,6 +73,36 @@ func (r *MediaRepository) LinkToEntry(mediaID, entryID string) error {
 
 func (r *MediaRepository) LinkToEntryTx(tx *sql.Tx, mediaID, entryID string) error {
 	_, err := tx.Exec("UPDATE media_files SET entry_id = ? WHERE id = ?", entryID, mediaID)
+	return err
+}
+
+func (r *MediaRepository) UnlinkEntryMediaExcept(entryID string, keepMediaIDs []string) error {
+	return r.unlinkEntryMediaExcept(r.db, entryID, keepMediaIDs)
+}
+
+func (r *MediaRepository) UnlinkEntryMediaExceptTx(tx *sql.Tx, entryID string, keepMediaIDs []string) error {
+	return r.unlinkEntryMediaExcept(tx, entryID, keepMediaIDs)
+}
+
+func (r *MediaRepository) unlinkEntryMediaExcept(execer entryMediaExecer, entryID string, keepMediaIDs []string) error {
+	if len(keepMediaIDs) == 0 {
+		_, err := execer.Exec("UPDATE media_files SET entry_id = NULL WHERE entry_id = ?", entryID)
+		return err
+	}
+
+	placeholders := make([]string, 0, len(keepMediaIDs))
+	args := make([]interface{}, 0, len(keepMediaIDs)+1)
+	args = append(args, entryID)
+	for _, mediaID := range keepMediaIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, mediaID)
+	}
+
+	query := fmt.Sprintf(
+		"UPDATE media_files SET entry_id = NULL WHERE entry_id = ? AND id NOT IN (%s)",
+		strings.Join(placeholders, ", "),
+	)
+	_, err := execer.Exec(query, args...)
 	return err
 }
 
