@@ -104,7 +104,12 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
                 onSubmitEditing={handleSearch}
               />
               {localQuery.length > 0 && (
-                <Pressable onPress={clearLocalQuery} hitSlop={8}>
+                <Pressable
+                  testID="search-overlay-clear-query-button"
+                  accessibilityLabel="清空搜索关键词"
+                  onPress={clearLocalQuery}
+                  hitSlop={8}
+                >
                   <Ionicons name="close-circle" size={20} color="#A3A3A3" />
                 </Pressable>
               )}

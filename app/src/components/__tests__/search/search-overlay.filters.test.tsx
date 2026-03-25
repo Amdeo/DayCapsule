@@ -54,7 +54,7 @@ describe('SearchOverlay filters', () => {
     await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
 
     fireEvent.changeText(screen.getByPlaceholderText('搜索记忆...'), '旅行');
-    fireEvent.press(screen.getByText('close-circle'));
+    fireEvent.press(screen.getByTestId('search-overlay-clear-query-button'));
 
     expect(screen.getByPlaceholderText('搜索记忆...').props.value).toBe('');
   });
