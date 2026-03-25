@@ -50,6 +50,13 @@ describe('SearchOverlay', () => {
     expect(screen.getByText('标签')).toBeTruthy();
   });
 
+  it('renders a stable cancel button testID for dismiss flows', async () => {
+    const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('search-overlay-cancel-button')).toBeTruthy();
+  });
+
   it('resets local filters from the reset action without closing the overlay', async () => {
     const onClose = jest.fn();
     const screen = render(<SearchOverlay visible onClose={onClose} onSearch={jest.fn()} />);

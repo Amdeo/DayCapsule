@@ -14,7 +14,11 @@ export function SearchOverlayFooter({
 }: SearchOverlayFooterProps) {
   return (
     <View style={styles.footer}>
-      <Pressable style={styles.cancelButton} onPress={onCancel}>
+      <Pressable
+        testID="search-overlay-cancel-button"
+        style={styles.cancelButton}
+        onPress={onCancel}
+      >
         <Text style={styles.cancelText}>取消</Text>
       </Pressable>
       <Pressable testID="search-overlay-submit-button" style={styles.searchButton} onPress={onSearch}>

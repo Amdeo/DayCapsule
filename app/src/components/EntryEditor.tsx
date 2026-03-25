@@ -52,11 +52,19 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
 
         <View style={styles.editorPage}>
           <View testID="entry-editor-header" style={styles.headerBar}>
-            <Pressable onPress={onClose} style={styles.headerButton}>
+            <Pressable
+              testID="entry-editor-back-button"
+              onPress={onClose}
+              style={styles.headerButton}
+            >
               <Text style={styles.headerButtonText}>返回</Text>
             </Pressable>
             <Text style={styles.headerTitle}>编辑记录</Text>
-            <Pressable onPress={handleSave} style={styles.headerButton}>
+            <Pressable
+              testID="entry-editor-save-button"
+              onPress={handleSave}
+              style={styles.headerButton}
+            >
               <Text style={styles.headerSaveText}>保存</Text>
             </Pressable>
           </View>
