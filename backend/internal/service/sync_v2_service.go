@@ -30,12 +30,16 @@ type SyncV2Service struct {
 	changeRepo   syncV2ChangeStore
 	entryRepoDB  *repository.EntryRepository
 	changeRepoDB *repository.ChangeRepository
+	mediaRepo    *repository.MediaRepository
 }
 
-func NewSyncV2Service(entryRepo *repository.EntryRepository, changeRepo *repository.ChangeRepository) *SyncV2Service {
+func NewSyncV2Service(entryRepo *repository.EntryRepository, changeRepo *repository.ChangeRepository, mediaRepo ...*repository.MediaRepository) *SyncV2Service {
 	svc := newSyncV2Service(entryRepo, changeRepo)
 	svc.entryRepoDB = entryRepo
 	svc.changeRepoDB = changeRepo
+	if len(mediaRepo) > 0 {
+		svc.mediaRepo = mediaRepo[0]
+	}
 	return svc
 }
 
@@ -201,6 +205,9 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 				}
 				if persisted == nil {
 					return nil, errors.New("updated entry missing after sync")
+				}
+				if err := s.linkEntryMedia(persisted); err != nil {
+					return nil, err
 				}
 				if _, err := s.changeRepo.AppendChange(ctx, userID, "update", persisted); err != nil {
 					return nil, err
@@ -414,6 +421,9 @@ func (s *SyncV2Service) applyUpdateTx(
 		if persisted == nil {
 			return SyncResult{}, nil, errors.New("updated entry missing after sync")
 		}
+		if err := s.linkEntryMediaTx(tx, persisted); err != nil {
+			return SyncResult{}, nil, err
+		}
 		if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "update", persisted); err != nil {
 			return SyncResult{}, nil, err
 		}
@@ -504,6 +514,9 @@ func (s *SyncV2Service) insertEntry(ctx context.Context, userID string, entry *m
 	if err != nil {
 		return nil, err
 	}
+	if err := s.linkEntryMedia(saved); err != nil {
+		return nil, err
+	}
 	if _, err := s.changeRepo.AppendChange(ctx, userID, "create", saved); err != nil {
 		return nil, err
 	}
@@ -515,6 +528,9 @@ func (s *SyncV2Service) insertEntryTx(ctx context.Context, tx *sql.Tx, userID st
 
 	saved, err := s.entryRepoDB.InsertFromSyncTx(tx, userID, entry)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.linkEntryMediaTx(tx, saved); err != nil {
 		return nil, err
 	}
 	if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "create", saved); err != nil {
@@ -533,4 +549,30 @@ func (s *SyncV2Service) prepareEntryForInsert(userID string, entry *models.Entry
 	}
 	entry.UserID = userID
 	entry.SyncStatus = "synced"
+}
+
+func (s *SyncV2Service) linkEntryMedia(entry *models.Entry) error {
+	if s.mediaRepo == nil || entry == nil {
+		return nil
+	}
+
+	for _, mediaID := range mediaIDsFromJSON(entry.Media) {
+		if err := s.mediaRepo.LinkToEntry(mediaID, entry.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SyncV2Service) linkEntryMediaTx(tx *sql.Tx, entry *models.Entry) error {
+	if s.mediaRepo == nil || entry == nil {
+		return nil
+	}
+
+	for _, mediaID := range mediaIDsFromJSON(entry.Media) {
+		if err := s.mediaRepo.LinkToEntryTx(tx, mediaID, entry.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

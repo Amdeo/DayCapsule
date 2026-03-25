@@ -47,7 +47,7 @@ func main() {
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret, cfg.JWTExpiry, cfg.RefreshExpiry)
 	syncService := service.NewSyncService(backupRepo)
 	syncOverviewService := service.NewSyncOverviewService(entryRepo, mediaRepo)
-	syncV2Service := service.NewSyncV2Service(entryRepo, changeRepo)
+	syncV2Service := service.NewSyncV2Service(entryRepo, changeRepo, mediaRepo)
 	entryService := service.NewEntryService(entryRepo, mediaRepo, cfg.BaseURL)
 
 	authHandler := handlers.NewAuthHandler(authService)

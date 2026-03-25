@@ -122,7 +122,7 @@ func (s *EntryService) toResponse(entry *models.Entry) (*models.EntryResponse, e
 		media = []models.Media{}
 	}
 	if len(media) == 0 {
-		media = fallbackMediaList(entry.Media)
+		media = s.recoverFallbackMedia(entry, fallbackMediaList(entry.Media))
 	}
 
 	return &models.EntryResponse{
@@ -156,6 +156,47 @@ func (s *EntryService) buildMediaList(entryID string) ([]models.Media, error) {
 		return []models.Media{}, nil
 	}
 	return media, nil
+}
+
+func (s *EntryService) recoverFallbackMedia(entry *models.Entry, media []models.Media) []models.Media {
+	if len(media) == 0 || s.mediaRepo == nil {
+		return media
+	}
+
+	recovered := make([]models.Media, 0, len(media))
+	for _, item := range media {
+		if !isLocalFileURI(item.URI) {
+			recovered = append(recovered, item)
+			continue
+		}
+
+		filename := extractFilenameFromFileURI(item.URI)
+		if filename == "" {
+			recovered = append(recovered, item)
+			continue
+		}
+
+		file, err := s.mediaRepo.FindByUserIDAndFilename(entry.UserID, filename)
+		if err != nil || file == nil {
+			recovered = append(recovered, item)
+			continue
+		}
+
+		_ = s.mediaRepo.LinkToEntry(file.ID, entry.ID)
+		item.URI = fmt.Sprintf("%s/api/media/%s", s.baseURL, file.ID)
+		if item.MimeType == "" {
+			item.MimeType = file.MimeType
+		}
+		if item.Size == 0 {
+			item.Size = file.Size
+		}
+		recovered = append(recovered, item)
+	}
+
+	if recovered == nil {
+		return []models.Media{}
+	}
+	return recovered
 }
 
 type rawEntryMedia struct {

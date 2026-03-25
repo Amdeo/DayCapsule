@@ -103,6 +103,16 @@ func countEntryChangesForEntry(t *testing.T, db *sql.DB, userID, entryID string)
 	return count
 }
 
+func getMediaEntryID(t *testing.T, db *sql.DB, mediaID string) sql.NullString {
+	t.Helper()
+
+	var entryID sql.NullString
+	if err := db.QueryRow(`SELECT entry_id FROM media_files WHERE id = ?`, mediaID).Scan(&entryID); err != nil {
+		t.Fatalf("get media entry_id for %s: %v", mediaID, err)
+	}
+	return entryID
+}
+
 func mustSyncV2Request(t *testing.T, payload syncV2RequestPayload) *SyncRequest {
 	t.Helper()
 
@@ -473,6 +483,61 @@ func TestSyncV2Service_AppendsChangeLogForAppliedCreate(t *testing.T) {
 	}
 	if got := countEntryChangesForEntry(t, db, user.ID, "entry-create-1"); got != 1 {
 		t.Fatalf("expected one change log for applied create, got %d", got)
+	}
+}
+
+func TestSyncV2ServiceLinksMediaFilesReferencedByRemoteURI(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("media-link@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	mediaRepo := repository.NewMediaRepository(db)
+	uploadedMedia, err := mediaRepo.Create(user.ID, "1774401896004_1dnc2z_1774401896136.jpg", "image/jpeg", "/tmp/uploaded-photo.jpg", 4096)
+	if err != nil {
+		t.Fatalf("create media: %v", err)
+	}
+
+	svc := NewSyncV2Service(repository.NewEntryRepository(db), repository.NewChangeRepository(db), mediaRepo)
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "local-create-1",
+				Op:       "create",
+				Entry: models.Entry{
+					ID:      "entry-create-1",
+					Type:    "photo",
+					Content: "",
+					Tags:    "[]",
+					Media: fmt.Sprintf(
+						`[{"uri":"file:///data/user/0/com.memorycapsule.app/cache/environments/env_http_101_43_120_134_8081/media/photos/display/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":4096}]`,
+						uploadedMedia.Filename,
+						uploadedMedia.ID,
+					),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied create result, got %#v", view.Results)
+	}
+
+	entryID := getMediaEntryID(t, db, uploadedMedia.ID)
+	if !entryID.Valid || entryID.String != "entry-create-1" {
+		t.Fatalf("expected media to link to entry-create-1, got %#v", entryID)
 	}
 }
 

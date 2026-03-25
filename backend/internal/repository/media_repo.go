@@ -65,6 +65,11 @@ func (r *MediaRepository) LinkToEntry(mediaID, entryID string) error {
 	return err
 }
 
+func (r *MediaRepository) LinkToEntryTx(tx *sql.Tx, mediaID, entryID string) error {
+	_, err := tx.Exec("UPDATE media_files SET entry_id = ? WHERE id = ?", entryID, mediaID)
+	return err
+}
+
 func (r *MediaRepository) Delete(userID, mediaID string) error {
 	result, err := r.db.Exec("DELETE FROM media_files WHERE id = ? AND user_id = ?", mediaID, userID)
 	if err != nil {
@@ -96,6 +101,37 @@ func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, err
 		files = append(files, &m)
 	}
 	return files, rows.Err()
+}
+
+func (r *MediaRepository) FindByUserIDAndFilename(userID, filename string) (*models.MediaFile, error) {
+	var media models.MediaFile
+	var createdAt string
+
+	query := `
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path, created_at
+		FROM media_files
+		WHERE user_id = ? AND filename = ?
+		ORDER BY CASE WHEN entry_id IS NULL THEN 0 ELSE 1 END, created_at DESC
+		LIMIT 1
+	`
+	err := r.db.QueryRow(query, userID, filename).Scan(
+		&media.ID,
+		&media.UserID,
+		&media.EntryID,
+		&media.Filename,
+		&media.MimeType,
+		&media.Size,
+		&media.StoragePath,
+		&createdAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	media.CreatedAt, _ = parseSQLiteTime(createdAt)
+	return &media, nil
 }
 
 func (r *MediaRepository) CountAndBytes(userID string) (int, int64, error) {
