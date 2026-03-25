@@ -61,7 +61,7 @@ func setupSyncV2TestDB(t *testing.T) *sql.DB {
 	if err := applySchema(t, db); err != nil {
 		t.Fatalf("apply schema: %v", err)
 	}
-	for _, migration := range []string{"002_entries_media.up.sql", "003_entry_changes.up.sql"} {
+	for _, migration := range []string{"002_entries_media.up.sql", "003_entry_changes.up.sql", "004_media_integrity.up.sql"} {
 		path := filepath.Join("..", "..", "migrations", migration)
 		sqlBytes, err := os.ReadFile(path)
 		if err != nil {
@@ -762,14 +762,103 @@ func TestSyncV2ServiceUnlinksMediaFilesRemovedByUpdate(t *testing.T) {
 		t.Fatalf("expected applied update result, got %#v", view.Results)
 	}
 
-	firstEntryID := getMediaEntryID(t, db, firstMedia.ID)
-	if firstEntryID.Valid {
-		t.Fatalf("expected removed media to be unlinked, got %#v", firstEntryID)
-	}
+	assertMediaFileDeleted(t, mediaRepo, firstMedia.ID)
 
 	secondEntryID := getMediaEntryID(t, db, secondMedia.ID)
 	if !secondEntryID.Valid || secondEntryID.String != "entry-update-media-1" {
 		t.Fatalf("expected remaining media to stay linked, got %#v", secondEntryID)
+	}
+}
+
+func TestSyncV2ServiceUpdate_RemovesReplacedOrphanedMedia(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("media-orphan-cleanup@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	changeRepo := repository.NewChangeRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+
+	oldPath := createTestMediaFile(t, t.TempDir(), "photo-old.jpg")
+	oldMedia, err := mediaRepo.Create(user.ID, "photo-old.jpg", "image/jpeg", oldPath, 100)
+	if err != nil {
+		t.Fatalf("create old media: %v", err)
+	}
+
+	newPath := createTestMediaFile(t, t.TempDir(), "photo-new.jpg")
+	newMedia, err := mediaRepo.Create(user.ID, "photo-new.jpg", "image/jpeg", newPath, 200)
+	if err != nil {
+		t.Fatalf("create new media: %v", err)
+	}
+
+	createdAt := time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC)
+	_, err = entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:      "entry-update-orphan-1",
+		Type:    "photo",
+		Content: "",
+		Tags:    "[]",
+		Media: fmt.Sprintf(
+			`[{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":100}]`,
+			oldMedia.ID,
+			oldMedia.ID,
+		),
+		SyncStatus: "synced",
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	})
+	if err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(oldMedia.ID, "entry-update-orphan-1"); err != nil {
+		t.Fatalf("link old media: %v", err)
+	}
+
+	svc := NewSyncV2Service(entryRepo, changeRepo, mediaRepo)
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID:      "local-update-orphan-1",
+				Op:            "update",
+				BaseUpdatedAt: &updatedAt,
+				Entry: models.Entry{
+					ID:      "entry-update-orphan-1",
+					Type:    "photo",
+					Content: "",
+					Tags:    "[]",
+					Media: fmt.Sprintf(
+						`[{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":200}]`,
+						newMedia.ID,
+						newMedia.ID,
+					),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied update result, got %#v", view.Results)
+	}
+
+	assertMediaFileDeleted(t, mediaRepo, oldMedia.ID)
+	assertPathMissing(t, oldPath)
+
+	newEntryID := getMediaEntryID(t, db, newMedia.ID)
+	if !newEntryID.Valid || newEntryID.String != "entry-update-orphan-1" {
+		t.Fatalf("expected replacement media to stay linked, got %#v", newEntryID)
 	}
 }
 

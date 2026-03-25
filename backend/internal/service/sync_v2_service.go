@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/daycapsule/backend/internal/models"
@@ -210,7 +211,11 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 				if persisted == nil {
 					return nil, errors.New("updated entry missing after sync")
 				}
-				if err := s.linkEntryMedia(persisted); err != nil {
+				removedMedia, err := s.linkEntryMedia(persisted)
+				if err != nil {
+					return nil, err
+				}
+				if err := s.cleanupRemovedMedia(userID, removedMedia, mediaIDsFromJSON(persisted.Media)); err != nil {
 					return nil, err
 				}
 				if _, err := s.changeRepo.AppendChange(ctx, userID, "update", persisted); err != nil {
@@ -425,7 +430,8 @@ func (s *SyncV2Service) applyUpdateTx(
 		if persisted == nil {
 			return SyncResult{}, nil, errors.New("updated entry missing after sync")
 		}
-		if err := s.linkEntryMediaTx(tx, persisted); err != nil {
+		removedMedia, err := s.linkEntryMediaTx(tx, persisted)
+		if err != nil {
 			return SyncResult{}, nil, err
 		}
 		if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "update", persisted); err != nil {
@@ -435,6 +441,9 @@ func (s *SyncV2Service) applyUpdateTx(
 			return SyncResult{}, nil, err
 		}
 		committed = true
+		if err := s.cleanupRemovedMedia(userID, removedMedia, mediaIDsFromJSON(persisted.Media)); err != nil {
+			return SyncResult{}, nil, err
+		}
 		return SyncResult{
 			ChangeID: changeID,
 			Status:   "applied",
@@ -546,7 +555,7 @@ func (s *SyncV2Service) insertEntry(ctx context.Context, userID string, entry *m
 	if err != nil {
 		return nil, err
 	}
-	if err := s.linkEntryMedia(saved); err != nil {
+	if _, err := s.linkEntryMedia(saved); err != nil {
 		return nil, err
 	}
 	if _, err := s.changeRepo.AppendChange(ctx, userID, "create", saved); err != nil {
@@ -562,7 +571,7 @@ func (s *SyncV2Service) insertEntryTx(ctx context.Context, tx *sql.Tx, userID st
 	if err != nil {
 		return nil, err
 	}
-	if err := s.linkEntryMediaTx(tx, saved); err != nil {
+	if _, err := s.linkEntryMediaTx(tx, saved); err != nil {
 		return nil, err
 	}
 	if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "create", saved); err != nil {
@@ -583,36 +592,110 @@ func (s *SyncV2Service) prepareEntryForInsert(userID string, entry *models.Entry
 	entry.SyncStatus = "synced"
 }
 
-func (s *SyncV2Service) linkEntryMedia(entry *models.Entry) error {
+func (s *SyncV2Service) linkEntryMedia(entry *models.Entry) ([]*models.MediaFile, error) {
 	if s.mediaRepo == nil || entry == nil {
-		return nil
+		return nil, nil
 	}
 
 	mediaIDs := mediaIDsFromJSON(entry.Media)
+	existingMedia, err := s.mediaRepo.GetByEntryID(entry.ID)
+	if err != nil {
+		return nil, err
+	}
+	removedMedia := filterRemovedMedia(existingMedia, mediaIDs)
 	if err := s.mediaRepo.UnlinkEntryMediaExcept(entry.ID, mediaIDs); err != nil {
-		return err
+		return nil, err
 	}
 	for _, mediaID := range mediaIDs {
 		if err := s.mediaRepo.LinkToEntry(mediaID, entry.ID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return removedMedia, nil
 }
 
-func (s *SyncV2Service) linkEntryMediaTx(tx *sql.Tx, entry *models.Entry) error {
+func (s *SyncV2Service) linkEntryMediaTx(tx *sql.Tx, entry *models.Entry) ([]*models.MediaFile, error) {
 	if s.mediaRepo == nil || entry == nil {
-		return nil
+		return nil, nil
 	}
 
 	mediaIDs := mediaIDsFromJSON(entry.Media)
+	existingMedia, err := s.mediaRepo.GetByEntryIDTx(tx, entry.ID)
+	if err != nil {
+		return nil, err
+	}
+	removedMedia := filterRemovedMedia(existingMedia, mediaIDs)
 	if err := s.mediaRepo.UnlinkEntryMediaExceptTx(tx, entry.ID, mediaIDs); err != nil {
-		return err
+		return nil, err
 	}
 	for _, mediaID := range mediaIDs {
 		if err := s.mediaRepo.LinkToEntryTx(tx, mediaID, entry.ID); err != nil {
-			return err
+			return nil, err
 		}
 	}
+	return removedMedia, nil
+}
+
+func filterRemovedMedia(existingMedia []*models.MediaFile, keepMediaIDs []string) []*models.MediaFile {
+	if len(existingMedia) == 0 {
+		return nil
+	}
+
+	keepSet := make(map[string]struct{}, len(keepMediaIDs))
+	for _, mediaID := range keepMediaIDs {
+		keepSet[mediaID] = struct{}{}
+	}
+
+	removed := make([]*models.MediaFile, 0, len(existingMedia))
+	for _, media := range existingMedia {
+		if media == nil {
+			continue
+		}
+		if _, keep := keepSet[media.ID]; keep {
+			continue
+		}
+		removed = append(removed, media)
+	}
+	return removed
+}
+
+func (s *SyncV2Service) cleanupRemovedMedia(userID string, removedMedia []*models.MediaFile, keepMediaIDs []string) error {
+	if s.mediaRepo == nil || len(removedMedia) == 0 {
+		return nil
+	}
+
+	keepSet := make(map[string]struct{}, len(keepMediaIDs))
+	for _, mediaID := range keepMediaIDs {
+		keepSet[mediaID] = struct{}{}
+	}
+
+	for _, media := range removedMedia {
+		if media == nil {
+			continue
+		}
+		if _, keep := keepSet[media.ID]; keep {
+			continue
+		}
+
+		latest, err := s.mediaRepo.GetByID(media.ID)
+		if err != nil {
+			return err
+		}
+		if latest == nil {
+			continue
+		}
+		if latest.EntryID != nil {
+			continue
+		}
+		if err := s.mediaRepo.Delete(userID, media.ID); err != nil {
+			if err.Error() != "media not found" {
+				return err
+			}
+		}
+		if latest.StoragePath != "" {
+			_ = os.Remove(latest.StoragePath)
+		}
+	}
+
 	return nil
 }

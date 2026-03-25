@@ -29,9 +29,14 @@ type EntryResponse struct {
 }
 
 type Media struct {
-	URI      string `json:"uri"`
-	MimeType string `json:"mimeType"`
-	Size     int64  `json:"size"`
+	URI              string  `json:"uri"`
+	MimeType         string  `json:"mimeType"`
+	Size             int64   `json:"size"`
+	RemoteHash       string  `json:"remoteHash,omitempty"`
+	ValidationStatus string  `json:"validationStatus,omitempty"`
+	ValidationError  *string `json:"validationError,omitempty"`
+	Width            *int    `json:"width,omitempty"`
+	Height           *int    `json:"height,omitempty"`
 }
 
 type CreateEntryRequest struct {
@@ -63,12 +68,33 @@ type ImportRequest struct {
 }
 
 type MediaFile struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"userId"`
-	EntryID     *string   `json:"entryId,omitempty"`
-	Filename    string    `json:"filename"`
-	MimeType    string    `json:"mimeType"`
-	Size        int64     `json:"size"`
-	StoragePath string    `json:"-"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID                 string     `json:"id"`
+	UserID             string     `json:"userId"`
+	EntryID            *string    `json:"entryId,omitempty"`
+	Filename           string     `json:"filename"`
+	MimeType           string     `json:"mimeType"`
+	Size               int64      `json:"size"`
+	StoragePath        string     `json:"-"`
+	SHA256             string     `json:"sha256,omitempty"`
+	Width              int        `json:"width,omitempty"`
+	Height             int        `json:"height,omitempty"`
+	ValidationStatus   string     `json:"validationStatus,omitempty"`
+	ValidationError    *string    `json:"validationError,omitempty"`
+	ValidatedAt        *time.Time `json:"validatedAt,omitempty"`
+	ClientLocalMediaID string     `json:"clientLocalMediaId,omitempty"`
+	ClientPersistedHash string    `json:"clientPersistedHash,omitempty"`
+	UploadTraceID      string     `json:"uploadTraceId,omitempty"`
+	CreatedAt          time.Time  `json:"createdAt"`
+}
+
+type MediaFileCreateInput struct {
+	SHA256              string
+	Width               int
+	Height              int
+	ValidationStatus    string
+	ValidationError     *string
+	ValidatedAt         *time.Time
+	ClientLocalMediaID  string
+	ClientPersistedHash string
+	UploadTraceID       string
 }

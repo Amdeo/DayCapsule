@@ -24,6 +24,7 @@ func setupEntryRepoTestDB(t *testing.T) *sql.DB {
 		"001_initial_schema.up.sql",
 		"002_entries_media.up.sql",
 		"003_entry_changes.up.sql",
+		"004_media_integrity.up.sql",
 	} {
 		path := filepath.Join("..", "..", "migrations", migration)
 		sqlBytes, err := os.ReadFile(path)

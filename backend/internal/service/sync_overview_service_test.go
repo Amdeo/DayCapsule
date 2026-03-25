@@ -22,13 +22,15 @@ func setupSyncOverviewTestDB(t *testing.T) *sql.DB {
 	if err := applySchema(t, db); err != nil {
 		t.Fatalf("apply schema: %v", err)
 	}
-	migPath := filepath.Join("..", "..", "migrations", "002_entries_media.up.sql")
-	migSQL, err := os.ReadFile(migPath)
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	if _, err := db.Exec(string(migSQL)); err != nil {
-		t.Fatalf("apply migration: %v", err)
+	for _, migration := range []string{"002_entries_media.up.sql", "004_media_integrity.up.sql"} {
+		migPath := filepath.Join("..", "..", "migrations", migration)
+		migSQL, err := os.ReadFile(migPath)
+		if err != nil {
+			t.Fatalf("read migration %s: %v", migration, err)
+		}
+		if _, err := db.Exec(string(migSQL)); err != nil {
+			t.Fatalf("apply migration %s: %v", migration, err)
+		}
 	}
 
 	return db
