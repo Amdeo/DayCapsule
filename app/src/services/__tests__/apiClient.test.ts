@@ -190,6 +190,50 @@ describe('apiClient', () => {
     });
   });
 
+  it('sends photo integrity metadata with multipart uploads', async () => {
+    const appendSpy = jest.spyOn(FormData.prototype, 'append');
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve({
+        success: true,
+        data: {
+          id: 'media-1',
+          url: 'https://cdn.example.com/photo.jpg',
+          remoteHash: 'remote-hash-1',
+          validationStatus: 'healthy',
+          validationError: null,
+        },
+      }),
+    });
+
+    await client.uploadFile('/media/upload', 'file:///photo.jpg', 'file', {
+      metadata: {
+        traceId: 'trace-1',
+        localMediaId: 'local-1',
+        persistedHash: 'persisted-hash',
+        size: 2048,
+        width: 1200,
+        height: 900,
+      },
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.any(FormData),
+      }),
+    );
+    expect(appendSpy).toHaveBeenCalledWith('traceId', 'trace-1');
+    expect(appendSpy).toHaveBeenCalledWith('localMediaId', 'local-1');
+    expect(appendSpy).toHaveBeenCalledWith('persistedHash', 'persisted-hash');
+    expect(appendSpy).toHaveBeenCalledWith('size', '2048');
+    expect(appendSpy).toHaveBeenCalledWith('width', '1200');
+    expect(appendSpy).toHaveBeenCalledWith('height', '900');
+
+    appendSpy.mockRestore();
+  });
+
   it('uses the current backend server url when available', async () => {
     (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server.example.com');
     mockFetch.mockResolvedValueOnce({

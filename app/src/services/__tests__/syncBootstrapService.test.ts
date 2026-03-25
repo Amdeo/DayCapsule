@@ -333,6 +333,15 @@ describe('syncBootstrapService', () => {
             uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
             mimeType: 'image/jpeg',
             size: 2048,
+            metadata: {
+              localMediaId: 'bootstrap-local-media-1',
+              sourceHash: 'source-hash-1',
+              persistedHash: 'persisted-hash-1',
+              width: 1200,
+              height: 900,
+              createdAt: 1700000001000,
+              modifiedAt: 1700000001000,
+            },
           },
         ],
       },
@@ -340,6 +349,9 @@ describe('syncBootstrapService', () => {
     mockUploadFile.mockResolvedValueOnce({
       id: 'media-1',
       url: 'https://cdn.example.com/photo-1.jpg',
+      remoteHash: 'remote-hash-1',
+      validationStatus: 'healthy',
+      validationError: null,
     });
 
     const service = createSyncBootstrapService();
@@ -349,6 +361,17 @@ describe('syncBootstrapService', () => {
       '/media/upload',
       'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
       'file',
+      {
+        metadata: {
+          traceId: 'bootstrap-local-media-1',
+          localMediaId: 'bootstrap-local-media-1',
+          persistedHash: 'persisted-hash-1',
+          sourceHash: 'source-hash-1',
+          size: 2048,
+          width: 1200,
+          height: 900,
+        },
+      },
     );
     expect(DB.updateEntry).toHaveBeenNthCalledWith(
       1,
@@ -358,6 +381,11 @@ describe('syncBootstrapService', () => {
           expect.objectContaining({
             uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
             remoteUri: 'https://cdn.example.com/photo-1.jpg',
+            metadata: expect.objectContaining({
+              remoteHash: 'remote-hash-1',
+              integrityStatus: 'healthy',
+              integrityReason: null,
+            }),
           }),
         ],
       }),

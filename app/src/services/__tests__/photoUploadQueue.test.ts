@@ -3,6 +3,7 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import type { Entry } from '@/src/types/entry';
+import { logger } from '@/src/utils/logger';
 import { createPhotoUploadQueue } from '../photoUploadQueue';
 
 const makePhotoEntry = (overrides: Partial<Entry> = {}): Entry => ({
@@ -18,6 +19,9 @@ const makePhotoEntry = (overrides: Partial<Entry> = {}): Entry => ({
       mimeType: 'image/jpeg',
       size: 2048,
       metadata: {
+        localMediaId: 'local-media-1',
+        sourceHash: 'source-hash-1',
+        persistedHash: 'persisted-hash-1',
         width: 1200,
         height: 900,
         aspectRatio: 1200 / 900,
@@ -31,6 +35,9 @@ const makePhotoEntry = (overrides: Partial<Entry> = {}): Entry => ({
       mimeType: 'image/jpeg',
       size: 4096,
       metadata: {
+        localMediaId: 'local-media-2',
+        sourceHash: 'source-hash-2',
+        persistedHash: 'persisted-hash-2',
         width: 900,
         height: 1200,
         aspectRatio: 900 / 1200,
@@ -56,8 +63,20 @@ describe('photoUploadQueue', () => {
       markPendingUpload: jest.fn().mockResolvedValue(undefined),
       markPendingSync: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn()
-        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/photo_1.jpg' })
-        .mockResolvedValueOnce({ id: 'media-2', url: 'https://cdn/photo_2.jpg' }),
+        .mockResolvedValueOnce({
+          id: 'media-1',
+          url: 'https://cdn/photo_1.jpg',
+          remoteHash: 'remote-hash-1',
+          validationStatus: 'healthy',
+          validationError: null,
+        })
+        .mockResolvedValueOnce({
+          id: 'media-2',
+          url: 'https://cdn/photo_2.jpg',
+          remoteHash: 'remote-hash-2',
+          validationStatus: 'healthy',
+          validationError: null,
+        }),
       triggerSync: jest.fn().mockResolvedValue(undefined),
       onEntryUploading: jest.fn(),
       onEntryPendingUpload: jest.fn(),
@@ -69,11 +88,33 @@ describe('photoUploadQueue', () => {
     expect(queue.deps.markUploading).toHaveBeenCalledWith('photo-local-1');
     expect(queue.deps.uploadMedia).toHaveBeenNthCalledWith(
       1,
-      'file:///cache/media/photos/display/photo_1.jpg'
+      'file:///cache/media/photos/display/photo_1.jpg',
+      {
+        metadata: {
+          traceId: 'local-media-1',
+          localMediaId: 'local-media-1',
+          persistedHash: 'persisted-hash-1',
+          sourceHash: 'source-hash-1',
+          size: 2048,
+          width: 1200,
+          height: 900,
+        },
+      },
     );
     expect(queue.deps.uploadMedia).toHaveBeenNthCalledWith(
       2,
-      'file:///cache/media/photos/display/photo_2.jpg'
+      'file:///cache/media/photos/display/photo_2.jpg',
+      {
+        metadata: {
+          traceId: 'local-media-2',
+          localMediaId: 'local-media-2',
+          persistedHash: 'persisted-hash-2',
+          sourceHash: 'source-hash-2',
+          size: 4096,
+          width: 900,
+          height: 1200,
+        },
+      },
     );
     expect(queue.deps.markPendingSync).toHaveBeenCalledWith(
       'photo-local-1',
@@ -82,11 +123,21 @@ describe('photoUploadQueue', () => {
           uri: 'file:///cache/media/photos/display/photo_1.jpg',
           thumbnail: 'file:///cache/media/photos/thumbnails/thumb_1.jpg',
           remoteUri: 'https://cdn/photo_1.jpg',
+          metadata: expect.objectContaining({
+            remoteHash: 'remote-hash-1',
+            integrityStatus: 'healthy',
+            integrityReason: null,
+          }),
         }),
         expect.objectContaining({
           uri: 'file:///cache/media/photos/display/photo_2.jpg',
           thumbnail: 'file:///cache/media/photos/thumbnails/thumb_2.jpg',
           remoteUri: 'https://cdn/photo_2.jpg',
+          metadata: expect.objectContaining({
+            remoteHash: 'remote-hash-2',
+            integrityStatus: 'healthy',
+            integrityReason: null,
+          }),
         }),
       ],
     );
@@ -100,6 +151,20 @@ describe('photoUploadQueue', () => {
       ]),
     );
     expect(queue.deps.onEntryPendingUpload).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.upload.start',
+      expect.objectContaining({
+        localMediaId: 'local-media-1',
+        localUri: 'file:///cache/media/photos/display/photo_1.jpg',
+      }),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.upload.finish',
+      expect.objectContaining({
+        remoteUri: 'https://cdn/photo_1.jpg',
+        remoteHash: 'remote-hash-1',
+      }),
+    );
   });
 
   it('returns photo entry to pending_upload when any media upload fails', async () => {

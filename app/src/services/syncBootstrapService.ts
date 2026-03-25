@@ -1,6 +1,11 @@
 import * as DB from '@/src/database/operations';
+import type { UploadFileOptions, UploadFileResponse } from '@/src/services/apiClient';
 import { getApiClient } from '@/src/services/apiClient';
 import { createCloudMediaSyncService } from '@/src/services/cloudMediaSyncService';
+import {
+  buildPhotoUploadMetadata,
+  mergePhotoUploadResult,
+} from '@/src/services/photoIntegrityService';
 import { useSyncStore } from '@/src/store/syncStore';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -129,7 +134,7 @@ function countCloudRestoreMediaValidationTargets(entries: Entry[]): number {
 
 async function prepareEntryMediaForCloudBackup(
   entry: Entry,
-  uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>
+  uploadMedia: (localUri: string, options?: UploadFileOptions) => Promise<UploadFileResponse>
 ): Promise<MediaInfo[] | null> {
   if (!entry.media?.length || shouldSkipBootstrapMediaUpload(entry)) {
     return null;
@@ -153,12 +158,11 @@ async function prepareEntryMediaForCloudBackup(
       continue;
     }
 
-    const upload = await uploadMedia(item.uri);
-    changed = true;
-    preparedMedia.push({
-      ...item,
-      remoteUri: upload.url,
+    const upload = await uploadMedia(item.uri, {
+      metadata: buildPhotoUploadMetadata(item),
     });
+    changed = true;
+    preparedMedia.push(mergePhotoUploadResult(item, upload));
   }
 
   return changed ? preparedMedia : null;
@@ -225,7 +229,7 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
 
       const preparedMedia = await prepareEntryMediaForCloudBackup(
         entry,
-        (localUri) => client.uploadFile('/media/upload', localUri, 'file')
+        (localUri, options) => client.uploadFile('/media/upload', localUri, 'file', options)
       );
       if (preparedMedia) {
         await DB.updateEntry(entry.id, { media: preparedMedia });

@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-import type { MediaIntegrityStatus, PhotoRepairSource } from '@/src/types/entry';
+import type { MediaInfo, MediaIntegrityStatus, PhotoRepairSource } from '@/src/types/entry';
 
 export type PhotoFileFingerprint = {
   uri: string;
@@ -45,6 +45,24 @@ export type BuildPhotoLogPayloadInput = {
   downloadedHash?: string;
   integrityStatus?: MediaIntegrityStatus;
   integrityReason?: string;
+};
+
+export type PhotoUploadMetadata = {
+  traceId?: string;
+  localMediaId?: string;
+  persistedHash?: string;
+  sourceHash?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+};
+
+export type PhotoUploadResult = {
+  id: string;
+  url: string;
+  remoteHash?: string;
+  validationStatus?: string;
+  validationError?: string | null;
 };
 
 export async function fingerprintPhotoFile(uri: string): Promise<PhotoFileFingerprint> {
@@ -135,5 +153,39 @@ export function buildPhotoLogPayload(input: BuildPhotoLogPayloadInput): Record<s
     downloadedHash: input.downloadedHash,
     integrityStatus: input.integrityStatus,
     integrityReason: input.integrityReason,
+  };
+}
+
+export function buildPhotoUploadMetadata(
+  media: Pick<MediaInfo, 'size' | 'metadata'>
+): PhotoUploadMetadata | undefined {
+  const metadata: PhotoUploadMetadata = {
+    traceId: media.metadata?.localMediaId,
+    localMediaId: media.metadata?.localMediaId,
+    persistedHash: media.metadata?.persistedHash,
+    sourceHash: media.metadata?.sourceHash,
+    size: media.size > 0 ? media.size : undefined,
+    width: media.metadata?.width,
+    height: media.metadata?.height,
+  };
+
+  return Object.values(metadata).some((value) => value !== undefined && value !== null)
+    ? metadata
+    : undefined;
+}
+
+export function mergePhotoUploadResult(
+  media: MediaInfo,
+  upload: PhotoUploadResult
+): MediaInfo {
+  return {
+    ...media,
+    remoteUri: upload.url,
+    metadata: {
+      ...media.metadata,
+      remoteHash: upload.remoteHash,
+      integrityStatus: upload.validationStatus === 'upload_mismatch' ? 'upload_mismatch' : 'healthy',
+      integrityReason: upload.validationError ?? null,
+    },
   };
 }

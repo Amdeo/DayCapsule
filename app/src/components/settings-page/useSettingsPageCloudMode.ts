@@ -5,6 +5,7 @@ import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { buildCloudModeToggleFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { logger } from '@/src/utils/logger';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
+import { buildPhotoUploadMetadata } from '@/src/services/photoIntegrityService';
 import { getApiClient } from '@/src/services/apiClient';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import * as DB from '@/src/database/operations';
@@ -120,7 +121,9 @@ export function useSettingsPageCloudMode({
                       let mediaIds: string[] | undefined;
                       if (entry.media?.length) {
                         const uploads = await Promise.all(
-                          entry.media.map((media) => client.uploadFile('/media/upload', media.uri, 'file'))
+                          entry.media.map((media) => client.uploadFile('/media/upload', media.uri, 'file', {
+                            metadata: buildPhotoUploadMetadata(media),
+                          }))
                         );
                         mediaIds = uploads.map((upload) => upload.id);
                       }
@@ -185,7 +188,9 @@ export function useSettingsPageCloudMode({
                     let mediaIds: string[] | undefined;
                     if (entry.media?.length) {
                       const uploads = await Promise.all(
-                        entry.media.map((media) => client.uploadFile('/media/upload', media.uri, 'file'))
+                        entry.media.map((media) => client.uploadFile('/media/upload', media.uri, 'file', {
+                          metadata: buildPhotoUploadMetadata(media),
+                        }))
                       );
                       mediaIds = uploads.map((upload) => upload.id);
                     }

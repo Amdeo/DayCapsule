@@ -7,6 +7,10 @@ import type { Entry, EntryFilters } from '@/src/types/entry';
 import * as DB from './operations';
 import { ApiError, getApiClient } from '@/src/services/apiClient';
 import { MediaCacheService } from '@/src/services/mediaCacheService';
+import {
+  buildPhotoUploadMetadata,
+  mergePhotoUploadResult,
+} from '@/src/services/photoIntegrityService';
 import { logger } from '@/src/utils/logger';
 
 export interface DataSource {
@@ -73,12 +77,16 @@ export function createRemoteDataSource(): DataSource {
 
     addEntry: async (entry) => {
       let mediaIds: string[] | undefined;
+      let uploadedMedia = entry.media;
       if (entry.media?.length) {
         try {
           const uploads = await Promise.all(
-            entry.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+            entry.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file', {
+              metadata: buildPhotoUploadMetadata(m),
+            }))
           );
           mediaIds = uploads.map((u) => u.id);
+          uploadedMedia = entry.media.map((media, index) => mergePhotoUploadResult(media, uploads[index]));
         } catch (error) {
           logger.error('[RemoteDataSource] media-upload-failed:', error);
           if (error instanceof ApiError) {
@@ -97,17 +105,18 @@ export function createRemoteDataSource(): DataSource {
           recordingStatus: entry.recordingStatus,
           recordingDuration: entry.recordingDuration,
         });
-        if (created.media?.length && entry.media?.length) {
+        if (created.media?.length && uploadedMedia?.length) {
           created.media = created.media.map((media, index) => ({
             ...media,
-            uri: entry.media?.[index]?.uri ?? media.uri,
-            thumbnail: entry.media?.[index]?.thumbnail ?? media.thumbnail,
+            uri: uploadedMedia?.[index]?.uri ?? media.uri,
+            thumbnail: uploadedMedia?.[index]?.thumbnail ?? media.thumbnail,
             remoteUri: MediaCacheService.isRemoteUri(media.uri)
               ? MediaCacheService.normalizeRemoteUri(media.uri)
-              : media.remoteUri,
+              : (uploadedMedia?.[index]?.remoteUri ?? media.remoteUri),
             remoteThumbnail: MediaCacheService.isRemoteUri(media.thumbnail)
               ? MediaCacheService.normalizeRemoteUri(media.thumbnail!)
-              : media.remoteThumbnail,
+              : (uploadedMedia?.[index]?.remoteThumbnail ?? media.remoteThumbnail),
+            metadata: uploadedMedia?.[index]?.metadata,
           }));
         }
         return created;
@@ -138,7 +147,9 @@ export function createRemoteDataSource(): DataSource {
         let mediaIds: string[] | undefined;
         if (e.media?.length) {
           const uploads = await Promise.all(
-            e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file'))
+            e.media.map((m) => client.uploadFile('/media/upload', m.uri, 'file', {
+              metadata: buildPhotoUploadMetadata(m),
+            }))
           );
           mediaIds = uploads.map((u) => u.id);
         }
