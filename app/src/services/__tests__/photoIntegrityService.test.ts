@@ -28,7 +28,9 @@ import * as Crypto from 'expo-crypto';
 
 import {
   buildIntegrityDecision,
+  buildPhotoLogPayload,
   fingerprintPhotoFile,
+  mergePhotoUploadResult,
 } from '../photoIntegrityService';
 
 const mockReadAsStringAsync = FileSystem.readAsStringAsync as jest.Mock;
@@ -56,6 +58,47 @@ describe('photoIntegrityService', () => {
       width: 1200,
       height: 900,
       mimeType: 'image/jpeg',
+    }));
+  });
+
+  it('builds a log payload without forcing null-only optional fields', () => {
+    expect(buildPhotoLogPayload({
+      entryId: 'entry-1',
+      integrityReason: undefined,
+    })).toEqual(expect.objectContaining({
+      entryId: 'entry-1',
+      integrityReason: undefined,
+    }));
+  });
+
+  it('merges upload results while preserving required metadata timestamps', () => {
+    const merged = mergePhotoUploadResult(
+      {
+        uri: 'file:///persisted.jpg',
+        mimeType: 'image/jpeg',
+        size: 2048,
+        metadata: {
+          createdAt: 1,
+          modifiedAt: 2,
+          integrityStatus: 'repair_pending',
+          integrityReason: 'waiting',
+        },
+      },
+      {
+        id: 'media-1',
+        url: 'https://cdn.example.com/persisted.jpg',
+        remoteHash: 'remote-hash',
+        validationStatus: 'healthy',
+        validationError: null,
+      }
+    );
+
+    expect(merged.metadata).toEqual(expect.objectContaining({
+      createdAt: 1,
+      modifiedAt: 2,
+      remoteHash: 'remote-hash',
+      integrityStatus: 'healthy',
+      integrityReason: undefined,
     }));
   });
 

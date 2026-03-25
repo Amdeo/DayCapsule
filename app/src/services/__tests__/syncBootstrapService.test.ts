@@ -425,7 +425,7 @@ describe('syncBootstrapService', () => {
             metadata: expect.objectContaining({
               remoteHash: 'remote-hash-1',
               integrityStatus: 'healthy',
-              integrityReason: null,
+              integrityReason: undefined,
             }),
           }),
         ],

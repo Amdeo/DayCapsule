@@ -8,7 +8,7 @@ import {
   fingerprintPhotoFile,
   type PhotoFileFingerprint,
 } from '@/src/services/photoIntegrityService';
-import type { Entry, MediaInfo } from '@/src/types/entry';
+import type { Entry, MediaInfo, MediaIntegrityStatus } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
 const REPAIR_PENDING_REASON = 'waiting for sync confirmation after user-approved repair';
@@ -104,7 +104,7 @@ function buildRepairLogPayload(
   fingerprint?: PhotoFileFingerprint,
   remoteUri?: string,
   remoteHash?: string,
-  integrityStatus?: MediaInfo['metadata']['integrityStatus'],
+  integrityStatus?: MediaIntegrityStatus,
   integrityReason?: string | null
 ) {
   return buildPhotoLogPayload({

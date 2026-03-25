@@ -44,7 +44,7 @@ export type BuildPhotoLogPayloadInput = {
   remoteHash?: string;
   downloadedHash?: string;
   integrityStatus?: MediaIntegrityStatus;
-  integrityReason?: string;
+  integrityReason?: string | null | undefined;
 };
 
 export type PhotoUploadMetadata = {
@@ -67,7 +67,7 @@ export type PhotoUploadResult = {
 
 export async function fingerprintPhotoFile(uri: string): Promise<PhotoFileFingerprint> {
   const fileInfo = await FileSystem.getInfoAsync(uri);
-  const size = typeof fileInfo.size === 'number' ? fileInfo.size : 0;
+  const size = fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : 0;
 
   if (!fileInfo.exists || size <= 0) {
     throw new Error(`Photo file is missing or empty: ${uri}`);
@@ -181,11 +181,13 @@ export function mergePhotoUploadResult(
   return {
     ...media,
     remoteUri: upload.url,
-    metadata: {
-      ...media.metadata,
-      remoteHash: upload.remoteHash,
-      integrityStatus: upload.validationStatus === 'upload_mismatch' ? 'upload_mismatch' : 'healthy',
-      integrityReason: upload.validationError ?? null,
-    },
+    metadata: media.metadata
+      ? {
+          ...media.metadata,
+          remoteHash: upload.remoteHash,
+          integrityStatus: upload.validationStatus === 'upload_mismatch' ? 'upload_mismatch' : 'healthy',
+          integrityReason: upload.validationError ?? undefined,
+        }
+      : undefined,
   };
 }

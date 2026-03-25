@@ -126,7 +126,7 @@ describe('photoUploadQueue', () => {
           metadata: expect.objectContaining({
             remoteHash: 'remote-hash-1',
             integrityStatus: 'healthy',
-            integrityReason: null,
+            integrityReason: undefined,
           }),
         }),
         expect.objectContaining({
@@ -136,7 +136,7 @@ describe('photoUploadQueue', () => {
           metadata: expect.objectContaining({
             remoteHash: 'remote-hash-2',
             integrityStatus: 'healthy',
-            integrityReason: null,
+            integrityReason: undefined,
           }),
         }),
       ],
