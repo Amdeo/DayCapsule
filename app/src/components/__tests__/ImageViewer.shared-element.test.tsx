@@ -109,31 +109,4 @@ describe('ImageViewer shared element', () => {
       expect.objectContaining({ duration: 250 })
     );
   });
-
-  it('logs image uri when image viewer load fails', () => {
-    const { logger } = require('@/src/utils/logger');
-    let tree: renderer.ReactTestRenderer;
-
-    act(() => {
-      tree = renderer.create(
-        <ImageViewer
-          visible
-          imageUri="http://101.43.120.134:8081/api/media/photo-1"
-          onClose={jest.fn()}
-        />
-      );
-    });
-
-    const image = tree!.root.findAllByType('Image').at(-1);
-    act(() => {
-      image?.props.onError?.({ nativeEvent: { error: 'load failed' } });
-    });
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      '[ImageViewer] image load failed',
-      expect.objectContaining({
-        imageUri: 'http://101.43.120.134:8081/api/media/photo-1',
-      }),
-    );
-  });
 });

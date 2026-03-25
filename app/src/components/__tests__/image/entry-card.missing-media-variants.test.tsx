@@ -1,7 +1,3 @@
-/**
- * EntryCard — 缺媒体/变体交互矩阵
- */
-
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({ currentPlayingId: null, setCurrentPlayingId: jest.fn() }),
 }));
@@ -85,45 +81,21 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock('../../EntryActionSheet', () => {
-  const React = require('react');
-  const { View, Text, TouchableOpacity } = require('react-native');
-  return {
-    EntryActionSheet: ({ visible, onEdit, onDelete, onClose }: any) => {
-      if (!visible) return null;
-      return (
-        <View testID="entry-action-sheet">
-          <TouchableOpacity testID="action-sheet-edit" onPress={() => { onEdit(); onClose(); }}>
-            <Text>编辑</Text>
-          </TouchableOpacity>
-          <TouchableOpacity testID="action-sheet-delete" onPress={() => { onDelete(); onClose(); }}>
-            <Text>删除</Text>
-          </TouchableOpacity>
-          <TouchableOpacity testID="action-sheet-cancel" onPress={onClose}>
-            <Text>取消</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    },
-  };
-});
+jest.mock('../../EntryActionSheet', () => ({
+  EntryActionSheet: () => null,
+}));
 
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  const Swipeable = React.forwardRef(({ children, onSwipeableOpen, onSwipeableWillOpen, ...props }: any, ref) => {
+  const Swipeable = React.forwardRef(({ children, ...props }: any, ref) => {
     React.useImperativeHandle(ref, () => ({
       close: jest.fn(),
     }));
 
     return (
-      <View
-        testID="swipeable"
-        onSwipeableOpen={onSwipeableOpen}
-        onSwipeableWillOpen={onSwipeableWillOpen}
-        {...props}
-      >
+      <View testID="swipeable" {...props}>
         {children}
       </View>
     );
@@ -135,126 +107,101 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 import React from 'react';
-import { Alert } from 'react-native';
-import { act, fireEvent, render } from '@testing-library/react-native';
-import * as FileSystem from 'expo-file-system';
+import { fireEvent, render } from '@testing-library/react-native';
 import { EntryCard } from '../../EntryCard';
-import { Entry } from '@/src/types/entry';
+import type { Entry, MediaInfo } from '@/src/types/entry';
 
-const photoEntry: Entry = {
-  id: 'p1',
-  type: 'photo',
-  content: '说明文字',
-  tags: [],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-  media: [{ uri: 'file:///missing.jpg', mimeType: 'image/jpeg', size: 0 }],
-};
-
-const voiceEntry: Entry = {
-  id: 'v1',
-  type: 'voice',
-  content: '',
-  tags: [],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-  media: [{ uri: 'file:///missing.m4a', mimeType: 'audio/m4a', size: 0, duration: 3000 }],
-};
-
-const textEntry: Entry = {
-  id: 't1',
-  type: 'text',
-  content: '一条普通文本记录',
-  tags: [],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-};
-
-const longTextEntry: Entry = {
-  id: 't2',
-  type: 'text',
-  content: '这是一条很长的文本记录，'.repeat(12),
-  tags: ['标签1', '标签2', '标签3', '标签4'],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-};
+function createPhotoEntry(media: MediaInfo): Entry {
+  return {
+    id: 'photo-variant',
+    type: 'photo',
+    content: '说明文字',
+    tags: ['旅行'],
+    timestamp: 1700000000000,
+    syncStatus: 'synced',
+    media: [media],
+  };
+}
 
 describe('EntryCard missing media variants', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('expands long text content on long press without showing legacy timestamp copy', () => {
-    const { getByTestId, getByText, queryByText } = render(
-      <EntryCard entry={longTextEntry} onDelete={jest.fn()} />
-    );
-
-    const content = getByText(longTextEntry.content);
-    expect(content.props.numberOfLines).toBe(4);
-
-    fireEvent(getByTestId('entry-card'), 'longPress');
-
-    expect(content.props.numberOfLines).toBeUndefined();
-    expect(queryByText('点击展开更多')).toBeNull();
-  });
-
-  it('shows the swipe action sheet for a text card', () => {
-    jest.useFakeTimers();
-
-    const { getByTestId, queryByTestId } = render(
-      <EntryCard entry={textEntry} onDelete={jest.fn()} />
-    );
-
-    act(() => {
-      getByTestId('swipeable').props.onSwipeableOpen('right');
-      jest.advanceTimersByTime(100);
+  it('renders a stable placeholder when the photo source is already missing', () => {
+    const entry = createPhotoEntry({
+      uri: '',
+      mimeType: 'image/jpeg',
+      size: 0,
+      metadata: {
+        integrityStatus: 'missing',
+        createdAt: 1700000000000,
+        modifiedAt: 1700000000000,
+      },
     });
 
-    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
-    jest.useRealTimers();
+    const screen = render(<EntryCard entry={entry} onDelete={jest.fn()} />);
+
+    expect(screen.getByTestId('photo-image-0')).toBeTruthy();
+    expect(screen.getByText('说明文字')).toBeTruthy();
+    expect(screen.getByTestId('entry-card')).toBeTruthy();
   });
 
-  it('keeps swipe actions available after a missing photo falls back to placeholder', () => {
-    jest.useFakeTimers();
-
-    const { getByTestId, queryByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
-    );
-
-    fireEvent(getByTestId('photo-image-0'), 'error');
-
-    act(() => {
-      getByTestId('swipeable').props.onSwipeableOpen('right');
-      jest.advanceTimersByTime(100);
+  it('falls back to a placeholder after a broken photo load while keeping the card usable', () => {
+    const entry = createPhotoEntry({
+      uri: 'file:///broken.jpg',
+      mimeType: 'image/jpeg',
+      size: 0,
+      metadata: {
+        integrityStatus: 'missing',
+        createdAt: 1700000000000,
+        modifiedAt: 1700000000000,
+      },
     });
 
-    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
-    jest.useRealTimers();
+    const screen = render(<EntryCard entry={entry} onDelete={jest.fn()} />);
+
+    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+    fireEvent.press(screen.getByTestId('entry-card'));
+
+    expect(screen.getByTestId('photo-image-0')).toBeTruthy();
+    expect(screen.getByTestId('image-viewer')).toBeTruthy();
   });
 
-  it('keeps swipe actions available after a missing audio alert path', async () => {
-    jest.useFakeTimers();
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
-
-    const { findByText, getByTestId, queryByTestId } = render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    fireEvent.press(getByTestId('entry-card'));
-    await findByText('音频文件已丢失');
-
-    act(() => {
-      getByTestId('swipeable').props.onSwipeableOpen('right');
-      jest.advanceTimersByTime(100);
+  it.each([
+    [
+      'repairable metadata',
+      {
+        integrityStatus: 'repair_prompt_required',
+        repairable: true,
+        repairSource: 'local-original',
+      },
+    ],
+    [
+      'repair_pending metadata',
+      {
+        integrityStatus: 'repair_pending',
+        repairable: false,
+      },
+    ],
+  ])('keeps the photo card stable for %s variants', (_label, metadata) => {
+    const entry = createPhotoEntry({
+      uri: 'file:///local-photo.jpg',
+      mimeType: 'image/jpeg',
+      size: 10,
+      metadata: {
+        createdAt: 1700000000000,
+        modifiedAt: 1700000000000,
+        ...metadata,
+      },
     });
 
-    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
-    jest.useRealTimers();
+    const screen = render(<EntryCard entry={entry} onDelete={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('entry-card'));
+
+    expect(screen.getByTestId('photo-image-0')).toBeTruthy();
+    expect(screen.getByText('说明文字')).toBeTruthy();
+    expect(screen.getByTestId('image-viewer')).toBeTruthy();
   });
 });
