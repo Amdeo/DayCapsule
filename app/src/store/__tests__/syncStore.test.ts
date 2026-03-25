@@ -1,6 +1,8 @@
 import { Storage } from '@/src/utils/storage';
 import { useSyncStore } from '../syncStore';
 
+let mockStorage = new Map<string, string>();
+
 jest.mock('@/src/utils/logger', () => ({
   logger: {
     log: jest.fn(),
@@ -13,9 +15,13 @@ jest.mock('@/src/utils/logger', () => ({
 
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
-    getString: jest.fn(async () => null),
-    setString: jest.fn(async () => undefined),
-    delete: jest.fn(async () => undefined),
+    getString: jest.fn(async (key: string) => mockStorage.get(key) ?? null),
+    setString: jest.fn(async (key: string, value: string) => {
+      mockStorage.set(key, value);
+    }),
+    delete: jest.fn(async (key: string) => {
+      mockStorage.delete(key);
+    }),
   },
   withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));
@@ -38,12 +44,21 @@ const scopedKey = (scope: string, key: string) => `${scope}:${key}`;
 describe('syncStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockStorage = new Map<string, string>();
+    (Storage.getString as jest.Mock).mockImplementation(async (key: string) => mockStorage.get(key) ?? null);
+    (Storage.setString as jest.Mock).mockImplementation(async (key: string, value: string) => {
+      mockStorage.set(key, value);
+    });
+    (Storage.delete as jest.Mock).mockImplementation(async (key: string) => {
+      mockStorage.delete(key);
+    });
     (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
     useSyncStore.setState({
       syncCursor: 0,
       lastSyncAt: null,
       lastSyncError: null,
       initialSyncState: 'idle',
+      lastMediaValidationSummary: null,
       isSyncing: false,
       isLoaded: false,
     });
@@ -125,5 +140,59 @@ describe('syncStore', () => {
 
     await useSyncStore.getState().markSyncFinished();
     expect(useSyncStore.getState().isSyncing).toBe(false);
+  });
+
+  it('loads and resets the last media validation summary', async () => {
+    const summary = {
+      status: 'partial' as const,
+      total: 3,
+      downloaded: 2,
+      missing: 1,
+      failed: 0,
+      lastError: 'missing file',
+      lastValidatedAt: 1234,
+    };
+
+    await useSyncStore.getState().setMediaValidationSummary({
+      ...summary,
+    });
+
+    expect(
+      await Storage.getString(scopedKey(SERVER_A_SCOPE, 'cloudSync:lastMediaValidationSummary'))
+    ).toBe(JSON.stringify(summary));
+
+    await useSyncStore.getState().load();
+
+    expect(useSyncStore.getState().lastMediaValidationSummary).toEqual(summary);
+  });
+
+  it('clears the last media validation summary on reset', async () => {
+    await useSyncStore.getState().setMediaValidationSummary({
+      status: 'success',
+      total: 1,
+      downloaded: 1,
+      missing: 0,
+      failed: 0,
+      lastError: null,
+      lastValidatedAt: 5678,
+    });
+
+    await useSyncStore.getState().reset();
+
+    expect(useSyncStore.getState().lastMediaValidationSummary).toBeNull();
+    expect(Storage.delete).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'cloudSync:lastMediaValidationSummary')
+    );
+  });
+
+  it.each([
+    ['[]', 'an array'],
+    [JSON.stringify({ status: 'success' }), 'an incomplete object'],
+  ])('treats malformed persisted media validation summaries as null: %s', async (raw) => {
+    mockStorage.set(scopedKey(SERVER_A_SCOPE, 'cloudSync:lastMediaValidationSummary'), raw);
+
+    await useSyncStore.getState().load();
+
+    expect(useSyncStore.getState().lastMediaValidationSummary).toBeNull();
   });
 });
