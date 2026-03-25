@@ -88,16 +88,19 @@ export class BackupService {
     // 构建导出条目，同时将媒体文件写入 zip
     const exportEntries = await Promise.all(
       entries.map(async (e) => {
-        let mediaExport: Record<string, unknown> | undefined;
+        const mediaExports: Record<string, unknown>[] = [];
 
-        if (e.media?.[0]?.uri) {
+        for (const mediaItem of e.media ?? []) {
+          if (!mediaItem.uri) continue;
+
           try {
             const resolvedUri =
               e.type === 'voice'
-                ? VoiceService.resolveAudioUri(e.media?.[0]?.uri)
-                : PhotoService.resolvePhotoUri(e.media?.[0]?.uri);
+                ? VoiceService.resolveAudioUri(mediaItem.uri)
+                : PhotoService.resolvePhotoUri(mediaItem.uri);
 
             const fileInfo = await FileSystem.getInfoAsync(resolvedUri);
+
             if (fileInfo.exists) {
               const fname = resolvedUri.split('/').pop()!;
               const base64 = await FileSystem.readAsStringAsync(resolvedUri, {
@@ -105,24 +108,22 @@ export class BackupService {
               });
               zip.file(`media/${fname}`, base64, { base64: true });
               mediaFiles.push(fname);
-
-              mediaExport = {
-                mimeType: e.media?.[0]?.mimeType,
-                size: e.media?.[0]?.size,
-                duration: e.media?.[0]?.duration,
+              mediaExports.push({
+                ...mediaItem,
                 relativeUri: `media/${fname}`,
-              };
+              });
+            } else if (mediaItem.remoteUri) {
+              // 本地文件不存在（云端恢复的 entry），保留完整 mediaItem 含 remoteUri
+              mediaExports.push({ ...mediaItem });
             } else {
-              mediaExport = {
-                mimeType: e.media?.[0]?.mimeType,
-                size: e.media?.[0]?.size,
-              };
+              mediaExports.push({ mimeType: mediaItem.mimeType, size: mediaItem.size });
             }
           } catch {
-            mediaExport = {
-              mimeType: e.media?.[0]?.mimeType,
-              size: e.media?.[0]?.size,
-            };
+            if (mediaItem.remoteUri) {
+              mediaExports.push({ ...mediaItem });
+            } else {
+              mediaExports.push({ mimeType: mediaItem.mimeType, size: mediaItem.size });
+            }
           }
         }
 
@@ -133,7 +134,7 @@ export class BackupService {
           tags: e.tags ?? [],
           timestamp: e.timestamp,
           transcription: e.transcription,
-          media: mediaExport,
+          media: mediaExports.length > 0 ? mediaExports : undefined,
         };
       })
     );

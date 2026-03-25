@@ -297,6 +297,70 @@ describe('BackupService', () => {
     });
   });
 
+  // ── Bug 4: 多图备份 ──────────────────────────────────────────────────────────
+
+  describe('multi-media backup', () => {
+    it('backs up all media items, not just the first', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+      FileSystem.getInfoAsync.mockResolvedValue({ exists: true, size: 500 });
+      FileSystem.readAsStringAsync.mockResolvedValue('base64data');
+
+      const entries: Entry[] = [
+        {
+          id: 'e1',
+          type: 'photo',
+          content: '',
+          timestamp: Date.now(),
+          syncStatus: 'synced',
+          syncOp: 'update',
+          media: [
+            { uri: 'file:///app/media/photos/original/photo1.jpg', mimeType: 'image/jpeg', size: 500 },
+            { uri: 'file:///app/media/photos/original/photo2.jpg', mimeType: 'image/jpeg', size: 500 },
+          ],
+        },
+      ];
+
+      await BackupService.createBackup(entries);
+
+      const mediaCalls = mockZipInstance.file.mock.calls.filter(
+        ([name]: [string]) => (name as string).startsWith('media/')
+      );
+      expect(mediaCalls).toHaveLength(2);
+    });
+
+    it('preserves remoteUri in export when local file does not exist', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+      FileSystem.getInfoAsync.mockResolvedValue({ exists: false });
+
+      const entries: Entry[] = [
+        {
+          id: 'e2',
+          type: 'photo',
+          content: '',
+          timestamp: Date.now(),
+          syncStatus: 'synced',
+          syncOp: 'update',
+          media: [
+            {
+              uri: 'https://cdn.example.com/photo.jpg',
+              remoteUri: 'https://cdn.example.com/photo.jpg',
+              mimeType: 'image/jpeg',
+              size: 500,
+            },
+          ],
+        },
+      ];
+
+      await BackupService.createBackup(entries);
+
+      const dataJsonCall = mockZipInstance.file.mock.calls.find(
+        ([name]: [string]) => name === 'data.json'
+      );
+      const data = JSON.parse(dataJsonCall[1] as string);
+      expect(data.entries[0].media[0].remoteUri).toBe('https://cdn.example.com/photo.jpg');
+    });
+  });
+
   describe('android export helpers', () => {
     it('iOS 上应通过系统分享导出备份', async () => {
       (Platform as { OS: string }).OS = 'ios';
