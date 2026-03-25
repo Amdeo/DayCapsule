@@ -9,6 +9,8 @@ import (
 
 	"github.com/daycapsule/backend/internal/models"
 	"github.com/daycapsule/backend/internal/repository"
+	"github.com/daycapsule/backend/pkg/utils"
+	"go.uber.org/zap"
 )
 
 // SyncV2Service: 基于 changeId cursor 的增量同步服务（独立于备份 /sync/upload|download）。
@@ -26,11 +28,12 @@ type syncV2ChangeStore interface {
 }
 
 type SyncV2Service struct {
-	entryRepo    syncV2EntryStore
-	changeRepo   syncV2ChangeStore
-	entryRepoDB  *repository.EntryRepository
-	changeRepoDB *repository.ChangeRepository
-	mediaRepo    *repository.MediaRepository
+	entryRepo          syncV2EntryStore
+	changeRepo         syncV2ChangeStore
+	entryRepoDB        *repository.EntryRepository
+	changeRepoDB       *repository.ChangeRepository
+	mediaRepo          *repository.MediaRepository
+	entryDeleteService *EntryDeleteService
 }
 
 func NewSyncV2Service(entryRepo *repository.EntryRepository, changeRepo *repository.ChangeRepository, mediaRepo ...*repository.MediaRepository) *SyncV2Service {
@@ -40,6 +43,7 @@ func NewSyncV2Service(entryRepo *repository.EntryRepository, changeRepo *reposit
 	if len(mediaRepo) > 0 {
 		svc.mediaRepo = mediaRepo[0]
 	}
+	svc.entryDeleteService = NewEntryDeleteService(entryRepo, svc.mediaRepo)
 	return svc
 }
 
@@ -466,15 +470,26 @@ func (s *SyncV2Service) applyUpdateTx(
 	}
 }
 
-func (s *SyncV2Service) applyDeleteTx(ctx context.Context, userID, changeID string, entry *models.Entry) (SyncResult, error) {
+func (s *SyncV2Service) applyDeleteTx(ctx context.Context, userID, changeID string, entry *models.Entry) (result SyncResult, retErr error) {
 	tx, err := s.entryRepoDB.BeginTx(ctx)
 	if err != nil {
 		return SyncResult{}, err
 	}
 	committed := false
+	var stagedFiles []stagedMediaFile
 	defer func() {
 		if !committed {
 			_ = tx.Rollback()
+		}
+		if !committed && s.entryDeleteService != nil {
+			if restoreErr := s.entryDeleteService.restoreStagedMediaFiles(stagedFiles); restoreErr != nil {
+				utils.GetLogger().Warn("restore staged media files after sync delete rollback failed", zap.Error(restoreErr))
+				if retErr != nil {
+					retErr = errors.Join(retErr, restoreErr)
+				} else {
+					retErr = restoreErr
+				}
+			}
 		}
 	}()
 
@@ -489,16 +504,33 @@ func (s *SyncV2Service) applyDeleteTx(ctx context.Context, userID, changeID stri
 			EntryID:  entry.ID,
 		}, nil
 	}
-	if err := s.entryRepoDB.DeleteTx(tx, userID, entry.ID); err != nil {
-		return SyncResult{}, err
+	var deletedFiles []*models.MediaFile
+	if s.entryDeleteService != nil {
+		deletedFiles, err = s.entryDeleteService.DeleteTx(tx, userID, entry.ID)
+		if err != nil {
+			return SyncResult{}, err
+		}
+	} else {
+		if err := s.entryRepoDB.DeleteTx(tx, userID, entry.ID); err != nil {
+			return SyncResult{}, err
+		}
 	}
 	if _, err := s.changeRepoDB.AppendChangeTx(ctx, tx, userID, "delete", existing); err != nil {
 		return SyncResult{}, err
+	}
+	if s.entryDeleteService != nil {
+		stagedFiles, err = s.entryDeleteService.stageMediaFiles(deletedFiles)
+		if err != nil {
+			return SyncResult{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return SyncResult{}, err
 	}
 	committed = true
+	if s.entryDeleteService != nil {
+		s.entryDeleteService.cleanupStagedMediaFiles(stagedFiles)
+	}
 	return SyncResult{
 		ChangeID: changeID,
 		Status:   "applied",

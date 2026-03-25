@@ -386,6 +386,142 @@ func TestSyncV2Service_AppendsChangeLogForAppliedDelete(t *testing.T) {
 	}
 }
 
+func TestSyncV2Service_AppliedDeleteCascadesMediaRowsAndFiles(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-delete-media@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	changeRepo := repository.NewChangeRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	existing := &models.Entry{
+		ID:         "entry-delete-media-1",
+		Type:       "photo",
+		Content:    "delete me",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC),
+	}
+	if _, err := entryRepo.InsertFromSync(user.ID, existing); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+
+	mediaPath := createTestMediaFile(t, t.TempDir(), "sync-delete-photo.jpg")
+	media, err := mediaRepo.Create(user.ID, "sync-delete-photo.jpg", "image/jpeg", mediaPath, 1024)
+	if err != nil {
+		t.Fatalf("create media: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(media.ID, "entry-delete-media-1"); err != nil {
+		t.Fatalf("link media: %v", err)
+	}
+
+	svc := NewSyncV2Service(entryRepo, changeRepo, mediaRepo)
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "local-delete-media-1",
+				Op:       "delete",
+				Entry: models.Entry{
+					ID: "entry-delete-media-1",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied delete result, got %#v", view.Results)
+	}
+	if got := countEntryChangesForEntry(t, db, user.ID, "entry-delete-media-1"); got != 1 {
+		t.Fatalf("expected one change log for applied delete, got %d", got)
+	}
+
+	entry, err := entryRepo.GetByID(user.ID, "entry-delete-media-1")
+	if err != nil {
+		t.Fatalf("get entry after delete: %v", err)
+	}
+	if entry != nil {
+		t.Fatalf("expected entry to be deleted, got %#v", entry)
+	}
+	assertMediaFileDeleted(t, mediaRepo, media.ID)
+	assertPathMissing(t, mediaPath)
+}
+
+func TestSyncV2Service_AppliedDeleteFallsBackWhenEntryDeleteServiceIsNil(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-delete-fallback@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	changeRepo := repository.NewChangeRepository(db)
+	existing := &models.Entry{
+		ID:         "entry-delete-fallback-1",
+		Type:       "text",
+		Content:    "delete me",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  time.Date(2026, 3, 22, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2026, 3, 22, 8, 5, 0, 0, time.UTC),
+	}
+	if _, err := entryRepo.InsertFromSync(user.ID, existing); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+
+	svc := NewSyncV2Service(entryRepo, changeRepo)
+	svc.entryDeleteService = nil
+
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "local-delete-fallback-1",
+				Op:       "delete",
+				Entry: models.Entry{
+					ID: "entry-delete-fallback-1",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied delete result, got %#v", view.Results)
+	}
+	entry, err := entryRepo.GetByID(user.ID, "entry-delete-fallback-1")
+	if err != nil {
+		t.Fatalf("get entry after delete: %v", err)
+	}
+	if entry != nil {
+		t.Fatalf("expected entry to be deleted, got %#v", entry)
+	}
+}
+
 func TestSyncV2Service_DoesNotAppendChangeLogForConflictedUpdate(t *testing.T) {
 	db := setupSyncV2TestDB(t)
 	t.Cleanup(func() {
