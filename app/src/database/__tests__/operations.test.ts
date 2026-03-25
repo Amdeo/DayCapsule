@@ -487,6 +487,98 @@ describe('database/operations', () => {
       await addEntryPromise;
     });
 
+    it('写入 media_json 时应该保留两张图片而不是只写首图', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+      ]);
+
+      await addEntry({
+        type: 'photo',
+        content: '',
+        syncStatus: 'pending_upload',
+        media: [
+          {
+            uri: 'file:///cache/photo-1.jpg',
+            thumbnail: 'file:///cache/thumb-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+          },
+          {
+            uri: 'file:///cache/photo-2.jpg',
+            thumbnail: 'file:///cache/thumb-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 200,
+          },
+        ],
+      });
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(JSON.parse(params[5])).toHaveLength(2);
+    });
+
+    it('新环境中写入两张图片后重新读取仍应保留两张', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'sync_status' },
+      ]);
+
+      const created = await addEntry({
+        type: 'photo',
+        content: '',
+        syncStatus: 'pending_upload',
+        media: [
+          {
+            uri: 'file:///cache/photo-1.jpg',
+            thumbnail: 'file:///cache/thumb-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+          },
+          {
+            uri: 'file:///cache/photo-2.jpg',
+            thumbnail: 'file:///cache/thumb-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 200,
+          },
+        ],
+      });
+
+      const [, insertParams] = mockDb.runAsync.mock.calls[0];
+      mockDb.getFirstAsync.mockResolvedValueOnce({
+        id: created.id,
+        type: 'photo',
+        content: '',
+        timestamp: created.timestamp,
+        tags: null,
+        media_json: insertParams[5],
+        sync_status: 'pending_upload',
+        sync_op: 'update',
+        updated_at: created.timestamp,
+      });
+
+      const reloaded = await getEntryById(created.id);
+
+      expect(reloaded?.media).toHaveLength(2);
+      expect(reloaded?.media?.[0]).toMatchObject({
+        uri: 'file:///cache/photo-1.jpg',
+        thumbnail: 'file:///cache/thumb-1.jpg',
+      });
+      expect(reloaded?.media?.[1]).toMatchObject({
+        uri: 'file:///cache/photo-2.jpg',
+        thumbnail: 'file:///cache/thumb-2.jpg',
+      });
+    });
+
     it('写入 media_json 时应该同时持久化 sync_status', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },

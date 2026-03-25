@@ -19,13 +19,16 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import { getCurrentServerUrlSync } from '@/src/services/backendEnvironmentService';
-import { getDatabaseName, openDatabase, resetDatabase } from '../sqlite';
+import { getDatabaseName, initDatabase, openDatabase, resetDatabase } from '../sqlite';
 
 describe('sqlite environment isolation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
-    mockOpenDatabaseSync.mockImplementation((name: string) => ({ name }));
+    mockOpenDatabaseSync.mockImplementation((name: string) => ({
+      name,
+      execAsync: jest.fn().mockResolvedValue(undefined),
+    }));
     resetDatabase();
   });
 
@@ -42,5 +45,14 @@ describe('sqlite environment isolation', () => {
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(1, 'MemoryCapsule-env_https_server_a_example_com.db');
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(2, 'MemoryCapsule-env_https_server_b_example_com.db');
     expect(dbA).not.toBe(dbB);
+  });
+
+  it('creates entries table with media_json in the base schema', async () => {
+    await initDatabase();
+
+    const db = openDatabase() as { execAsync: jest.Mock };
+    const createEntriesSql = db.execAsync.mock.calls[0][0] as string;
+
+    expect(createEntriesSql).toContain('media_json TEXT');
   });
 });

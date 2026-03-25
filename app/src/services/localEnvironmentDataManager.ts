@@ -7,6 +7,7 @@ import {
 } from '@/src/services/backendEnvironmentService';
 import { resetApiClient } from '@/src/services/apiClient';
 import { initDatabase, resetDatabase } from '@/src/database/sqlite';
+import { migrateToMediaJson } from '@/src/database/migration';
 import { ensureDirectories } from '@/src/utils/fileSystem';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSyncStore } from '@/src/store/syncStore';
@@ -34,6 +35,7 @@ const initializeEnvironmentRuntime = async (): Promise<void> => {
   if (!databaseReady) {
     throw new Error('初始化数据库失败');
   }
+  await migrateToMediaJson();
   await ensureDirectories();
 };
 

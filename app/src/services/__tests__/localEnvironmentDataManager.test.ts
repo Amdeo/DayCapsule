@@ -18,6 +18,11 @@ jest.mock('@/src/database/sqlite', () => ({
   initDatabase: () => mockInitDatabase(),
 }));
 
+const mockMigrateToMediaJson = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/src/database/migration', () => ({
+  migrateToMediaJson: () => mockMigrateToMediaJson(),
+}));
+
 const mockEnsureDirectories = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/src/utils/fileSystem', () => ({
   ensureDirectories: () => mockEnsureDirectories(),
@@ -84,6 +89,7 @@ describe('localEnvironmentDataManager', () => {
     expect(mockResetApiClient).toHaveBeenCalledTimes(1);
     expect(mockResetDatabase).toHaveBeenCalledTimes(1);
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
+    expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
     expect(mockEnsureDirectories).toHaveBeenCalledTimes(1);
     expect(mockAuthLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockSettingsLoad).toHaveBeenCalledTimes(1);

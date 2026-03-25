@@ -45,14 +45,73 @@ jest.mock('@/src/utils/logger', () => ({
   },
 }));
 
-import { migrateCloudSyncCoreColumns, migrateSyncStatusColumn } from '../migration';
+import { migrateCloudSyncCoreColumns, migrateSyncStatusColumn, migrateToMediaJson } from '../migration';
 
 describe('database/migration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockMmkvState.clear();
+    mockDb.getAllAsync.mockReset();
+    mockDb.runAsync.mockReset();
+    mockInvalidateColumnCache.mockReset();
     mockDb.getAllAsync.mockResolvedValue([]);
     mockDb.runAsync.mockResolvedValue(undefined);
+  });
+
+  it('应该在标记已迁移时仍补齐缺失的 media_json 列', async () => {
+    mockMmkvState.set('media_json_migrated', 'true');
+    mockDb.getAllAsync
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'media_uri' },
+      ])
+      .mockResolvedValueOnce([]);
+
+    await migrateToMediaJson();
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      `ALTER TABLE entries ADD COLUMN media_json TEXT`
+    );
+  });
+
+  it('应该把旧 media_uri 行迁移成 media_json 数组', async () => {
+    mockDb.getAllAsync
+      .mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'media_uri' },
+        { name: 'media_json' },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'entry-1',
+          media_uri: 'file:///photo-1.jpg',
+          media_type: 'image/jpeg',
+          media_duration: null,
+          media_thumbnail: 'file:///thumb-1.jpg',
+          media_metadata: JSON.stringify({ aspectRatio: 1.5, createdAt: 1, modifiedAt: 2 }),
+        },
+      ]);
+
+    await migrateToMediaJson();
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      `UPDATE entries SET media_json = ? WHERE id = ?`,
+      [
+        JSON.stringify([
+          {
+            uri: 'file:///photo-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 0,
+            duration: undefined,
+            thumbnail: 'file:///thumb-1.jpg',
+            metadata: { aspectRatio: 1.5, createdAt: 1, modifiedAt: 2 },
+          },
+        ]),
+        'entry-1',
+      ]
+    );
   });
 
   it('应该在标记已迁移时仍补齐缺失的 sync_op 列', async () => {
