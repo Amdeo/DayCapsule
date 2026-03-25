@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Entry } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
+import { logger } from '@/src/utils/logger';
 import { EntryActionSheet } from '../EntryActionSheet';
 import { ImageViewer } from '../ImageViewer';
 
@@ -29,6 +30,26 @@ export function EntryCardDialogs({
   const preferredViewerUri = selectedMedia
     ? PhotoService.getPreferredPhotoUri(selectedMedia, 'full')
     : '';
+
+  React.useEffect(() => {
+    if (!showImageViewer || entry.type !== 'photo' || !preferredViewerUri) {
+      return;
+    }
+
+    logger.log('[EntryCardDialogs] opening image viewer', {
+      entryId: entry.id,
+      selectedImageIndex,
+      selectedMedia: selectedMedia
+        ? {
+            uri: selectedMedia.uri,
+            remoteUri: selectedMedia.remoteUri,
+            thumbnail: selectedMedia.thumbnail,
+            remoteThumbnail: selectedMedia.remoteThumbnail,
+          }
+        : null,
+      preferredViewerUri,
+    });
+  }, [entry.id, entry.type, preferredViewerUri, selectedImageIndex, selectedMedia, showImageViewer]);
 
   return (
     <>

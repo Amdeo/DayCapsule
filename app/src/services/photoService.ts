@@ -127,7 +127,14 @@ export class PhotoService {
     media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
     kind: 'thumbnail' | 'full'
   ): string {
-    return this.buildPhotoUriCandidates(media, kind)[0] ?? '';
+    const candidates = this.buildPhotoUriCandidates(media, kind);
+    const selectedUri = candidates[0] ?? '';
+    logger.log('[photoService] preferred photo uri', {
+      kind,
+      candidates,
+      selectedUri,
+    });
+    return selectedUri;
   }
 
   static getFallbackPhotoUri(
@@ -142,10 +149,24 @@ export class PhotoService {
     const failedIndex = candidates.findIndex((candidate) => candidate === normalizedFailedUri);
 
     if (failedIndex >= 0) {
-      return candidates[failedIndex + 1] ?? null;
+      const selectedUri = candidates[failedIndex + 1] ?? null;
+      logger.log('[photoService] fallback photo uri', {
+        kind,
+        failedUri: normalizedFailedUri,
+        candidates,
+        selectedUri,
+      });
+      return selectedUri;
     }
 
-    return candidates[0] ?? null;
+    const selectedUri = candidates[0] ?? null;
+    logger.log('[photoService] fallback photo uri', {
+      kind,
+      failedUri: normalizedFailedUri,
+      candidates,
+      selectedUri,
+    });
+    return selectedUri;
   }
 
   /**

@@ -5,6 +5,7 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import { logger } from '@/src/utils/logger';
 import { ImageViewerActionSheet } from './ImageViewerActionSheet';
 import { imageViewerStyles as styles } from './ImageViewer.styles';
 import type { ImageViewerSceneProps } from './imageViewerTypes';
@@ -26,6 +27,13 @@ export function ImageViewerScene({
   onSaveToAlbum,
   onShare,
 }: ImageViewerSceneProps) {
+  const handleImageError = () => {
+    logger.warn('[ImageViewer] image load failed', {
+      phase,
+      imageUri,
+    });
+  };
+
   return (
     <Modal
       visible={visible}
@@ -42,6 +50,7 @@ export function ImageViewerScene({
             source={{ uri: imageUri }}
             style={heroAnimatedStyle}
             resizeMode="contain"
+            onError={handleImageError}
           />
         ) : null}
 
@@ -53,6 +62,7 @@ export function ImageViewerScene({
                   source={{ uri: imageUri }}
                   style={[styles.image, { width: screenWidth, height: screenHeight }]}
                   resizeMode="contain"
+                  onError={handleImageError}
                 />
               </Animated.View>
             </Animated.View>

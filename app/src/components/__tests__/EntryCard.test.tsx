@@ -162,6 +162,7 @@ import React from 'react';
 import { render, fireEvent, act, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
+import { logger } from '@/src/utils/logger';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -695,6 +696,33 @@ describe('EntryCard photo edge-to-edge', () => {
 
     expect(getByTestId('image-viewer-uri').props.children).toBe(
       'http://101.43.120.134:8081/api/media/photo-1'
+    );
+  });
+
+  it('打开图片查看器时应该打印选中媒体与最终路径日志', () => {
+    const loggingPhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-log-open-1',
+      media: [
+        {
+          uri: 'file:///stale/photo.jpg',
+          remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+      ],
+    };
+
+    const { getByTestId } = render(<EntryCard entry={loggingPhotoEntry} onDelete={jest.fn()} />);
+    fireEvent.press(getByTestId('photo-image-0'));
+
+    expect(logger.log).toHaveBeenCalledWith(
+      '[EntryCardDialogs] opening image viewer',
+      expect.objectContaining({
+        entryId: 'photo-log-open-1',
+        selectedImageIndex: 0,
+        preferredViewerUri: 'http://101.43.120.134:8081/api/media/photo-1',
+      }),
     );
   });
 });

@@ -58,6 +58,7 @@ import {
   generateUniqueFilename,
   getFileInfo,
 } from '@/src/utils/fileSystem';
+import { logger } from '@/src/utils/logger';
 import { PhotoService } from '../photoService';
 
 describe('PhotoService', () => {
@@ -210,6 +211,13 @@ describe('PhotoService', () => {
         'full'
       )
     ).toBe('http://101.43.120.134:8081/api/media/photo-1');
+    expect(logger.log).toHaveBeenCalledWith(
+      '[photoService] preferred photo uri',
+      expect.objectContaining({
+        kind: 'full',
+        selectedUri: 'http://101.43.120.134:8081/api/media/photo-1',
+      }),
+    );
   });
 
   it('full 图在没有 remoteUri 时回退使用本地 uri', () => {
@@ -240,5 +248,13 @@ describe('PhotoService', () => {
         'thumbnail'
       )
     ).toBe('http://101.43.120.134:8081/api/media/photo-1-thumb');
+    expect(logger.log).toHaveBeenCalledWith(
+      '[photoService] fallback photo uri',
+      expect.objectContaining({
+        kind: 'thumbnail',
+        failedUri: 'file:///stale/thumb.jpg',
+        selectedUri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+      }),
+    );
   });
 });

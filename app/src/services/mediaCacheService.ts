@@ -194,6 +194,15 @@ async function hydrateMedia(entryType: Entry['type'], media: MediaInfo): Promise
   };
 }
 
+function summarizePhotoMediaForDebug(media: MediaInfo[] | undefined) {
+  return (media ?? []).map((item) => ({
+    uri: item.uri,
+    remoteUri: item.remoteUri,
+    thumbnail: item.thumbnail,
+    remoteThumbnail: item.remoteThumbnail,
+  }));
+}
+
 export class MediaCacheService {
   static isRemoteUri = isRemoteUri;
 
@@ -201,7 +210,15 @@ export class MediaCacheService {
 
   static async hydrateEntry(entry: Entry): Promise<Entry> {
     if (!entry.media?.length) return entry;
+    const before = entry.type === 'photo' ? summarizePhotoMediaForDebug(entry.media) : null;
     const hydratedMedia = await Promise.all(entry.media.map((media) => hydrateMedia(entry.type, media)));
+    if (entry.type === 'photo') {
+      logger.log('[mediaCache] photo hydrate summary', {
+        entryId: entry.id,
+        before,
+        after: summarizePhotoMediaForDebug(hydratedMedia),
+      });
+    }
     return { ...entry, media: hydratedMedia };
   }
 

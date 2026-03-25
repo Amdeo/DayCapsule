@@ -120,6 +120,17 @@ const rowToEntry = (row: any): Entry => {
   } as Entry;
 };
 
+const summarizePhotoMediaForDebug = (entry: Entry) => ({
+  entryId: entry.id,
+  mediaCount: entry.media?.length ?? 0,
+  media: (entry.media ?? []).map((media) => ({
+    uri: media.uri,
+    remoteUri: media.remoteUri,
+    thumbnail: media.thumbnail,
+    remoteThumbnail: media.remoteThumbnail,
+  })),
+});
+
 /**
  * 同步 entry 的规范化 tags（双写：JSON 列 + entry_tags 表）
  * 先清除旧关联，再插入新关联
@@ -736,7 +747,13 @@ export const getEntriesPage = async (
       `SELECT e.* FROM entries e ${where} ORDER BY e.timestamp DESC LIMIT ?`,
       [...params, limit]
     );
-    return result.map(rowToEntry);
+    const entries = result.map(rowToEntry);
+    entries
+      .filter((entry) => entry.type === 'photo' && (entry.media?.length ?? 0) > 0)
+      .forEach((entry) => {
+        logger.log('[db:getEntriesPage] photo media snapshot', summarizePhotoMediaForDebug(entry));
+      });
+    return entries;
   } catch (error) {
     logger.error('Failed to get entries page:', error);
     return [];
