@@ -30,6 +30,7 @@ import {
   deleteEntry,
   getPhotoEntriesBySyncStatus,
   getCloudSyncIndicatorSummary,
+  getLocalSyncOverviewCounts,
   markEntryPendingDelete,
   searchEntries,
   getEntriesCount,
@@ -804,6 +805,60 @@ describe('database/operations', () => {
         pendingUploads: 1,
         uploadingEntries: 1,
         failedEntries: 1,
+      });
+    });
+  });
+
+  describe('getLocalSyncOverviewCounts', () => {
+    it('存在 deleted 列时应排除逻辑删除记录', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'deleted' },
+      ]);
+      mockDb.getFirstAsync.mockResolvedValueOnce({
+        entry_count: 5,
+        photo_count: 2,
+        voice_count: 1,
+      });
+
+      const counts = await getLocalSyncOverviewCounts();
+
+      const [sql] = mockDb.getFirstAsync.mock.calls[0];
+      expect(sql).toContain('COUNT(*) AS entry_count');
+      expect(sql).toContain("COALESCE(SUM(CASE WHEN type = 'photo' THEN 1 ELSE 0 END), 0) AS photo_count");
+      expect(sql).toContain("COALESCE(SUM(CASE WHEN type = 'voice' THEN 1 ELSE 0 END), 0) AS voice_count");
+      expect(sql).toContain('WHERE deleted = 0');
+      expect(counts).toEqual({
+        entryCount: 5,
+        photoCount: 2,
+        voiceCount: 1,
+      });
+    });
+
+    it('不存在 deleted 列时不应附加过滤条件', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+      ]);
+      mockDb.getFirstAsync.mockResolvedValueOnce({
+        entry_count: 3,
+        photo_count: 1,
+        voice_count: 1,
+      });
+
+      const counts = await getLocalSyncOverviewCounts();
+
+      const [sql] = mockDb.getFirstAsync.mock.calls[0];
+      expect(sql).not.toContain('WHERE deleted = 0');
+      expect(counts).toEqual({
+        entryCount: 3,
+        photoCount: 1,
+        voiceCount: 1,
       });
     });
   });

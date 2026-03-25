@@ -258,6 +258,12 @@ export interface CloudSyncIndicatorSummary {
   failedEntries: number;
 }
 
+export interface LocalSyncOverviewCounts {
+  entryCount: number;
+  photoCount: number;
+  voiceCount: number;
+}
+
 export const getCloudSyncIndicatorSummary = async (): Promise<CloudSyncIndicatorSummary> => {
   try {
     const db = getDatabase();
@@ -298,6 +304,40 @@ export const getCloudSyncIndicatorSummary = async (): Promise<CloudSyncIndicator
       pendingUploads: 0,
       uploadingEntries: 0,
       failedEntries: 0,
+    };
+  }
+};
+
+export const getLocalSyncOverviewCounts = async (): Promise<LocalSyncOverviewCounts> => {
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    const whereClause = columns.has('deleted') ? 'WHERE deleted = 0' : '';
+
+    const result = await db.getFirstAsync<{
+      entry_count?: number | null;
+      photo_count?: number | null;
+      voice_count?: number | null;
+    }>(
+      `SELECT
+         COUNT(*) AS entry_count,
+         COALESCE(SUM(CASE WHEN type = 'photo' THEN 1 ELSE 0 END), 0) AS photo_count,
+         COALESCE(SUM(CASE WHEN type = 'voice' THEN 1 ELSE 0 END), 0) AS voice_count
+       FROM entries
+       ${whereClause}`,
+    );
+
+    return {
+      entryCount: Number(result?.entry_count ?? 0),
+      photoCount: Number(result?.photo_count ?? 0),
+      voiceCount: Number(result?.voice_count ?? 0),
+    };
+  } catch (error) {
+    logger.error('Failed to get local sync overview counts:', error);
+    return {
+      entryCount: 0,
+      photoCount: 0,
+      voiceCount: 0,
     };
   }
 };
