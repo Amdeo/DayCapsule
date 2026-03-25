@@ -80,6 +80,11 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
+jest.mock('@/src/services/photoIntegrityService', () => ({
+  fingerprintPhotoFile: jest.fn(),
+  buildPhotoLogPayload: jest.fn((input) => input),
+}));
+
 jest.mock('@/src/components/Timeline.v2', () => ({
   Timeline: 'Timeline',
 }));
@@ -104,6 +109,8 @@ jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('reac
 jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 
 import { Alert } from 'react-native';
+import { fingerprintPhotoFile } from '@/src/services/photoIntegrityService';
+import { logger } from '@/src/utils/logger';
 import { handlePhotoSelectForTest, PhotoSelectDeps } from '../index';
 
 const PHOTO_RESULT = {
@@ -127,11 +134,31 @@ const SAVED_PHOTO = {
   height: PHOTO_RESULT.height,
 };
 
+const SOURCE_FINGERPRINT = {
+  uri: PHOTO_RESULT.uri,
+  sha256: 'source-hash',
+  size: 8000,
+  width: PHOTO_RESULT.width,
+  height: PHOTO_RESULT.height,
+  mimeType: 'image/jpeg' as const,
+};
+
+const PERSISTED_FINGERPRINT = {
+  uri: CACHE_URI,
+  sha256: 'persisted-hash',
+  size: 2048,
+  width: 1200,
+  height: 900,
+  mimeType: 'image/jpeg' as const,
+};
+
 type PhotoSelectTestDeps = PhotoSelectDeps & {
   addLocalEntry: jest.Mock;
   enqueueUpload: jest.Mock;
   addEntry: jest.Mock;
 };
+
+const mockFingerprintPhotoFile = fingerprintPhotoFile as jest.Mock;
 
 function makeDeps(overrides: Partial<PhotoSelectTestDeps> = {}): PhotoSelectTestDeps {
   return {
@@ -147,6 +174,13 @@ function makeDeps(overrides: Partial<PhotoSelectTestDeps> = {}): PhotoSelectTest
 describe('handlePhotoSelectForTest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFingerprintPhotoFile.mockImplementation(async (uri: string) => {
+      if (uri === PHOTO_RESULT.uri) {
+        return SOURCE_FINGERPRINT;
+      }
+
+      return { ...PERSISTED_FINGERPRINT, uri };
+    });
   });
 
   it('savePhotoToStorage 失败时不调用 addLocalEntry', async () => {
@@ -235,5 +269,49 @@ describe('handlePhotoSelectForTest', () => {
 
     expect(deps.deleteLocalFile).toHaveBeenCalledWith(CACHE_URI);
     expect(deps.deleteLocalFile).toHaveBeenCalledWith(THUMBNAIL_URI);
+  });
+
+  it('stores source and persisted hashes on the new photo entry', async () => {
+    mockFingerprintPhotoFile
+      .mockResolvedValueOnce(SOURCE_FINGERPRINT)
+      .mockResolvedValueOnce(PERSISTED_FINGERPRINT);
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      media: [expect.objectContaining({
+        size: PERSISTED_FINGERPRINT.size,
+        metadata: expect.objectContaining({
+          localMediaId: expect.any(String),
+          sourceHash: 'source-hash',
+          persistedHash: 'persisted-hash',
+          integrityStatus: 'healthy',
+          repairable: false,
+        }),
+      })],
+    }));
+  });
+
+  it('logs photo capture and db entry save payloads', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.capture.received',
+      expect.objectContaining({
+        sourceUri: PHOTO_RESULT.uri,
+        sourceHash: SOURCE_FINGERPRINT.sha256,
+      }),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.db.entry_saved',
+      expect.objectContaining({
+        localUri: CACHE_URI,
+        persistedHash: PERSISTED_FINGERPRINT.sha256,
+        integrityStatus: 'healthy',
+      }),
+    );
   });
 });

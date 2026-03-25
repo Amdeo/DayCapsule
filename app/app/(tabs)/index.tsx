@@ -15,6 +15,7 @@ import { Sidebar } from '@/src/components/Sidebar';
 import { TextEditor } from '@/src/components/TextEditor';
 import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService, PhotoResult } from '@/src/services/photoService';
+import { buildPhotoLogPayload, fingerprintPhotoFile } from '@/src/services/photoIntegrityService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
@@ -210,22 +211,40 @@ export async function handlePhotoSelectForTest(
   const savedFiles: string[] = [];
   for (const result of results) {
     const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const sourceFingerprint = await fingerprintPhotoFile(result.uri);
+    logger.log('photo.capture.received', buildPhotoLogPayload({
+      entryId: fileId,
+      localMediaId: fileId,
+      sourceUri: result.uri,
+      sourceHash: sourceFingerprint.sha256,
+      mimeType: sourceFingerprint.mimeType,
+      size: sourceFingerprint.size,
+      width: sourceFingerprint.width,
+      height: sourceFingerprint.height,
+    }));
     const savedPhoto = await deps.savePhotoToStorage(
       result.uri,
       fileId,
       'medium',
       result.aspectRatio
     );
+    const persistedFingerprint = await fingerprintPhotoFile(savedPhoto.originalUri);
 
     mediaList.push({
       uri: savedPhoto.originalUri,
       mimeType: 'image/jpeg',
-      size: 0,
+      size: persistedFingerprint.size,
       thumbnail: savedPhoto.thumbnailUri,
       metadata: {
         width: savedPhoto.width,
         height: savedPhoto.height,
         aspectRatio: savedPhoto.aspectRatio,
+        localMediaId: fileId,
+        sourceHash: sourceFingerprint.sha256,
+        persistedHash: persistedFingerprint.sha256,
+        integrityStatus: 'healthy',
+        integrityReason: null,
+        repairable: false,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
       },
@@ -239,6 +258,22 @@ export async function handlePhotoSelectForTest(
       content: '',
       syncStatus: deps.initialSyncStatus ?? 'pending_upload',
       media: mediaList,
+    });
+
+    mediaList.forEach((media) => {
+      logger.log('photo.db.entry_saved', buildPhotoLogPayload({
+        entryId: createdEntry.id,
+        localMediaId: media.metadata?.localMediaId,
+        localUri: media.uri,
+        mimeType: media.mimeType,
+        size: media.size,
+        width: media.metadata?.width,
+        height: media.metadata?.height,
+        sourceHash: media.metadata?.sourceHash,
+        persistedHash: media.metadata?.persistedHash,
+        integrityStatus: media.metadata?.integrityStatus,
+        integrityReason: media.metadata?.integrityReason ?? null,
+      }));
     });
 
     try {
