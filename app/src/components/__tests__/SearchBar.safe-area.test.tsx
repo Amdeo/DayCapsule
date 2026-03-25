@@ -41,18 +41,6 @@ describe('SearchBar 安全区适配', () => {
     expect(containerStyle.paddingTop).toBe(28);
   });
 
-  it('容器的 paddingTop 不应是硬编码的 60', () => {
-    let tree: renderer.ReactTestRenderer;
-    act(() => {
-      tree = renderer.create(<SearchBar />);
-    });
-    const json = tree!.toJSON() as any;
-    const containerStyle = Array.isArray(json.props.style)
-      ? Object.assign({}, ...json.props.style)
-      : json.props.style;
-    expect(containerStyle.paddingTop).not.toBe(60);
-  });
-
   it('renders rightActions without affecting safe area padding', () => {
     let tree: renderer.ReactTestRenderer;
     act(() => {
@@ -78,5 +66,20 @@ describe('SearchBar 安全区适配', () => {
     expect(getByTestId('searchbar-search-box')).toHaveStyle({
       height: 48,
     });
+  });
+
+  it('renders stable search entry and view mode toggle anchors when actions are enabled', () => {
+    const onSearchFocus = jest.fn();
+    const onViewModePress = jest.fn();
+    const { getByTestId } = render(
+      <SearchBar
+        onSearchFocus={onSearchFocus}
+        onViewModePress={onViewModePress}
+        showViewModeActive
+      />
+    );
+
+    expect(getByTestId('searchbar-search-box')).toBeTruthy();
+    expect(getByTestId('searchbar-view-mode-toggle')).toBeTruthy();
   });
 });
