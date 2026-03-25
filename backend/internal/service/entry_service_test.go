@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/daycapsule/backend/internal/config"
 	"github.com/daycapsule/backend/internal/models"
@@ -131,5 +132,56 @@ func TestEntryServiceFilterByType(t *testing.T) {
 	}
 	if len(textEntries) != 1 || textEntries[0].Type != "text" {
 		t.Fatalf("expected 1 text entry, got %d", len(textEntries))
+	}
+}
+
+func TestEntryServiceFallsBackToRawMediaJSONWhenLinkedMediaMissing(t *testing.T) {
+	db := setupEntryTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("fallback-media@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	svc := NewEntryService(entryRepo, mediaRepo, "http://localhost:8081")
+
+	now := time.Now().UTC()
+	rawMedia := `[{"uri":"file:///documents/photo.jpg","remoteUri":"http://101.43.120.134:8081/api/media/photo-1","mimeType":"image/jpeg","size":2048}]`
+	if _, err := entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:         "photo-entry-1",
+		UserID:     user.ID,
+		Type:       "photo",
+		Content:    "",
+		Tags:       "[]",
+		Media:      rawMedia,
+		SyncStatus: "synced",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("insert from sync: %v", err)
+	}
+
+	entries, err := svc.GetPage(user.ID, 20, nil, "photo", "", nil, nil)
+	if err != nil {
+		t.Fatalf("get page: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 photo entry, got %d", len(entries))
+	}
+	if len(entries[0].Media) != 1 {
+		t.Fatalf("expected 1 media item, got %d", len(entries[0].Media))
+	}
+	if entries[0].Media[0].URI != "http://101.43.120.134:8081/api/media/photo-1" {
+		t.Fatalf("expected fallback remote uri, got %q", entries[0].Media[0].URI)
+	}
+	if entries[0].Media[0].MimeType != "image/jpeg" {
+		t.Fatalf("expected mimeType image/jpeg, got %q", entries[0].Media[0].MimeType)
+	}
+	if entries[0].Media[0].Size != 2048 {
+		t.Fatalf("expected size 2048, got %d", entries[0].Media[0].Size)
 	}
 }

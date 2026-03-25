@@ -121,6 +121,9 @@ func (s *EntryService) toResponse(entry *models.Entry) (*models.EntryResponse, e
 	if err != nil {
 		media = []models.Media{}
 	}
+	if len(media) == 0 {
+		media = fallbackMediaList(entry.Media)
+	}
 
 	return &models.EntryResponse{
 		ID:                entry.ID,
@@ -153,4 +156,44 @@ func (s *EntryService) buildMediaList(entryID string) ([]models.Media, error) {
 		return []models.Media{}, nil
 	}
 	return media, nil
+}
+
+type rawEntryMedia struct {
+	URI       string `json:"uri"`
+	RemoteURI string `json:"remoteUri"`
+	MimeType  string `json:"mimeType"`
+	Size      int64  `json:"size"`
+}
+
+func fallbackMediaList(mediaJSON string) []models.Media {
+	if mediaJSON == "" || mediaJSON == "[]" {
+		return []models.Media{}
+	}
+
+	var rawMedia []rawEntryMedia
+	if err := json.Unmarshal([]byte(mediaJSON), &rawMedia); err != nil {
+		return []models.Media{}
+	}
+
+	media := make([]models.Media, 0, len(rawMedia))
+	for _, item := range rawMedia {
+		uri := item.RemoteURI
+		if uri == "" {
+			uri = item.URI
+		}
+		if uri == "" {
+			continue
+		}
+
+		media = append(media, models.Media{
+			URI:      uri,
+			MimeType: item.MimeType,
+			Size:     item.Size,
+		})
+	}
+
+	if media == nil {
+		return []models.Media{}
+	}
+	return media
 }
