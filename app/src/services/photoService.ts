@@ -19,7 +19,7 @@ import {
   copyFile,
 } from '@/src/utils/fileSystem';
 import { MediaCacheService } from './mediaCacheService';
-import { MediaError } from '@/src/types/entry';
+import { MediaError, type MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
 /**
@@ -91,6 +91,20 @@ export interface PickPhotoOptions {
  * 照片服务类
  */
 export class PhotoService {
+  private static buildPhotoUriCandidates(
+    media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
+    kind: 'thumbnail' | 'full'
+  ): string[] {
+    const rawCandidates = kind === 'thumbnail'
+      ? [media.thumbnail, media.remoteThumbnail, media.uri, media.remoteUri]
+      : [media.remoteUri, media.uri];
+
+    return rawCandidates
+      .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.trim().length > 0)
+      .map((candidate) => this.resolvePhotoUri(candidate))
+      .filter((candidate, index, allCandidates) => allCandidates.indexOf(candidate) === index);
+  }
+
   /**
    * 解析照片 URI：兼容旧绝对路径（沙盒 UUID 可能已变）
    * 统一提取文件名后用当前 documentDirectory 重建路径
@@ -107,6 +121,31 @@ export class PhotoService {
       }
     }
     return uri;
+  }
+
+  static getPreferredPhotoUri(
+    media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
+    kind: 'thumbnail' | 'full'
+  ): string {
+    return this.buildPhotoUriCandidates(media, kind)[0] ?? '';
+  }
+
+  static getFallbackPhotoUri(
+    media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
+    failedUri: string,
+    kind: 'thumbnail' | 'full'
+  ): string | null {
+    const candidates = this.buildPhotoUriCandidates(media, kind);
+    const normalizedFailedUri = failedUri.trim().length > 0
+      ? this.resolvePhotoUri(failedUri)
+      : '';
+    const failedIndex = candidates.findIndex((candidate) => candidate === normalizedFailedUri);
+
+    if (failedIndex >= 0) {
+      return candidates[failedIndex + 1] ?? null;
+    }
+
+    return candidates[0] ?? null;
   }
 
   /**

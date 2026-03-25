@@ -1,6 +1,24 @@
-jest.mock('@/src/services/photoService', () => ({
-  PhotoService: { resolvePhotoUri: (uri: string) => uri },
-}));
+jest.mock('@/src/services/photoService', () => {
+  const PhotoService = {
+    resolvePhotoUri: (uri: string) => uri,
+    getPreferredPhotoUri: (media: any, kind: 'thumbnail' | 'full') => {
+      const candidate = kind === 'thumbnail'
+        ? (media.thumbnail || media.remoteThumbnail || media.uri || media.remoteUri || '')
+        : (media.remoteUri || media.uri || '');
+      return candidate ? PhotoService.resolvePhotoUri(candidate) : '';
+    },
+    getFallbackPhotoUri: (media: any, failedUri: string, kind: 'thumbnail' | 'full') => {
+      const candidates = kind === 'thumbnail'
+        ? [media.thumbnail, media.remoteThumbnail, media.uri, media.remoteUri]
+        : [media.remoteUri, media.uri];
+      const index = candidates.findIndex((candidate) => candidate === failedUri);
+      const candidate = index >= 0 ? (candidates[index + 1] ?? null) : (candidates[0] ?? null);
+      return candidate ? PhotoService.resolvePhotoUri(candidate) : null;
+    },
+  };
+
+  return { PhotoService };
+});
 jest.mock('expo-file-system', () => ({
   getInfoAsync: jest.fn().mockResolvedValue({ exists: true }),
 }));
@@ -31,6 +49,15 @@ const makePhoto = (i: number, aspectRatio?: number): MediaInfo => ({
           modifiedAt: Date.now(),
         }
       : undefined,
+});
+
+const makeRemoteFallbackPhoto = (): MediaInfo => ({
+  uri: 'file:///stale/photo.jpg',
+  thumbnail: 'file:///stale/thumb.jpg',
+  remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
+  remoteThumbnail: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+  mimeType: 'image/jpeg',
+  size: 1000,
 });
 
 const radius = { borderRadius: 10 };
@@ -139,6 +166,26 @@ describe('PhotoGrid', () => {
 
     expect(screen.getByTestId('photo-primary-missing')).toBeTruthy();
     expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
+  });
+
+  it('falls back to remote thumbnail when the local thumbnail fails', () => {
+    render(
+      <PhotoGrid
+        photos={[makeRemoteFallbackPhoto()]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
+      uri: 'file:///stale/thumb.jpg',
+    });
+
+    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
+      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+    });
   });
 
   it('keeps the secondary slot when the secondary image fails to load', () => {

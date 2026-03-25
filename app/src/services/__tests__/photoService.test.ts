@@ -197,4 +197,48 @@ describe('PhotoService', () => {
     expect(deleteFile).toHaveBeenCalledWith('file:///compressed.jpg');
     expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
   });
+
+  it('full 图在存在 remoteUri 时优先使用远端大图地址', () => {
+    expect(
+      PhotoService.getPreferredPhotoUri(
+        {
+          uri: 'file:///cache/photo.jpg',
+          remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+        'full'
+      )
+    ).toBe('http://101.43.120.134:8081/api/media/photo-1');
+  });
+
+  it('full 图在没有 remoteUri 时回退使用本地 uri', () => {
+    expect(
+      PhotoService.getPreferredPhotoUri(
+        {
+          uri: 'file:///cache/photo.jpg',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+        'full'
+      )
+    ).toBe('file:///cache/photo.jpg');
+  });
+
+  it('thumbnail 失败后回退到远端 thumbnail 地址', () => {
+    expect(
+      PhotoService.getFallbackPhotoUri(
+        {
+          uri: 'file:///stale/photo.jpg',
+          remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
+          thumbnail: 'file:///stale/thumb.jpg',
+          remoteThumbnail: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+        'file:///stale/thumb.jpg',
+        'thumbnail'
+      )
+    ).toBe('http://101.43.120.134:8081/api/media/photo-1-thumb');
+  });
 });

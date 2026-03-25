@@ -17,9 +17,27 @@ jest.mock('@/src/services/voiceService', () => ({
   VoiceService: { stopPlayback: jest.fn(), playAudio: jest.fn() },
 }));
 
-jest.mock('@/src/services/photoService', () => ({
-  PhotoService: { resolvePhotoUri: (uri: string) => uri },
-}));
+jest.mock('@/src/services/photoService', () => {
+  const PhotoService = {
+    resolvePhotoUri: (uri: string) => uri,
+    getPreferredPhotoUri: (media: any, kind: 'thumbnail' | 'full') => {
+      const candidate = kind === 'thumbnail'
+        ? (media.thumbnail || media.remoteThumbnail || media.uri || media.remoteUri || '')
+        : (media.remoteUri || media.uri || '');
+      return candidate ? PhotoService.resolvePhotoUri(candidate) : '';
+    },
+    getFallbackPhotoUri: (media: any, failedUri: string, kind: 'thumbnail' | 'full') => {
+      const candidates = kind === 'thumbnail'
+        ? [media.thumbnail, media.remoteThumbnail, media.uri, media.remoteUri]
+        : [media.remoteUri, media.uri];
+      const index = candidates.findIndex((candidate) => candidate === failedUri);
+      const candidate = index >= 0 ? (candidates[index + 1] ?? null) : (candidates[0] ?? null);
+      return candidate ? PhotoService.resolvePhotoUri(candidate) : null;
+    },
+  };
+
+  return { PhotoService };
+});
 
 jest.mock('expo-file-system', () => ({
   getInfoAsync: jest.fn().mockResolvedValue({ exists: true }),
@@ -656,6 +674,28 @@ describe('EntryCard photo edge-to-edge', () => {
     expect(getByTestId('image-viewer-uri').props.children).toBe('resolved:http://localhost:8081/api/media/1');
 
     resolveSpy.mockRestore();
+  });
+
+  it('图片查看器在旧本地路径失效时应回退到远端大图地址', () => {
+    const staleLocalPhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-stale-local-1',
+      media: [
+        {
+          uri: 'file:///stale/photo.jpg',
+          remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+      ],
+    };
+
+    const { getByTestId } = render(<EntryCard entry={staleLocalPhotoEntry} onDelete={jest.fn()} />);
+    fireEvent.press(getByTestId('photo-image-0'));
+
+    expect(getByTestId('image-viewer-uri').props.children).toBe(
+      'http://101.43.120.134:8081/api/media/photo-1'
+    );
   });
 });
 

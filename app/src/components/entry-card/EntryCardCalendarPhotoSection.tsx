@@ -105,7 +105,7 @@ function EntryCardCalendarPhotoBody({
           testID={`calendar-photo-primary-${entry.id}`}
         >
           <Image
-            source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+            source={{ uri: PhotoService.getPreferredPhotoUri(photo, 'thumbnail') }}
             style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
             resizeMode="cover"
           />
@@ -129,7 +129,7 @@ function EntryCardCalendarPhotoBody({
         testID={`calendar-photo-primary-${entry.id}`}
       >
         <Image
-          source={{ uri: PhotoService.resolvePhotoUri(primary.thumbnail || primary.uri) }}
+          source={{ uri: PhotoService.getPreferredPhotoUri(primary, 'thumbnail') }}
           style={styles.calendarPhotoImage}
           resizeMode="cover"
         />
@@ -144,7 +144,7 @@ function EntryCardCalendarPhotoBody({
             testID={`calendar-photo-secondary-cell-1-${entry.id}`}
           >
             <Image
-              source={{ uri: PhotoService.resolvePhotoUri(secondary.thumbnail || secondary.uri) }}
+              source={{ uri: PhotoService.getPreferredPhotoUri(secondary, 'thumbnail') }}
               style={styles.calendarPhotoImage}
               resizeMode="cover"
             />
@@ -161,7 +161,7 @@ function EntryCardCalendarPhotoBody({
             testID={`calendar-photo-secondary-cell-2-${entry.id}`}
           >
             <Image
-              source={{ uri: PhotoService.resolvePhotoUri(tertiary.thumbnail || tertiary.uri) }}
+              source={{ uri: PhotoService.getPreferredPhotoUri(tertiary, 'thumbnail') }}
               style={styles.calendarPhotoImage}
               resizeMode="cover"
             />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, TouchableOpacity, View } from 'react-native';
 import type { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
@@ -30,15 +30,47 @@ interface TwoPhotoCellProps {
   onPress: () => void;
 }
 
+function usePhotoSource(
+  photo: MediaInfo,
+  kind: 'thumbnail' | 'full' = 'thumbnail'
+) {
+  const [sourceUri, setSourceUri] = useState(() =>
+    PhotoService.getPreferredPhotoUri(photo, kind)
+  );
+  const [missing, setMissing] = useState(() => sourceUri.length === 0);
+
+  useEffect(() => {
+    const nextSourceUri = PhotoService.getPreferredPhotoUri(photo, kind);
+    setSourceUri(nextSourceUri);
+    setMissing(nextSourceUri.length === 0);
+  }, [kind, photo.remoteThumbnail, photo.remoteUri, photo.thumbnail, photo.uri]);
+
+  const handleError = () => {
+    const fallbackUri = PhotoService.getFallbackPhotoUri(photo, sourceUri, kind);
+    if (fallbackUri && fallbackUri !== sourceUri) {
+      setSourceUri(fallbackUri);
+      return;
+    }
+
+    setMissing(true);
+  };
+
+  return {
+    sourceUri,
+    missing,
+    handleError,
+  };
+}
+
 export function SinglePhoto({
   photo,
   maxPhotoHeight,
   photoImageRadius,
   onPress,
 }: SinglePhotoProps) {
-  const [error, setError] = useState(false);
+  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
 
-  if (error) {
+  if (missing) {
     return (
       <View
         testID="photo-image-0"
@@ -51,22 +83,22 @@ export function SinglePhoto({
     <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
       <Image
         testID="photo-image-0"
-        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+        source={{ uri: sourceUri }}
         style={[
           { width: '100%', height: maxPhotoHeight, backgroundColor: '#ECE7E0' },
           photoImageRadius,
         ]}
         resizeMode="cover"
-        onError={() => setError(true)}
+        onError={handleError}
       />
     </TouchableOpacity>
   );
 }
 
 export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
-  const [error, setError] = useState(false);
+  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
 
-  if (error) {
+  if (missing) {
     return (
       <View
         testID={testID}
@@ -78,10 +110,10 @@ export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
   return (
     <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
       <Image
-        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+        source={{ uri: sourceUri }}
         style={{ width: cellSize, height: cellSize }}
         resizeMode="cover"
-        onError={() => setError(true)}
+        onError={handleError}
       />
     </TouchableOpacity>
   );
@@ -97,10 +129,10 @@ export function TwoPhotoCell({
   imageRadiusStyle,
   onPress,
 }: TwoPhotoCellProps) {
-  const [error, setError] = useState(false);
+  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
   const cellStyle = [{ width, height, backgroundColor: '#ECE7E0' }, imageRadiusStyle];
 
-  if (error) {
+  if (missing) {
     return (
       <View testID={testID}>
         <View
@@ -115,10 +147,10 @@ export function TwoPhotoCell({
     <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
       <Image
         testID={imageTestID}
-        source={{ uri: PhotoService.resolvePhotoUri(photo.thumbnail || photo.uri) }}
+        source={{ uri: sourceUri }}
         style={cellStyle}
         resizeMode="cover"
-        onError={() => setError(true)}
+        onError={handleError}
       />
     </TouchableOpacity>
   );

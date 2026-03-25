@@ -25,14 +25,17 @@ export function EntryCardDialogs({
   onDelete,
   onCloseActionSheet,
 }: EntryCardDialogsProps) {
+  const selectedMedia = entry.media?.[selectedImageIndex] ?? entry.media?.[0];
+  const preferredViewerUri = selectedMedia
+    ? PhotoService.getPreferredPhotoUri(selectedMedia, 'full')
+    : '';
+
   return (
     <>
-      {entry.type === 'photo' && entry.media?.[0]?.uri ? (
+      {entry.type === 'photo' && preferredViewerUri ? (
         <ImageViewer
           visible={showImageViewer}
-          imageUri={PhotoService.resolvePhotoUri(
-            entry.media[selectedImageIndex]?.uri ?? entry.media[0].uri
-          )}
+          imageUri={preferredViewerUri}
           onClose={onCloseImageViewer}
         />
       ) : null}
