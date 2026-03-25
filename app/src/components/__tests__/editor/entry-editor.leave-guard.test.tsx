@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent } from '@testing-library/react-native';
+import { Alert, Modal } from 'react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderEntryEditor,
   resetRenderEntryEditorMocks,
@@ -46,5 +46,35 @@ describe('EntryEditor leave guard', () => {
     discardAction?.onPress?.();
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores close requests while a save is still in progress', async () => {
+    let resolveSave: (() => void) | null = null;
+    const onSave = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        })
+    );
+    const onClose = jest.fn();
+    const { screen, UNSAFE_getByType } = renderEntryEditor({ onSave, onClose });
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '保存中的正文');
+    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+    fireEvent.press(screen.getByTestId('entry-editor-back-button'));
+    fireEvent.press(screen.getByTestId('entry-editor-backdrop'));
+
+    act(() => {
+      UNSAFE_getByType(Modal).props.onRequestClose();
+    });
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    resolveSave?.();
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -29,6 +29,7 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     currentTagsList,
     typeMeta,
     canSave,
+    isSaving,
     setContent,
     setTagsInput,
     handleAddSuggestion,
@@ -50,12 +51,19 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={handleRequestClose} />
+        <Pressable
+          testID="entry-editor-backdrop"
+          style={styles.backdrop}
+          disabled={isSaving}
+          onPress={handleRequestClose}
+        />
 
         <View style={styles.editorPage}>
           <View testID="entry-editor-header" style={styles.headerBar}>
             <Pressable
               testID="entry-editor-back-button"
+              accessibilityState={{ disabled: isSaving }}
+              disabled={isSaving}
               onPress={handleRequestClose}
               style={styles.headerButton}
             >

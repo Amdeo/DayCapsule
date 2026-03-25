@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderEntryEditor,
@@ -8,6 +9,11 @@ import {
 describe('EntryEditor save flow', () => {
   beforeEach(() => {
     resetRenderEntryEditorMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('saves edited content once and closes after the async save resolves', async () => {
@@ -33,6 +39,32 @@ describe('EntryEditor save flow', () => {
     resolveSave?.();
 
     await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows a controlled error and stays open when the async save rejects', async () => {
+    const onSave = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('save failed'))
+      .mockResolvedValueOnce(undefined);
+    const onClose = jest.fn();
+    const { screen, entry } = renderEntryEditor({ onSave, onClose });
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '新的正文');
+    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('保存失败', '保存内容失败，请重试');
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(false);
+
+    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenNthCalledWith(2, entry.id, '新的正文', ['产品', '想法']);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });

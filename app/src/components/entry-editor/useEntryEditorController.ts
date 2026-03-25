@@ -117,12 +117,18 @@ export function useEntryEditorController({
     try {
       await onSave(entry.id, content, tags);
       onClose();
+    } catch {
+      Alert.alert('保存失败', '保存内容失败，请重试');
     } finally {
       setIsSaving(false);
     }
   }, [canSave, content, entry, onClose, onSave, tagsInput]);
 
   const handleRequestClose = useCallback(() => {
+    if (isSaving) {
+      return;
+    }
+
     if (!isDirty) {
       onClose();
       return;
@@ -136,7 +142,7 @@ export function useEntryEditorController({
         onPress: onClose,
       },
     ]);
-  }, [isDirty, onClose]);
+  }, [isDirty, isSaving, onClose]);
 
   return {
     content,
