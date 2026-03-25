@@ -50,6 +50,80 @@ describe('cloudSyncOverviewService', () => {
     jest.clearAllMocks();
   });
 
+  it('limits concurrent local media stat requests', async () => {
+    mockGetStatus.mockResolvedValueOnce({
+      lastSyncAt: null,
+      lastSyncError: null,
+      initialSyncState: 'idle',
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+    });
+    (DB.getLocalSyncOverviewCounts as jest.Mock).mockResolvedValueOnce({
+      entryCount: 10,
+      photoCount: 10,
+      voiceCount: 0,
+    });
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: `e${index}`,
+        type: 'photo',
+        content: '',
+        timestamp: index,
+        syncStatus: 'synced',
+        media: [
+          {
+            uri: `file:///media-${index}.jpg`,
+            mimeType: 'image/jpeg',
+            size: 1,
+          },
+        ],
+      })),
+    );
+    mockGet.mockResolvedValueOnce({
+      entryCount: 0,
+      photoCount: 0,
+      voiceCount: 0,
+      mediaCount: 0,
+      mediaBytes: 0,
+    });
+
+    let active = 0;
+    let maxActive = 0;
+    let resolvedCount = 0;
+    const resolvers: Array<() => void> = [];
+    (FileSystem.getInfoAsync as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          resolvers.push(() => {
+            active -= 1;
+            resolvedCount += 1;
+            resolve({ exists: true, size: 1 });
+          });
+        }),
+    );
+
+    const service = createCloudSyncOverviewService();
+    const snapshotPromise = service.getSnapshot();
+    await Promise.resolve();
+
+    expect(maxActive).toBeLessThanOrEqual(4);
+
+    while (resolvedCount < 10) {
+      const pendingResolvers = resolvers.splice(0);
+      pendingResolvers.forEach((resolve) => resolve());
+      await Promise.resolve();
+    }
+
+    const snapshot = await snapshotPromise;
+
+    expect(snapshot.local.mediaBytes).toBe(10);
+  });
+
   it('merges local counts, local media bytes, cloud overview and queue status', async () => {
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000000000,

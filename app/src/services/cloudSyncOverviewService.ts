@@ -41,6 +41,8 @@ interface CloudOverviewPayload {
   mediaBytes: number;
 }
 
+const LOCAL_MEDIA_STAT_CONCURRENCY = 4;
+
 const isRemoteUrl = (uri: string): boolean => /^https?:\/\//i.test(uri.trim());
 
 const collectLocalMediaPaths = (entries: Entry[]): string[] => {
@@ -62,12 +64,37 @@ const collectLocalMediaPaths = (entries: Entry[]): string[] => {
   return [...paths];
 };
 
+const mapWithConcurrency = async <T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> => {
+  if (items.length === 0) return [];
+
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  const worker = async (): Promise<void> => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  };
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+};
+
 const getLocalMediaBytes = async (): Promise<number> => {
   const entries = await DB.getAllEntries();
   const mediaPaths = collectLocalMediaPaths(entries);
 
-  const sizes = await Promise.all(
-    mediaPaths.map(async (uri) => {
+  const sizes = await mapWithConcurrency(
+    mediaPaths,
+    LOCAL_MEDIA_STAT_CONCURRENCY,
+    async (uri) => {
       try {
         const info = await FileSystem.getInfoAsync(uri);
         if (!info.exists || typeof info.size !== 'number' || info.size <= 0) {
@@ -78,7 +105,7 @@ const getLocalMediaBytes = async (): Promise<number> => {
         logger.warn('[cloudSyncOverview] get local media size failed:', uri, error);
         return 0;
       }
-    }),
+    },
   );
 
   return sizes.reduce((total, size) => total + size, 0);
