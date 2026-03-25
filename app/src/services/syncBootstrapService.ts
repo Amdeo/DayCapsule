@@ -19,6 +19,13 @@ export interface SyncBootstrapServiceApi {
   runInitialFlow: (source: 'cloud' | 'local') => Promise<void>;
 }
 
+const REMOTE_MEDIA_URI_RE = /^https?:\/\//i;
+const RELATIVE_MEDIA_API_RE = /^\/api\/media(?:\/|$)/i;
+
+function isRemoteMediaUri(uri: string | undefined): boolean {
+  return !!uri && (REMOTE_MEDIA_URI_RE.test(uri) || RELATIVE_MEDIA_API_RE.test(uri));
+}
+
 function normalizeImportedTags(tags: unknown): string[] {
   if (Array.isArray(tags)) {
     return tags.filter((tag): tag is string => typeof tag === 'string');
@@ -95,6 +102,47 @@ function normalizeImportedEntry(entry: Partial<Entry>): Entry {
   };
 }
 
+function shouldSkipBootstrapMediaUpload(entry: Entry): boolean {
+  return entry.syncStatus === 'pending_delete' || entry.syncOp === 'delete' || entry.deleted === true;
+}
+
+async function prepareEntryMediaForCloudBackup(
+  entry: Entry,
+  uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>
+): Promise<MediaInfo[] | null> {
+  if (!entry.media?.length || shouldSkipBootstrapMediaUpload(entry)) {
+    return null;
+  }
+
+  let changed = false;
+  const preparedMedia: MediaInfo[] = [];
+
+  for (const item of entry.media) {
+    if (item.remoteUri) {
+      preparedMedia.push(item);
+      continue;
+    }
+
+    if (isRemoteMediaUri(item.uri)) {
+      changed = true;
+      preparedMedia.push({
+        ...item,
+        remoteUri: item.uri,
+      });
+      continue;
+    }
+
+    const upload = await uploadMedia(item.uri);
+    changed = true;
+    preparedMedia.push({
+      ...item,
+      remoteUri: upload.url,
+    });
+  }
+
+  return changed ? preparedMedia : null;
+}
+
 export function createSyncBootstrapService(): SyncBootstrapServiceApi {
   const client = getApiClient();
 
@@ -138,6 +186,14 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
     for (const entry of entries) {
       if (entry.syncStatus === 'pending_upload' || entry.syncStatus === 'uploading') {
         continue;
+      }
+
+      const preparedMedia = await prepareEntryMediaForCloudBackup(
+        entry,
+        (localUri) => client.uploadFile('/media/upload', localUri, 'file')
+      );
+      if (preparedMedia) {
+        await DB.updateEntry(entry.id, { media: preparedMedia });
       }
 
       await DB.updateEntry(entry.id, {

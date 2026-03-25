@@ -2,6 +2,7 @@ import { createSyncBootstrapService } from '../syncBootstrapService';
 import * as DB from '@/src/database/operations';
 
 const mockApiGet = jest.fn();
+const mockUploadFile = jest.fn();
 const mockSetInitialSyncState = jest.fn(async () => undefined);
 
 jest.mock('@/src/utils/logger', () => ({
@@ -17,6 +18,7 @@ jest.mock('@/src/utils/logger', () => ({
 jest.mock('@/src/services/apiClient', () => ({
   getApiClient: jest.fn(() => ({
     get: mockApiGet,
+    uploadFile: mockUploadFile,
   })),
 }));
 
@@ -40,6 +42,7 @@ describe('syncBootstrapService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (DB.getEntriesCount as jest.Mock).mockResolvedValue(0);
+    (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
     mockApiGet.mockResolvedValue({ entryCount: 0 });
   });
 
@@ -164,5 +167,90 @@ describe('syncBootstrapService', () => {
         ],
       }),
     ]);
+  });
+
+  it('uploads local photo media before marking entries pending for first cloud backup', async () => {
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'photo-local-1',
+        type: 'photo',
+        content: '本地图片',
+        timestamp: 1700000001000,
+        syncStatus: 'synced',
+        media: [
+          {
+            uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+          },
+        ],
+      },
+    ]);
+    mockUploadFile.mockResolvedValueOnce({
+      id: 'media-1',
+      url: 'https://cdn.example.com/photo-1.jpg',
+    });
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('local');
+
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      '/media/upload',
+      'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
+      'file',
+    );
+    expect(DB.updateEntry).toHaveBeenNthCalledWith(
+      1,
+      'photo-local-1',
+      expect.objectContaining({
+        media: [
+          expect.objectContaining({
+            uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
+            remoteUri: 'https://cdn.example.com/photo-1.jpg',
+          }),
+        ],
+      }),
+    );
+    expect(DB.updateEntry).toHaveBeenNthCalledWith(
+      2,
+      'photo-local-1',
+      expect.objectContaining({
+        syncStatus: 'pending',
+        syncOp: 'create',
+      }),
+    );
+  });
+
+  it('does not re-upload media that already has a remote uri during first cloud backup', async () => {
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'photo-local-2',
+        type: 'photo',
+        content: '本地图片',
+        timestamp: 1700000002000,
+        syncStatus: 'synced',
+        media: [
+          {
+            uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-2.jpg',
+            remoteUri: 'https://cdn.example.com/photo-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 4096,
+          },
+        ],
+      },
+    ]);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('local');
+
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(DB.updateEntry).toHaveBeenCalledTimes(1);
+    expect(DB.updateEntry).toHaveBeenCalledWith(
+      'photo-local-2',
+      expect.objectContaining({
+        syncStatus: 'pending',
+        syncOp: 'create',
+      }),
+    );
   });
 });
