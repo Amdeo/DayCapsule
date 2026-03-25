@@ -15,6 +15,10 @@ type entryMediaExecer interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
+type entryMediaQueryer interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+}
+
 type MediaRepository struct {
 	db *sql.DB
 }
@@ -119,8 +123,16 @@ func (r *MediaRepository) Delete(userID, mediaID string) error {
 }
 
 func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, error) {
+	return r.getByEntryID(r.db, entryID)
+}
+
+func (r *MediaRepository) GetByEntryIDTx(tx *sql.Tx, entryID string) ([]*models.MediaFile, error) {
+	return r.getByEntryID(tx, entryID)
+}
+
+func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string) ([]*models.MediaFile, error) {
 	query := `SELECT id, user_id, entry_id, filename, mime_type, size, storage_path, created_at FROM media_files WHERE entry_id = ?`
-	rows, err := r.db.Query(query, entryID)
+	rows, err := queryer.Query(query, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +149,19 @@ func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, err
 		files = append(files, &m)
 	}
 	return files, rows.Err()
+}
+
+func (r *MediaRepository) DeleteByEntryID(userID, entryID string) error {
+	return r.deleteByEntryID(r.db, userID, entryID)
+}
+
+func (r *MediaRepository) DeleteByEntryIDTx(tx *sql.Tx, userID, entryID string) error {
+	return r.deleteByEntryID(tx, userID, entryID)
+}
+
+func (r *MediaRepository) deleteByEntryID(execer entryMediaExecer, userID, entryID string) error {
+	_, err := execer.Exec("DELETE FROM media_files WHERE user_id = ? AND entry_id = ?", userID, entryID)
+	return err
 }
 
 func (r *MediaRepository) FindByUserIDAndFilename(userID, filename string) (*models.MediaFile, error) {

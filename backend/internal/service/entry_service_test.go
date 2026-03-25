@@ -316,3 +316,56 @@ func TestEntryServiceRecoversMissingMediaWhenOnlyPartiallyLinked(t *testing.T) {
 		t.Fatalf("expected both media files to be linked after recovery, got %#v", linkedFiles)
 	}
 }
+
+func TestEntryServiceDeleteCascadesLinkedMediaRowsAndFiles(t *testing.T) {
+	db := setupEntryTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("entry-delete-cascade@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	svc := NewEntryService(entryRepo, mediaRepo, "http://localhost:3000")
+
+	now := time.Now().UTC()
+	if _, err := entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:         "entry-delete-cascade-1",
+		UserID:     user.ID,
+		Type:       "photo",
+		Content:    "delete me",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+
+	mediaPath := createTestMediaFile(t, t.TempDir(), "entry-service-delete-photo.jpg")
+	media, err := mediaRepo.Create(user.ID, "entry-service-delete-photo.jpg", "image/jpeg", mediaPath, 2048)
+	if err != nil {
+		t.Fatalf("create media: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(media.ID, "entry-delete-cascade-1"); err != nil {
+		t.Fatalf("link media: %v", err)
+	}
+
+	if err := svc.Delete(user.ID, "entry-delete-cascade-1"); err != nil {
+		t.Fatalf("delete entry: %v", err)
+	}
+
+	entry, err := entryRepo.GetByID(user.ID, "entry-delete-cascade-1")
+	if err != nil {
+		t.Fatalf("get entry after delete: %v", err)
+	}
+	if entry != nil {
+		t.Fatalf("expected entry to be deleted, got %#v", entry)
+	}
+	assertMediaFileDeleted(t, mediaRepo, media.ID)
+	assertPathMissing(t, mediaPath)
+}

@@ -9,13 +9,19 @@ import (
 )
 
 type EntryService struct {
-	entryRepo *repository.EntryRepository
-	mediaRepo *repository.MediaRepository
-	baseURL   string
+	entryRepo     *repository.EntryRepository
+	mediaRepo     *repository.MediaRepository
+	deleteService *EntryDeleteService
+	baseURL       string
 }
 
 func NewEntryService(entryRepo *repository.EntryRepository, mediaRepo *repository.MediaRepository, baseURL string) *EntryService {
-	return &EntryService{entryRepo: entryRepo, mediaRepo: mediaRepo, baseURL: baseURL}
+	return &EntryService{
+		entryRepo:     entryRepo,
+		mediaRepo:     mediaRepo,
+		deleteService: NewEntryDeleteService(entryRepo, mediaRepo),
+		baseURL:       baseURL,
+	}
 }
 
 func (s *EntryService) Create(userID string, req *models.CreateEntryRequest) (*models.EntryResponse, error) {
@@ -54,6 +60,9 @@ func (s *EntryService) Update(userID, entryID string, req *models.UpdateEntryReq
 }
 
 func (s *EntryService) Delete(userID, entryID string) error {
+	if s.deleteService != nil {
+		return s.deleteService.Delete(userID, entryID)
+	}
 	return s.entryRepo.Delete(userID, entryID)
 }
 
