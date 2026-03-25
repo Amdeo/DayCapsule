@@ -148,38 +148,55 @@ export class SyncService {
   ): Promise<BackupData['entries']> {
     return Promise.all(
       entries.map(async (e) => {
-        const media = e.media as any;
-        if (!media?.relativeUri) return e;
+        // 兼容旧格式（单对象）和新格式（数组）
+        const mediaArray: any[] = Array.isArray(e.media)
+          ? e.media
+          : e.media
+          ? [e.media]
+          : [];
 
-        const zipFile = zip.file(media.relativeUri as string);
-        if (!zipFile) {
-          logger.warn(`[restore] ZIP 中找不到媒体文件: ${media.relativeUri}`);
-          return { ...e, media: undefined };
-        }
+        if (mediaArray.length === 0) return e;
 
-        try {
-          const base64 = await zipFile.async('base64');
-          const filename = (media.relativeUri as string).split('/').pop()!;
-          const mediaPaths = getMediaPaths();
-          const targetDir =
-            e.type === 'voice' ? mediaPaths.voiceOriginal : mediaPaths.photoOriginal;
+        const processedMedia = await Promise.all(
+          mediaArray.map(async (mediaItem: any) => {
+            if (!mediaItem?.relativeUri) {
+              // 无本地文件可提取（remoteUri 仍可用于显示）
+              return mediaItem;
+            }
 
-          const dirInfo = await FileSystem.getInfoAsync(targetDir);
-          if (!dirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(targetDir, { intermediates: true });
-          }
+            const zipFile = zip.file(mediaItem.relativeUri as string);
+            if (!zipFile) {
+              logger.warn(`[restore] ZIP 中找不到媒体文件: ${mediaItem.relativeUri}`);
+              return { ...mediaItem, uri: mediaItem.remoteUri ?? mediaItem.uri };
+            }
 
-          const targetUri = `${targetDir}${filename}`;
-          await FileSystem.writeAsStringAsync(targetUri, base64, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+            try {
+              const base64 = await zipFile.async('base64');
+              const filename = (mediaItem.relativeUri as string).split('/').pop()!;
+              const mediaPaths = getMediaPaths();
+              const targetDir =
+                e.type === 'voice' ? mediaPaths.voiceOriginal : mediaPaths.photoOriginal;
 
-          logger.log(`[restore] 媒体文件已恢复: ${filename}`);
-          return { ...e, media: { ...media, uri: targetUri } };
-        } catch (err) {
-          logger.warn(`[restore] 无法恢复媒体文件 ${media.relativeUri}:`, err);
-          return { ...e, media: undefined };
-        }
+              const dirInfo = await FileSystem.getInfoAsync(targetDir);
+              if (!dirInfo.exists) {
+                await FileSystem.makeDirectoryAsync(targetDir, { intermediates: true });
+              }
+
+              const targetUri = `${targetDir}${filename}`;
+              await FileSystem.writeAsStringAsync(targetUri, base64, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+
+              logger.log(`[restore] 媒体文件已恢复: ${filename}`);
+              return { ...mediaItem, uri: targetUri };
+            } catch (err) {
+              logger.warn(`[restore] 无法恢复媒体文件 ${mediaItem.relativeUri}:`, err);
+              return { ...mediaItem, uri: mediaItem.remoteUri ?? mediaItem.uri };
+            }
+          })
+        );
+
+        return { ...e, media: processedMedia };
       })
     );
   }
