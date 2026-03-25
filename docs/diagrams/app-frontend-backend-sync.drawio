@@ -1,0 +1,422 @@
+<mxfile host="65bd71144e">
+    <diagram id="overview-page" name="总览">
+        <mxGraphModel dx="1105" dy="770" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1350" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="MemoryCapsule App 前后端交互与同步总览" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1f2937;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="520" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="用户操作" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="280" height="560" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="记录操作&#xa;文字新增 / 照片新增 / 语音录制&#xa;编辑 / 删除 / 播放 / 搜索 / 筛选" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="65" y="140" width="225" height="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="云端操作&#xa;登录 / 注册 / 开启云模式&#xa;首次同步决策 / 手动同步 / 退出登录" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="65" y="320" width="225" height="135" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="系统触发&#xa;冷启动 / 回前台 / 网络恢复&#xa;补传待上传媒体 / 自动备份" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="65" y="490" width="225" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="前端本地层" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="80" width="330" height="560" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="UI 页面&#xa;Home / Timeline / Settings / Backup / Login" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="140" width="270" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="Store + MMKV&#xa;AuthStore / SettingsStore / SyncStore&#xa;token / cloudMode / cursor / lastSyncError" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="255" width="270" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="本地数据层&#xa;SQLite entries + tags + media_json&#xa;Media Cache / 本地文件系统" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="395" width="270" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="本地优先原则&#xa;先落本地，再异步推云&#xa;记录状态：pending / pending_upload / pending_delete / synced" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="525" width="270" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="同步与上传层" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="780" y="80" width="400" height="560" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="CloudSyncService&#xa;收集 pending / failed / pending_delete&#xa;POST /api/sync&#xa;applyServerChanges / settleResults / createConflictCopy" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="140" width="320" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="PhotoUploadQueue&#xa;上传照片媒体 -&gt; 回写 remoteUri&#xa;状态：pending_upload -&gt; uploading -&gt; pending" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="305" width="320" height="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="VoiceUploadQueue&#xa;上传语音媒体 -&gt; 直接 POST /api/entries&#xa;本地临时 entry 替换为远端 entry" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="425" width="320" height="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="ApiClient&#xa;Authorization Header / 401 自动 refresh&#xa;JSON 请求 + 文件上传" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="555" width="320" height="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="后端接口与服务" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="1240" y="80" width="520" height="560" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="Auth&#xa;/api/auth/register&#xa;/api/auth/login&#xa;/api/auth/refresh" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1280" y="140" width="200" height="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="Media&#xa;/api/media/upload&#xa;/api/media/:id" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1280" y="270" width="200" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="Entries&#xa;/api/entries&#xa;/api/entries/export&#xa;/api/entries/import&#xa;/api/entries/count" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1280" y="385" width="200" height="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="Sync V2&#xa;/api/sync&#xa;事务写 entry + change log&#xa;baseUpdatedAt 冲突检测" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1510" y="140" width="210" height="125" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="旧备份接口（非首页主链路）&#xa;/api/sync/status&#xa;/api/sync/upload / download / backup" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1510" y="290" width="210" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="图例&#xa;绿色=用户入口&#xa;蓝色=前端 UI / Store&#xa;紫色=本地数据&#xa;橙色=同步与上传服务&#xa;青色=后端接口&#xa;灰色虚线=已存在但不是主链路" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="680" width="500" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="关键事实&#xa;1. 文字走 /api/sync&#xa;2. 照片先 /api/media/upload 再 /api/sync&#xa;3. 语音先 /api/media/upload 再 /api/entries&#xa;4. 网络恢复当前只补跑媒体上传队列" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="580" y="680" width="800" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#5b8def;" parent="1" source="4" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#5b8def;" parent="1" source="5" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#5b8def;" parent="1" source="6" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" parent="1" source="8" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" parent="1" source="8" target="10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="10" target="13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="10" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="10" target="15" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="13" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="14" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" parent="1" source="15" target="16" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#10739e;" parent="1" source="16" target="18" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="42" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#10739e;" parent="1" source="16" target="19" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#10739e;" parent="1" source="16" target="20" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#10739e;" parent="1" source="16" target="21" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#999999;dashed=1;" parent="1" source="16" target="22" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="user-ops-page" name="用户操作流程">
+        <mxGraphModel dx="1360" dy="948" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3400" pageHeight="1600" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="用户可见操作流程" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1f2937;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="文字记录" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="1520" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="用户保存文字" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="175" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="EntryStore.addEntry&#xa;SQLite 落库&#xa;syncStatus=pending" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="165" width="240" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="CloudSyncService&#xa;POST /api/sync" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="170" width="210" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="后端 Sync V2&#xa;写 entry + change log" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="170" width="220" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="前端结算&#xa;synced 或 conflict-local-copy" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1150" y="165" width="320" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="照片记录" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="390" width="1600" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="用户拍照 / 选相册" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="505" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="PhotoService.savePhotoToCache&#xa;addLocalEntry&#xa;syncStatus=pending_upload" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="290" y="495" width="240" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="PhotoUploadQueue&#xa;uploading" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="580" y="505" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="POST /api/media/upload" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="505" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="回写 remoteUri&#xa;syncStatus=pending" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1100" y="495" width="220" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="/api/sync -&gt; synced" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1370" y="505" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="语音记录" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="760" width="1720" height="320" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="用户开始录音" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="885" width="160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="创建本地临时 voice entry&#xa;syncStatus=pending_upload&#xa;recordingStatus=recording" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f3e8ff;strokeColor=#9673a6;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="290" y="875" width="260" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="停止录音并保存本地 cache" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="885" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="VoiceUploadQueue&#xa;POST /api/media/upload" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="875" width="250" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="POST /api/entries&#xa;mediaIds=[upload.id]" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1170" y="875" width="240" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="删除本地临时 entry&#xa;replace 为远端 entry&#xa;syncStatus=synced" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1460" y="875" width="260" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="编辑 / 删除 / 播放 / 搜索筛选" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="1840" y="80" width="1480" height="430" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="编辑已同步记录&#xa;updateEntry -&gt; pending -&gt; /api/sync update" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1880" y="170" width="320" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="删除已同步记录&#xa;markEntryPendingDelete -&gt; /api/sync delete -&gt; 本地删除" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2250" y="170" width="360" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="删除未上传媒体记录&#xa;cancel queue -&gt; 删除本地文件 -&gt; 删除 SQLite" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2660" y="170" width="380" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="播放语音 / 查看照片&#xa;优先本地 URI / 缓存媒体&#xa;无后端写操作" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1880" y="315" width="360" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="搜索 / 标签筛选 / 日期筛选&#xa;localDataSource.getEntriesPage -&gt; SQLite&#xa;当前不是远端检索" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2290" y="315" width="500" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="账号 / 云模式 / 手动同步" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="1840" y="570" width="1480" height="320" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="注册 / 登录&#xa;/api/auth/register|login&#xa;token + refreshToken -&gt; MMKV" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1880" y="670" width="300" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="开启云模式&#xa;inspectInitialState&#xa;本地/云端计数判定" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2240" y="670" width="300" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="首次同步决策&#xa;使用云端数据 / 上传本地数据&#xa;runInitialFlow + syncNow" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2600" y="670" width="340" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="手动同步&#xa;顶部云按钮 -&gt; showCloudSyncStatusAlert&#xa;立即同步 -&gt; syncNow" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="3000" y="670" width="280" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="退出登录&#xa;若 cloudMode=true 先切回离线&#xa;再清除 token" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2240" y="800" width="320" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" value="备份 / 切后端" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" parent="1" vertex="1">
+                    <mxGeometry x="1840" y="960" width="1480" height="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" value="切换后端地址&#xa;test backend -&gt; switchBackendEnvironment&#xa;reset ApiClient + resetDatabase + reload state" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="1880" y="1065" width="380" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" value="导出备份&#xa;createBackup ZIP&#xa;iOS 分享 / Android 保存到文件" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2320" y="1065" width="300" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="38" value="导入备份&#xa;pick ZIP -&gt; restoreEntries&#xa;extractMediaFromZip -&gt; updateEntry(media)" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="2680" y="1065" width="430" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="60" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="4" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="5" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="6" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="7" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="10" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="65" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="11" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="66" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="12" target="13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="67" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="13" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="14" target="15" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="17" target="18" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="70" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="18" target="19" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="71" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="19" target="20" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="72" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="20" target="21" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" parent="1" source="21" target="22" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="74" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" parent="1" source="30" target="31" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="75" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" parent="1" source="31" target="32" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="auto-sync-page" name="系统自动同步与异常">
+        <mxGraphModel dx="3600" dy="1700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3600" pageHeight="1700" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="系统自动同步与异常分支" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1f2937;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="20" width="360" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="冷启动恢复" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="80" width="2220" height="320" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="初始化&#xa;文件系统 / 音频 / SQLite / migration" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="80" y="190" width="220" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="恢复状态&#xa;loadAuth / loadSync / loadSettings" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="370" y="190" width="240" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="检查 cloudMode&#xa;switching 中断恢复 -&gt; 直接重置 false" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="680" y="190" width="290" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="inspectInitialState&#xa;localCount + cloudCount" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1040" y="190" width="230" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="runInitialFlow&#xa;restoring / backing-up / needs-decision / ready" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1340" y="190" width="280" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="若不是 needs-decision&#xa;syncNow -&gt; flushPendingVoiceUploads&#xa;flushPendingPhotoUploads -&gt; refresh indicator" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1690" y="180" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="App 生命周期触发" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="450" width="2220" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="回到前台&#xa;若 cloudMode=true -&gt; syncNow&#xa;然后补传语音 / 照片队列" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="100" y="555" width="360" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="网络恢复&#xa;只补跑语音 / 照片上传队列&#xa;刷新同步状态按钮" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="560" y="555" width="360" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="进入后台&#xa;autoBackup=true 且 shouldBackup&#xa;createBackup ZIP" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1020" y="555" width="360" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="当前特性差异&#xa;网络恢复不会主动触发纯文字 pending 的 syncNow" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1480" y="555" width="580" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="后端增量同步内部" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="780" width="2220" height="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="前端 collectPendingChanges&#xa;cursor + clientChanges" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="100" y="915" width="300" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="POST /api/sync" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="490" y="925" width="230" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="SyncV2Service&#xa;事务处理 create / update / delete" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="810" y="915" width="340" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="update 时比较 baseUpdatedAt&#xa;若服务器较新 -&gt; conflicted" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="915" width="380" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="append change log&#xa;ListSinceCursor 拉取 serverChanges" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#d9f0f7;strokeColor=#10739e;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="1060" width="380" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="前端 applyServerChanges&#xa;settleResults&#xa;setCursor / markSyncSuccess" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1240" y="1205" width="430" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="若有冲突&#xa;主记录更新为 serverEntry&#xa;另建 conflict-local-copy" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="1730" y="1205" width="430" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="异常与重试" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=17;align=left;verticalAlign=top;spacingTop=12;spacingLeft=14;" vertex="1" parent="1">
+                    <mxGeometry x="2380" y="80" width="1120" height="680" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="照片 / 语音媒体上传失败&#xa;回退 pending_upload&#xa;下次启动 / 前台 / 网络恢复重试" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2420" y="170" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="syncNow 失败&#xa;markSyncFailure(lastSyncError)&#xa;顶部云状态切到 failed" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2960" y="170" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="版本冲突&#xa;返回 conflicts[]&#xa;服务器版本覆盖主记录" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2420" y="340" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="本地冲突副本&#xa;syncStatus=conflict-local-copy&#xa;保留用户本地编辑内容" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2960" y="340" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="云模式切换中断&#xa;下次启动检测到 switching&#xa;直接重置为离线模式" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2420" y="510" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="后端地址切换失败&#xa;回滚 currentServerUrl&#xa;重新 initDatabase + reload state" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#ffffff;strokeColor=#b85450;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2960" y="510" width="480" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="备注&#xa;旧 /api/sync/upload|download 备份接口仍存在&#xa;但当前首页主同步链路不依赖它" style="rounded=1;whiteSpace=wrap;html=1;spacing=8;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontSize=13;" vertex="1" parent="1">
+                    <mxGeometry x="2420" y="660" width="1020" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="60" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="4" target="5">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="5" target="6">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="6" target="7">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="7" target="8">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="8" target="9">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="65" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="16" target="17">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="66" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="17" target="18">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="67" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="18" target="19">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="19" target="20">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="20" target="21">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="70" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="21" target="22">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
