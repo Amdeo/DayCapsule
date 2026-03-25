@@ -2,39 +2,40 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import HomeScreen from '../../../../app/(tabs)/index';
 
-const mockLoadEntries = jest.fn().mockResolvedValue(undefined);
-const mockAddEntry = jest.fn().mockResolvedValue(undefined);
-const mockAddLocalEntry = jest.fn().mockResolvedValue(undefined);
-const mockUpdateLocalEntry = jest.fn().mockResolvedValue(undefined);
-const mockReplaceEntry = jest.fn().mockResolvedValue(undefined);
-const mockDeleteEntry = jest.fn().mockResolvedValue(undefined);
-const mockUpdateRecordingStatus = jest.fn().mockResolvedValue(undefined);
-const mockUpdateRecordingDuration = jest.fn().mockResolvedValue(undefined);
-const mockCompleteRecording = jest.fn().mockResolvedValue(undefined);
-const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
-const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
-const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockEntryStoreState = {
-  loadEntries: mockLoadEntries,
-  addEntry: mockAddEntry,
-  addLocalEntry: mockAddLocalEntry,
-  updateLocalEntry: mockUpdateLocalEntry,
-  replaceEntry: mockReplaceEntry,
-  deleteEntry: mockDeleteEntry,
-  updateRecordingStatus: mockUpdateRecordingStatus,
-  updateRecordingDuration: mockUpdateRecordingDuration,
-  completeRecording: mockCompleteRecording,
-};
-const mockSettingsState = {
-  loadSettings: mockLoadSettings,
-  cloudMode: false,
-};
-const mockCommonTagsState = {
-  loadCommonTags: mockLoadCommonTags,
+  entries: [] as Array<{ id: string; type: string; media?: Array<{ uri?: string }> }>,
+  loadEntries: jest.fn().mockResolvedValue(undefined),
+  addEntry: jest.fn().mockResolvedValue(undefined),
+  addLocalEntry: jest.fn().mockResolvedValue(undefined),
+  updateLocalEntry: jest.fn().mockResolvedValue(undefined),
+  replaceEntry: jest.fn().mockResolvedValue(undefined),
+  deleteEntry: jest.fn().mockResolvedValue(undefined),
+  updateRecordingStatus: jest.fn().mockResolvedValue(undefined),
+  updateRecordingDuration: jest.fn().mockResolvedValue(undefined),
+  completeRecording: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockSettingsState = {
+  loadSettings: jest.fn().mockResolvedValue(undefined),
+  cloudMode: false,
+};
+
+const mockCommonTagsState = {
+  loadCommonTags: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
+
+const mockUseEntryStore = Object.assign(
+  () => mockEntryStoreState,
+  {
+    getState: () => mockEntryStoreState,
+    setState: jest.fn(),
+  }
+);
+
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => mockEntryStoreState,
+  useEntryStore: mockUseEntryStore,
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -60,6 +61,7 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: {
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
+    preloadAudio: jest.fn().mockResolvedValue(undefined),
     cancelRecording: jest.fn().mockResolvedValue(undefined),
     getRecordingDuration: jest.fn().mockResolvedValue(0),
     startRecording: jest.fn().mockResolvedValue(undefined),
@@ -71,7 +73,6 @@ jest.mock('@/src/services/voiceService', () => ({
     }),
     saveVoiceToStorage: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
     saveVoiceToCache: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
-    preloadAudio: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -93,37 +94,29 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
-jest.mock('@/src/components/Timeline.v2', () => ({
-  Timeline: () => {
-    const React = require('react');
-    const { View } = require('react-native');
-    return React.createElement(View, { testID: 'timeline-stub' });
-  },
-}));
+jest.mock('@/src/components/Timeline.v2', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Timeline: () => React.createElement(View, { testID: 'home-screen-timeline-stub' }),
+  };
+});
 
-jest.mock('@/src/components/Sidebar', () => ({
-  Sidebar: ({ setShowStats }: { setShowStats: (value: boolean) => void }) => {
-    const React = require('react');
-    const { View, Pressable, Text } = require('react-native');
-    return React.createElement(
-      View,
-      { testID: 'sidebar-stub' },
-      React.createElement(
-        Pressable,
-        { testID: 'sidebar-open-stats', onPress: () => setShowStats(true) },
-        React.createElement(Text, null, '打开统计')
-      )
-    );
-  },
-}));
+jest.mock('@/src/components/Sidebar', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Sidebar: () => React.createElement(View, { testID: 'home-screen-sidebar-stub' }),
+  };
+});
 
-jest.mock('@/src/components/TextEditor', () => ({
-  TextEditor: () => {
-    const React = require('react');
-    const { View } = require('react-native');
-    return React.createElement(View, { testID: 'text-editor-stub' });
-  },
-}));
+jest.mock('@/src/components/TextEditor', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    TextEditor: () => React.createElement(View, { testID: 'home-screen-editor-stub' }),
+  };
+});
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -145,33 +138,34 @@ export interface RenderHomeScreenOptions {
 
 export function renderHomeScreen(overrides: RenderHomeScreenOptions = {}) {
   Object.assign(mockEntryStoreState, {
-    loadEntries: mockLoadEntries,
-    addEntry: mockAddEntry,
-    addLocalEntry: mockAddLocalEntry,
-    updateLocalEntry: mockUpdateLocalEntry,
-    replaceEntry: mockReplaceEntry,
-    deleteEntry: mockDeleteEntry,
-    updateRecordingStatus: mockUpdateRecordingStatus,
-    updateRecordingDuration: mockUpdateRecordingDuration,
-    completeRecording: mockCompleteRecording,
+    entries: [],
+    loadEntries: jest.fn().mockResolvedValue(undefined),
+    addEntry: jest.fn().mockResolvedValue(undefined),
+    addLocalEntry: jest.fn().mockResolvedValue(undefined),
+    updateLocalEntry: jest.fn().mockResolvedValue(undefined),
+    replaceEntry: jest.fn().mockResolvedValue(undefined),
+    deleteEntry: jest.fn().mockResolvedValue(undefined),
+    updateRecordingStatus: jest.fn().mockResolvedValue(undefined),
+    updateRecordingDuration: jest.fn().mockResolvedValue(undefined),
+    completeRecording: jest.fn().mockResolvedValue(undefined),
     ...overrides.entryStore,
   });
   Object.assign(mockSettingsState, {
-    loadSettings: mockLoadSettings,
+    loadSettings: jest.fn().mockResolvedValue(undefined),
     cloudMode: false,
     ...overrides.settings,
   });
   Object.assign(mockCommonTagsState, {
-    loadCommonTags: mockLoadCommonTags,
+    loadCommonTags: jest.fn().mockResolvedValue(undefined),
     ...overrides.commonTags,
   });
+  mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
 
   return {
     mocks: {
       entryStore: mockEntryStoreState,
       settings: mockSettingsState,
       commonTags: mockCommonTagsState,
-      refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
     },
     screen: render(<HomeScreen />),
   };

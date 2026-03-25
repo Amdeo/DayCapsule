@@ -4,44 +4,9 @@ import { SettingsPage } from '../../SettingsPage';
 
 type SettingsPageProps = ComponentProps<typeof SettingsPage>;
 
-const mockSettingsLoadSettings = jest.fn();
-const mockSettingsSetNotifications = jest.fn();
-const mockSettingsSetAutoBackup = jest.fn();
-const mockSettingsSetHighQualityPhotos = jest.fn();
-const mockSettingsSetCardSpacing = jest.fn();
-const mockSettingsSetPhotoHeight = jest.fn();
-const mockSettingsSetCalendarDensity = jest.fn();
-const mockSettingsSetCloudMode = jest.fn();
-const mockSettingsResetSettings = jest.fn();
-const mockAuthLogout = jest.fn();
-const mockCloudSyncGetStatus = jest.fn(async () => ({
-  lastSyncAt: 1700000000000,
-  lastSyncError: null,
-  initialSyncState: 'ready',
-  pendingEntries: 0,
-  failedEntries: 0,
-  conflictCopies: 0,
-}));
-const mockCloudSyncNow = jest.fn(async () => undefined);
-const mockShowCloudSyncStatusAlert = jest.fn(async () => undefined);
-const mockInspectInitialState = jest.fn(async () => ({
-  localCount: 0,
-  cloudCount: 0,
-}));
-const mockBuildInitialFlow = jest.fn(() => ({
-  type: 'backing-up',
-  localCount: 0,
-  cloudCount: 0,
-}));
-const mockRunInitialFlow = jest.fn(async () => undefined);
-const mockGetCurrentServerUrl = jest.fn(async () => 'https://server-a.example.com');
-const mockGetRecentServerUrls = jest.fn(async () => []);
-const mockTestBackendConnection = jest.fn(async () => ({ success: true }));
-const mockSwitchBackendEnvironment = jest.fn(async () => ({
-  switched: false,
-  currentServerUrl: 'https://server-a.example.com',
-}));
-const mockEntryLoadEntries = jest.fn(async () => undefined);
+const mockEntryStoreState = {
+  entries: [] as unknown[],
+};
 
 const mockSettingsState = {
   notifications: false,
@@ -52,36 +17,64 @@ const mockSettingsState = {
   calendarDensity: 'default',
   cloudMode: false as boolean | 'switching',
   isLoaded: true,
-  loadSettings: mockSettingsLoadSettings,
-  setNotifications: mockSettingsSetNotifications,
-  setAutoBackup: mockSettingsSetAutoBackup,
-  setHighQualityPhotos: mockSettingsSetHighQualityPhotos,
-  setCardSpacing: mockSettingsSetCardSpacing,
-  setPhotoHeight: mockSettingsSetPhotoHeight,
-  setCalendarDensity: mockSettingsSetCalendarDensity,
-  setCloudMode: mockSettingsSetCloudMode,
-  resetSettings: mockSettingsResetSettings,
+  loadSettings: jest.fn(),
+  setNotifications: jest.fn(),
+  setAutoBackup: jest.fn(),
+  setHighQualityPhotos: jest.fn(),
+  setCardSpacing: jest.fn(),
+  setPhotoHeight: jest.fn(),
+  setCalendarDensity: jest.fn(),
+  setCloudMode: jest.fn(),
+  resetSettings: jest.fn(),
 };
 
 const mockAuthState = {
   user: null as { email: string } | null,
   isAuthenticated: false,
-  logout: mockAuthLogout,
+  logout: jest.fn(),
 };
 
-const mockEntryStoreState = {
-  entries: [] as unknown[],
+const mockCloudModeState = {
+  isSwitchingMode: false,
+  enableCloudMode: jest.fn(),
+  handleCloudModeToggle: jest.fn(),
+  handleLogout: jest.fn(),
+};
+
+const mockControllerState = {
+  usedSpace: '< 0.1 MB',
+  showTagMgmt: false,
+  showLogin: false,
+  photoCount: 0,
+  voiceCount: 0,
+  currentServerUrl: '',
+  backendDraftUrl: '',
+  recentServerUrls: [] as string[],
+  backendTestStatus: null as string | null,
+  backendTestErrorMessage: '',
+  isSavingBackendServer: false,
+  canSaveBackendServer: false,
+  openTagManagement: jest.fn(),
+  closeTagManagement: jest.fn(),
+  openLogin: jest.fn(),
+  closeLogin: jest.fn(),
+  handleLoginSuccess: jest.fn(),
+  handleNotifications: jest.fn(),
+  handleAutoBackup: jest.fn(),
+  handleHighQualityPhotos: jest.fn(),
+  handleCardSpacing: jest.fn(),
+  handlePhotoHeight: jest.fn(),
+  handleCalendarDensity: jest.fn(),
+  handleBackendDraftUrlChange: jest.fn(),
+  handleTestBackendServer: jest.fn(),
+  handleSaveBackendServer: jest.fn(),
+  handleSelectRecentBackendServer: jest.fn(),
+  handleClearCache: jest.fn(),
+  handleResetSettings: jest.fn(),
 };
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: Object.assign(
-    () => mockEntryStoreState,
-    {
-      getState: () => ({
-        loadEntries: mockEntryLoadEntries,
-      }),
-    }
-  ),
+  useEntryStore: () => mockEntryStoreState,
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -94,141 +87,24 @@ jest.mock('@/src/store/authStore', () => ({
   useAuthStore: () => mockAuthState,
 }));
 
-jest.mock('@/src/store/commonTagsStore', () => ({
-  useCommonTagsStore: {
-    getState: () => ({
-      loadCommonTags: jest.fn(),
-    }),
-  },
+jest.mock('../../settings-page/useSettingsPageCloudMode', () => ({
+  useSettingsPageCloudMode: () => mockCloudModeState,
 }));
 
-jest.mock('@/src/services/cloudSyncService', () => ({
-  createCloudSyncService: jest.fn(() => ({
-    getStatus: mockCloudSyncGetStatus,
-    syncNow: mockCloudSyncNow,
-  })),
-}));
-
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
-}));
-
-jest.mock('@/src/services/syncBootstrapService', () => ({
-  createSyncBootstrapService: jest.fn(() => ({
-    inspectInitialState: mockInspectInitialState,
-    buildInitialFlow: mockBuildInitialFlow,
-    runInitialFlow: mockRunInitialFlow,
-  })),
-}));
-
-jest.mock('@/src/services/backendEnvironmentService', () => ({
-  getCurrentServerUrl: () => mockGetCurrentServerUrl(),
-  getRecentServerUrls: () => mockGetRecentServerUrls(),
-  normalizeServerUrl: (url: string) => url.trim().replace(/\/+$/, ''),
-}));
-
-jest.mock('@/src/services/backendConnectionService', () => ({
-  testBackendConnection: (url: string) => mockTestBackendConnection(url),
-}));
-
-jest.mock('@/src/services/localEnvironmentDataManager', () => ({
-  switchBackendEnvironment: (url: string) => mockSwitchBackendEnvironment(url),
+jest.mock('../../settings-page/useSettingsPageController', () => ({
+  useSettingsPageController: () => mockControllerState,
 }));
 
 jest.mock('@/src/services/e2eSyncLabService', () => ({
   createE2ESyncLabService: jest.fn(() => ({
-    injectSuspectRepairable: jest.fn(async () => undefined),
-    injectRepairPending: jest.fn(async () => undefined),
-    clearFixtures: jest.fn(async () => undefined),
+    injectSuspectRepairable: jest.fn(),
+    injectRepairPending: jest.fn(),
+    clearFixtures: jest.fn(),
   })),
 }));
 
-jest.mock('@/src/services/showPhotoRepairPrompt', () => ({
-  showPhotoRepairPrompt: jest.fn(),
-}));
-
-jest.mock('@/src/services/voiceService', () => ({
-  VoiceService: { clearSoundCache: jest.fn() },
-}));
-
-jest.mock('@/src/services/apiClient', () => ({
-  getApiClient: jest.fn(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-  })),
-}));
-
-jest.mock('@/src/database/dataSource', () => ({
-  switchDataSource: jest.fn(),
-  localDataSource: {},
-  createRemoteDataSource: jest.fn(() => ({})),
-}));
-
-jest.mock('@/src/database/operations', () => ({
-  getAllEntries: jest.fn(async () => []),
-  getEntriesCount: jest.fn(async () => 0),
-  clearAllEntries: jest.fn(async () => undefined),
-  restoreEntries: jest.fn(async () => []),
-}));
-
-jest.mock('@/src/utils/fileSystem', () => ({
-  getStorageStats: jest.fn(async () => ({ totalSize: 1024 })),
-  clearDirectory: jest.fn(async () => undefined),
-  getMediaPaths: jest.fn(() => ({
-    photoOriginal: 'file:///documents/photos/original/',
-    photoDisplay: 'file:///cache/photos/display/',
-    photoThumbnail: 'file:///cache/photos/thumbnails/',
-    voiceOriginal: 'file:///documents/voice/original/',
-    voiceCompressed: 'file:///cache/voice/compressed/',
-    temp: 'file:///cache/temp/',
-    database: 'file:///documents/db/',
-  })),
-}));
-
-jest.mock('@/src/services/notificationService', () => ({
-  NotificationService: {
-    isReminderScheduled: jest.fn(async () => false),
-    requestPermission: jest.fn(async () => true),
-    scheduleDailyReminder: jest.fn(async () => undefined),
-    cancelDailyReminder: jest.fn(async () => undefined),
-  },
-}));
-
-jest.mock('@/src/services/showErrorFeedback', () => ({
-  showErrorFeedback: jest.fn(),
-}));
-
-jest.mock('@/src/utils/logger', () => ({
-  logger: {
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
-
-jest.mock('@expo/vector-icons', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text>,
-  };
-});
-
-jest.mock('../../DetailPageShell', () => ({
-  DetailPageShell: ({ children }: { children: React.ReactNode }) => {
-    const React = require('react');
-    return React.createElement(React.Fragment, null, children);
-  },
-}));
-
-jest.mock('../../TagManagementPage', () => ({
-  TagManagementPage: () => null,
-}));
-
-jest.mock('../../LoginPage', () => ({
-  LoginPage: () => null,
+jest.mock('../../settings-page/SettingsPageDialogs', () => ({
+  SettingsPageDialogs: () => null,
 }));
 
 export interface RenderSettingsPageOptions {
@@ -236,13 +112,15 @@ export interface RenderSettingsPageOptions {
   auth?: Partial<typeof mockAuthState>;
   settings?: Partial<typeof mockSettingsState>;
   entryStore?: Partial<typeof mockEntryStoreState>;
+  cloudMode?: Partial<typeof mockCloudModeState>;
+  controller?: Partial<typeof mockControllerState>;
 }
 
 export function renderSettingsPage(overrides: RenderSettingsPageOptions = {}) {
   Object.assign(mockAuthState, {
     user: null,
     isAuthenticated: false,
-    logout: mockAuthLogout,
+    logout: jest.fn(),
     ...overrides.auth,
   });
   Object.assign(mockSettingsState, {
@@ -254,20 +132,59 @@ export function renderSettingsPage(overrides: RenderSettingsPageOptions = {}) {
     calendarDensity: 'default',
     cloudMode: false,
     isLoaded: true,
-    loadSettings: mockSettingsLoadSettings,
-    setNotifications: mockSettingsSetNotifications,
-    setAutoBackup: mockSettingsSetAutoBackup,
-    setHighQualityPhotos: mockSettingsSetHighQualityPhotos,
-    setCardSpacing: mockSettingsSetCardSpacing,
-    setPhotoHeight: mockSettingsSetPhotoHeight,
-    setCalendarDensity: mockSettingsSetCalendarDensity,
-    setCloudMode: mockSettingsSetCloudMode,
-    resetSettings: mockSettingsResetSettings,
+    loadSettings: jest.fn(),
+    setNotifications: jest.fn(),
+    setAutoBackup: jest.fn(),
+    setHighQualityPhotos: jest.fn(),
+    setCardSpacing: jest.fn(),
+    setPhotoHeight: jest.fn(),
+    setCalendarDensity: jest.fn(),
+    setCloudMode: jest.fn(),
+    resetSettings: jest.fn(),
     ...overrides.settings,
   });
   Object.assign(mockEntryStoreState, {
     entries: [],
     ...overrides.entryStore,
+  });
+  Object.assign(mockCloudModeState, {
+    isSwitchingMode: false,
+    enableCloudMode: jest.fn(),
+    handleCloudModeToggle: jest.fn(),
+    handleLogout: jest.fn(),
+    ...overrides.cloudMode,
+  });
+  Object.assign(mockControllerState, {
+    usedSpace: '< 0.1 MB',
+    showTagMgmt: false,
+    showLogin: false,
+    photoCount: 0,
+    voiceCount: 0,
+    currentServerUrl: '',
+    backendDraftUrl: '',
+    recentServerUrls: [],
+    backendTestStatus: null,
+    backendTestErrorMessage: '',
+    isSavingBackendServer: false,
+    canSaveBackendServer: false,
+    openTagManagement: jest.fn(),
+    closeTagManagement: jest.fn(),
+    openLogin: jest.fn(),
+    closeLogin: jest.fn(),
+    handleLoginSuccess: jest.fn(),
+    handleNotifications: jest.fn(),
+    handleAutoBackup: jest.fn(),
+    handleHighQualityPhotos: jest.fn(),
+    handleCardSpacing: jest.fn(),
+    handlePhotoHeight: jest.fn(),
+    handleCalendarDensity: jest.fn(),
+    handleBackendDraftUrlChange: jest.fn(),
+    handleTestBackendServer: jest.fn(),
+    handleSaveBackendServer: jest.fn(),
+    handleSelectRecentBackendServer: jest.fn(),
+    handleClearCache: jest.fn(),
+    handleResetSettings: jest.fn(),
+    ...overrides.controller,
   });
 
   const props: SettingsPageProps = {
@@ -282,11 +199,8 @@ export function renderSettingsPage(overrides: RenderSettingsPageOptions = {}) {
       auth: mockAuthState,
       settings: mockSettingsState,
       entryStore: mockEntryStoreState,
-      cloud: {
-        getStatus: mockCloudSyncGetStatus,
-        syncNow: mockCloudSyncNow,
-        showStatusAlert: mockShowCloudSyncStatusAlert,
-      },
+      cloudMode: mockCloudModeState,
+      controller: mockControllerState,
     },
     screen: render(<SettingsPage {...props} />),
   };
