@@ -1,5 +1,6 @@
 import { createCloudSyncService } from '../cloudSyncService';
 import * as DB from '@/src/database/operations';
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore } from '@/src/store/syncStore';
 
 const mockRefreshIndicator = jest.fn(async () => undefined);
@@ -76,10 +77,24 @@ jest.mock('@/src/services/apiClient', () => {
 });
 
 const mockValidateEntries = jest.fn();
+const mockReplaceIssues = jest.fn();
+const mockShowPhotoRepairPrompt = jest.fn();
 jest.mock('../cloudMediaSyncService', () => ({
   createCloudMediaSyncService: jest.fn(() => ({
     validateEntries: mockValidateEntries,
   })),
+}));
+
+jest.mock('../showPhotoRepairPrompt', () => ({
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowPhotoRepairPrompt(...args),
+}));
+
+jest.mock('@/src/store/mediaRepairStore', () => ({
+  useMediaRepairStore: {
+    getState: () => ({
+      replaceIssues: mockReplaceIssues,
+    }),
+  },
 }));
 
 describe('cloudSyncService', () => {
@@ -328,18 +343,39 @@ describe('cloudSyncService', () => {
     });
 
     mockValidateEntries.mockResolvedValueOnce({
-      status: 'partial',
-      total: 1,
-      downloaded: 0,
-      missing: 1,
-      failed: 0,
-      lastError: 'missing file',
-      lastValidatedAt: 1234,
+      summary: {
+        status: 'partial',
+        total: 1,
+        downloaded: 0,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing file',
+        lastValidatedAt: 1234,
+      },
+      issues: [
+        {
+          entryId: 'entry-photo-validate',
+          mediaIndex: 0,
+          localMediaId: 'local-1',
+          localUri: 'file:///documents/media/photos/original/photo.jpg',
+          integrityStatus: 'repair_prompt_required',
+          integrityReason: 'cloud hash mismatch while local original is still healthy',
+        },
+      ],
     });
 
     await createCloudSyncService().syncNow();
 
     expect(useSyncStore.getState().lastMediaValidationSummary?.status).toBe('partial');
+    expect(useSyncStore.getState().lastMediaValidationSummary?.suspect).toBe(1);
+    expect(mockReplaceIssues).toHaveBeenCalledWith([
+      expect.objectContaining({
+        entryId: 'entry-photo-validate',
+      }),
+    ]);
+    expect(mockShowPhotoRepairPrompt).toHaveBeenCalledTimes(1);
   });
 
   it('includes conflicted server entries with remote media in media validation', async () => {
@@ -387,13 +423,18 @@ describe('cloudSyncService', () => {
     });
     (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-conflict-photo', media: [] });
     mockValidateEntries.mockResolvedValueOnce({
-      status: 'success',
-      total: 1,
-      downloaded: 1,
-      missing: 0,
-      failed: 0,
-      lastError: null,
-      lastValidatedAt: 2345,
+      summary: {
+        status: 'success',
+        total: 1,
+        downloaded: 1,
+        missing: 0,
+        failed: 0,
+        suspect: 0,
+        repairable: 0,
+        lastError: null,
+        lastValidatedAt: 2345,
+      },
+      issues: [],
     });
 
     await createCloudSyncService().syncNow();
@@ -420,6 +461,8 @@ describe('cloudSyncService', () => {
         downloaded: 1,
         missing: 2,
         failed: 0,
+        suspect: 1,
+        repairable: 1,
         lastError: 'missing file',
         lastValidatedAt: 1000,
       },
@@ -456,9 +499,12 @@ describe('cloudSyncService', () => {
       downloaded: 1,
       missing: 2,
       failed: 0,
+      suspect: 1,
+      repairable: 1,
       lastError: 'missing file',
       lastValidatedAt: 1000,
     });
+    expect(mockShowPhotoRepairPrompt).not.toHaveBeenCalled();
   });
 
   it('sends remoteUri as uri in server payload when remoteUri exists', async () => {

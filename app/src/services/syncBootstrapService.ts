@@ -6,6 +6,8 @@ import {
   buildPhotoUploadMetadata,
   mergePhotoUploadResult,
 } from '@/src/services/photoIntegrityService';
+import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -203,19 +205,28 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
       const restoredEntries = (exported ?? []).map(normalizeImportedEntry);
       await DB.clearAllEntries();
       await DB.restoreEntries(restoredEntries);
-      const mediaValidationSummary = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
+      const mediaValidationRun = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
         const total = countCloudRestoreMediaValidationTargets(restoredEntries);
         return {
-          status: 'failed' as const,
-          total,
-          downloaded: 0,
-          missing: 0,
-          failed: total,
-          lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
-          lastValidatedAt: Date.now(),
+          summary: {
+            status: 'failed' as const,
+            total,
+            downloaded: 0,
+            missing: 0,
+            failed: total,
+            suspect: 0,
+            repairable: 0,
+            lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
+            lastValidatedAt: Date.now(),
+          },
+          issues: [],
         };
       });
-      await useSyncStore.getState().setMediaValidationSummary(mediaValidationSummary);
+      await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
+      useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
+      if (mediaValidationRun.issues.length > 0) {
+        showPhotoRepairPrompt();
+      }
       await useSyncStore.getState().setInitialSyncState('ready');
       return;
     }

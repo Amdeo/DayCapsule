@@ -6,6 +6,8 @@ const mockUploadFile = jest.fn();
 const mockSetInitialSyncState = jest.fn(async () => undefined);
 const mockSetMediaValidationSummary = jest.fn(async () => undefined);
 const mockValidateEntries = jest.fn();
+const mockReplaceIssues = jest.fn();
+const mockShowPhotoRepairPrompt = jest.fn();
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -30,11 +32,23 @@ jest.mock('../cloudMediaSyncService', () => ({
   })),
 }));
 
+jest.mock('../showPhotoRepairPrompt', () => ({
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowPhotoRepairPrompt(...args),
+}));
+
 jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: {
     getState: () => ({
       setInitialSyncState: mockSetInitialSyncState,
       setMediaValidationSummary: mockSetMediaValidationSummary,
+    }),
+  },
+}));
+
+jest.mock('@/src/store/mediaRepairStore', () => ({
+  useMediaRepairStore: {
+    getState: () => ({
+      replaceIssues: mockReplaceIssues,
     }),
   },
 }));
@@ -54,13 +68,18 @@ describe('syncBootstrapService', () => {
     (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
     mockApiGet.mockResolvedValue({ entryCount: 0 });
     mockValidateEntries.mockResolvedValue({
-      status: 'success',
-      total: 0,
-      downloaded: 0,
-      missing: 0,
-      failed: 0,
-      lastError: null,
-      lastValidatedAt: 1700000000000,
+      summary: {
+        status: 'success',
+        total: 0,
+        downloaded: 0,
+        missing: 0,
+        failed: 0,
+        suspect: 0,
+        repairable: 0,
+        lastError: null,
+        lastValidatedAt: 1700000000000,
+      },
+      issues: [],
     });
   });
 
@@ -207,13 +226,27 @@ describe('syncBootstrapService', () => {
       },
     ]);
     const mediaSummary = {
-      status: 'partial' as const,
-      total: 2,
-      downloaded: 1,
-      missing: 1,
-      failed: 0,
-      lastError: 'missing thumbnail',
-      lastValidatedAt: 1700000003000,
+      summary: {
+        status: 'partial' as const,
+        total: 2,
+        downloaded: 1,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing thumbnail',
+        lastValidatedAt: 1700000003000,
+      },
+      issues: [
+        {
+          entryId: 'photo-restore-1',
+          mediaIndex: 0,
+          localMediaId: 'local-restore-1',
+          localUri: 'file:///documents/media/photos/original/photo-restore-1.jpg',
+          integrityStatus: 'repair_prompt_required' as const,
+          integrityReason: 'cloud hash mismatch while local original is still healthy',
+        },
+      ],
     };
     mockValidateEntries.mockResolvedValueOnce(mediaSummary);
 
@@ -222,7 +255,9 @@ describe('syncBootstrapService', () => {
 
     const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0]?.[0];
     expect(mockValidateEntries).toHaveBeenCalledWith(restoredEntries);
-    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary);
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary.summary);
+    expect(mockReplaceIssues).toHaveBeenCalledWith(mediaSummary.issues);
+    expect(mockShowPhotoRepairPrompt).toHaveBeenCalledTimes(1);
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
     expect(mockValidateEntries.mock.invocationCallOrder[0]).toBeLessThan(
@@ -260,10 +295,14 @@ describe('syncBootstrapService', () => {
         downloaded: 0,
         missing: 0,
         failed: 1,
+        suspect: 0,
+        repairable: 0,
         lastError: 'media broken',
         lastValidatedAt: expect.any(Number),
       }),
     );
+    expect(mockReplaceIssues).toHaveBeenCalledWith([]);
+    expect(mockShowPhotoRepairPrompt).not.toHaveBeenCalled();
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
   });
@@ -314,6 +353,8 @@ describe('syncBootstrapService', () => {
         downloaded: 0,
         missing: 0,
         failed: 1,
+        suspect: 0,
+        repairable: 0,
         lastError: 'media broken',
         lastValidatedAt: expect.any(Number),
       }),
