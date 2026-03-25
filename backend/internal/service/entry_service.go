@@ -153,10 +153,25 @@ func (s *EntryService) buildMediaList(entryID string) ([]models.Media, error) {
 
 	var media []models.Media
 	for _, f := range files {
+		var width *int
+		if f.Width > 0 {
+			value := f.Width
+			width = &value
+		}
+		var height *int
+		if f.Height > 0 {
+			value := f.Height
+			height = &value
+		}
 		media = append(media, models.Media{
-			URI:      fmt.Sprintf("%s/api/media/%s", s.baseURL, f.ID),
-			MimeType: f.MimeType,
-			Size:     f.Size,
+			URI:              fmt.Sprintf("%s/api/media/%s", s.baseURL, f.ID),
+			MimeType:         f.MimeType,
+			Size:             f.Size,
+			RemoteHash:       f.SHA256,
+			ValidationStatus: f.ValidationStatus,
+			ValidationError:  f.ValidationError,
+			Width:            width,
+			Height:           height,
 		})
 	}
 	if media == nil {
@@ -285,10 +300,15 @@ func mergeResolvedMedia(linkedMedia, fallbackMedia []models.Media) []models.Medi
 }
 
 type rawEntryMedia struct {
-	URI       string `json:"uri"`
-	RemoteURI string `json:"remoteUri"`
-	MimeType  string `json:"mimeType"`
-	Size      int64  `json:"size"`
+	URI              string  `json:"uri"`
+	RemoteURI        string  `json:"remoteUri"`
+	MimeType         string  `json:"mimeType"`
+	Size             int64   `json:"size"`
+	RemoteHash       string  `json:"remoteHash"`
+	ValidationStatus string  `json:"validationStatus"`
+	ValidationError  *string `json:"validationError"`
+	Width            *int    `json:"width"`
+	Height           *int    `json:"height"`
 }
 
 func fallbackMediaList(mediaJSON string) []models.Media {
@@ -312,9 +332,14 @@ func fallbackMediaList(mediaJSON string) []models.Media {
 		}
 
 		media = append(media, models.Media{
-			URI:      uri,
-			MimeType: item.MimeType,
-			Size:     item.Size,
+			URI:              uri,
+			MimeType:         item.MimeType,
+			Size:             item.Size,
+			RemoteHash:       item.RemoteHash,
+			ValidationStatus: item.ValidationStatus,
+			ValidationError:  item.ValidationError,
+			Width:            item.Width,
+			Height:           item.Height,
 		})
 	}
 

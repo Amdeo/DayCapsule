@@ -1,6 +1,13 @@
 import * as DB from '@/src/database/operations';
+import type { UploadFileOptions, UploadFileResponse } from '@/src/services/apiClient';
 import { getApiClient } from '@/src/services/apiClient';
 import { createCloudMediaSyncService } from '@/src/services/cloudMediaSyncService';
+import {
+  buildPhotoUploadMetadata,
+  mergePhotoUploadResult,
+} from '@/src/services/photoIntegrityService';
+import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -129,7 +136,7 @@ function countCloudRestoreMediaValidationTargets(entries: Entry[]): number {
 
 async function prepareEntryMediaForCloudBackup(
   entry: Entry,
-  uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>
+  uploadMedia: (localUri: string, options?: UploadFileOptions) => Promise<UploadFileResponse>
 ): Promise<MediaInfo[] | null> {
   if (!entry.media?.length || shouldSkipBootstrapMediaUpload(entry)) {
     return null;
@@ -153,12 +160,11 @@ async function prepareEntryMediaForCloudBackup(
       continue;
     }
 
-    const upload = await uploadMedia(item.uri);
-    changed = true;
-    preparedMedia.push({
-      ...item,
-      remoteUri: upload.url,
+    const upload = await uploadMedia(item.uri, {
+      metadata: buildPhotoUploadMetadata(item),
     });
+    changed = true;
+    preparedMedia.push(mergePhotoUploadResult(item, upload));
   }
 
   return changed ? preparedMedia : null;
@@ -199,19 +205,28 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
       const restoredEntries = (exported ?? []).map(normalizeImportedEntry);
       await DB.clearAllEntries();
       await DB.restoreEntries(restoredEntries);
-      const mediaValidationSummary = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
+      const mediaValidationRun = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
         const total = countCloudRestoreMediaValidationTargets(restoredEntries);
         return {
-          status: 'failed' as const,
-          total,
-          downloaded: 0,
-          missing: 0,
-          failed: total,
-          lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
-          lastValidatedAt: Date.now(),
+          summary: {
+            status: 'failed' as const,
+            total,
+            downloaded: 0,
+            missing: 0,
+            failed: total,
+            suspect: 0,
+            repairable: 0,
+            lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
+            lastValidatedAt: Date.now(),
+          },
+          issues: [],
         };
       });
-      await useSyncStore.getState().setMediaValidationSummary(mediaValidationSummary);
+      await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
+      useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
+      if (mediaValidationRun.issues.length > 0) {
+        showPhotoRepairPrompt();
+      }
       await useSyncStore.getState().setInitialSyncState('ready');
       return;
     }
@@ -225,7 +240,7 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
 
       const preparedMedia = await prepareEntryMediaForCloudBackup(
         entry,
-        (localUri) => client.uploadFile('/media/upload', localUri, 'file')
+        (localUri, options) => client.uploadFile('/media/upload', localUri, 'file', options)
       );
       if (preparedMedia) {
         await DB.updateEntry(entry.id, { media: preparedMedia });

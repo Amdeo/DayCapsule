@@ -22,14 +22,15 @@ func setupEntryTestDB(t *testing.T) *sql.DB {
 	if err := applySchema(t, db); err != nil {
 		t.Fatalf("apply schema: %v", err)
 	}
-	// Apply entries/media migration
-	migPath := filepath.Join("..", "..", "migrations", "002_entries_media.up.sql")
-	migSQL, err := os.ReadFile(migPath)
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	if _, err := db.Exec(string(migSQL)); err != nil {
-		t.Fatalf("apply migration: %v", err)
+	for _, migration := range []string{"002_entries_media.up.sql", "004_media_integrity.up.sql"} {
+		migPath := filepath.Join("..", "..", "migrations", migration)
+		migSQL, err := os.ReadFile(migPath)
+		if err != nil {
+			t.Fatalf("read migration %s: %v", migration, err)
+		}
+		if _, err := db.Exec(string(migSQL)); err != nil {
+			t.Fatalf("apply migration %s: %v", migration, err)
+		}
 	}
 	return db
 }
@@ -243,6 +244,76 @@ func TestEntryServiceRecoversHistoricalFileMediaFromUploadedFile(t *testing.T) {
 	}
 	if len(linkedFiles) != 1 || linkedFiles[0].ID != uploadedMedia.ID {
 		t.Fatalf("expected recovered media to be linked to entry, got %#v", linkedFiles)
+	}
+}
+
+func TestEntryServiceExport_IncludesRemoteHashAndValidationStatus(t *testing.T) {
+	db := setupEntryTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("entry-export-media@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	svc := NewEntryService(entryRepo, mediaRepo, "http://localhost:8081")
+
+	now := time.Now().UTC()
+	if _, err := entryRepo.InsertFromSync(user.ID, &models.Entry{
+		ID:         "photo-entry-export-1",
+		UserID:     user.ID,
+		Type:       "photo",
+		Content:    "",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}); err != nil {
+		t.Fatalf("insert from sync: %v", err)
+	}
+
+	media, err := mediaRepo.CreateWithMetadata(
+		user.ID,
+		"photo-export.jpg",
+		"image/jpeg",
+		"/tmp/photo-export.jpg",
+		4096,
+		models.MediaFileCreateInput{
+			SHA256:           "sha256-good",
+			Width:            1200,
+			Height:           900,
+			ValidationStatus: "healthy",
+		},
+	)
+	if err != nil {
+		t.Fatalf("create media with metadata: %v", err)
+	}
+	if err := mediaRepo.LinkToEntry(media.ID, "photo-entry-export-1"); err != nil {
+		t.Fatalf("link media: %v", err)
+	}
+
+	entries, err := svc.Export(user.ID)
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if len(entries) != 1 || len(entries[0].Media) != 1 {
+		t.Fatalf("expected one exported media item, got %#v", entries)
+	}
+	if entries[0].Media[0].RemoteHash != "sha256-good" {
+		t.Fatalf("expected remote hash to be returned")
+	}
+	if entries[0].Media[0].ValidationStatus != "healthy" {
+		t.Fatalf("expected validation status healthy, got %q", entries[0].Media[0].ValidationStatus)
+	}
+	if entries[0].Media[0].Width == nil || *entries[0].Media[0].Width != 1200 {
+		t.Fatalf("expected width 1200, got %#v", entries[0].Media[0].Width)
+	}
+	if entries[0].Media[0].Height == nil || *entries[0].Media[0].Height != 900 {
+		t.Fatalf("expected height 900, got %#v", entries[0].Media[0].Height)
 	}
 }
 

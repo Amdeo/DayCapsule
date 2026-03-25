@@ -6,15 +6,25 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/daycapsule/backend/internal/middleware"
 	"github.com/daycapsule/backend/internal/models"
+	"github.com/daycapsule/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type mediaStore interface {
-	Create(userID, filename, mimeType, storagePath string, size int64) (*models.MediaFile, error)
+	CreateWithMetadata(
+		userID,
+		filename,
+		mimeType,
+		storagePath string,
+		size int64,
+		input models.MediaFileCreateInput,
+	) (*models.MediaFile, error)
 	GetByID(mediaID string) (*models.MediaFile, error)
 	Delete(userID, mediaID string) error
 }
@@ -88,7 +98,37 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	media, err := h.mediaRepo.Create(userID, header.Filename, mimeType, storagePath, header.Size)
+	uploadMetadata := parseClientUploadMetadata(c)
+	validationResult, err := service.ValidateUploadedPhoto(storagePath, uploadMetadata)
+	if err != nil {
+		_ = os.Remove(storagePath)
+		middleware.SetAccessLogField(c, "upload.failedStage", "validate_file")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to validate uploaded media"},
+		})
+		return
+	}
+
+	validatedAt := time.Now().UTC()
+	media, err := h.mediaRepo.CreateWithMetadata(
+		userID,
+		header.Filename,
+		mimeType,
+		storagePath,
+		validationResult.Size,
+		models.MediaFileCreateInput{
+			SHA256:              validationResult.SHA256,
+			Width:               validationResult.Width,
+			Height:              validationResult.Height,
+			ValidationStatus:    validationResult.ValidationStatus,
+			ValidationError:     validationResult.ValidationError,
+			ValidatedAt:         &validatedAt,
+			ClientLocalMediaID:  uploadMetadata.LocalMediaID,
+			ClientPersistedHash: uploadMetadata.PersistedHash,
+			UploadTraceID:       uploadMetadata.TraceID,
+		},
+	)
 	if err != nil {
 		os.Remove(storagePath)
 		middleware.SetAccessLogField(c, "upload.failedStage", "save_record")
@@ -99,12 +139,16 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		return
 	}
 	middleware.SetAccessLogField(c, "upload.mediaId", media.ID)
+	middleware.SetAccessLogField(c, "upload.validationStatus", media.ValidationStatus)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data": gin.H{
-			"id":  media.ID,
-			"url": fmt.Sprintf("/api/media/%s", media.ID),
+			"id":               media.ID,
+			"url":              fmt.Sprintf("/api/media/%s", media.ID),
+			"remoteHash":       media.SHA256,
+			"validationStatus": media.ValidationStatus,
+			"validationError":  media.ValidationError,
 		},
 	})
 }
@@ -160,4 +204,38 @@ func (h *MediaHandler) Delete(c *gin.Context) {
 	os.Remove(media.StoragePath)
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func parseClientUploadMetadata(c *gin.Context) service.ClientUploadMetadata {
+	return service.ClientUploadMetadata{
+		TraceID:        c.PostForm("traceId"),
+		LocalMediaID:   c.PostForm("localMediaId"),
+		PersistedHash:  c.PostForm("persistedHash"),
+		SourceHash:     c.PostForm("sourceHash"),
+		DeclaredSize:   parseFormInt64(c.PostForm("size")),
+		DeclaredWidth:  parseFormInt(c.PostForm("width")),
+		DeclaredHeight: parseFormInt(c.PostForm("height")),
+	}
+}
+
+func parseFormInt(raw string) int {
+	if raw == "" {
+		return 0
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func parseFormInt64(raw string) int64 {
+	if raw == "" {
+		return 0
+	}
+	parsed, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return parsed
 }

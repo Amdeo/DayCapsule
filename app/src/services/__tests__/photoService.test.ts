@@ -23,6 +23,11 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), log: jest.fn() },
 }));
 
+jest.mock('../photoIntegrityService', () => ({
+  fingerprintPhotoFile: jest.fn(),
+  buildPhotoLogPayload: jest.fn((input) => input),
+}));
+
 jest.mock('@/src/utils/fileSystem', () => ({
   MEDIA_PATHS: {
     photoOriginal: 'file:///documents/media/photos/original/',
@@ -59,7 +64,10 @@ import {
   getFileInfo,
 } from '@/src/utils/fileSystem';
 import { logger } from '@/src/utils/logger';
+import { fingerprintPhotoFile } from '../photoIntegrityService';
 import { PhotoService } from '../photoService';
+
+const mockFingerprintPhotoFile = fingerprintPhotoFile as jest.Mock;
 
 describe('PhotoService', () => {
   beforeEach(() => {
@@ -93,6 +101,15 @@ describe('PhotoService', () => {
       .mockResolvedValueOnce(
         'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_thumb.jpg'
       );
+
+    mockFingerprintPhotoFile.mockResolvedValue({
+      uri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
+      sha256: 'persisted-hash',
+      size: 2_000_000,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    });
   });
 
   it('compressPhoto 返回压缩结果尺寸信息', async () => {
@@ -152,6 +169,16 @@ describe('PhotoService', () => {
     });
     expect(deleteFile).toHaveBeenCalledWith('file:///compressed.jpg');
     expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
+    expect(mockFingerprintPhotoFile).toHaveBeenCalledWith(
+      'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg'
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.persist.saved',
+      expect.objectContaining({
+        localUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
+        persistedHash: 'persisted-hash',
+      }),
+    );
   });
 
   it('savePhotoToCache 将原图和缩略图写入 cache 目录', async () => {

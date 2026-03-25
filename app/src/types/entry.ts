@@ -3,6 +3,18 @@
  * 支持文本、照片、语音等多种媒体类型
  */
 
+export type MediaIntegrityStatus =
+  | 'healthy'
+  | 'missing'
+  | 'upload_mismatch'
+  | 'download_mismatch'
+  | 'cloud_content_suspect'
+  | 'repair_prompt_required'
+  | 'repair_pending'
+  | 'repair_failed';
+
+export type PhotoRepairSource = 'local-original';
+
 export interface Entry {
   id: string;
   type: 'text' | 'photo' | 'voice';
@@ -50,6 +62,16 @@ export interface MediaInfo {
     aspectRatio?: number; // 宽高比 (width / height)
     bitrate?: number; // 音频比特率
     sampleRate?: number; // 采样率
+    localMediaId?: string; // 本地稳定媒体 ID
+    sourceHash?: string; // 拍照/选图原始文件 hash
+    persistedHash?: string; // 本地保存后的文件 hash
+    remoteHash?: string; // 服务端确认的远端文件 hash
+    downloadedHash?: string; // 下载后本地文件 hash
+    integrityStatus?: MediaIntegrityStatus; // 当前完整性状态
+    integrityReason?: string | null; // 完整性异常原因
+    lastVerifiedAt?: number; // 最近一次校验时间
+    repairable?: boolean; // 是否具备修复条件
+    repairSource?: PhotoRepairSource; // 当前可用修复源
     createdAt: number; // 创建时间
     modifiedAt: number; // 修改时间
   };

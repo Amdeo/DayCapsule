@@ -1,9 +1,11 @@
 import { getApiClient, ApiError } from '@/src/services/apiClient';
 import * as DB from '@/src/database/operations';
 import type { Entry } from '@/src/types/entry';
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
-import { createCloudMediaSyncService } from './cloudMediaSyncService';
+import { createCloudMediaSyncService, type MediaValidationRun } from './cloudMediaSyncService';
+import { showPhotoRepairPrompt } from './showPhotoRepairPrompt';
 import { logger } from '@/src/utils/logger';
 import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
 
@@ -141,6 +143,30 @@ function hasRemoteMedia(entry: Entry): boolean {
     || isRemoteMediaUri(media.remoteThumbnail)
     || isRemoteMediaUri(media.thumbnail)
   );
+}
+
+function normalizeMediaValidationRun(
+  run: MediaValidationRun | undefined,
+  total: number
+): MediaValidationRun {
+  if (run?.summary) {
+    return run;
+  }
+
+  return {
+    summary: {
+      status: 'failed',
+      total,
+      downloaded: 0,
+      missing: 0,
+      failed: total,
+      suspect: 0,
+      repairable: 0,
+      lastError: 'Media validation returned no result',
+      lastValidatedAt: Date.now(),
+    },
+    issues: [],
+  };
 }
 
 export function createCloudSyncService(): SyncServiceApi {
@@ -333,8 +359,15 @@ export function createCloudSyncService(): SyncServiceApi {
     await settleResults(data.results ?? [], pendingByChangeId, pendingByEntryId, serverAppliedEntryIds);
     if (validationEntries.length > 0) {
       await useSyncStore.getState().markMediaValidationRunning(validationEntries.length);
-      const mediaValidationSummary = await createCloudMediaSyncService().validateEntries(validationEntries);
-      await useSyncStore.getState().setMediaValidationSummary(mediaValidationSummary);
+      const mediaValidationRun = normalizeMediaValidationRun(
+        await createCloudMediaSyncService().validateEntries(validationEntries),
+        validationEntries.length,
+      );
+      await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
+      useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
+      if (mediaValidationRun.issues.length > 0) {
+        showPhotoRepairPrompt();
+      }
     }
     await useSyncStore.getState().setCursor(data.newCursor ?? syncCursor);
     await useSyncStore.getState().markSyncSuccess(Date.now());

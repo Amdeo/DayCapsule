@@ -25,6 +25,10 @@ const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSwitchDataSource = jest.fn();
 const mockCreateRemoteDataSource = jest.fn(() => ({}));
 const mockShowCloudSyncStatusAlert = jest.fn(async () => undefined);
+const mockInjectSuspectRepairable = jest.fn(async () => undefined);
+const mockInjectRepairPending = jest.fn(async () => undefined);
+const mockClearSyncFixtures = jest.fn(async () => undefined);
+const mockShowSyncRepairPrompt = jest.fn();
 const mockGetCurrentServerUrl = jest.fn(async () => 'https://server-a.example.com');
 const mockGetRecentServerUrls = jest.fn(async () => ['https://server-b.example.com']);
 const mockTestBackendConnection = jest.fn(async () => ({ success: true }));
@@ -113,6 +117,18 @@ jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
   showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
 }));
 
+jest.mock('@/src/services/e2eSyncLabService', () => ({
+  createE2ESyncLabService: jest.fn(() => ({
+    injectSuspectRepairable: (...args: unknown[]) => mockInjectSuspectRepairable(...args),
+    injectRepairPending: (...args: unknown[]) => mockInjectRepairPending(...args),
+    clearFixtures: (...args: unknown[]) => mockClearSyncFixtures(...args),
+  })),
+}));
+
+jest.mock('@/src/services/showPhotoRepairPrompt', () => ({
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowSyncRepairPrompt(...args),
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: { clearSoundCache: jest.fn() },
 }));
@@ -195,6 +211,8 @@ jest.mock('@/src/database/operations', () => ({
 }));
 
 describe('SettingsPage calendar density selector', () => {
+  const originalE2ESyncLab = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockCloudMode = false;
@@ -212,6 +230,16 @@ describe('SettingsPage calendar density selector', () => {
     jest.spyOn(DB, 'getEntriesCount').mockResolvedValue(0);
     jest.spyOn(DB, 'clearAllEntries').mockImplementation(mockClearAllEntries);
     jest.spyOn(DB, 'restoreEntries').mockImplementation(mockRestoreEntries);
+    delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+  });
+
+  afterAll(() => {
+    if (originalE2ESyncLab === undefined) {
+      delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+      return;
+    }
+
+    process.env.EXPO_PUBLIC_E2E_SYNC_LAB = originalE2ESyncLab;
   });
 
   it('renders calendar density setting with default option selected', async () => {
@@ -268,6 +296,44 @@ describe('SettingsPage calendar density selector', () => {
 
     await waitFor(() => {
       expect(mockShowCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('renders a stable sync status button testID for authenticated cloud users', async () => {
+    mockCloudMode = true;
+    mockIsAuthenticated = true;
+    mockUser = { email: 'sync@test.com' };
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-show-sync-status')).toBeTruthy();
+    });
+  });
+
+  it('shows the E2E Sync Lab when EXPO_PUBLIC_E2E_SYNC_LAB=1', async () => {
+    process.env.EXPO_PUBLIC_E2E_SYNC_LAB = '1';
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('e2e-sync-lab-root')).toBeTruthy();
+    });
+  });
+
+  it('wires the suspect fixture button to the E2E Sync Lab service', async () => {
+    process.env.EXPO_PUBLIC_E2E_SYNC_LAB = '1';
+
+    const screen = render(<SettingsPage visible onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('e2e-sync-fixture-suspect')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('e2e-sync-fixture-suspect'));
+
+    await waitFor(() => {
+      expect(mockInjectSuspectRepairable).toHaveBeenCalledTimes(1);
     });
   });
 

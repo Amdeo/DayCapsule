@@ -1,8 +1,10 @@
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { showCloudSyncStatusAlert } from '../showCloudSyncStatusAlert';
 import { showErrorFeedback } from '../showErrorFeedback';
 
 const mockGetSnapshot = jest.fn();
 const mockSyncNow = jest.fn(async () => undefined);
+const mockShowPhotoRepairPrompt = jest.fn();
 
 jest.mock('../cloudSyncOverviewService', () => ({
   createCloudSyncOverviewService: jest.fn(() => ({
@@ -18,6 +20,10 @@ jest.mock('../cloudSyncService', () => ({
 
 jest.mock('../showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
+}));
+
+jest.mock('../showPhotoRepairPrompt', () => ({
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowPhotoRepairPrompt(...args),
 }));
 
 jest.mock('@/src/utils/fileSystem', () => ({
@@ -43,6 +49,7 @@ jest.mock('@/src/utils/logger', () => ({
 describe('showCloudSyncStatusAlert', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useMediaRepairStore.setState({ issues: [] });
   });
 
   it('初次打开时展示同步状态 + 本地数据 + 云端数据', async () => {
@@ -207,6 +214,84 @@ describe('showCloudSyncStatusAlert', () => {
         ]),
       }),
     );
+  });
+
+  it('展示异常媒体与可修复计数，并提供修复异常媒体操作', async () => {
+    useMediaRepairStore.getState().replaceIssues([
+      {
+        entryId: 'entry-photo-1',
+        mediaIndex: 0,
+        localMediaId: 'local-1',
+        localUri: 'file:///documents/media/photos/original/photo-1.jpg',
+        remoteUri: 'https://cdn.example.com/photo-1.jpg',
+        persistedHash: 'local-good',
+        remoteHash: 'remote-bad',
+        downloadedHash: 'remote-bad',
+        integrityStatus: 'repair_prompt_required',
+        integrityReason: 'cloud hash mismatch while local original is still healthy',
+      },
+    ]);
+    mockGetSnapshot.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+      local: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaBytes: 1024,
+      },
+      cloud: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaCount: 4,
+        mediaBytes: 2048,
+      },
+      cloudError: null,
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 4,
+        downloaded: 3,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing thumbnail',
+        lastValidatedAt: 1700000002000,
+      },
+    });
+
+    await showCloudSyncStatusAlert();
+
+    const firstRequest = (showErrorFeedback as jest.Mock).mock.calls[0]?.[0] as {
+      details?: Array<{ label?: string; value?: string }>;
+      actions?: Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    };
+
+    expect(firstRequest.details).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: '异常媒体数', value: '1' }),
+      expect.objectContaining({ label: '可修复媒体数', value: '1' }),
+    ]));
+
+    const repairAction = firstRequest.actions?.find((action) => action.label === '修复异常媒体');
+    expect(repairAction).toBeTruthy();
+    expect(repairAction).toEqual(expect.objectContaining({
+      testID: 'error-feedback-action-repair-media',
+    }));
+
+    const syncAction = firstRequest.actions?.find((action) => action.label === '立即同步');
+    expect(syncAction).toEqual(expect.objectContaining({
+      testID: 'error-feedback-action-sync-now',
+    }));
+
+    await repairAction?.onPress?.();
+
+    expect(mockShowPhotoRepairPrompt).toHaveBeenCalledTimes(1);
   });
 
   it('元数据成功但媒体校验整体失败时展示失败态和媒体错误', async () => {

@@ -1,4 +1,10 @@
 import type { Entry, MediaInfo } from '@/src/types/entry';
+import type { UploadFileOptions, UploadFileResponse } from '@/src/services/apiClient';
+import {
+  buildPhotoLogPayload,
+  buildPhotoUploadMetadata,
+  mergePhotoUploadResult,
+} from '@/src/services/photoIntegrityService';
 import { logger } from '@/src/utils/logger';
 
 export interface PhotoUploadQueueDeps {
@@ -7,7 +13,7 @@ export interface PhotoUploadQueueDeps {
   markUploading: (id: string) => Promise<void>;
   markPendingUpload: (id: string) => Promise<void>;
   markPendingSync: (id: string, media: MediaInfo[]) => Promise<void>;
-  uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>;
+  uploadMedia: (localUri: string, options?: UploadFileOptions) => Promise<UploadFileResponse>;
   triggerSync: () => Promise<void>;
   onEntryUploading?: (id: string) => void;
   onEntryPendingUpload?: (id: string) => void;
@@ -40,17 +46,46 @@ async function uploadPhotoMedia(
       return null;
     }
 
-    const upload = await deps.uploadMedia(item.uri);
+    const uploadMetadata = buildPhotoUploadMetadata(item);
+    logger.log('photo.upload.start', buildPhotoLogPayload({
+      entryId,
+      localMediaId: item.metadata?.localMediaId,
+      localUri: item.uri,
+      mimeType: item.mimeType,
+      size: item.size,
+      width: item.metadata?.width,
+      height: item.metadata?.height,
+      sourceHash: item.metadata?.sourceHash,
+      persistedHash: item.metadata?.persistedHash,
+      integrityStatus: item.metadata?.integrityStatus,
+      integrityReason: item.metadata?.integrityReason ?? null,
+    }));
+    const upload = await deps.uploadMedia(item.uri, {
+      metadata: uploadMetadata,
+    });
 
     if (canceled.has(entryId)) {
       canceled.delete(entryId);
       return null;
     }
 
-    uploaded.push({
-      ...item,
-      remoteUri: upload.url,
-    });
+    const uploadedItem = mergePhotoUploadResult(item, upload);
+    logger.log('photo.upload.finish', buildPhotoLogPayload({
+      entryId,
+      localMediaId: uploadedItem.metadata?.localMediaId,
+      localUri: uploadedItem.uri,
+      remoteUri: uploadedItem.remoteUri,
+      mimeType: uploadedItem.mimeType,
+      size: uploadedItem.size,
+      width: uploadedItem.metadata?.width,
+      height: uploadedItem.metadata?.height,
+      sourceHash: uploadedItem.metadata?.sourceHash,
+      persistedHash: uploadedItem.metadata?.persistedHash,
+      remoteHash: uploadedItem.metadata?.remoteHash,
+      integrityStatus: uploadedItem.metadata?.integrityStatus,
+      integrityReason: uploadedItem.metadata?.integrityReason ?? null,
+    }));
+    uploaded.push(uploadedItem);
   }
 
   return uploaded;
@@ -165,7 +200,7 @@ function getDefaultQueue(): PhotoUploadQueue {
       syncStatus: 'pending',
       updatedAt: Date.now(),
     }),
-    uploadMedia: (localUri) => getApiClient().uploadFile('/media/upload', localUri, 'file'),
+    uploadMedia: (localUri, options) => getApiClient().uploadFile('/media/upload', localUri, 'file', options),
     triggerSync: () => createCloudSyncService().syncNow(),
     onEntryUploading: (id) => queueCallbacks.onEntryUploading?.(id),
     onEntryPendingUpload: (id) => queueCallbacks.onEntryPendingUpload?.(id),

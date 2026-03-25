@@ -1,0 +1,10 @@
+appId: com.memorycapsule.app
+---
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
+    timeout: 30000
+- assertVisible:
+    id: home-screen-root
+- assertVisible:
+    id: searchbar-menu-button-pressable

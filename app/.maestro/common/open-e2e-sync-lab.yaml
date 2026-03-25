@@ -1,0 +1,11 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../common/open-settings.yaml
+- repeat:
+    times: 6
+    commands:
+      - scroll
+      - waitForAnimationToEnd
+- assertVisible:
+    id: e2e-sync-lab-root
+- runFlow: ../common/dismiss-dev-warning-toast.yaml

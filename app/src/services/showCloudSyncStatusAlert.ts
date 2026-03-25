@@ -3,6 +3,8 @@ import {
   createCloudSyncOverviewService,
   type SyncOverviewSnapshot,
 } from '@/src/services/cloudSyncOverviewService';
+import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
+import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { logger } from '@/src/utils/logger';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { buildCloudSyncFailedFeedback } from '@/src/services/errorFeedbackPresets';
@@ -21,12 +23,30 @@ const EMPTY_MEDIA_SUMMARY: NonNullable<SyncOverviewSnapshot['lastMediaValidation
   downloaded: 0,
   missing: 0,
   failed: 0,
+  suspect: 0,
+  repairable: 0,
   lastError: null,
   lastValidatedAt: null,
 };
 
 function getMediaValidationSummary(snapshot: SyncOverviewSnapshot) {
-  return snapshot.lastMediaValidationSummary ?? EMPTY_MEDIA_SUMMARY;
+  const summary = snapshot.lastMediaValidationSummary;
+  if (!summary) {
+    return EMPTY_MEDIA_SUMMARY;
+  }
+
+  return {
+    ...EMPTY_MEDIA_SUMMARY,
+    ...summary,
+    suspect: typeof summary.suspect === 'number' ? summary.suspect : 0,
+    repairable: typeof summary.repairable === 'number' ? summary.repairable : 0,
+  };
+}
+
+function hasRepairableIssues(): boolean {
+  return useMediaRepairStore.getState().issues.some(
+    (issue) => issue.integrityStatus === 'repair_prompt_required'
+  );
 }
 
 function formatMediaStatus(status: NonNullable<SyncOverviewSnapshot['lastMediaValidationSummary']>['status']): string {
@@ -117,6 +137,8 @@ function formatCloudSyncStatusMessage(snapshot: SyncOverviewSnapshot): string {
     `已落地媒体数：${mediaSummary.downloaded}`,
     `缺失媒体数：${mediaSummary.missing}`,
     `下载失败媒体数：${mediaSummary.failed}`,
+    `异常媒体数：${mediaSummary.suspect}`,
+    `可修复媒体数：${mediaSummary.repairable}`,
     `最近媒体错误：${mediaSummary.lastError ?? '无'}`,
   ];
   if (snapshot.lastSyncError) {
@@ -170,6 +192,25 @@ function buildCloudSyncStatusFeedback(
           ? [{ label: '云端错误原因', value: snapshot.cloudError }]
           : []),
       ];
+  const actions: ErrorFeedbackRequest['actions'] = [
+    { label: '关闭', role: 'secondary' },
+    ...(hasRepairableIssues()
+      ? [{
+          label: '修复异常媒体',
+          role: 'secondary' as const,
+          testID: 'error-feedback-action-repair-media',
+          onPress: () => {
+            showPhotoRepairPrompt();
+          },
+        }]
+      : []),
+    {
+      label: '立即同步',
+      role: 'primary',
+      testID: 'error-feedback-action-sync-now',
+      onPress: onSyncNow,
+    },
+  ];
 
   return {
     title: overallState.title,
@@ -190,6 +231,8 @@ function buildCloudSyncStatusFeedback(
       { label: '已落地媒体数', value: String(mediaSummary.downloaded) },
       { label: '缺失媒体数', value: String(mediaSummary.missing) },
       { label: '下载失败媒体数', value: String(mediaSummary.failed) },
+      { label: '异常媒体数', value: String(mediaSummary.suspect) },
+      { label: '可修复媒体数', value: String(mediaSummary.repairable) },
       { label: '最近媒体错误', value: mediaSummary.lastError ?? '无' },
       { label: '本地数据', value: '---' },
       { label: '本地记录总数', value: String(snapshot.local.entryCount) },
@@ -198,14 +241,7 @@ function buildCloudSyncStatusFeedback(
       { label: '本地媒体总大小', value: formatFileSize(snapshot.local.mediaBytes) },
       ...cloudDetails,
     ],
-    actions: [
-      { label: '关闭', role: 'secondary' },
-      {
-        label: '立即同步',
-        role: 'primary',
-        onPress: onSyncNow,
-      },
-    ],
+    actions,
   };
 }
 

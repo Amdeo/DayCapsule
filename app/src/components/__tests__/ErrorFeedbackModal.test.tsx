@@ -19,8 +19,10 @@ describe('ErrorFeedbackModal', () => {
 
     expect(screen.getByText('同步失败')).toBeTruthy();
     expect(screen.getByText('请检查网络连接后重试。')).toBeTruthy();
-    expect(screen.getByTestId('error-feedback-action-0').props.children).toBe('稍后');
-    expect(screen.getByTestId('error-feedback-action-1').props.children).toBe('重试');
+    expect(screen.getByTestId('error-feedback-action-0')).toBeTruthy();
+    expect(screen.getByTestId('error-feedback-action-1')).toBeTruthy();
+    expect(screen.getByText('稍后')).toBeTruthy();
+    expect(screen.getByText('重试')).toBeTruthy();
   });
 
   it('calls onDismiss when backdrop is pressed', () => {
@@ -55,5 +57,24 @@ describe('ErrorFeedbackModal', () => {
     expect(screen.getByText('从未同步')).toBeTruthy();
     expect(screen.getByText('待同步条数')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
+  });
+
+  it('renders stable action test IDs when provided by the request', () => {
+    const screen = render(
+      <ErrorFeedbackModal
+        visible
+        request={{
+          title: '云同步状态',
+          actions: [
+            { label: '修复异常媒体', role: 'secondary', testID: 'error-feedback-action-repair-media' },
+            { label: '立即同步', role: 'primary', testID: 'error-feedback-action-sync-now' },
+          ],
+        }}
+        onDismiss={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('error-feedback-action-repair-media')).toBeTruthy();
+    expect(screen.getByTestId('error-feedback-action-sync-now')).toBeTruthy();
   });
 });

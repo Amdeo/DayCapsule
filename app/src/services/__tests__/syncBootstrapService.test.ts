@@ -6,6 +6,8 @@ const mockUploadFile = jest.fn();
 const mockSetInitialSyncState = jest.fn(async () => undefined);
 const mockSetMediaValidationSummary = jest.fn(async () => undefined);
 const mockValidateEntries = jest.fn();
+const mockReplaceIssues = jest.fn();
+const mockShowPhotoRepairPrompt = jest.fn();
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -30,11 +32,23 @@ jest.mock('../cloudMediaSyncService', () => ({
   })),
 }));
 
+jest.mock('../showPhotoRepairPrompt', () => ({
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowPhotoRepairPrompt(...args),
+}));
+
 jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: {
     getState: () => ({
       setInitialSyncState: mockSetInitialSyncState,
       setMediaValidationSummary: mockSetMediaValidationSummary,
+    }),
+  },
+}));
+
+jest.mock('@/src/store/mediaRepairStore', () => ({
+  useMediaRepairStore: {
+    getState: () => ({
+      replaceIssues: mockReplaceIssues,
     }),
   },
 }));
@@ -54,13 +68,18 @@ describe('syncBootstrapService', () => {
     (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
     mockApiGet.mockResolvedValue({ entryCount: 0 });
     mockValidateEntries.mockResolvedValue({
-      status: 'success',
-      total: 0,
-      downloaded: 0,
-      missing: 0,
-      failed: 0,
-      lastError: null,
-      lastValidatedAt: 1700000000000,
+      summary: {
+        status: 'success',
+        total: 0,
+        downloaded: 0,
+        missing: 0,
+        failed: 0,
+        suspect: 0,
+        repairable: 0,
+        lastError: null,
+        lastValidatedAt: 1700000000000,
+      },
+      issues: [],
     });
   });
 
@@ -207,13 +226,27 @@ describe('syncBootstrapService', () => {
       },
     ]);
     const mediaSummary = {
-      status: 'partial' as const,
-      total: 2,
-      downloaded: 1,
-      missing: 1,
-      failed: 0,
-      lastError: 'missing thumbnail',
-      lastValidatedAt: 1700000003000,
+      summary: {
+        status: 'partial' as const,
+        total: 2,
+        downloaded: 1,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing thumbnail',
+        lastValidatedAt: 1700000003000,
+      },
+      issues: [
+        {
+          entryId: 'photo-restore-1',
+          mediaIndex: 0,
+          localMediaId: 'local-restore-1',
+          localUri: 'file:///documents/media/photos/original/photo-restore-1.jpg',
+          integrityStatus: 'repair_prompt_required' as const,
+          integrityReason: 'cloud hash mismatch while local original is still healthy',
+        },
+      ],
     };
     mockValidateEntries.mockResolvedValueOnce(mediaSummary);
 
@@ -222,7 +255,9 @@ describe('syncBootstrapService', () => {
 
     const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0]?.[0];
     expect(mockValidateEntries).toHaveBeenCalledWith(restoredEntries);
-    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary);
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary.summary);
+    expect(mockReplaceIssues).toHaveBeenCalledWith(mediaSummary.issues);
+    expect(mockShowPhotoRepairPrompt).toHaveBeenCalledTimes(1);
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
     expect(mockValidateEntries.mock.invocationCallOrder[0]).toBeLessThan(
@@ -260,10 +295,14 @@ describe('syncBootstrapService', () => {
         downloaded: 0,
         missing: 0,
         failed: 1,
+        suspect: 0,
+        repairable: 0,
         lastError: 'media broken',
         lastValidatedAt: expect.any(Number),
       }),
     );
+    expect(mockReplaceIssues).toHaveBeenCalledWith([]);
+    expect(mockShowPhotoRepairPrompt).not.toHaveBeenCalled();
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
     expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
   });
@@ -314,6 +353,8 @@ describe('syncBootstrapService', () => {
         downloaded: 0,
         missing: 0,
         failed: 1,
+        suspect: 0,
+        repairable: 0,
         lastError: 'media broken',
         lastValidatedAt: expect.any(Number),
       }),
@@ -333,6 +374,15 @@ describe('syncBootstrapService', () => {
             uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
             mimeType: 'image/jpeg',
             size: 2048,
+            metadata: {
+              localMediaId: 'bootstrap-local-media-1',
+              sourceHash: 'source-hash-1',
+              persistedHash: 'persisted-hash-1',
+              width: 1200,
+              height: 900,
+              createdAt: 1700000001000,
+              modifiedAt: 1700000001000,
+            },
           },
         ],
       },
@@ -340,6 +390,9 @@ describe('syncBootstrapService', () => {
     mockUploadFile.mockResolvedValueOnce({
       id: 'media-1',
       url: 'https://cdn.example.com/photo-1.jpg',
+      remoteHash: 'remote-hash-1',
+      validationStatus: 'healthy',
+      validationError: null,
     });
 
     const service = createSyncBootstrapService();
@@ -349,6 +402,17 @@ describe('syncBootstrapService', () => {
       '/media/upload',
       'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
       'file',
+      {
+        metadata: {
+          traceId: 'bootstrap-local-media-1',
+          localMediaId: 'bootstrap-local-media-1',
+          persistedHash: 'persisted-hash-1',
+          sourceHash: 'source-hash-1',
+          size: 2048,
+          width: 1200,
+          height: 900,
+        },
+      },
     );
     expect(DB.updateEntry).toHaveBeenNthCalledWith(
       1,
@@ -358,6 +422,11 @@ describe('syncBootstrapService', () => {
           expect.objectContaining({
             uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-1.jpg',
             remoteUri: 'https://cdn.example.com/photo-1.jpg',
+            metadata: expect.objectContaining({
+              remoteHash: 'remote-hash-1',
+              integrityStatus: 'healthy',
+              integrityReason: null,
+            }),
           }),
         ],
       }),

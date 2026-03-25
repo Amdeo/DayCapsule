@@ -17,6 +17,8 @@ export type MediaSyncValidationSummary = {
   downloaded: number;
   missing: number;
   failed: number;
+  suspect: number;
+  repairable: number;
   lastError: string | null;
   lastValidatedAt: number | null;
 };
@@ -109,6 +111,8 @@ const isMediaSyncValidationSummary = (value: unknown): value is MediaSyncValidat
     isFiniteNumber(summary.downloaded) &&
     isFiniteNumber(summary.missing) &&
     isFiniteNumber(summary.failed) &&
+    isFiniteNumber(summary.suspect) &&
+    isFiniteNumber(summary.repairable) &&
     isNullableString(summary.lastError) &&
     isNullableNumber(summary.lastValidatedAt)
   );
@@ -225,6 +229,8 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
       downloaded: 0,
       missing: 0,
       failed: 0,
+      suspect: 0,
+      repairable: 0,
       lastError: null,
       lastValidatedAt: null,
     };

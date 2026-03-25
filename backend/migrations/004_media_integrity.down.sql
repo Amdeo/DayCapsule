@@ -1,0 +1,2 @@
+-- SQLite does not support DROP COLUMN in a portable way for this project.
+-- Down migration is intentionally a no-op.

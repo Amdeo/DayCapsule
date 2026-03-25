@@ -11,7 +11,9 @@ import {
   CardSpacing, SPACING_VALUES,
   PhotoHeightPreset, PHOTO_HEIGHT_VALUES,
 } from '@/src/store/settingsStore';
+import { createE2ESyncLabService } from '@/src/services/e2eSyncLabService';
 import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
+import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
 import { DetailPageShell } from './DetailPageShell';
 import { useAuthStore } from '@/src/store/authStore';
 import { SettingsPageContent } from './settings-page/SettingsPageContent';
@@ -26,6 +28,8 @@ interface SettingsPageProps {
 
 export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const { entries } = useEntryStore();
+  const showE2ESyncLab = process.env.EXPO_PUBLIC_E2E_SYNC_LAB === '1';
+  const e2eSyncLabService = createE2ESyncLabService();
 
   const {
     notifications,
@@ -133,6 +137,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           backendTestErrorMessage={backendTestErrorMessage}
           isSavingBackendServer={isSavingBackendServer}
           canSaveBackendServer={canSaveBackendServer}
+          showE2ESyncLab={showE2ESyncLab}
           onCloudModeToggle={handleCloudModeToggle}
           onShowSyncStatus={() => {
             void showCloudSyncStatusAlert();
@@ -150,6 +155,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onSaveBackendServer={handleSaveBackendServer}
           onSelectRecentBackendServer={handleSelectRecentBackendServer}
           onClearCache={handleClearCache}
+          onInjectSuspectRepairable={() => e2eSyncLabService.injectSuspectRepairable()}
+          onInjectRepairPending={() => e2eSyncLabService.injectRepairPending()}
+          onClearSyncFixtures={() => e2eSyncLabService.clearFixtures()}
+          onShowSyncRepairPrompt={() => showPhotoRepairPrompt()}
           onOpenTagManagement={openTagManagement}
           onResetSettings={handleResetSettings}
         />

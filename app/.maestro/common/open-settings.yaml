@@ -1,7 +1,35 @@
 appId: com.memorycapsule.app
 ---
-- runFlow: open-sidebar.yaml
-- tapOn:
-    id: sidebar-menu-settings
-- assertVisible:
-    id: settings-page-root
+- runFlow:
+    when:
+      visible: "发现云端媒体异常"
+    commands:
+      - tapOn: "稍后处理"
+- runFlow:
+    when:
+      visible:
+        id: error-feedback-card
+    commands:
+      - tapOn:
+          id: error-feedback-action-0
+      - extendedWaitUntil:
+          visible:
+            id: settings-page-root
+          timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: settings-page-root
+    commands:
+      - assertVisible:
+          id: settings-page-root
+- runFlow:
+    when:
+      notVisible:
+        id: settings-page-root
+    commands:
+      - runFlow: open-sidebar.yaml
+      - tapOn:
+          id: sidebar-menu-settings
+      - assertVisible:
+          id: settings-page-root

@@ -3,6 +3,9 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -18,11 +21,43 @@ import (
 type mediaHandlerStubStore struct {
 	createResp *models.MediaFile
 	createErr  error
+	lastInput  *models.MediaFileCreateInput
 }
 
 func (s *mediaHandlerStubStore) Create(userID, filename, mimeType, storagePath string, size int64) (*models.MediaFile, error) {
 	if s.createErr != nil {
 		return nil, s.createErr
+	}
+	return s.createResp, nil
+}
+
+func (s *mediaHandlerStubStore) CreateWithMetadata(
+	userID,
+	filename,
+	mimeType,
+	storagePath string,
+	size int64,
+	input models.MediaFileCreateInput,
+) (*models.MediaFile, error) {
+	s.lastInput = &input
+	if s.createErr != nil {
+		return nil, s.createErr
+	}
+	if s.createResp == nil {
+		s.createResp = &models.MediaFile{
+			ID:               "media-1",
+			UserID:           userID,
+			Filename:         filename,
+			MimeType:         mimeType,
+			Size:             size,
+			StoragePath:      storagePath,
+			SHA256:           input.SHA256,
+			Width:            input.Width,
+			Height:           input.Height,
+			ValidationStatus: input.ValidationStatus,
+			ValidationError:  input.ValidationError,
+			CreatedAt:        time.Now().UTC(),
+		}
 	}
 	return s.createResp, nil
 }
@@ -36,16 +71,21 @@ func (s *mediaHandlerStubStore) Delete(_, _ string) error {
 }
 
 func TestMediaHandlerUpload_AttachesAccessLogSummaryOnSuccess(t *testing.T) {
-	handler := NewMediaHandler(&mediaHandlerStubStore{
+	store := &mediaHandlerStubStore{
 		createResp: &models.MediaFile{
-			ID:        "media-1",
-			UserID:    "user-1",
-			Filename:  "photo.jpg",
-			MimeType:  "image/jpeg",
-			Size:      5,
-			CreatedAt: time.Now().UTC(),
+			ID:               "media-1",
+			UserID:           "user-1",
+			Filename:         "photo.jpg",
+			MimeType:         "image/jpeg",
+			Size:             5,
+			SHA256:           "remote-hash-1",
+			Width:            1,
+			Height:           1,
+			ValidationStatus: "healthy",
+			CreatedAt:        time.Now().UTC(),
 		},
-	}, t.TempDir())
+	}
+	handler := NewMediaHandler(store, t.TempDir())
 
 	recorder, ctx := performMediaUploadRequestWithContext(t, handler, true)
 
@@ -55,9 +95,22 @@ func TestMediaHandlerUpload_AttachesAccessLogSummaryOnSuccess(t *testing.T) {
 
 	assertMediaAccessLogField(t, ctx, "upload.fieldName", "file")
 	assertMediaAccessLogField(t, ctx, "upload.mimeType", "image/jpeg")
-	assertMediaAccessLogField(t, ctx, "upload.size", int64(5))
+	assertMediaAccessLogField(t, ctx, "upload.size", int64(600))
 	assertMediaAccessLogField(t, ctx, "upload.extension", ".jpg")
 	assertMediaAccessLogField(t, ctx, "upload.mediaId", "media-1")
+	assertMediaAccessLogField(t, ctx, "upload.validationStatus", "healthy")
+	if store.lastInput == nil {
+		t.Fatal("expected createWithMetadata input to be captured")
+	}
+	if store.lastInput.ClientPersistedHash != "persisted-hash-1" {
+		t.Fatalf("expected persisted hash to be forwarded, got %#v", store.lastInput)
+	}
+	if recorder.Body.String() == "" {
+		t.Fatal("expected response body")
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"remoteHash":"remote-hash-1"`)) {
+		t.Fatalf("expected remoteHash in response, got %s", recorder.Body.String())
+	}
 }
 
 func TestMediaHandlerUpload_SetsFailedStageWhenFileFieldMissing(t *testing.T) {
@@ -103,8 +156,26 @@ func performMediaUploadRequestWithContext(t *testing.T, handler *MediaHandler, i
 		if err != nil {
 			t.Fatalf("create multipart part: %v", err)
 		}
-		if _, err := part.Write([]byte("hello")); err != nil {
+		if _, err := part.Write(buildValidJPEGBytes(t)); err != nil {
 			t.Fatalf("write multipart body: %v", err)
+		}
+		if err := writer.WriteField("traceId", "trace-1"); err != nil {
+			t.Fatalf("write traceId: %v", err)
+		}
+		if err := writer.WriteField("localMediaId", "local-1"); err != nil {
+			t.Fatalf("write localMediaId: %v", err)
+		}
+		if err := writer.WriteField("persistedHash", "persisted-hash-1"); err != nil {
+			t.Fatalf("write persistedHash: %v", err)
+		}
+		if err := writer.WriteField("size", "600"); err != nil {
+			t.Fatalf("write size: %v", err)
+		}
+		if err := writer.WriteField("width", "1"); err != nil {
+			t.Fatalf("write width: %v", err)
+		}
+		if err := writer.WriteField("height", "1"); err != nil {
+			t.Fatalf("write height: %v", err)
 		}
 	}
 
@@ -121,6 +192,19 @@ func performMediaUploadRequestWithContext(t *testing.T, handler *MediaHandler, i
 
 	handler.Upload(ctx)
 	return recorder, ctx
+}
+
+func buildValidJPEGBytes(t *testing.T) []byte {
+	t.Helper()
+
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.RGBA{R: 255, G: 128, B: 64, A: 255})
+
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
+		t.Fatalf("encode jpeg: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func assertMediaAccessLogField(t *testing.T, ctx *gin.Context, key string, want any) {

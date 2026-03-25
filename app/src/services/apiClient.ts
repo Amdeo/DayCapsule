@@ -28,12 +28,39 @@ interface ApiResponse<T> {
   error?: { code: string; message: string };
 }
 
+export interface UploadFileMetadata {
+  traceId?: string;
+  localMediaId?: string;
+  persistedHash?: string;
+  sourceHash?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface UploadFileOptions {
+  metadata?: UploadFileMetadata;
+}
+
+export interface UploadFileResponse {
+  id: string;
+  url: string;
+  remoteHash?: string;
+  validationStatus?: string;
+  validationError?: string | null;
+}
+
 export interface ApiClient {
   get<T>(path: string, params?: Record<string, string>): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
   put<T>(path: string, body: unknown): Promise<T>;
   delete<T>(path: string): Promise<T>;
-  uploadFile(path: string, fileUri: string, fieldName: string): Promise<{ id: string; url: string }>;
+  uploadFile(
+    path: string,
+    fileUri: string,
+    fieldName: string,
+    options?: UploadFileOptions
+  ): Promise<UploadFileResponse>;
 }
 
 export function normalizeApiBaseURL(
@@ -251,11 +278,25 @@ export function createApiClient(baseURL: string): ApiClient {
 
     delete: <T>(path: string) => request<T>('DELETE', path),
 
-    uploadFile: async (path: string, fileUri: string, fieldName: string) => {
+    uploadFile: async (
+      path: string,
+      fileUri: string,
+      fieldName: string,
+      options?: UploadFileOptions,
+    ) => {
       const authHeaders = await getAuthHeaders();
       const formData = new FormData();
       const filename = fileUri.split('/').pop() ?? 'file';
       formData.append(fieldName, { uri: fileUri, name: filename, type: 'application/octet-stream' } as any);
+      const uploadMetadata = options?.metadata;
+      if (uploadMetadata) {
+        Object.entries(uploadMetadata).forEach(([key, value]) => {
+          if (value === undefined || value === null) {
+            return;
+          }
+          formData.append(key, String(value));
+        });
+      }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60_000);
@@ -269,7 +310,7 @@ export function createApiClient(baseURL: string): ApiClient {
           signal: controller.signal,
         });
 
-        const json = await parseApiResponse<{ id: string; url: string }>(res, uploadUrl);
+        const json = await parseApiResponse<UploadFileResponse>(res, uploadUrl);
         if (res.ok && json.success && json.data) return json.data;
 
         throw new ApiError(

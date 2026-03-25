@@ -19,6 +19,7 @@ import {
   copyFile,
 } from '@/src/utils/fileSystem';
 import { MediaCacheService } from './mediaCacheService';
+import { buildPhotoLogPayload, fingerprintPhotoFile } from './photoIntegrityService';
 import { MediaError, type MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
@@ -432,6 +433,20 @@ export class PhotoService {
         thumbnailDir,
         thumbnailFilename
       );
+
+      const persistedFingerprint = await fingerprintPhotoFile(targetUri);
+      logger.log('photo.persist.saved', buildPhotoLogPayload({
+        entryId,
+        localMediaId: entryId,
+        localUri: targetUri,
+        mimeType: persistedFingerprint.mimeType,
+        size: persistedFingerprint.size,
+        width: persistedFingerprint.width,
+        height: persistedFingerprint.height,
+        persistedHash: persistedFingerprint.sha256,
+        integrityStatus: 'healthy',
+        integrityReason: null,
+      }));
 
       // 清理临时文件
       await deleteFile(compressed.compressed.uri);

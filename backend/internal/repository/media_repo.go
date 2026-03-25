@@ -28,24 +28,74 @@ func NewMediaRepository(db *sql.DB) *MediaRepository {
 }
 
 func (r *MediaRepository) Create(userID, filename, mimeType, storagePath string, size int64) (*models.MediaFile, error) {
+	return r.CreateWithMetadata(userID, filename, mimeType, storagePath, size, models.MediaFileCreateInput{})
+}
+
+func (r *MediaRepository) CreateWithMetadata(
+	userID,
+	filename,
+	mimeType,
+	storagePath string,
+	size int64,
+	input models.MediaFileCreateInput,
+) (*models.MediaFile, error) {
 	now := time.Now().UTC()
 	id := uuid.NewString()
+	validationStatus := input.ValidationStatus
+	if validationStatus == "" {
+		validationStatus = "healthy"
+	}
+	validatedAt := input.ValidatedAt
+	if validatedAt == nil {
+		validatedAt = &now
+	}
 
 	media := &models.MediaFile{
-		ID:          id,
-		UserID:      userID,
-		Filename:    filename,
-		MimeType:    mimeType,
-		Size:        size,
-		StoragePath: storagePath,
-		CreatedAt:   now,
+		ID:                  id,
+		UserID:              userID,
+		Filename:            filename,
+		MimeType:            mimeType,
+		Size:                size,
+		StoragePath:         storagePath,
+		SHA256:              input.SHA256,
+		Width:               input.Width,
+		Height:              input.Height,
+		ValidationStatus:    validationStatus,
+		ValidationError:     input.ValidationError,
+		ValidatedAt:         validatedAt,
+		ClientLocalMediaID:  input.ClientLocalMediaID,
+		ClientPersistedHash: input.ClientPersistedHash,
+		UploadTraceID:       input.UploadTraceID,
+		CreatedAt:           now,
 	}
 
 	query := `
-		INSERT INTO media_files (id, user_id, filename, mime_type, size, storage_path, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO media_files (
+			id, user_id, filename, mime_type, size, storage_path,
+			sha256, width, height, validation_status, validation_error, validated_at,
+			client_local_media_id, client_persisted_hash, upload_trace_id, created_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.Exec(query, media.ID, media.UserID, media.Filename, media.MimeType, media.Size, media.StoragePath, media.CreatedAt)
+	_, err := r.db.Exec(
+		query,
+		media.ID,
+		media.UserID,
+		media.Filename,
+		media.MimeType,
+		media.Size,
+		media.StoragePath,
+		media.SHA256,
+		media.Width,
+		media.Height,
+		media.ValidationStatus,
+		media.ValidationError,
+		media.ValidatedAt,
+		media.ClientLocalMediaID,
+		media.ClientPersistedHash,
+		media.UploadTraceID,
+		media.CreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -53,21 +103,21 @@ func (r *MediaRepository) Create(userID, filename, mimeType, storagePath string,
 }
 
 func (r *MediaRepository) GetByID(mediaID string) (*models.MediaFile, error) {
-	var media models.MediaFile
-	var createdAt string
-	query := `SELECT id, user_id, entry_id, filename, mime_type, size, storage_path, created_at FROM media_files WHERE id = ?`
-	err := r.db.QueryRow(query, mediaID).Scan(
-		&media.ID, &media.UserID, &media.EntryID, &media.Filename, &media.MimeType,
-		&media.Size, &media.StoragePath, &createdAt,
-	)
+	query := `
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
+		       sha256, width, height, validation_status, validation_error, validated_at,
+		       client_local_media_id, client_persisted_hash, upload_trace_id, created_at
+		FROM media_files
+		WHERE id = ?
+	`
+	media, err := scanMediaFile(r.db.QueryRow(query, mediaID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	media.CreatedAt, _ = parseSQLiteTime(createdAt)
-	return &media, nil
+	return media, nil
 }
 
 func (r *MediaRepository) LinkToEntry(mediaID, entryID string) error {
@@ -131,7 +181,13 @@ func (r *MediaRepository) GetByEntryIDTx(tx *sql.Tx, entryID string) ([]*models.
 }
 
 func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string) ([]*models.MediaFile, error) {
-	query := `SELECT id, user_id, entry_id, filename, mime_type, size, storage_path, created_at FROM media_files WHERE entry_id = ?`
+	query := `
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
+		       sha256, width, height, validation_status, validation_error, validated_at,
+		       client_local_media_id, client_persisted_hash, upload_trace_id, created_at
+		FROM media_files
+		WHERE entry_id = ?
+	`
 	rows, err := queryer.Query(query, entryID)
 	if err != nil {
 		return nil, err
@@ -140,13 +196,11 @@ func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string
 
 	var files []*models.MediaFile
 	for rows.Next() {
-		var m models.MediaFile
-		var createdAt string
-		if err := rows.Scan(&m.ID, &m.UserID, &m.EntryID, &m.Filename, &m.MimeType, &m.Size, &m.StoragePath, &createdAt); err != nil {
+		m, err := scanMediaFile(rows)
+		if err != nil {
 			return nil, err
 		}
-		m.CreatedAt, _ = parseSQLiteTime(createdAt)
-		files = append(files, &m)
+		files = append(files, m)
 	}
 	return files, rows.Err()
 }
@@ -165,34 +219,23 @@ func (r *MediaRepository) deleteByEntryID(execer entryMediaExecer, userID, entry
 }
 
 func (r *MediaRepository) FindByUserIDAndFilename(userID, filename string) (*models.MediaFile, error) {
-	var media models.MediaFile
-	var createdAt string
-
 	query := `
-		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path, created_at
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
+		       sha256, width, height, validation_status, validation_error, validated_at,
+		       client_local_media_id, client_persisted_hash, upload_trace_id, created_at
 		FROM media_files
 		WHERE user_id = ? AND filename = ?
 		ORDER BY CASE WHEN entry_id IS NULL THEN 0 ELSE 1 END, created_at DESC
 		LIMIT 1
 	`
-	err := r.db.QueryRow(query, userID, filename).Scan(
-		&media.ID,
-		&media.UserID,
-		&media.EntryID,
-		&media.Filename,
-		&media.MimeType,
-		&media.Size,
-		&media.StoragePath,
-		&createdAt,
-	)
+	mediaFile, err := scanMediaFile(r.db.QueryRow(query, userID, filename))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	media.CreatedAt, _ = parseSQLiteTime(createdAt)
-	return &media, nil
+	return mediaFile, nil
 }
 
 func (r *MediaRepository) CountAndBytes(userID string) (int, int64, error) {
@@ -203,4 +246,84 @@ func (r *MediaRepository) CountAndBytes(userID string) (int, int64, error) {
 		return 0, 0, err
 	}
 	return count, totalBytes, nil
+}
+
+type mediaRowScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanMediaFile(scanner mediaRowScanner) (*models.MediaFile, error) {
+	var (
+		media               models.MediaFile
+		entryID             sql.NullString
+		sha256              sql.NullString
+		width               sql.NullInt64
+		height              sql.NullInt64
+		validationStatus    sql.NullString
+		validationError     sql.NullString
+		validatedAt         sql.NullString
+		clientLocalMediaID  sql.NullString
+		clientPersistedHash sql.NullString
+		uploadTraceID       sql.NullString
+		createdAt           string
+	)
+
+	if err := scanner.Scan(
+		&media.ID,
+		&media.UserID,
+		&entryID,
+		&media.Filename,
+		&media.MimeType,
+		&media.Size,
+		&media.StoragePath,
+		&sha256,
+		&width,
+		&height,
+		&validationStatus,
+		&validationError,
+		&validatedAt,
+		&clientLocalMediaID,
+		&clientPersistedHash,
+		&uploadTraceID,
+		&createdAt,
+	); err != nil {
+		return nil, err
+	}
+
+	if entryID.Valid {
+		media.EntryID = &entryID.String
+	}
+	if sha256.Valid {
+		media.SHA256 = sha256.String
+	}
+	if width.Valid {
+		media.Width = int(width.Int64)
+	}
+	if height.Valid {
+		media.Height = int(height.Int64)
+	}
+	if validationStatus.Valid {
+		media.ValidationStatus = validationStatus.String
+	}
+	if validationError.Valid {
+		media.ValidationError = &validationError.String
+	}
+	if validatedAt.Valid {
+		parsed, err := parseSQLiteTime(validatedAt.String)
+		if err == nil {
+			media.ValidatedAt = &parsed
+		}
+	}
+	if clientLocalMediaID.Valid {
+		media.ClientLocalMediaID = clientLocalMediaID.String
+	}
+	if clientPersistedHash.Valid {
+		media.ClientPersistedHash = clientPersistedHash.String
+	}
+	if uploadTraceID.Valid {
+		media.UploadTraceID = uploadTraceID.String
+	}
+	media.CreatedAt, _ = parseSQLiteTime(createdAt)
+
+	return &media, nil
 }

@@ -149,6 +149,8 @@ describe('syncStore', () => {
       downloaded: 2,
       missing: 1,
       failed: 0,
+      suspect: 1,
+      repairable: 1,
       lastError: 'missing file',
       lastValidatedAt: 1234,
     };
@@ -173,6 +175,8 @@ describe('syncStore', () => {
       downloaded: 1,
       missing: 0,
       failed: 0,
+      suspect: 0,
+      repairable: 0,
       lastError: null,
       lastValidatedAt: 5678,
     });

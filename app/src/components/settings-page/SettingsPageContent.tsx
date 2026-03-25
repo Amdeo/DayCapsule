@@ -14,6 +14,7 @@ import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
 import { SettingsSection } from './SettingsSection';
 import { SettingsSegmentedSelector } from './SettingsSegmentedSelector';
 import { SettingsStorageInfo } from './SettingsStorageInfo';
+import { SettingsE2ESyncLab } from './SettingsE2ESyncLab';
 import {
   CALENDAR_DENSITY_OPTIONS,
   CARD_SPACING_OPTIONS,
@@ -41,6 +42,7 @@ interface SettingsPageContentProps {
   backendTestErrorMessage: string | null;
   isSavingBackendServer: boolean;
   canSaveBackendServer: boolean;
+  showE2ESyncLab?: boolean;
   onCloudModeToggle: (value: boolean) => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
   onLogout: () => void;
@@ -56,6 +58,10 @@ interface SettingsPageContentProps {
   onSaveBackendServer: () => void | Promise<void>;
   onSelectRecentBackendServer: (url: string) => void;
   onClearCache: () => void;
+  onInjectSuspectRepairable?: () => void | Promise<void>;
+  onInjectRepairPending?: () => void | Promise<void>;
+  onClearSyncFixtures?: () => void | Promise<void>;
+  onShowSyncRepairPrompt?: () => void;
   onOpenTagManagement: () => void;
   onResetSettings: () => void;
 }
@@ -82,6 +88,7 @@ export function SettingsPageContent({
   backendTestErrorMessage,
   isSavingBackendServer,
   canSaveBackendServer,
+  showE2ESyncLab,
   onCloudModeToggle,
   onShowSyncStatus,
   onLogout,
@@ -97,6 +104,10 @@ export function SettingsPageContent({
   onSaveBackendServer,
   onSelectRecentBackendServer,
   onClearCache,
+  onInjectSuspectRepairable,
+  onInjectRepairPending,
+  onClearSyncFixtures,
+  onShowSyncRepairPrompt,
   onOpenTagManagement,
   onResetSettings,
 }: SettingsPageContentProps) {
@@ -140,6 +151,7 @@ export function SettingsPageContent({
               icon="cloud-done"
               title="同步状态"
               subtitle="查看最近同步时间和待同步条数"
+              testID="settings-show-sync-status"
               onPress={onShowSyncStatus}
             />
             <SettingButton
@@ -256,6 +268,15 @@ export function SettingsPageContent({
           danger
         />
       </SettingsSection>
+
+      {showE2ESyncLab ? (
+        <SettingsE2ESyncLab
+          onInjectSuspectRepairable={onInjectSuspectRepairable ?? (() => undefined)}
+          onInjectRepairPending={onInjectRepairPending ?? (() => undefined)}
+          onClearFixtures={onClearSyncFixtures ?? (() => undefined)}
+          onShowRepairPrompt={onShowSyncRepairPrompt ?? (() => undefined)}
+        />
+      ) : null}
     </>
   );
 }
