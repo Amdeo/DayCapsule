@@ -11,10 +11,14 @@ import (
 
 type SyncHandler struct {
 	syncService         *service.SyncService
-	syncOverviewService *service.SyncOverviewService
+	syncOverviewService syncOverviewService
 }
 
-func NewSyncHandler(syncService *service.SyncService, syncOverviewService *service.SyncOverviewService) *SyncHandler {
+type syncOverviewService interface {
+	GetByUser(userID string) (*service.SyncOverview, error)
+}
+
+func NewSyncHandler(syncService *service.SyncService, syncOverviewService syncOverviewService) *SyncHandler {
 	return &SyncHandler{syncService: syncService, syncOverviewService: syncOverviewService}
 }
 
@@ -107,6 +111,13 @@ func (h *SyncHandler) Delete(c *gin.Context) {
 
 func (h *SyncHandler) Overview(c *gin.Context) {
 	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "unauthorized"},
+		})
+		return
+	}
 
 	overview, err := h.syncOverviewService.GetByUser(userID)
 	if err != nil {
