@@ -1,0 +1,13 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow: ../../common/open-sync-status.yaml
+- assertVisible: "待同步条数"
+- assertVisible: "待上传媒体"
+- assertVisible: "最近媒体错误"
+- tapOn:
+    id: error-feedback-action-0
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: searchbar-menu-button

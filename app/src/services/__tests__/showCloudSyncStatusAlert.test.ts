@@ -280,6 +280,14 @@ describe('showCloudSyncStatusAlert', () => {
 
     const repairAction = firstRequest.actions?.find((action) => action.label === '修复异常媒体');
     expect(repairAction).toBeTruthy();
+    expect(repairAction).toEqual(expect.objectContaining({
+      testID: 'error-feedback-action-repair-media',
+    }));
+
+    const syncAction = firstRequest.actions?.find((action) => action.label === '立即同步');
+    expect(syncAction).toEqual(expect.objectContaining({
+      testID: 'error-feedback-action-sync-now',
+    }));
 
     await repairAction?.onPress?.();
 

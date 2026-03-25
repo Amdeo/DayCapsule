@@ -4,6 +4,7 @@ export type ErrorFeedbackAction = {
   label: string;
   role: 'primary' | 'secondary';
   onPress?: () => void | Promise<void>;
+  testID?: string;
 };
 
 export type ErrorFeedbackDetail = {

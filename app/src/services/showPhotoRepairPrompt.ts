@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 
 import type { MediaRepairIssue } from '@/src/services/cloudMediaSyncService';
+import { createE2ESyncLabService } from '@/src/services/e2eSyncLabService';
 import { createPhotoRepairService } from '@/src/services/photoRepairService';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 
@@ -18,6 +19,14 @@ function getNextRepairIssue(): MediaRepairIssue | null {
   ) ?? null;
 }
 
+function isE2ESyncLabIssue(issue: MediaRepairIssue): boolean {
+  return process.env.EXPO_PUBLIC_E2E_SYNC_LAB === '1'
+    && (
+      issue.localMediaId?.startsWith('e2e-sync-')
+      || issue.localUri.includes('/e2e-sync-lab/')
+    );
+}
+
 export function showPhotoRepairPrompt(): void {
   const issue = getNextRepairIssue();
   if (!issue) {
@@ -27,9 +36,13 @@ export function showPhotoRepairPrompt(): void {
   const promptKey = getPromptKey(issue);
   activePromptKeys.add(promptKey);
 
-  const dismissPrompt = () => {
-    useMediaRepairStore.getState().dismissIssue(issue.entryId, issue.localMediaId);
+  const releasePrompt = () => {
     activePromptKeys.delete(promptKey);
+  };
+
+  const resolveIssue = () => {
+    useMediaRepairStore.getState().dismissIssue(issue.entryId, issue.localMediaId);
+    releasePrompt();
   };
 
   Alert.alert(
@@ -40,16 +53,20 @@ export function showPhotoRepairPrompt(): void {
         text: '稍后处理',
         style: 'cancel',
         onPress: () => {
-          dismissPrompt();
+          releasePrompt();
         },
       },
       {
         text: '立即修复',
         onPress: async () => {
           try {
-            await createPhotoRepairService().repair(issue);
+            if (isE2ESyncLabIssue(issue)) {
+              await createE2ESyncLabService().injectRepairPending();
+            } else {
+              await createPhotoRepairService().repair(issue);
+            }
           } finally {
-            dismissPrompt();
+            resolveIssue();
           }
         },
       },

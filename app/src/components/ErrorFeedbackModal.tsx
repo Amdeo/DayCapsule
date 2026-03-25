@@ -120,6 +120,7 @@ export function ErrorFeedbackModal({
             {request.actions.map((action, index) => (
               <Pressable
                 key={`${action.label}-${index}`}
+                testID={action.testID ?? `error-feedback-action-${index}`}
                 onPress={action.onPress}
                 style={[
                   ACTION_BUTTON_STYLE,
@@ -132,7 +133,6 @@ export function ErrorFeedbackModal({
                 className="min-w-[92px] items-center justify-center px-4 py-[11px]"
               >
                 <Text
-                  testID={`error-feedback-action-${index}`}
                   className="text-sm font-semibold"
                   style={[
                     action.role === 'primary'

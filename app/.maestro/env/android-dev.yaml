@@ -1,0 +1,4 @@
+appId: com.memorycapsule.app
+env:
+  E2E_ACCOUNT_EMAIL: test@example.com
+  E2E_ACCOUNT_PASSWORD: changeme

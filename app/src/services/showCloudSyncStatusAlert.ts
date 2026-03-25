@@ -198,6 +198,7 @@ function buildCloudSyncStatusFeedback(
       ? [{
           label: '修复异常媒体',
           role: 'secondary' as const,
+          testID: 'error-feedback-action-repair-media',
           onPress: () => {
             showPhotoRepairPrompt();
           },
@@ -206,6 +207,7 @@ function buildCloudSyncStatusFeedback(
     {
       label: '立即同步',
       role: 'primary',
+      testID: 'error-feedback-action-sync-now',
       onPress: onSyncNow,
     },
   ];

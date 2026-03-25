@@ -1,0 +1,8 @@
+appId: com.memorycapsule.app
+---
+- runFlow:
+    when:
+      visible: "Open debugger to view warnings."
+    commands:
+      - tapOn:
+          point: "92%, 92%"

@@ -1,0 +1,19 @@
+appId: com.memorycapsule.app
+---
+- runFlow:
+    when:
+      visible: "发现云端媒体异常"
+    commands:
+      - tapOn: "稍后处理"
+- runFlow:
+    when:
+      visible:
+        id: error-feedback-card
+    commands:
+      - tapOn:
+          id: error-feedback-action-0
+- runFlow: ../common/open-e2e-sync-lab.yaml
+- tapOn:
+    id: e2e-sync-fixture-clear
+- assertVisible:
+    id: e2e-sync-lab-root

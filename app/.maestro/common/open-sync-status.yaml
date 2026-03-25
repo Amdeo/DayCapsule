@@ -1,0 +1,13 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../common/open-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-show-sync-status
+    direction: UP
+    timeout: 10000
+- tapOn:
+    id: settings-show-sync-status
+- assertVisible:
+    id: error-feedback-card
+- runFlow: ../common/dismiss-dev-warning-toast.yaml
