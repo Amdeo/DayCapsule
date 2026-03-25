@@ -136,6 +136,19 @@ describe('showCloudSyncStatusAlert', () => {
     );
   });
 
+  it('overview 快照获取失败时展示 branded failed feedback', async () => {
+    mockGetSnapshot.mockRejectedValueOnce(new Error('snapshot unavailable'));
+
+    await showCloudSyncStatusAlert();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步失败',
+        dedupeKey: 'cloud-sync-failed',
+      }),
+    );
+  });
+
   it('点击立即同步成功后会重新拉取 overview 并展示更新后的数据', async () => {
     mockGetSnapshot
       .mockResolvedValueOnce({
