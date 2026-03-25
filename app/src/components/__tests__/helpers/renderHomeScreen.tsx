@@ -1,4 +1,5 @@
 import React from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { render } from '@testing-library/react-native';
 import HomeScreen from '../../../../app/(tabs)/index';
 
@@ -25,7 +26,6 @@ const mockCommonTagsState = {
 };
 
 const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
-
 const mockUseEntryStore = Object.assign(
   () => mockEntryStoreState,
   {
@@ -94,29 +94,63 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
-jest.mock('@/src/components/Timeline.v2', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    Timeline: () => React.createElement(View, { testID: 'home-screen-timeline-stub' }),
-  };
-});
+jest.mock('@/src/components/Timeline.v2', () => ({
+  Timeline: ({
+    onMenuPress,
+    onQuickAdd,
+    onStopRecording,
+  }: {
+    onMenuPress: () => void;
+    onQuickAdd: (type: 'text' | 'photo' | 'voice') => void;
+    onStopRecording: (id: string) => void;
+  }) => (
+    <View testID="home-screen-timeline-stub">
+      <Text>timeline</Text>
+      <Pressable testID="home-screen-open-drawer" onPress={onMenuPress}>
+        <Text>open-drawer</Text>
+      </Pressable>
+      <Pressable testID="home-screen-open-editor" onPress={() => onQuickAdd('text')}>
+        <Text>open-editor</Text>
+      </Pressable>
+      <Pressable testID="home-screen-stop-recording" onPress={() => onStopRecording('voice-entry-1')}>
+        <Text>stop-recording</Text>
+      </Pressable>
+    </View>
+  ),
+}));
 
-jest.mock('@/src/components/Sidebar', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    Sidebar: () => React.createElement(View, { testID: 'home-screen-sidebar-stub' }),
-  };
-});
+jest.mock('@/src/components/Sidebar', () => ({
+  Sidebar: ({ onClose }: { onClose: () => void }) => (
+    <View testID="home-screen-sidebar-stub">
+      <Text>sidebar</Text>
+      <Pressable testID="home-screen-close-drawer" onPress={onClose}>
+        <Text>close-drawer</Text>
+      </Pressable>
+    </View>
+  ),
+}));
 
-jest.mock('@/src/components/TextEditor', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    TextEditor: () => React.createElement(View, { testID: 'home-screen-editor-stub' }),
-  };
-});
+jest.mock('@/src/components/TextEditor', () => ({
+  TextEditor: ({
+    visible,
+    onSave,
+    onCancel,
+  }: {
+    visible: boolean;
+    onSave: (content: string, tags: string[]) => void;
+    onCancel: () => void;
+  }) => (
+    <View testID="home-screen-editor-stub">
+      <Text>{visible ? 'editor-visible' : 'editor-hidden'}</Text>
+      <Pressable testID="home-screen-save-text" onPress={() => onSave('测试内容', ['标签'])}>
+        <Text>save-text</Text>
+      </Pressable>
+      <Pressable testID="home-screen-cancel-text" onPress={onCancel}>
+        <Text>cancel-text</Text>
+      </Pressable>
+    </View>
+  ),
+}));
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -131,15 +165,21 @@ jest.mock('@/src/utils/fileSystem', () => ({
 }));
 
 export interface RenderHomeScreenOptions {
-  entryStore?: Partial<typeof mockEntryStoreState>;
-  settings?: Partial<typeof mockSettingsState>;
-  commonTags?: Partial<typeof mockCommonTagsState>;
+  entries?: Array<{ id: string; type: string; media?: Array<{ uri?: string }> }>;
+  cloudMode?: boolean;
+  loadEntries?: () => Promise<void>;
 }
 
-export function renderHomeScreen(overrides: RenderHomeScreenOptions = {}) {
+export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
+  const {
+    entries = [],
+    cloudMode = false,
+    loadEntries = jest.fn().mockResolvedValue(undefined),
+  } = options;
+
   Object.assign(mockEntryStoreState, {
-    entries: [],
-    loadEntries: jest.fn().mockResolvedValue(undefined),
+    entries,
+    loadEntries,
     addEntry: jest.fn().mockResolvedValue(undefined),
     addLocalEntry: jest.fn().mockResolvedValue(undefined),
     updateLocalEntry: jest.fn().mockResolvedValue(undefined),
@@ -148,25 +188,21 @@ export function renderHomeScreen(overrides: RenderHomeScreenOptions = {}) {
     updateRecordingStatus: jest.fn().mockResolvedValue(undefined),
     updateRecordingDuration: jest.fn().mockResolvedValue(undefined),
     completeRecording: jest.fn().mockResolvedValue(undefined),
-    ...overrides.entryStore,
   });
   Object.assign(mockSettingsState, {
     loadSettings: jest.fn().mockResolvedValue(undefined),
-    cloudMode: false,
-    ...overrides.settings,
+    cloudMode,
   });
   Object.assign(mockCommonTagsState, {
     loadCommonTags: jest.fn().mockResolvedValue(undefined),
-    ...overrides.commonTags,
   });
   mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
 
   return {
-    mocks: {
-      entryStore: mockEntryStoreState,
-      settings: mockSettingsState,
-      commonTags: mockCommonTagsState,
-    },
     screen: render(<HomeScreen />),
+    spies: {
+      loadEntries: mockEntryStoreState.loadEntries,
+      addEntry: mockEntryStoreState.addEntry,
+    },
   };
 }

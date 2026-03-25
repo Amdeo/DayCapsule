@@ -24,7 +24,7 @@ export function renderEntryEditor(overrides: Partial<EntryEditorProps> = {}) {
   };
 
   return {
-    entry: props.entry ?? defaultEntry,
+    entry: props.entry,
     props,
     screen: render(<EntryEditor {...props} />),
   };

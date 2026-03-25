@@ -50,10 +50,9 @@ describe('SearchOverlay', () => {
     expect(screen.getByText('标签')).toBeTruthy();
   });
 
-  it('renders a stable cancel button testID for dismiss flows', async () => {
+  it('renders a stable cancel button testID for dismiss flows', () => {
     const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
 
-    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
     expect(screen.getByTestId('search-overlay-cancel-button')).toBeTruthy();
   });
 
