@@ -63,9 +63,21 @@ const mockMediaCacheService = MediaCacheService as unknown as {
 beforeEach(() => jest.clearAllMocks());
 
 describe('LocalDataSource', () => {
-  it('getEntriesPage delegates to DB.getEntriesPage', async () => {
+  it('getEntriesPage delegates to DB.getEntriesPage and hydrates remote media', async () => {
+    const entries = [{
+      id: 'cloud-1',
+      type: 'photo' as const,
+      content: '',
+      timestamp: 1000,
+      syncStatus: 'synced' as const,
+      media: [{ uri: 'http://101.43.120.134:8081/api/media/1', mimeType: 'image/jpeg', size: 100 }],
+    }];
+    (DB.getEntriesPage as jest.Mock).mockResolvedValueOnce(entries);
+
     await localDataSource.getEntriesPage({}, 20);
+
     expect(DB.getEntriesPage).toHaveBeenCalledWith({}, 20, undefined);
+    expect(mockMediaCacheService.hydrateEntries).toHaveBeenCalledWith(entries);
   });
 
   it('getEntryCount delegates to DB.getEntriesCount', async () => {

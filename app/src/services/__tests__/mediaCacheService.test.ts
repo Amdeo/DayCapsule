@@ -34,7 +34,7 @@ jest.mock('@/src/utils/fileSystem', () => ({
 }));
 
 jest.mock('@/src/utils/logger', () => ({
-  logger: { warn: jest.fn(), error: jest.fn(), log: jest.fn() },
+  logger: { warn: jest.fn(), error: jest.fn(), log: jest.fn(), diagnostic: jest.fn() },
 }));
 
 import * as FileSystem from 'expo-file-system/legacy';
@@ -83,7 +83,7 @@ describe('MediaCacheService', () => {
     );
     expect(entry.media?.[0].uri).toContain('file:///cache/environments/env_https_server_a_example_com/media/voice/compressed/');
     expect(entry.media?.[0].remoteUri).toBe('http://101.43.120.134:8081/api/media/1');
-    expect(logger.log).toHaveBeenCalledWith(
+    expect(logger.diagnostic).toHaveBeenCalledWith(
       '[mediaCache] downloading media',
       expect.objectContaining({
         remoteUri: 'http://localhost:3000/api/media/1',
@@ -93,7 +93,7 @@ describe('MediaCacheService', () => {
         hasAuth: true,
       }),
     );
-    expect(logger.log).toHaveBeenCalledWith(
+    expect(logger.diagnostic).toHaveBeenCalledWith(
       '[mediaCache] media download complete',
       expect.objectContaining({
         normalizedUri: 'http://101.43.120.134:8081/api/media/1',
@@ -125,7 +125,7 @@ describe('MediaCacheService', () => {
     }]);
 
     expect((FileSystem.downloadAsync as jest.Mock).mock.calls.length).toBe(1);
-    expect(logger.log).toHaveBeenCalledWith(
+    expect(logger.diagnostic).toHaveBeenCalledWith(
       '[mediaCache] cache hit',
       expect.objectContaining({
         normalizedUri: 'http://101.43.120.134:8081/api/media/2',
@@ -149,7 +149,7 @@ describe('MediaCacheService', () => {
     }]);
 
     expect(entry.media?.[0].uri).toBe('http://101.43.120.134:8081/api/media/3');
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.diagnostic).toHaveBeenCalledWith(
       '[mediaCache] failed to cache main media, fallback to remote uri:',
       expect.objectContaining({
         remoteUri: 'http://10.0.2.2:3000/api/media/3',

@@ -62,6 +62,12 @@ Usage notes:
 </skill>
 
 <skill>
+<name>drawio-diagrams-enhanced</name>
+<description>Create professional draw.io (diagrams.net) diagrams in XML format (.drawio files) with integrated PMP/PMBOK methodologies, extensive visual asset libraries, and industry-standard professional templates. Use this skill when users ask to create flowcharts, swimlane diagrams, cross-functional flowcharts, org charts, network diagrams, UML diagrams, BPMN, project management diagrams (WBS, Gantt, PERT, RACI), risk matrices, stakeholder maps, or any other visual diagram in draw.io format. This skill includes access to custom shape libraries for icons, clipart, and professional symbols.</description>
+<location>global</location>
+</skill>
+
+<skill>
 <name>executing-plans</name>
 <description>Use when you have a written implementation plan to execute in a separate session with review checkpoints</description>
 <location>global</location>

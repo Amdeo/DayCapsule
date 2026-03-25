@@ -21,8 +21,10 @@ export interface DataSource {
 
 /** LocalDataSource — wraps existing SQLite operations */
 export const localDataSource: DataSource = {
-  getEntriesPage: (filters, pageSize, cursor) =>
-    DB.getEntriesPage(filters, pageSize, cursor),
+  getEntriesPage: async (filters, pageSize, cursor) => {
+    const entries = await DB.getEntriesPage(filters, pageSize, cursor);
+    return MediaCacheService.hydrateEntries(entries);
+  },
 
   getEntryCount: () => DB.getEntriesCount(),
 
