@@ -1,11 +1,12 @@
-import React, { ComponentProps } from 'react';
-import { Text, View } from 'react-native';
+import React from 'react';
 import { render } from '@testing-library/react-native';
-import { SettingsPage } from '../../SettingsPage';
 
-type SettingsPageProps = ComponentProps<typeof SettingsPage>;
+type SettingsPageProps = {
+  visible: boolean;
+  onClose: () => void;
+};
 
-const mockSettingsState = {
+const mockDefaultPersistedSettings = {
   notifications: false,
   autoBackup: false,
   highQualityPhotos: true,
@@ -13,16 +14,82 @@ const mockSettingsState = {
   photoHeight: 'default',
   calendarDensity: 'default',
   cloudMode: false as boolean | 'switching',
+};
+
+const mockDefaultCloudSyncSnapshot = {
+  lastSyncAt: 1700000000000,
+  lastSyncError: null as string | null,
+  initialSyncState: 'ready',
+  pendingEntries: 2,
+  pendingUploads: 0,
+  uploadingEntries: 0,
+  failedEntries: 1,
+  conflictCopies: 1,
+  local: {
+    entryCount: 2,
+    photoCount: 1,
+    voiceCount: 0,
+    mediaBytes: 1024,
+  },
+  cloud: {
+    entryCount: 2,
+    photoCount: 1,
+    voiceCount: 0,
+    mediaBytes: 1024,
+  },
+  cloudError: null as string | null,
+  lastMediaValidationSummary: {
+    status: 'idle',
+    total: 0,
+    downloaded: 0,
+    missing: 0,
+    failed: 0,
+    suspect: 0,
+    repairable: 0,
+    lastError: null,
+    lastValidatedAt: null,
+  },
+};
+
+let mockPersistedSettings = { ...mockDefaultPersistedSettings };
+let mockShowE2ESyncLab = false;
+
+const mockSettingsState = {
+  ...mockDefaultPersistedSettings,
   isLoaded: true,
   loadSettings: jest.fn(async () => undefined),
-  setNotifications: jest.fn(async () => undefined),
-  setAutoBackup: jest.fn(async () => undefined),
-  setHighQualityPhotos: jest.fn(async () => undefined),
-  setCardSpacing: jest.fn(async () => undefined),
-  setPhotoHeight: jest.fn(async () => undefined),
-  setCalendarDensity: jest.fn(async () => undefined),
-  setCloudMode: jest.fn(async () => undefined),
-  resetSettings: jest.fn(async () => undefined),
+  setNotifications: jest.fn(async (value: boolean) => {
+    mockPersistedSettings.notifications = value;
+    mockSettingsState.notifications = value;
+  }),
+  setAutoBackup: jest.fn(async (value: boolean) => {
+    mockPersistedSettings.autoBackup = value;
+    mockSettingsState.autoBackup = value;
+  }),
+  setHighQualityPhotos: jest.fn(async (value: boolean) => {
+    mockPersistedSettings.highQualityPhotos = value;
+    mockSettingsState.highQualityPhotos = value;
+  }),
+  setCardSpacing: jest.fn(async (value: 'compact' | 'default' | 'loose') => {
+    mockPersistedSettings.cardSpacing = value;
+    mockSettingsState.cardSpacing = value;
+  }),
+  setPhotoHeight: jest.fn(async (value: 'compact' | 'default' | 'large') => {
+    mockPersistedSettings.photoHeight = value;
+    mockSettingsState.photoHeight = value;
+  }),
+  setCalendarDensity: jest.fn(async (value: 'comfortable' | 'default' | 'compact') => {
+    mockPersistedSettings.calendarDensity = value;
+    mockSettingsState.calendarDensity = value;
+  }),
+  setCloudMode: jest.fn(async (value: boolean | 'switching') => {
+    mockPersistedSettings.cloudMode = value;
+    mockSettingsState.cloudMode = value;
+  }),
+  resetSettings: jest.fn(async () => {
+    mockPersistedSettings = { ...mockDefaultPersistedSettings };
+    Object.assign(mockSettingsState, mockDefaultPersistedSettings);
+  }),
 };
 
 const mockAuthState = {
@@ -38,15 +105,9 @@ const mockEntryStoreState = {
   loadEntries: jest.fn(async () => undefined),
 };
 
+const mockCloudSyncSnapshot = { ...mockDefaultCloudSyncSnapshot };
 const mockCloudSyncService = {
-  getStatus: jest.fn(async () => ({
-    lastSyncAt: 1700000000000,
-    lastSyncError: null,
-    initialSyncState: 'ready',
-    pendingEntries: 0,
-    failedEntries: 0,
-    conflictCopies: 0,
-  })),
+  getStatus: jest.fn(async () => ({ ...mockCloudSyncSnapshot })),
   syncNow: jest.fn(async () => undefined),
 };
 
@@ -71,13 +132,22 @@ const mockNotificationService = {
 
 const mockBackendState = {
   currentServerUrl: 'https://server-a.example.com',
-  recentServerUrls: [] as string[],
+  recentServerUrls: ['https://server-b.example.com'],
   testResult: { success: true as boolean, message: undefined as string | undefined },
   switchResult: {
-    switched: false,
-    currentServerUrl: 'https://server-a.example.com',
+    switched: true,
+    currentServerUrl: 'https://server-c.example.com',
   },
 };
+
+export const mockShowErrorFeedback = jest.fn();
+export const mockShowCloudSyncStatusAlert = jest.fn(async (_snapshot?: unknown) => undefined);
+export const mockShowSyncRepairPrompt = jest.fn();
+export const mockSwitchBackendEnvironment = jest.fn(async () => mockBackendState.switchResult);
+export const mockClearLocalAppData = jest.fn(async () => undefined);
+export const mockInjectSuspectRepairable = jest.fn(async () => undefined);
+export const mockInjectRepairPending = jest.fn(async () => undefined);
+export const mockClearSyncFixtures = jest.fn(async () => undefined);
 
 const mockUseEntryStore = Object.assign(
   () => ({
@@ -113,10 +183,12 @@ jest.mock('@/src/services/errorFeedbackPresets', () => ({
   buildCloudModeToggleFailedFeedback: jest.fn((error: Error, title: string) => ({
     title,
     message: error.message,
+    dedupeKey: 'cloud-mode-toggle-failed',
   })),
   buildNotificationPermissionFeedback: jest.fn(() => ({
-    title: '通知权限未开启',
+    title: '权限不足',
     message: '请授权通知权限',
+    dedupeKey: 'notification-permission-denied',
   })),
 }));
 
@@ -143,7 +215,7 @@ jest.mock('@/src/services/apiClient', () => ({
 }));
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
-  showErrorFeedback: jest.fn(),
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
 }));
 
 jest.mock('@/src/database/operations', () => ({
@@ -172,27 +244,30 @@ jest.mock('@/src/services/backendConnectionService', () => ({
 }));
 
 jest.mock('@/src/services/localEnvironmentDataManager', () => ({
-  switchBackendEnvironment: jest.fn(async () => mockBackendState.switchResult),
+  switchBackendEnvironment: (...args: unknown[]) => mockSwitchBackendEnvironment(...args),
 }));
 
 jest.mock('@/src/services/localAppDataService', () => ({
-  clearLocalAppData: jest.fn(async () => undefined),
+  clearLocalAppData: (...args: unknown[]) => mockClearLocalAppData(...args),
 }));
 
 jest.mock('@/src/services/e2eSyncLabService', () => ({
   createE2ESyncLabService: jest.fn(() => ({
-    injectSuspectRepairable: jest.fn(async () => undefined),
-    injectRepairPending: jest.fn(async () => undefined),
-    clearFixtures: jest.fn(async () => undefined),
+    injectSuspectRepairable: (...args: unknown[]) => mockInjectSuspectRepairable(...args),
+    injectRepairPending: (...args: unknown[]) => mockInjectRepairPending(...args),
+    clearFixtures: (...args: unknown[]) => mockClearSyncFixtures(...args),
   })),
 }));
 
 jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: jest.fn(async () => undefined),
+  showCloudSyncStatusAlert: jest.fn(async () => {
+    const snapshot = await mockCloudSyncService.getStatus();
+    return mockShowCloudSyncStatusAlert(snapshot);
+  }),
 }));
 
 jest.mock('@/src/services/showPhotoRepairPrompt', () => ({
-  showPhotoRepairPrompt: jest.fn(),
+  showPhotoRepairPrompt: (...args: unknown[]) => mockShowSyncRepairPrompt(...args),
 }));
 
 jest.mock('../../DetailPageShell', () => ({
@@ -204,23 +279,32 @@ jest.mock('../../DetailPageShell', () => ({
     children: React.ReactNode;
     title: string;
     visible: boolean;
-  }) =>
-    visible ? (
+  }) => {
+    const React = require('react');
+    const { Text, View } = require('react-native');
+    return visible ? (
       <View testID="settings-page-shell">
         <Text>{title}</Text>
         {children}
       </View>
-    ) : null,
+    ) : null;
+  },
 }));
 
 jest.mock('../../TagManagementPage', () => ({
-  TagManagementPage: ({ visible }: { visible: boolean }) =>
-    visible ? <Text testID="settings-tag-management-dialog">tag-management</Text> : null,
+  TagManagementPage: ({ visible }: { visible: boolean }) => {
+    const React = require('react');
+    const { Text } = require('react-native');
+    return visible ? <Text testID="settings-tag-management-dialog">tag-management</Text> : null;
+  },
 }));
 
 jest.mock('../../LoginPage', () => ({
-  LoginPage: ({ visible }: { visible: boolean }) =>
-    visible ? <Text testID="settings-login-dialog">login</Text> : null,
+  LoginPage: ({ visible }: { visible: boolean }) => {
+    const React = require('react');
+    const { Text } = require('react-native');
+    return visible ? <Text testID="settings-login-dialog">login</Text> : null;
+  },
 }));
 
 export interface RenderSettingsPageOptions {
@@ -229,18 +313,76 @@ export interface RenderSettingsPageOptions {
   cloudMode?: boolean | 'switching';
   entries?: Array<{ id: string; type: string; media?: Array<{ uri?: string }> }>;
   userEmail?: string | null;
+  e2eSyncLab?: boolean;
   props?: Partial<SettingsPageProps>;
+}
+
+export function resetRenderSettingsPageMocks() {
+  jest.clearAllMocks();
+  mockPersistedSettings = { ...mockDefaultPersistedSettings };
+  mockShowE2ESyncLab = false;
+
+  Object.assign(mockSettingsState, {
+    ...mockDefaultPersistedSettings,
+    isLoaded: true,
+  });
+  Object.assign(mockAuthState, {
+    user: null,
+    isAuthenticated: false,
+    logout: jest.fn(),
+    login: jest.fn(),
+    register: jest.fn(),
+  });
+  Object.assign(mockEntryStoreState, {
+    entries: [],
+    loadEntries: jest.fn(async () => undefined),
+  });
+  Object.assign(mockCloudSyncSnapshot, mockDefaultCloudSyncSnapshot);
+  mockSyncBootstrapService.inspectInitialState.mockResolvedValue({ localCount: 0, cloudCount: 0 });
+  mockSyncBootstrapService.buildInitialFlow.mockImplementation(
+    () => ({ type: 'backing-up', localCount: 0, cloudCount: 0 })
+  );
+  mockSyncBootstrapService.runInitialFlow.mockResolvedValue(undefined);
+  mockApiClient.get.mockResolvedValue({ entryCount: 0 });
+  mockApiClient.post.mockResolvedValue(undefined);
+  mockApiClient.uploadFile.mockResolvedValue({ id: 'upload-1' });
+  mockNotificationService.isReminderScheduled.mockResolvedValue(false);
+  mockNotificationService.requestPermission.mockResolvedValue(true);
+  mockNotificationService.scheduleDailyReminder.mockResolvedValue(undefined);
+  mockNotificationService.cancelDailyReminder.mockResolvedValue(undefined);
+  Object.assign(mockBackendState, {
+    currentServerUrl: 'https://server-a.example.com',
+    recentServerUrls: ['https://server-b.example.com'],
+    testResult: { success: true, message: undefined },
+    switchResult: {
+      switched: true,
+      currentServerUrl: 'https://server-c.example.com',
+    },
+  });
+  mockSwitchBackendEnvironment.mockResolvedValue(mockBackendState.switchResult);
+  mockClearLocalAppData.mockResolvedValue(undefined);
+  mockInjectSuspectRepairable.mockResolvedValue(undefined);
+  mockInjectRepairPending.mockResolvedValue(undefined);
+  mockClearSyncFixtures.mockResolvedValue(undefined);
 }
 
 export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
   const {
     visible = true,
     authenticated = false,
-    cloudMode = false,
+    cloudMode,
     entries = [],
     userEmail = authenticated ? 'tester@example.com' : null,
+    e2eSyncLab = false,
     props = {},
   } = options;
+
+  mockShowE2ESyncLab = e2eSyncLab;
+  if (mockShowE2ESyncLab) {
+    process.env.EXPO_PUBLIC_E2E_SYNC_LAB = '1';
+  } else {
+    delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+  }
 
   Object.assign(mockAuthState, {
     user: userEmail ? { email: userEmail } : null,
@@ -249,36 +391,18 @@ export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
     login: jest.fn(),
     register: jest.fn(),
   });
+
   Object.assign(mockSettingsState, {
-    notifications: false,
-    autoBackup: false,
-    highQualityPhotos: true,
-    cardSpacing: 'default',
-    photoHeight: 'default',
-    calendarDensity: 'default',
-    cloudMode,
+    ...mockPersistedSettings,
+    cloudMode: cloudMode ?? mockPersistedSettings.cloudMode,
     isLoaded: true,
-    loadSettings: jest.fn(async () => undefined),
-    setNotifications: jest.fn(async () => undefined),
-    setAutoBackup: jest.fn(async () => undefined),
-    setHighQualityPhotos: jest.fn(async () => undefined),
-    setCardSpacing: jest.fn(async () => undefined),
-    setPhotoHeight: jest.fn(async () => undefined),
-    setCalendarDensity: jest.fn(async () => undefined),
-    setCloudMode: jest.fn(async () => undefined),
-    resetSettings: jest.fn(async () => undefined),
   });
+  mockPersistedSettings.cloudMode = mockSettingsState.cloudMode;
+
   Object.assign(mockEntryStoreState, {
     entries,
     loadEntries: jest.fn(async () => undefined),
   });
-  mockBackendState.currentServerUrl = 'https://server-a.example.com';
-  mockBackendState.recentServerUrls = [];
-  mockBackendState.testResult = { success: true, message: undefined };
-  mockBackendState.switchResult = {
-    switched: false,
-    currentServerUrl: 'https://server-a.example.com',
-  };
 
   const finalProps: SettingsPageProps = {
     visible,
@@ -286,13 +410,29 @@ export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
     ...props,
   };
 
+  const { SettingsPage } = require('../../SettingsPage');
+  const rendered = render(<SettingsPage {...finalProps} />);
+
   return {
-    screen: render(<SettingsPage {...finalProps} />),
+    ...rendered,
+    screen: rendered,
     props: finalProps,
-    spies: {
-      setCloudMode: mockSettingsState.setCloudMode,
-      loadEntries: mockEntryStoreState.loadEntries,
-      logout: mockAuthState.logout,
+    mocks: {
+      settings: mockSettingsState,
+      auth: mockAuthState,
+      entries: mockEntryStoreState,
+      syncBootstrap: mockSyncBootstrapService,
+      cloudSync: mockCloudSyncService,
+      apiClient: mockApiClient,
+      backend: mockBackendState,
+      showErrorFeedback: mockShowErrorFeedback,
+      showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
+      showSyncRepairPrompt: mockShowSyncRepairPrompt,
+      switchBackendEnvironment: mockSwitchBackendEnvironment,
+      clearLocalAppData: mockClearLocalAppData,
+      injectSuspectRepairable: mockInjectSuspectRepairable,
+      injectRepairPending: mockInjectRepairPending,
+      clearSyncFixtures: mockClearSyncFixtures,
     },
   };
 }
