@@ -1,5 +1,6 @@
 import * as DB from '@/src/database/operations';
 import { getApiClient } from '@/src/services/apiClient';
+import { createCloudMediaSyncService } from '@/src/services/cloudMediaSyncService';
 import { useSyncStore } from '@/src/store/syncStore';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -107,6 +108,25 @@ function shouldSkipBootstrapMediaUpload(entry: Entry): boolean {
   return entry.syncStatus === 'pending_delete' || entry.syncOp === 'delete' || entry.deleted === true;
 }
 
+function countCloudRestoreMediaValidationTargets(entries: Entry[]): number {
+  return entries.reduce((total, entry) => {
+    if (entry.deleted === true) {
+      return total;
+    }
+
+    return total + (entry.media ?? []).reduce((entryTotal, media) => {
+      let mediaTargets = entryTotal;
+      if (isRemoteMediaUri(media.remoteUri) || isRemoteMediaUri(media.uri)) {
+        mediaTargets += 1;
+      }
+      if (isRemoteMediaUri(media.remoteThumbnail) || isRemoteMediaUri(media.thumbnail)) {
+        mediaTargets += 1;
+      }
+      return mediaTargets;
+    }, 0);
+  }, 0);
+}
+
 async function prepareEntryMediaForCloudBackup(
   entry: Entry,
   uploadMedia: (localUri: string) => Promise<{ id: string; url: string }>
@@ -176,8 +196,22 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
     if (source === 'cloud') {
       await useSyncStore.getState().setInitialSyncState('restoring');
       const exported = await client.get<Partial<Entry>[]>('/entries/export');
+      const restoredEntries = (exported ?? []).map(normalizeImportedEntry);
       await DB.clearAllEntries();
-      await DB.restoreEntries((exported ?? []).map(normalizeImportedEntry));
+      await DB.restoreEntries(restoredEntries);
+      const mediaValidationSummary = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
+        const total = countCloudRestoreMediaValidationTargets(restoredEntries);
+        return {
+          status: 'failed' as const,
+          total,
+          downloaded: 0,
+          missing: 0,
+          failed: total,
+          lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
+          lastValidatedAt: Date.now(),
+        };
+      });
+      await useSyncStore.getState().setMediaValidationSummary(mediaValidationSummary);
       await useSyncStore.getState().setInitialSyncState('ready');
       return;
     }

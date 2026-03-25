@@ -34,6 +34,13 @@ jest.mock('../cloudSyncService', () => ({
   })),
 }));
 
+const mockSyncStoreGetState = jest.fn();
+jest.mock('@/src/store/syncStore', () => ({
+  useSyncStore: {
+    getState: () => mockSyncStoreGetState(),
+  },
+}));
+
 const mockGet = jest.fn();
 jest.mock('@/src/services/apiClient', () => ({
   getApiClient: jest.fn(() => ({
@@ -48,6 +55,9 @@ jest.mock('expo-file-system/legacy', () => ({
 describe('cloudSyncOverviewService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSyncStoreGetState.mockReturnValue({
+      lastMediaValidationSummary: null,
+    });
   });
 
   it('limits concurrent local media stat requests', async () => {
@@ -135,6 +145,17 @@ describe('cloudSyncOverviewService', () => {
       failedEntries: 4,
       conflictCopies: 1,
     });
+    mockSyncStoreGetState.mockReturnValueOnce({
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 3,
+        downloaded: 2,
+        missing: 1,
+        failed: 0,
+        lastError: 'missing photo',
+        lastValidatedAt: 1700000001234,
+      },
+    });
     (DB.getLocalSyncOverviewCounts as jest.Mock).mockResolvedValueOnce({
       entryCount: 7,
       photoCount: 3,
@@ -191,6 +212,15 @@ describe('cloudSyncOverviewService', () => {
       uploadingEntries: 1,
       failedEntries: 4,
       conflictCopies: 1,
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 3,
+        downloaded: 2,
+        missing: 1,
+        failed: 0,
+        lastError: 'missing photo',
+        lastValidatedAt: 1700000001234,
+      },
       local: {
         entryCount: 7,
         photoCount: 3,

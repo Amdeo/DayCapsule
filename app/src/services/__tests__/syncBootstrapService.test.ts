@@ -4,6 +4,8 @@ import * as DB from '@/src/database/operations';
 const mockApiGet = jest.fn();
 const mockUploadFile = jest.fn();
 const mockSetInitialSyncState = jest.fn(async () => undefined);
+const mockSetMediaValidationSummary = jest.fn(async () => undefined);
+const mockValidateEntries = jest.fn();
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -22,10 +24,17 @@ jest.mock('@/src/services/apiClient', () => ({
   })),
 }));
 
+jest.mock('../cloudMediaSyncService', () => ({
+  createCloudMediaSyncService: jest.fn(() => ({
+    validateEntries: mockValidateEntries,
+  })),
+}));
+
 jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: {
     getState: () => ({
       setInitialSyncState: mockSetInitialSyncState,
+      setMediaValidationSummary: mockSetMediaValidationSummary,
     }),
   },
 }));
@@ -44,6 +53,15 @@ describe('syncBootstrapService', () => {
     (DB.getEntriesCount as jest.Mock).mockResolvedValue(0);
     (DB.getAllEntries as jest.Mock).mockResolvedValue([]);
     mockApiGet.mockResolvedValue({ entryCount: 0 });
+    mockValidateEntries.mockResolvedValue({
+      status: 'success',
+      total: 0,
+      downloaded: 0,
+      missing: 0,
+      failed: 0,
+      lastError: null,
+      lastValidatedAt: 1700000000000,
+    });
   });
 
   it('returns restore flow when local is empty and cloud has data', async () => {
@@ -167,6 +185,139 @@ describe('syncBootstrapService', () => {
         ],
       }),
     ]);
+  });
+
+  it('restores cloud entries, validates media, then marks initial sync ready', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'photo-restore-1',
+        type: 'photo',
+        content: '云端恢复图片',
+        timestamp: 1700000002000,
+        media: [
+          {
+            uri: 'https://cdn.example.com/photo-restore-1.jpg',
+            remoteUri: 'https://cdn.example.com/photo-restore-1.jpg',
+            thumbnail: 'https://cdn.example.com/photo-restore-1-thumb.jpg',
+            remoteThumbnail: 'https://cdn.example.com/photo-restore-1-thumb.jpg',
+            mimeType: 'image/jpeg',
+            size: 1024,
+          },
+        ],
+      },
+    ]);
+    const mediaSummary = {
+      status: 'partial' as const,
+      total: 2,
+      downloaded: 1,
+      missing: 1,
+      failed: 0,
+      lastError: 'missing thumbnail',
+      lastValidatedAt: 1700000003000,
+    };
+    mockValidateEntries.mockResolvedValueOnce(mediaSummary);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('cloud');
+
+    const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0]?.[0];
+    expect(mockValidateEntries).toHaveBeenCalledWith(restoredEntries);
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary);
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
+    expect(mockValidateEntries.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSetInitialSyncState.mock.invocationCallOrder[1]
+    );
+  });
+
+  it('marks media validation failed and still finishes cloud restore when validation rejects', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'photo-restore-2',
+        type: 'photo',
+        content: '云端恢复异常图片',
+        timestamp: 1700000004000,
+        media: [
+          {
+            uri: 'https://cdn.example.com/photo-restore-2.jpg',
+            remoteUri: 'https://cdn.example.com/photo-restore-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+          },
+        ],
+      },
+    ]);
+    mockValidateEntries.mockRejectedValueOnce(new Error('media broken'));
+
+    const service = createSyncBootstrapService();
+
+    await expect(service.runInitialFlow('cloud')).resolves.toBeUndefined();
+
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'failed',
+        total: 1,
+        downloaded: 0,
+        missing: 0,
+        failed: 1,
+        lastError: 'media broken',
+        lastValidatedAt: expect.any(Number),
+      }),
+    );
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
+  });
+
+  it('ignores deleted entries when deriving failed media validation totals during cloud restore', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'photo-restore-live',
+        type: 'photo',
+        content: '有效图片',
+        timestamp: 1700000004000,
+        media: [
+          {
+            uri: 'https://cdn.example.com/photo-live.jpg',
+            remoteUri: 'https://cdn.example.com/photo-live.jpg',
+            mimeType: 'image/jpeg',
+            size: 2048,
+          },
+        ],
+      },
+      {
+        id: 'photo-restore-deleted',
+        type: 'photo',
+        content: '已删除图片',
+        timestamp: 1700000005000,
+        deleted: true,
+        media: [
+          {
+            uri: 'https://cdn.example.com/photo-deleted.jpg',
+            remoteUri: 'https://cdn.example.com/photo-deleted.jpg',
+            remoteThumbnail: 'https://cdn.example.com/photo-deleted-thumb.jpg',
+            mimeType: 'image/jpeg',
+            size: 1024,
+          },
+        ],
+      },
+    ]);
+    mockValidateEntries.mockRejectedValueOnce(new Error('media broken'));
+
+    const service = createSyncBootstrapService();
+
+    await expect(service.runInitialFlow('cloud')).resolves.toBeUndefined();
+
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'failed',
+        total: 1,
+        downloaded: 0,
+        missing: 0,
+        failed: 1,
+        lastError: 'media broken',
+        lastValidatedAt: expect.any(Number),
+      }),
+    );
   });
 
   it('uploads local photo media before marking entries pending for first cloud backup', async () => {

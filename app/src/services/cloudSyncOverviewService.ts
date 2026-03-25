@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as DB from '@/src/database/operations';
 import { getApiClient } from '@/src/services/apiClient';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
+import { useSyncStore, type MediaSyncValidationSummary } from '@/src/store/syncStore';
 import type { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
@@ -13,6 +14,7 @@ export interface SyncOverviewSnapshot {
   uploadingEntries: number;
   failedEntries: number;
   conflictCopies: number;
+  lastMediaValidationSummary: MediaSyncValidationSummary | null;
   local: {
     entryCount: number;
     photoCount: number;
@@ -139,6 +141,7 @@ export function createCloudSyncOverviewService(): SyncOverviewServiceApi {
       uploadingEntries: status.uploadingEntries,
       failedEntries: status.failedEntries,
       conflictCopies: status.conflictCopies,
+      lastMediaValidationSummary: useSyncStore.getState().lastMediaValidationSummary,
       local: {
         entryCount: localCounts.entryCount,
         photoCount: localCounts.photoCount,

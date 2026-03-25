@@ -68,21 +68,28 @@ describe('showCloudSyncStatusAlert', () => {
         mediaBytes: 2097152,
       },
       cloudError: null,
+      lastMediaValidationSummary: null,
     });
 
     await showCloudSyncStatusAlert();
 
     expect(showErrorFeedback).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: '云同步状态',
+        title: '云同步失败',
         tone: 'error',
         details: expect.arrayContaining([
-          expect.objectContaining({ label: '同步状态', value: '---' }),
+          expect.objectContaining({ label: '同步状态', value: '失败' }),
           expect.objectContaining({ label: '待同步条数', value: '2' }),
           expect.objectContaining({ label: '待上传媒体', value: '3' }),
           expect.objectContaining({ label: '上传中', value: '1' }),
           expect.objectContaining({ label: '最近错误', value: 'network timeout' }),
           expect.objectContaining({ label: '冲突副本', value: '1' }),
+          expect.objectContaining({ label: '媒体同步状态', value: '未执行' }),
+          expect.objectContaining({ label: '需校验媒体数', value: '0' }),
+          expect.objectContaining({ label: '已落地媒体数', value: '0' }),
+          expect.objectContaining({ label: '缺失媒体数', value: '0' }),
+          expect.objectContaining({ label: '下载失败媒体数', value: '0' }),
+          expect.objectContaining({ label: '最近媒体错误', value: '无' }),
           expect.objectContaining({ label: '本地数据', value: '---' }),
           expect.objectContaining({ label: '本地记录总数', value: '12' }),
           expect.objectContaining({ label: '本地图片数', value: '7' }),
@@ -115,6 +122,7 @@ describe('showCloudSyncStatusAlert', () => {
       },
       cloud: null,
       cloudError: 'cloud unavailable',
+      lastMediaValidationSummary: null,
     });
 
     await showCloudSyncStatusAlert();
@@ -149,6 +157,159 @@ describe('showCloudSyncStatusAlert', () => {
     );
   });
 
+  it('元数据成功但媒体部分成功时展示部分成功和媒体明细', async () => {
+    mockGetSnapshot.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+      local: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaBytes: 1024,
+      },
+      cloud: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaCount: 4,
+        mediaBytes: 2048,
+      },
+      cloudError: null,
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 4,
+        downloaded: 3,
+        missing: 1,
+        failed: 0,
+        lastError: 'missing thumbnail',
+        lastValidatedAt: 1700000002000,
+      },
+    });
+
+    await showCloudSyncStatusAlert();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步部分完成',
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: '同步状态', value: '部分成功' }),
+          expect.objectContaining({ label: '媒体同步状态', value: '部分成功' }),
+          expect.objectContaining({ label: '需校验媒体数', value: '4' }),
+          expect.objectContaining({ label: '已落地媒体数', value: '3' }),
+          expect.objectContaining({ label: '缺失媒体数', value: '1' }),
+          expect.objectContaining({ label: '下载失败媒体数', value: '0' }),
+          expect.objectContaining({ label: '最近媒体错误', value: 'missing thumbnail' }),
+        ]),
+      }),
+    );
+  });
+
+  it('元数据成功但媒体校验整体失败时展示失败态和媒体错误', async () => {
+    mockGetSnapshot.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+      local: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaBytes: 1024,
+      },
+      cloud: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaCount: 4,
+        mediaBytes: 2048,
+      },
+      cloudError: null,
+      lastMediaValidationSummary: {
+        status: 'failed',
+        total: 4,
+        downloaded: 0,
+        missing: 0,
+        failed: 4,
+        lastError: 'download service unavailable',
+        lastValidatedAt: 1700000002000,
+      },
+    });
+
+    await showCloudSyncStatusAlert();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步失败',
+        tone: 'error',
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: '同步状态', value: '失败' }),
+          expect.objectContaining({ label: '媒体同步状态', value: '失败' }),
+          expect.objectContaining({ label: '需校验媒体数', value: '4' }),
+          expect.objectContaining({ label: '已落地媒体数', value: '0' }),
+          expect.objectContaining({ label: '缺失媒体数', value: '0' }),
+          expect.objectContaining({ label: '下载失败媒体数', value: '4' }),
+          expect.objectContaining({ label: '最近媒体错误', value: 'download service unavailable' }),
+        ]),
+      }),
+    );
+  });
+
+  it('cloudError 存在时不会沿用旧媒体摘要显示完成或部分完成', async () => {
+    mockGetSnapshot.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+      local: {
+        entryCount: 5,
+        photoCount: 3,
+        voiceCount: 1,
+        mediaBytes: 1024,
+      },
+      cloud: null,
+      cloudError: 'overview unavailable',
+      lastMediaValidationSummary: {
+        status: 'success',
+        total: 4,
+        downloaded: 4,
+        missing: 0,
+        failed: 0,
+        lastError: null,
+        lastValidatedAt: 1700000002000,
+      },
+    });
+
+    await showCloudSyncStatusAlert();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步状态',
+        tone: 'accent',
+        details: expect.arrayContaining([
+          expect.objectContaining({ label: '同步状态', value: '状态待确认' }),
+          expect.objectContaining({ label: '云端数据', value: '获取失败' }),
+          expect.objectContaining({ label: '云端错误原因', value: 'overview unavailable' }),
+          expect.objectContaining({ label: '媒体同步状态', value: '成功' }),
+        ]),
+      }),
+    );
+
+    const feedback = (showErrorFeedback as jest.Mock).mock.calls.at(-1)?.[0] as { title?: string };
+    expect(feedback.title).not.toBe('云同步完成');
+    expect(feedback.title).not.toBe('云同步部分完成');
+  });
+
   it('点击立即同步成功后会重新拉取 overview 并展示更新后的数据', async () => {
     mockGetSnapshot
       .mockResolvedValueOnce({
@@ -173,6 +334,7 @@ describe('showCloudSyncStatusAlert', () => {
           mediaBytes: 2097152,
         },
         cloudError: null,
+        lastMediaValidationSummary: null,
       })
       .mockResolvedValueOnce({
         lastSyncAt: 1700000001000,
@@ -196,6 +358,15 @@ describe('showCloudSyncStatusAlert', () => {
           mediaBytes: 3145728,
         },
         cloudError: null,
+        lastMediaValidationSummary: {
+          status: 'success',
+          total: 4,
+          downloaded: 4,
+          missing: 0,
+          failed: 0,
+          lastError: null,
+          lastValidatedAt: 1700000001000,
+        },
       });
 
     await showCloudSyncStatusAlert();
@@ -246,6 +417,7 @@ describe('showCloudSyncStatusAlert', () => {
         mediaBytes: 0,
       },
       cloudError: null,
+      lastMediaValidationSummary: null,
     });
     mockSyncNow.mockRejectedValueOnce(new Error('network down'));
 
