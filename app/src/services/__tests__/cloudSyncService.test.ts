@@ -256,6 +256,84 @@ describe('cloudSyncService', () => {
     });
   });
 
+  it('normalizes stale local media uri to remoteUri when applying server changes', async () => {
+    const serverChange = {
+      changeId: 1,
+      op: 'create' as const,
+      entry: {
+        id: 'entry-photo-normalize',
+        type: 'photo' as const,
+        content: '',
+        media: JSON.stringify([
+          {
+            uri: 'file:///old-device/media/photos/original/photo.jpg',
+            remoteUri: 'https://cdn.example.com/photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 1000,
+          },
+        ]),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+
+    mockPost.mockResolvedValueOnce({
+      newCursor: 1,
+      results: [],
+      serverChanges: [serverChange],
+      conflicts: [],
+    });
+
+    const service = createCloudSyncService();
+    await service.syncNow();
+
+    // restoreEntries 被调用时，media[0].uri 应已归一化
+    const restoredEntries = (DB.restoreEntries as jest.Mock).mock.calls[0]?.[0];
+    expect(restoredEntries?.[0]?.media?.[0]?.uri).toBe('https://cdn.example.com/photo.jpg');
+  });
+
+  it('sends remoteUri as uri in server payload when remoteUri exists', async () => {
+    const pendingEntry = {
+      id: 'entry-photo-send',
+      type: 'photo' as const,
+      content: '',
+      media: [
+        {
+          uri: 'file:///current-device/media/photos/original/photo.jpg',
+          remoteUri: 'https://cdn.example.com/photo.jpg',
+          mimeType: 'image/jpeg',
+          size: 1000,
+        },
+      ],
+      syncStatus: 'pending' as const,
+      syncOp: 'create' as const,
+      timestamp: 1000000,
+      updatedAt: 1000000,
+      baseUpdatedAt: 1000000,
+    };
+
+    (DB.getEntriesBySyncStatus as jest.Mock).mockResolvedValueOnce([pendingEntry]);
+    mockPost.mockResolvedValueOnce({
+      newCursor: 2,
+      results: [
+        {
+          changeId: `${pendingEntry.id}:create:${pendingEntry.updatedAt}`,
+          status: 'applied',
+          entryId: pendingEntry.id,
+        },
+      ],
+      serverChanges: [],
+      conflicts: [],
+    });
+
+    const service = createCloudSyncService();
+    await service.syncNow();
+
+    const sentBody = mockPost.mock.calls[0]?.[1];
+    const sentMedia = JSON.parse(sentBody?.clientChanges?.[0]?.entry?.media ?? '[]');
+    expect(sentMedia[0]?.uri).toBe('https://cdn.example.com/photo.jpg');
+  });
+
   it('marks sync as in flight during syncNow and refreshes the indicator after settle', async () => {
     mockPost.mockImplementationOnce(async () => {
       expect(useSyncStore.getState().isSyncing).toBe(true);

@@ -4,6 +4,7 @@ import type { Entry } from '@/src/types/entry';
 import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { logger } from '@/src/utils/logger';
+import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
 
 export interface SyncStatus {
   lastSyncAt: number | null;
@@ -108,7 +109,13 @@ function mapEntryToServer(entry: Entry) {
     type: entry.type,
     content: entry.content,
     tags: JSON.stringify(entry.tags ?? []),
-    media: JSON.stringify(entry.media ?? []),
+    media: JSON.stringify(
+      (entry.media ?? []).map((item) => ({
+        ...item,
+        uri: item.remoteUri ?? item.uri,
+        thumbnail: item.remoteThumbnail ?? item.thumbnail,
+      }))
+    ),
     recordingStatus: entry.recordingStatus ?? null,
     recordingDuration: entry.recordingDuration ?? null,
     createdAt: entry.timestamp ? new Date(entry.timestamp).toISOString() : undefined,
@@ -144,7 +151,7 @@ export function createCloudSyncService(): SyncServiceApi {
       content: serverEntry.content ?? '',
       timestamp: createdAt,
       tags: parseTags(serverEntry.tags),
-      media: parseMedia(serverEntry.media, existing?.media),
+      media: parseMedia(serverEntry.media, existing?.media).map(normalizeCloudMediaItem),
       recordingStatus: serverEntry.recordingStatus ?? undefined,
       recordingDuration: serverEntry.recordingDuration ?? undefined,
       syncStatus: 'synced',
