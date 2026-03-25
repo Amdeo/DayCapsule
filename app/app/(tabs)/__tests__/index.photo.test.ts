@@ -215,6 +215,23 @@ describe('handlePhotoSelectForTest', () => {
     expect(deps.enqueueUpload).toHaveBeenCalledWith('photo-local-1');
   });
 
+  it('后台上传入队失败时仍保留本地已创建的照片卡片', async () => {
+    const deps = makeDeps({
+      enqueueUpload: jest.fn(() => {
+        throw new Error('queue offline');
+      }),
+    });
+
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).resolves.toBeUndefined();
+
+    expect(deps.addLocalEntry).toHaveBeenCalledTimes(1);
+    expect(deps.deleteLocalFile).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[HomeScreen] Failed to enqueue photo upload:',
+      expect.any(Error),
+    );
+  });
+
   it('离线照片创建时不应入队后台上传，并应标记为 synced', async () => {
     const deps = makeDeps();
 
@@ -287,6 +304,27 @@ describe('handlePhotoSelectForTest', () => {
           sourceHash: 'source-hash',
           persistedHash: 'persisted-hash',
           integrityStatus: 'healthy',
+          repairable: false,
+        }),
+      })],
+    }));
+  });
+
+  it('downgrades integrity metadata when persisted hash data is unavailable', async () => {
+    mockFingerprintPhotoFile
+      .mockResolvedValueOnce(SOURCE_FINGERPRINT)
+      .mockResolvedValueOnce({ ...PERSISTED_FINGERPRINT, sha256: '' });
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      media: [expect.objectContaining({
+        metadata: expect.objectContaining({
+          sourceHash: 'source-hash',
+          persistedHash: '',
+          integrityStatus: 'upload_mismatch',
+          integrityReason: 'persisted-hash-missing',
           repairable: false,
         }),
       })],

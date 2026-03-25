@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Entry } from '@/src/types/entry';
 import { suggestTags } from '@/src/services/tagSuggestionService';
@@ -7,7 +8,7 @@ import { getEntryTypeMeta } from './entryEditorAppearance';
 interface UseEntryEditorControllerOptions {
   visible: boolean;
   entry: Entry | null;
-  onSave: (id: string, content: string, tags: string[]) => void;
+  onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -20,6 +21,7 @@ export function useEntryEditorController({
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export function useEntryEditorController({
       setContent(entry.content);
       setTagsInput(entry.tags?.join(', ') || '');
       setSuggestions([]);
+      setIsSaving(false);
     }
   }, [visible, entry]);
 
@@ -83,21 +86,57 @@ export function useEntryEditorController({
     [tagsInput],
   );
 
+  const initialTagsInput = useMemo(
+    () => entry?.tags?.join(', ') || '',
+    [entry],
+  );
+
+  const isDirty = useMemo(() => {
+    if (!entry) {
+      return false;
+    }
+
+    return content !== entry.content || tagsInput !== initialTagsInput;
+  }, [content, entry, initialTagsInput, tagsInput]);
+
+  const canSave = Boolean(entry) && isDirty && !isSaving;
+
   const typeMeta = entry ? getEntryTypeMeta(entry.type) : null;
 
-  const handleSave = useCallback(() => {
-    if (!entry) {
+  const handleSave = useCallback(async () => {
+    if (!entry || !canSave) {
       return;
     }
 
+    setIsSaving(true);
     const tags = tagsInput
       .split(',')
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    onSave(entry.id, content, tags);
-    onClose();
-  }, [content, entry, onClose, onSave, tagsInput]);
+    try {
+      await onSave(entry.id, content, tags);
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [canSave, content, entry, onClose, onSave, tagsInput]);
+
+  const handleRequestClose = useCallback(() => {
+    if (!isDirty) {
+      onClose();
+      return;
+    }
+
+    Alert.alert('放弃修改？', '未保存的修改将会丢失。', [
+      { text: '继续编辑', style: 'cancel' },
+      {
+        text: '放弃修改',
+        style: 'destructive',
+        onPress: onClose,
+      },
+    ]);
+  }, [isDirty, onClose]);
 
   return {
     content,
@@ -106,10 +145,13 @@ export function useEntryEditorController({
     commonTags,
     currentTagsList,
     typeMeta,
+    canSave,
+    isSaving,
     setContent,
     setTagsInput,
     handleAddSuggestion,
     handleRemoveTag,
     handleSave,
+    handleRequestClose,
   };
 }

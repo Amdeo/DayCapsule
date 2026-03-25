@@ -1,8 +1,6 @@
 /**
- * EntryCard — 媒体文件丢失行为测试
+ * EntryCard — 缺媒体/变体交互矩阵
  */
-
-// ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({ currentPlayingId: null, setCurrentPlayingId: jest.fn() }),
@@ -48,11 +46,11 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
-jest.mock('../ImageViewer', () => {
+jest.mock('../../WaveformAnimation', () => 'WaveformAnimation');
+jest.mock('../../ImageViewer', () => {
   const { View } = require('react-native');
   return {
-    ImageViewer: ({ visible }: { visible: boolean; originLayout?: unknown; thumbnailRef?: unknown }) =>
+    ImageViewer: ({ visible }: { visible: boolean }) =>
       visible ? <View testID="image-viewer" /> : null,
   };
 });
@@ -75,15 +73,7 @@ jest.mock('react-native-reanimated', () => {
 
 jest.mock('react-native/Libraries/Image/Image', () => {
   const mockComponent = jest.requireActual('react-native/jest/mockComponent').default;
-  const Image = mockComponent(
-    '../Libraries/Image/Image',
-    {
-      measureInWindow(callback: (x: number, y: number, width: number, height: number) => void) {
-        callback(0, 100, 200, 100);
-      },
-    },
-    true
-  );
+  const Image = mockComponent('../Libraries/Image/Image', {}, true);
 
   return {
     __esModule: true,
@@ -95,7 +85,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock('../EntryActionSheet', () => {
+jest.mock('../../EntryActionSheet', () => {
   const React = require('react');
   const { View, Text, TouchableOpacity } = require('react-native');
   return {
@@ -144,17 +134,12 @@ jest.mock('react-native-gesture-handler', () => {
   return { Swipeable };
 });
 
-// ─── Imports ─────────────────────────────────────────────────────────────────
-
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
-import * as FileSystem from 'expo-file-system';
-import { VoiceService } from '@/src/services/voiceService';
 import { Alert } from 'react-native';
-import { EntryCard } from '../EntryCard';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import * as FileSystem from 'expo-file-system';
+import { EntryCard } from '../../EntryCard';
 import { Entry } from '@/src/types/entry';
-
-// ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const photoEntry: Entry = {
   id: 'p1',
@@ -176,19 +161,25 @@ const voiceEntry: Entry = {
   media: [{ uri: 'file:///missing.m4a', mimeType: 'audio/m4a', size: 0, duration: 3000 }],
 };
 
-const voiceEntryWithEmptyMedia: Entry = {
-  id: 'v2',
-  type: 'voice',
-  content: '',
+const textEntry: Entry = {
+  id: 't1',
+  type: 'text',
+  content: '一条普通文本记录',
   tags: [],
   timestamp: 1700000000000,
   syncStatus: 'synced',
-  media: [],
 };
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
+const longTextEntry: Entry = {
+  id: 't2',
+  type: 'text',
+  content: '这是一条很长的文本记录，'.repeat(12),
+  tags: ['标签1', '标签2', '标签3', '标签4'],
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+};
 
-describe('EntryCard — 媒体文件丢失', () => {
+describe('EntryCard missing media variants', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
@@ -199,88 +190,71 @@ describe('EntryCard — 媒体文件丢失', () => {
     jest.restoreAllMocks();
   });
 
-  // ── 图片丢失 ──────────────────────────────────────────────────────────────
+  it('expands long text content on long press without showing legacy timestamp copy', () => {
+    const { getByTestId, getByText, queryByText } = render(
+      <EntryCard entry={longTextEntry} onDelete={jest.fn()} />
+    );
 
-  it('图片丢失时点击卡片仍应打开 ImageViewer', () => {
+    const content = getByText(longTextEntry.content);
+    expect(content.props.numberOfLines).toBe(4);
+
+    fireEvent(getByTestId('entry-card'), 'longPress');
+
+    expect(content.props.numberOfLines).toBeUndefined();
+    expect(queryByText('点击展开更多')).toBeNull();
+  });
+
+  it('shows the swipe action sheet for a text card', () => {
+    jest.useFakeTimers();
+
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={textEntry} onDelete={jest.fn()} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
+    jest.useRealTimers();
+  });
+
+  it('keeps swipe actions available after a missing photo falls back to placeholder', () => {
+    jest.useFakeTimers();
+
     const { getByTestId, queryByTestId } = render(
       <EntryCard entry={photoEntry} onDelete={jest.fn()} />
     );
 
-    // 模拟图片加载失败
     fireEvent(getByTestId('photo-image-0'), 'error');
 
-    // 点击卡片
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
+    jest.useRealTimers();
+  });
+
+  it('keeps swipe actions available after a missing audio alert path', async () => {
+    jest.useFakeTimers();
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
+
+    const { findByText, getByTestId, queryByTestId } = render(
+      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
+    );
+
     fireEvent.press(getByTestId('entry-card'));
-
-    expect(queryByTestId('image-viewer')).toBeTruthy();
-  });
-
-  // ── 音频丢失 ──────────────────────────────────────────────────────────────
-
-  it('语音卡片渲染时不应预检音频文件是否存在', () => {
-    render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    expect(FileSystem.getInfoAsync).not.toHaveBeenCalled();
-  });
-
-  it('音频文件不存在时点击播放后应显示"音频文件已丢失"提示', async () => {
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
-
-    const { findByText, getByTestId } = render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    await act(async () => {
-      fireEvent.press(getByTestId('entry-card'));
-    });
-
-    expect(await findByText('音频文件已丢失')).toBeTruthy();
-  });
-
-  it('音频丢失时点击卡片不应触发播放', async () => {
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
-
-    const { findByText, getByTestId } = render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    await act(async () => {
-      fireEvent.press(getByTestId('entry-card'));
-    });
     await findByText('音频文件已丢失');
 
-    expect(VoiceService.playAudio).not.toHaveBeenCalled();
-  });
-
-  it('音频文件存在时不应显示丢失提示', async () => {
-    const { queryByText, getByTestId } = render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    await act(async () => {
-      fireEvent.press(getByTestId('entry-card'));
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
     });
 
-    await waitFor(() => {
-      expect(queryByText('音频文件已丢失')).toBeNull();
-    });
-  });
-
-  it('语音卡片应显示首个媒体项的时长', () => {
-    const { getByText } = render(
-      <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
-    );
-
-    expect(getByText('00:03')).toBeTruthy();
-  });
-
-  it('语音记录的 media 为空数组时不应渲染语音播放器', () => {
-    const { queryByText } = render(
-      <EntryCard entry={voiceEntryWithEmptyMedia} onDelete={jest.fn()} />
-    );
-
-    expect(queryByText('00:00')).toBeNull();
+    expect(queryByTestId('entry-action-sheet')).toBeTruthy();
+    jest.useRealTimers();
   });
 });

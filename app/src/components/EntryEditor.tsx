@@ -16,7 +16,7 @@ import { useEntryEditorController } from './entry-editor/useEntryEditorControlle
 interface EntryEditorProps {
   visible: boolean;
   entry: Entry | null;
-  onSave: (id: string, content: string, tags: string[]) => void;
+  onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -28,11 +28,13 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     commonTags,
     currentTagsList,
     typeMeta,
+    canSave,
     setContent,
     setTagsInput,
     handleAddSuggestion,
     handleRemoveTag,
     handleSave,
+    handleRequestClose,
   } = useEntryEditorController({
     visible,
     entry,
@@ -43,18 +45,18 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
   if (!visible || !entry) return null;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleRequestClose}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={handleRequestClose} />
 
         <View style={styles.editorPage}>
           <View testID="entry-editor-header" style={styles.headerBar}>
             <Pressable
               testID="entry-editor-back-button"
-              onPress={onClose}
+              onPress={handleRequestClose}
               style={styles.headerButton}
             >
               <Text style={styles.headerButtonText}>返回</Text>
@@ -62,6 +64,8 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
             <Text style={styles.headerTitle}>编辑记录</Text>
             <Pressable
               testID="entry-editor-save-button"
+              accessibilityState={{ disabled: !canSave }}
+              disabled={!canSave}
               onPress={handleSave}
               style={styles.headerButton}
             >

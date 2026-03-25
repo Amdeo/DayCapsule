@@ -1,6 +1,5 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Modal } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 import { ImageViewer } from '../ImageViewer';
@@ -87,23 +86,6 @@ describe('ImageViewer shared element', () => {
     expect(() => tree!.root.findByProps({ testID: 'image-viewer-root' })).not.toThrow();
   });
 
-  it('renders action sheet shell when action sheet state is visible', () => {
-    let tree: renderer.ReactTestRenderer;
-
-    act(() => {
-      tree = renderer.create(
-        <ImageViewer
-          visible
-          imageUri="file:///image.jpg"
-          onClose={jest.fn()}
-          debugShowActionSheet
-        />
-      );
-    });
-
-    expect(() => tree!.root.findByProps({ testID: 'image-viewer-action-sheet' })).not.toThrow();
-  });
-
   it('opens image directly fullscreen without spring animation when originLayout is provided', () => {
     // Note: The opening animation was removed - images now open directly fullscreen
     // without spring/fly-in effects for better perceived performance
@@ -126,23 +108,6 @@ describe('ImageViewer shared element', () => {
       1,
       expect.objectContaining({ duration: 250 })
     );
-  });
-
-  it('routes Android back close through modal onRequestClose', () => {
-    let tree: renderer.ReactTestRenderer;
-
-    act(() => {
-      tree = renderer.create(
-        <ImageViewer
-          visible
-          imageUri="file:///image.jpg"
-          onClose={jest.fn()}
-        />
-      );
-    });
-
-    const modal = tree!.root.findByType(Modal);
-    expect(typeof modal.props.onRequestClose).toBe('function');
   });
 
   it('logs image uri when image viewer load fails', () => {

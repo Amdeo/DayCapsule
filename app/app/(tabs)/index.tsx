@@ -229,6 +229,7 @@ export async function handlePhotoSelectForTest(
       result.aspectRatio
     );
     const persistedFingerprint = await fingerprintPhotoFile(savedPhoto.originalUri);
+    const hasIntegrityAnomaly = persistedFingerprint.sha256.length === 0;
 
     mediaList.push({
       uri: savedPhoto.originalUri,
@@ -242,8 +243,8 @@ export async function handlePhotoSelectForTest(
         localMediaId: fileId,
         sourceHash: sourceFingerprint.sha256,
         persistedHash: persistedFingerprint.sha256,
-        integrityStatus: 'healthy',
-        integrityReason: null,
+        integrityStatus: hasIntegrityAnomaly ? 'upload_mismatch' : 'healthy',
+        integrityReason: hasIntegrityAnomaly ? 'persisted-hash-missing' : null,
         repairable: false,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
