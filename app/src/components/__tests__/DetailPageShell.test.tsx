@@ -18,6 +18,27 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 describe('DetailPageShell', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
+  it('renders nothing when hidden and unmounts after the exit delay', () => {
+    const screen = render(
+      <DetailPageShell visible={false} title="帮助" onClose={jest.fn()}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    expect(screen.queryByTestId('detail-page-shell')).toBeNull();
+  });
+
   it('renders title, children, and scroll container when visible', () => {
     const { getByText, getByTestId } = render(
       <DetailPageShell visible title="备份与同步" onClose={jest.fn()}>
@@ -89,5 +110,28 @@ describe('DetailPageShell', () => {
 
     expect(pageStyle.height).toBe(screenHeight);
     expect(pageStyle.bottom).toBeUndefined();
+  });
+
+  it('keeps the shell mounted during exit and removes it after the delay', () => {
+    const screen = render(
+      <DetailPageShell visible title="帮助" onClose={jest.fn()}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    screen.rerender(
+      <DetailPageShell visible={false} title="帮助" onClose={jest.fn()}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    expect(screen.queryByTestId('detail-page-shell')).toBeNull();
+    expect(screen.queryByTestId('detail-page-backdrop')).toBeTruthy();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.queryByTestId('detail-page-backdrop')).toBeNull();
   });
 });

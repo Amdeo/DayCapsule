@@ -8,5 +8,6 @@ describe('TimelineEmptyState', () => {
 
     expect(getByTestId('timeline-empty-state')).toBeTruthy();
     expect(getByText('还没有记忆')).toBeTruthy();
+    expect(getByText('点击右下角 + 按钮开始记录')).toBeTruthy();
   });
 });
