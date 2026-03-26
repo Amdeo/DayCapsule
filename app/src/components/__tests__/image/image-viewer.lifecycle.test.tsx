@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { Modal } from 'react-native';
 import { ImageViewer } from '../../ImageViewer';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -64,6 +65,8 @@ describe('ImageViewer lifecycle', () => {
       );
     });
 
-    expect(() => tree.root.findByProps({ testID: 'image-viewer-root' })).toThrow();
+    const modal = tree.root.findByType(Modal);
+    expect(modal.props.visible).toBe(false);
+    expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
   });
 });
