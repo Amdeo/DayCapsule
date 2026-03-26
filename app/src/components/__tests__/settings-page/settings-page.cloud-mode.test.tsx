@@ -12,7 +12,7 @@ describe('SettingsPage cloud mode', () => {
   });
 
   it('keeps local mode when enabling cloud mode fails', async () => {
-    const { screen, mocks } = renderSettingsPage({
+    const { screen, mocks } = await renderSettingsPage({
       authenticated: true,
       cloudMode: false,
     });
@@ -37,7 +37,7 @@ describe('SettingsPage cloud mode', () => {
     jest.spyOn(DB, 'getEntriesCount').mockResolvedValueOnce(3);
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { screen, mocks } = renderSettingsPage({
+    const { screen, mocks } = await renderSettingsPage({
       cloudMode: true,
       authenticated: true,
       userEmail: 'mobile3@test.com',

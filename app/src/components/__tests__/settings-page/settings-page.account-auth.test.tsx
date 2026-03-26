@@ -65,7 +65,7 @@ describe('SettingsPage account auth', () => {
   }
 
   it('shows only the login entry when unauthenticated', async () => {
-    const { screen } = renderSettingsPage({ authenticated: false });
+    const { screen } = await renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
@@ -74,7 +74,7 @@ describe('SettingsPage account auth', () => {
   });
 
   it('opens login dialog (instead of enabling cloud mode) when unauthenticated users try to enable cloud mode', async () => {
-    const { screen, mocks } = renderSettingsPage({ authenticated: false, cloudMode: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: false, cloudMode: false });
     await settleInitialEffects(screen);
 
     expect(latestSettingsPageContentProps).toBeTruthy();
@@ -88,7 +88,7 @@ describe('SettingsPage account auth', () => {
   });
 
   it('shows email, sync status, and logout when authenticated', async () => {
-    const { screen } = renderSettingsPage({ authenticated: true, userEmail: 'tester@example.com' });
+    const { screen } = await renderSettingsPage({ authenticated: true, userEmail: 'tester@example.com' });
     await settleInitialEffects(screen);
 
     expect(screen.getByText('tester@example.com')).toBeTruthy();
@@ -98,7 +98,7 @@ describe('SettingsPage account auth', () => {
 
   it('does not call logout when the user cancels the logout confirmation', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { screen, mocks } = renderSettingsPage({ authenticated: true, cloudMode: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
@@ -122,7 +122,7 @@ describe('SettingsPage account auth', () => {
 
   it('calls logout only when confirmed in offline mode', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { screen, mocks } = renderSettingsPage({ authenticated: true, cloudMode: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
@@ -147,7 +147,7 @@ describe('SettingsPage account auth', () => {
 
   it('in cloud mode, logout confirmation disables cloud mode then reloads entries then logs out', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { screen, mocks } = renderSettingsPage({ authenticated: true, cloudMode: true });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: true });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
@@ -178,14 +178,14 @@ describe('SettingsPage account auth', () => {
   });
 
   it("disables cloud mode switch when cloudMode is 'switching'", async () => {
-    const { screen } = renderSettingsPage({ authenticated: true, cloudMode: 'switching' });
+    const { screen } = await renderSettingsPage({ authenticated: true, cloudMode: 'switching' });
     await settleInitialEffects(screen);
 
     expect(screen.getByTestId('settings-switch-cloud-mode').props.disabled).toBe(true);
   });
 
   it('closes login dialog on account login success without enabling cloud mode', async () => {
-    const { screen, mocks } = renderSettingsPage({ authenticated: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByTestId('settings-open-login'));
@@ -203,7 +203,7 @@ describe('SettingsPage account auth', () => {
   });
 
   it('closes login dialog and enables cloud mode when login was triggered by cloud gating', async () => {
-    const { screen, mocks } = renderSettingsPage({ authenticated: false, cloudMode: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: false, cloudMode: false });
     await settleInitialEffects(screen);
 
     await act(async () => {

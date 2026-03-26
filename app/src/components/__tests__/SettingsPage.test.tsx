@@ -11,7 +11,7 @@ describe('SettingsPage assembly', () => {
   });
 
   it('renders the core settings sections and shared entry points', async () => {
-    const { screen } = renderSettingsPage();
+    const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
       expect(screen.getByText('< 0.1 MB')).toBeTruthy();
@@ -28,7 +28,7 @@ describe('SettingsPage assembly', () => {
   });
 
   it('opens the tag management dialog from the shared settings entry', async () => {
-    const { screen } = renderSettingsPage();
+    const { screen } = await renderSettingsPage();
 
     fireEvent.press(screen.getByTestId('settings-open-tag-management'));
 
@@ -36,7 +36,7 @@ describe('SettingsPage assembly', () => {
   });
 
   it('renders the preset tag management entry with subtitle and stable testID', async () => {
-    const { screen } = renderSettingsPage();
+    const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
       expect(screen.getByText('其他')).toBeTruthy();
@@ -48,7 +48,7 @@ describe('SettingsPage assembly', () => {
 
   it('opens the login dialog from the real unauthenticated account entry', async () => {
     // Note: unauthenticated real UI does not render the cloud-mode switch; only the login entry is available.
-    const { screen } = renderSettingsPage({ authenticated: false });
+    const { screen } = await renderSettingsPage({ authenticated: false });
 
     fireEvent.press(screen.getByTestId('settings-open-login'));
 

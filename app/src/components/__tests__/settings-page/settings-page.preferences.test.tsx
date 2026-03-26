@@ -11,7 +11,7 @@ describe('SettingsPage preferences', () => {
   });
 
   it('persists local preference toggles and restores them on re-open', async () => {
-    const { screen, unmount } = renderSettingsPage();
+    const { screen, unmount } = await renderSettingsPage();
 
     await waitFor(() => {
       expect(screen.getByText('自动备份')).toBeTruthy();
@@ -20,7 +20,7 @@ describe('SettingsPage preferences', () => {
     fireEvent(screen.getByTestId('settings-switch-auto-backup'), 'valueChange', true);
     unmount();
 
-    const reopened = renderSettingsPage();
+    const reopened = await renderSettingsPage();
 
     await waitFor(() => {
       expect(reopened.screen.getByTestId('settings-switch-auto-backup').props.value).toBe(true);

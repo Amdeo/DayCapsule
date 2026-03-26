@@ -11,7 +11,7 @@ describe('SettingsPage backend environment', () => {
   });
 
   it('keeps the previous backend environment when switching fails', async () => {
-    const { screen, mocks } = renderSettingsPage();
+    const { screen, mocks } = await renderSettingsPage();
     mocks.switchBackendEnvironment.mockRejectedValueOnce(new Error('timeout'));
 
     const input = await screen.findByDisplayValue('https://server-a.example.com');

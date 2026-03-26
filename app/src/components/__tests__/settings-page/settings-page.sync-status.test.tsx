@@ -10,8 +10,8 @@ describe('SettingsPage sync status', () => {
     resetRenderSettingsPageMocks();
   });
 
-  it('does not render the sync status entry when the user is unauthenticated', () => {
-    const { screen } = renderSettingsPage({
+  it('does not render the sync status entry when the user is unauthenticated', async () => {
+    const { screen } = await renderSettingsPage({
       authenticated: false,
       cloudMode: false,
     });
@@ -20,7 +20,7 @@ describe('SettingsPage sync status', () => {
   });
 
   it('renders the sync status entry for authenticated users even before cloud mode is enabled', async () => {
-    const { screen } = renderSettingsPage({
+    const { screen } = await renderSettingsPage({
       authenticated: true,
       cloudMode: false,
     });
@@ -29,7 +29,7 @@ describe('SettingsPage sync status', () => {
   });
 
   it('opens sync status from the page action', async () => {
-    const { screen, mocks } = renderSettingsPage({
+    const { screen, mocks } = await renderSettingsPage({
       cloudMode: true,
       authenticated: true,
     });

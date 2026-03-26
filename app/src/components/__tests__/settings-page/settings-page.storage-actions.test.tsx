@@ -13,7 +13,7 @@ describe('SettingsPage storage actions', () => {
 
   it('clears local app data when the user confirms clear cache', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { screen, mocks } = renderSettingsPage();
+    const { screen, mocks } = await renderSettingsPage();
 
     fireEvent.press(await screen.findByText('清除缓存'));
 

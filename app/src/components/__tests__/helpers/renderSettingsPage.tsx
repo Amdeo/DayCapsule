@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 
 type SettingsPageProps = {
   visible: boolean;
@@ -173,6 +173,14 @@ const mockUseEntryStore = Object.assign(
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: mockUseEntryStore,
 }));
+
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  return {
+    Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text>,
+  };
+});
 
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: () => mockSettingsState,
@@ -392,7 +400,15 @@ export function getLatestLoginPageProps() {
   return latestLoginPageProps;
 }
 
-export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
+async function flushSettingsPageEffects(cycles = 3) {
+  for (let index = 0; index < cycles; index += 1) {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+export async function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
   const {
     visible = true,
     authenticated = false,
@@ -439,6 +455,7 @@ export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
 
   const { SettingsPage } = require('../../SettingsPage');
   const rendered = render(<SettingsPage {...finalProps} />);
+  await flushSettingsPageEffects();
 
   return {
     ...rendered,
