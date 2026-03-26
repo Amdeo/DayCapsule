@@ -1,6 +1,22 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Modal } from 'react-native';
+
+jest.mock('../../image-viewer/useImageViewerController', () => ({
+  useImageViewerController: () => ({
+    phase: 'idle',
+    showActionSheet: false,
+    backdropAnimatedStyle: {},
+    heroAnimatedStyle: {},
+    imageAnimatedStyle: {},
+    composedGesture: {},
+    handleRequestClose: jest.fn(),
+    closeActionSheet: jest.fn(),
+    handleSaveToAlbum: jest.fn(),
+    handleShare: jest.fn(),
+  }),
+}));
+
 import { ImageViewer } from '../../ImageViewer';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -21,31 +37,7 @@ jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  const createGesture = () => {
-    const builder: Record<string, () => any> = {
-      numberOfTaps: () => builder,
-      minDuration: () => builder,
-      requireExternalGestureToFail: () => builder,
-      onEnd: () => builder,
-      onStart: () => builder,
-      onBegin: () => builder,
-      onUpdate: () => builder,
-      onFinalize: () => builder,
-    };
-    return builder;
-  };
-
-  const Gesture = {
-    Tap: () => createGesture(),
-    LongPress: () => createGesture(),
-    Pinch: () => createGesture(),
-    Pan: () => createGesture(),
-    Race: () => createGesture(),
-    Simultaneous: () => createGesture(),
-  };
-
   return {
-    Gesture,
     GestureDetector: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
     GestureHandlerRootView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
   };
