@@ -107,7 +107,10 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
     fireEvent.press(screen.getByText('登录'));
 
-    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('user@test.com', 'Password1');
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
     expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
     expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
   });
@@ -128,8 +131,7 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
 
-    const [submitButton] = screen.UNSAFE_getAllByType(TouchableOpacity);
-    fireEvent.press(submitButton);
+    fireEvent.press(screen.getByText('登录'));
 
     await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('登录')).toBeNull());
@@ -218,7 +220,10 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('确认密码'), 'Password1');
     fireEvent.press(screen.getByText('注册'));
 
-    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(mockRegister).toHaveBeenCalledWith('user@test.com', 'Password1');
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
     expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
     expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
     expect(screen.getByPlaceholderText('确认密码')).toHaveProp('value', '');
