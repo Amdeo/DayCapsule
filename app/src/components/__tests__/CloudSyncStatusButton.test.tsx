@@ -11,6 +11,16 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 describe('CloudSyncStatusButton', () => {
+  it('keeps the button shell at the expected floating size', () => {
+    const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('cloud-sync-button')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+  });
+
   it('renders static cloud with green dot for synced state', () => {
     const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
 
@@ -24,12 +34,14 @@ describe('CloudSyncStatusButton', () => {
     const screen = render(<CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
   });
 
   it('renders static cloud with red dot for failed state', () => {
     const screen = render(<CloudSyncStatusButton uiState="failed" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-dot-failed')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
   });
 
   it('renders animated cloud shell for syncing state', () => {

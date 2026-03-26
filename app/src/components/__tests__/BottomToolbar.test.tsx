@@ -46,4 +46,14 @@ describe('BottomToolbar', () => {
       borderRadius: 24,
     });
   });
+
+  it('keeps the toolbar root anchored near the bottom center', () => {
+    const screen = render(<BottomToolbar onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('bottom-toolbar-root')).toHaveStyle({
+      position: 'absolute',
+      bottom: 30,
+      alignItems: 'center',
+    });
+  });
 });

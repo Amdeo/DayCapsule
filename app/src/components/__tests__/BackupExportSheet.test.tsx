@@ -24,6 +24,7 @@ describe('BackupExportSheet', () => {
     const { getByTestId, getByText, queryByText } = render(<BackupExportSheet {...baseProps} />);
 
     expect(getByTestId('backup-export-sheet')).toBeTruthy();
+    expect(getByText('backup_2026-03-17.zip')).toBeTruthy();
     expect(getByText('保存到文件')).toBeTruthy();
     expect(getByText('取消')).toBeTruthy();
     expect(queryByText('发送到微信')).toBeNull();
@@ -61,5 +62,14 @@ describe('BackupExportSheet', () => {
     fireEvent.press(getByTestId('backup-export-overlay'));
 
     expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trigger save when only the cancel action is used', () => {
+    const { getByTestId } = render(<BackupExportSheet {...baseProps} />);
+
+    fireEvent.press(getByTestId('backup-export-cancel'));
+
+    expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+    expect(baseProps.onSaveToFiles).not.toHaveBeenCalled();
   });
 });
