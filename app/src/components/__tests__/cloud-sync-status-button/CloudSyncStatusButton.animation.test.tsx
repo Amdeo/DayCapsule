@@ -14,8 +14,7 @@ jest.mock('@expo/vector-icons', () => {
 describe('CloudSyncStatusButton animation lifecycle', () => {
   let loopControllers: Array<{ start: jest.Mock; stop: jest.Mock }>;
   let loopSpy: jest.SpyInstance;
-  let stopAnimationSpy: jest.SpyInstance;
-  let setValueSpy: jest.SpyInstance;
+  let timingSpy: jest.SpyInstance;
 
   beforeEach(() => {
     let callIndex = 0;
@@ -27,9 +26,7 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
     loopSpy = jest
       .spyOn(Animated, 'loop')
       .mockImplementation(() => loopControllers[callIndex++] as unknown as Animated.CompositeAnimation);
-
-    stopAnimationSpy = jest.spyOn(Animated.Value.prototype, 'stopAnimation');
-    setValueSpy = jest.spyOn(Animated.Value.prototype, 'setValue');
+    timingSpy = jest.spyOn(Animated, 'timing');
   });
 
   afterEach(() => {
@@ -59,18 +56,40 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
       <CloudSyncStatusButton uiState="syncing" onPress={jest.fn()} />,
     );
 
+    const timingValues = timingSpy.mock.calls.map((call) => call[0] as Animated.Value);
+    const valueCallCount = new Map<Animated.Value, number>();
+    timingValues.forEach((value) => {
+      valueCallCount.set(value, (valueCallCount.get(value) ?? 0) + 1);
+    });
+    const breatheValue = Array.from(valueCallCount.entries()).find(([, count]) => count === 2)?.[0];
+    const spinValue = Array.from(valueCallCount.entries()).find(([, count]) => count === 1)?.[0];
+    expect(breatheValue).toBeDefined();
+    expect(spinValue).toBeDefined();
+    if (!breatheValue || !spinValue) {
+      throw new Error('无法捕获 syncing 状态创建的 Animated.Value 实例');
+    }
+
+    const breatheStopSpy = jest.spyOn(breatheValue, 'stopAnimation');
+    const breatheSetValueSpy = jest.spyOn(breatheValue, 'setValue');
+    const spinStopSpy = jest.spyOn(spinValue, 'stopAnimation');
+    const spinSetValueSpy = jest.spyOn(spinValue, 'setValue');
+
     loopControllers.forEach((controller) => {
       controller.stop.mockClear();
     });
-    stopAnimationSpy.mockClear();
-    setValueSpy.mockClear();
+    breatheStopSpy.mockClear();
+    breatheSetValueSpy.mockClear();
+    spinStopSpy.mockClear();
+    spinSetValueSpy.mockClear();
 
     rerender(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
 
     expect(loopControllers[0].stop).toHaveBeenCalled();
     expect(loopControllers[1].stop).toHaveBeenCalled();
-    expect(setValueSpy).toHaveBeenCalledWith(1);
-    expect(setValueSpy).toHaveBeenCalledWith(0);
+    expect(breatheStopSpy).toHaveBeenCalled();
+    expect(spinStopSpy).toHaveBeenCalled();
+    expect(breatheSetValueSpy).toHaveBeenCalledWith(1);
+    expect(spinSetValueSpy).toHaveBeenCalledWith(0);
   });
 
   it('组件卸载时清理动画资源', () => {
@@ -78,15 +97,33 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
       <CloudSyncStatusButton uiState="syncing" onPress={jest.fn()} />,
     );
 
+    const timingValues = timingSpy.mock.calls.map((call) => call[0] as Animated.Value);
+    const valueCallCount = new Map<Animated.Value, number>();
+    timingValues.forEach((value) => {
+      valueCallCount.set(value, (valueCallCount.get(value) ?? 0) + 1);
+    });
+    const breatheValue = Array.from(valueCallCount.entries()).find(([, count]) => count === 2)?.[0];
+    const spinValue = Array.from(valueCallCount.entries()).find(([, count]) => count === 1)?.[0];
+    expect(breatheValue).toBeDefined();
+    expect(spinValue).toBeDefined();
+    if (!breatheValue || !spinValue) {
+      throw new Error('无法捕获 syncing 状态创建的 Animated.Value 实例');
+    }
+
+    const breatheStopSpy = jest.spyOn(breatheValue, 'stopAnimation');
+    const spinStopSpy = jest.spyOn(spinValue, 'stopAnimation');
+
     loopControllers.forEach((controller) => {
       controller.stop.mockClear();
     });
-    stopAnimationSpy.mockClear();
+    breatheStopSpy.mockClear();
+    spinStopSpy.mockClear();
 
     unmount();
 
     expect(loopControllers[0].stop).toHaveBeenCalledTimes(1);
     expect(loopControllers[1].stop).toHaveBeenCalledTimes(1);
-    expect(stopAnimationSpy).toHaveBeenCalled();
+    expect(breatheStopSpy).toHaveBeenCalled();
+    expect(spinStopSpy).toHaveBeenCalled();
   });
 });
