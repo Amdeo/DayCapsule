@@ -4,6 +4,7 @@ import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
+  getLatestLoginPageProps,
   triggerLatestLoginSuccess,
 } from '../helpers/renderSettingsPage';
 
@@ -189,6 +190,7 @@ describe('SettingsPage account auth', () => {
 
     fireEvent.press(screen.getByText('登录 / 注册'));
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+    expect(getLatestLoginPageProps()?.visible).toBe(true);
 
     await act(async () => {
       await triggerLatestLoginSuccess();

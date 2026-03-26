@@ -388,6 +388,10 @@ export function triggerLatestLoginSuccess() {
   return latestLoginPageProps?.onSuccess?.();
 }
 
+export function getLatestLoginPageProps() {
+  return latestLoginPageProps;
+}
+
 export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
   const {
     visible = true,
