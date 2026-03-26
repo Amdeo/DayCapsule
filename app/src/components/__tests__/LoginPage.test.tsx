@@ -18,7 +18,7 @@ jest.mock('../DetailPageShell', () => ({
 
 import React from 'react';
 import { Alert, TouchableOpacity } from 'react-native';
-import { act, render, fireEvent, waitFor } from '@testing-library/react-native';
+import { act, render, fireEvent, waitFor, userEvent } from '@testing-library/react-native';
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
@@ -116,6 +116,7 @@ describe('LoginPage', () => {
   });
 
   it('prevents duplicate submits and hides submit text while loading', async () => {
+    const user = userEvent.setup();
     let resolveLogin: () => void;
     mockLogin.mockImplementationOnce(
       () =>
@@ -131,7 +132,7 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
 
-    fireEvent.press(screen.getByText('登录'));
+    await user.press(screen.getByText('登录'));
 
     await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('登录')).toBeNull());
