@@ -162,6 +162,8 @@ describe('ImageViewer lifecycle', () => {
       modal.props.onRequestClose();
     });
 
+    expect(onClose).toHaveBeenCalledTimes(1);
+
     act(() => {
       tree.update(
         <ImageViewer
