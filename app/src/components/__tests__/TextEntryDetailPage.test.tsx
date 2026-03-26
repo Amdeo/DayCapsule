@@ -45,6 +45,18 @@ describe('TextEntryDetailPage', () => {
     syncStatus: 'synced',
   };
 
+  it('returns null when hidden or when no entry is provided', () => {
+    const hidden = render(
+      <TextEntryDetailPage visible={false} entry={entry} onClose={jest.fn()} onEdit={jest.fn()} />
+    );
+    const empty = render(
+      <TextEntryDetailPage visible entry={null} onClose={jest.fn()} onEdit={jest.fn()} />
+    );
+
+    expect(hidden.queryByTestId('text-entry-detail-root')).toBeNull();
+    expect(empty.queryByTestId('text-entry-detail-root')).toBeNull();
+  });
+
   it('renders the text detail content, meta rows and tags inside the existing shell', () => {
     const screen = render(
       <TextEntryDetailPage visible entry={entry} onClose={jest.fn()} onEdit={jest.fn()} />
@@ -56,6 +68,25 @@ describe('TextEntryDetailPage', () => {
     expect(screen.getByText('创建时间')).toBeTruthy();
     expect(screen.getByText('最近编辑')).toBeTruthy();
     expect(screen.getByTestId('text-entry-detail-tags')).toBeTruthy();
+  });
+
+  it('hides the edited row and tags section when the entry has no editedAt or tags', () => {
+    const screen = render(
+      <TextEntryDetailPage
+        visible
+        entry={{
+          ...entry,
+          editedAt: undefined,
+          tags: [],
+        }}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('创建时间')).toBeTruthy();
+    expect(screen.queryByText('最近编辑')).toBeNull();
+    expect(screen.queryByTestId('text-entry-detail-tags')).toBeNull();
   });
 
   it('calls onEdit with the current entry from the existing header action', () => {
