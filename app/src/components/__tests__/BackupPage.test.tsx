@@ -92,6 +92,45 @@ describe('BackupPage', () => {
     expect(getByTestId('backup-page-icloud-card')).toBeTruthy();
   });
 
+  it('does not render the backup history section when no local backups exist', async () => {
+    (BackupService.listBackups as jest.Mock).mockResolvedValueOnce([]);
+
+    const { getByText, queryByText, queryByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(getByText('导入备份')).toBeTruthy();
+    });
+
+    expect(queryByText('备份历史')).toBeNull();
+    expect(queryByTestId('backup-history-share-file:///a.zip')).toBeNull();
+  });
+
+  it('renders only the latest three local backup files in history', async () => {
+    (BackupService.listBackups as jest.Mock).mockResolvedValueOnce([
+      { name: 'backup_2026-03-16T10-00-00-000Z.zip', uri: 'file:///a.zip', sizeBytes: 1000 },
+      { name: 'backup_2026-03-16T11-00-00-000Z.zip', uri: 'file:///b.zip', sizeBytes: 1000 },
+      { name: 'backup_2026-03-16T12-00-00-000Z.zip', uri: 'file:///c.zip', sizeBytes: 1000 },
+      { name: 'backup_2026-03-16T13-00-00-000Z.zip', uri: 'file:///d.zip', sizeBytes: 1000 },
+    ]);
+
+    const { findByText, queryByText, queryByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    expect(await findByText('2026-03-16 10:00')).toBeTruthy();
+    expect(queryByText('2026-03-16 11:00')).toBeTruthy();
+    expect(queryByText('2026-03-16 12:00')).toBeTruthy();
+    expect(queryByText('2026-03-16 13:00')).toBeNull();
+    expect(queryByTestId('backup-history-share-file:///d.zip')).toBeNull();
+  });
+
+  it('renders the available iCloud copy when iCloud Drive is accessible', async () => {
+    (SyncService.isICloudAvailable as jest.Mock).mockReturnValue(true);
+
+    const { findByText, queryByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    expect(await findByText('iCloud Drive 可用')).toBeTruthy();
+    expect(queryByText('仅限 iOS 设备')).toBeNull();
+  });
+
   it('creates a backup and opens the save-only export sheet', async () => {
     const { getByText, findByText } = render(<BackupPage visible onClose={jest.fn()} />);
 
@@ -180,6 +219,23 @@ describe('BackupPage', () => {
     });
   });
 
+  it('shows branded feedback when creating the backup archive fails', async () => {
+    (BackupService.createBackup as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '导出失败',
+          dedupeKey: 'backup-export-create-failed',
+        })
+      );
+    });
+  });
+
   it('shows branded feedback when import parsing fails', async () => {
     (SyncService.pickAndParseBackup as jest.Mock).mockRejectedValueOnce(new Error('bad zip'));
 
@@ -195,6 +251,79 @@ describe('BackupPage', () => {
         })
       );
     });
+  });
+
+  it('stops the import flow quietly when the user cancels file picking', async () => {
+    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce(null);
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(SyncService.pickAndParseBackup).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockRestoreEntries).not.toHaveBeenCalled();
+    expect(SyncService.extractMediaFromZip).not.toHaveBeenCalled();
+    expect(showErrorFeedback).not.toHaveBeenCalled();
+  });
+
+  it('shows partial restore feedback when media extraction fails after records are restored', async () => {
+    mockRestoreEntries.mockResolvedValueOnce(['entry-1']);
+    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
+      data: {
+        entries: [
+          {
+            id: 'entry-1',
+            type: 'photo',
+            media: [{ relativeUri: 'media/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+          },
+        ],
+      },
+      zip: {},
+    });
+    (SyncService.extractMediaFromZip as jest.Mock).mockRejectedValueOnce(new Error('zip extract failed'));
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith(
+        '部分恢复',
+        expect.stringContaining('已恢复 1 条记录，但部分媒体文件未能还原'),
+      );
+    });
+
+    expect(showErrorFeedback).not.toHaveBeenCalled();
+  });
+
+  it('skips media extraction when the import does not restore any new entries', async () => {
+    mockRestoreEntries.mockResolvedValueOnce([]);
+    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
+      data: {
+        entries: [
+          {
+            id: 'entry-1',
+            type: 'photo',
+            media: [{ relativeUri: 'media/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+          },
+        ],
+      },
+      zip: {},
+    });
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('导入成功', '已恢复 0 / 1 条记录');
+    });
+
+    expect(SyncService.extractMediaFromZip).not.toHaveBeenCalled();
+    expect(mockUpdateEntry).not.toHaveBeenCalled();
   });
 
   it('persists restored media arrays after import extracts files from zip', async () => {

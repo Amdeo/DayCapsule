@@ -30,6 +30,12 @@ describe('BackupExportSheet', () => {
     expect(queryByText('更多方式')).toBeNull();
   });
 
+  it('returns null when the export sheet is hidden', () => {
+    const { queryByTestId } = render(<BackupExportSheet {...baseProps} visible={false} />);
+
+    expect(queryByTestId('backup-export-sheet')).toBeNull();
+  });
+
   it('renders iOS export label when provided', () => {
     const { getByText, queryByText } = render(
       <BackupExportSheet {...baseProps} primaryActionLabel="导出/分享" />
@@ -46,6 +52,14 @@ describe('BackupExportSheet', () => {
     fireEvent.press(getByTestId('backup-export-cancel'));
 
     expect(baseProps.onSaveToFiles).toHaveBeenCalledTimes(1);
+    expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when the overlay backdrop is pressed', () => {
+    const { getByTestId } = render(<BackupExportSheet {...baseProps} />);
+
+    fireEvent.press(getByTestId('backup-export-overlay'));
+
     expect(baseProps.onClose).toHaveBeenCalledTimes(1);
   });
 });
