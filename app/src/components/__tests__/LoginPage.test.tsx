@@ -86,6 +86,13 @@ describe('LoginPage', () => {
 
     expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
     expect(mockLogin).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'user@test.com');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), '');
+    fireEvent.press(screen.getByText('登录'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(mockLogin).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 
