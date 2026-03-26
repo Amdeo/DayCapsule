@@ -143,7 +143,8 @@ describe('ImageViewer lifecycle', () => {
 
   it('removes the viewer shell after close is requested and visible becomes false', () => {
     const onClose = jest.fn();
-    resetControllerState({ phase: 'open', handleRequestClose: onClose });
+    const handleRequestClose = jest.fn(() => onClose());
+    resetControllerState({ phase: 'open', handleRequestClose });
 
     let tree: renderer.ReactTestRenderer;
 
@@ -162,6 +163,7 @@ describe('ImageViewer lifecycle', () => {
       modal.props.onRequestClose();
     });
 
+    expect(handleRequestClose).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
 
     act(() => {
