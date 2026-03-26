@@ -68,6 +68,19 @@ describe('TagsPage', () => {
     expect(screen.getByText('还没有标签')).toBeTruthy();
   });
 
+  it('renders the empty state when entries exist but none of them carry tags', () => {
+    mockUseEntryStore.mockReturnValue({
+      entries: [
+        createEntry({ id: '1', content: 'a', tags: [] }),
+        createEntry({ id: '2', content: 'b', tags: undefined }),
+      ],
+    });
+    const screen = render(<TagsPage visible onClose={jest.fn()} />);
+
+    expect(screen.getByTestId('tags-page-empty')).toBeTruthy();
+    expect(screen.queryAllByTestId('tags-page-row')).toHaveLength(0);
+  });
+
   it('does not render anything when the page is hidden', () => {
     mockUseEntryStore.mockReturnValue({
       entries: [createEntry({ id: '1', content: 'a', tags: ['旅行'] })],
@@ -81,7 +94,7 @@ describe('TagsPage', () => {
   it('aggregates repeated tags, ignores undefined tags, and renders rows in descending count order', () => {
     mockUseEntryStore.mockReturnValue({
       entries: [
-        createEntry({ id: '1', content: 'a', timestamp: 1, tags: ['旅行', '工作'] }),
+        createEntry({ id: '1', content: 'a', timestamp: 1, tags: ['旅行', '工作', '旅行'] }),
         createEntry({ id: '2', content: 'b', timestamp: 2, tags: ['旅行'] }),
         createEntry({ id: '3', content: 'c', timestamp: 3, tags: undefined }),
       ],
@@ -93,9 +106,10 @@ describe('TagsPage', () => {
     expect(screen.getByText('共 2 个标签')).toBeTruthy();
     expect(rows).toHaveLength(2);
     expect(within(rows[0]).getByText('#旅行')).toBeTruthy();
-    expect(within(rows[0]).getByText('2 条')).toBeTruthy();
+    expect(within(rows[0]).getByText('3 条')).toBeTruthy();
     expect(within(rows[1]).getByText('#工作')).toBeTruthy();
     expect(within(rows[1]).getByText('1 条')).toBeTruthy();
+    expect(screen.queryByTestId('tags-page-empty')).toBeNull();
   });
 
   it('closes the page when different tag rows are pressed', () => {

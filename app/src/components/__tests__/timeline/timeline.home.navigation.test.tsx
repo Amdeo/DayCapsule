@@ -12,6 +12,21 @@ const mockEntries: Entry[] = [
     timestamp: new Date('2026-03-20T10:00:00+08:00').getTime(),
     syncStatus: 'synced',
   },
+  {
+    id: 'entry-photo-1',
+    type: 'photo',
+    content: '',
+    tags: ['相册'],
+    timestamp: new Date('2026-03-20T11:00:00+08:00').getTime(),
+    syncStatus: 'synced',
+    media: [
+      {
+        uri: 'file:///photo-1.jpg',
+        mimeType: 'image/jpeg',
+        size: 1024,
+      },
+    ],
+  },
 ];
 
 const mockUpdateEntry = jest.fn();
@@ -94,10 +109,12 @@ jest.mock('../../TextEntryDetailPage', () => ({
     visible,
     entry,
     onEdit,
+    onClose,
   }: {
     visible: boolean;
     entry: Entry | null;
     onEdit: (entry: Entry) => void;
+    onClose: () => void;
   }) => {
     const React = require('react');
     const { Pressable, Text, View } = require('react-native');
@@ -108,17 +125,43 @@ jest.mock('../../TextEntryDetailPage', () => ({
         <Pressable testID="timeline-text-detail-edit" onPress={() => onEdit(entry)}>
           <Text>编辑</Text>
         </Pressable>
+        <Pressable testID="timeline-text-detail-close" onPress={onClose}>
+          <Text>关闭</Text>
+        </Pressable>
       </View>
     );
   },
 }));
 
 jest.mock('../../EntryEditor', () => ({
-  EntryEditor: ({ visible, entry }: { visible: boolean; entry: Entry | null }) => {
+  EntryEditor: ({
+    visible,
+    entry,
+    onSave,
+    onClose,
+  }: {
+    visible: boolean;
+    entry: Entry | null;
+    onSave: (id: string, content: string, tags: string[]) => void;
+    onClose: () => void;
+  }) => {
     const React = require('react');
-    const { Text } = require('react-native');
+    const { Pressable, Text, View } = require('react-native');
     if (!visible || !entry) return null;
-    return <Text testID="timeline-entry-editor">{entry.content}</Text>;
+    return (
+      <View testID="timeline-entry-editor">
+        <Text>{entry.content}</Text>
+        <Pressable
+          testID="timeline-entry-editor-save"
+          onPress={() => onSave(entry.id, '已更新内容', ['已更新标签'])}
+        >
+          <Text>保存编辑</Text>
+        </Pressable>
+        <Pressable testID="timeline-entry-editor-close" onPress={onClose}>
+          <Text>关闭编辑</Text>
+        </Pressable>
+      </View>
+    );
   },
 }));
 
@@ -151,5 +194,37 @@ describe('Timeline home navigation', () => {
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
     expect(screen.getByTestId('timeline-entry-editor')).toBeTruthy();
+  });
+
+  it('does not open the text detail page for non-text entries', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-photo-1'));
+
+    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
+    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+  });
+
+  it('saves edits back through updateEntry and closes the editor', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
+    fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+    fireEvent.press(screen.getByTestId('timeline-entry-editor-save'));
+
+    expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
+      content: '已更新内容',
+      tags: ['已更新标签'],
+    });
+    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+  });
+
+  it('closes the text detail page when the close action is used', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
+    fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
+
+    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
   });
 });
