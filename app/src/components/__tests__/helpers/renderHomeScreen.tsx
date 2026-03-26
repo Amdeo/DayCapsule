@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 
@@ -81,6 +81,19 @@ const setEntryStoreState = (
     ...patch,
   };
   emitEntryStore();
+};
+
+const setSourceEntries = (entries: Entry[]) => {
+  act(() => {
+    mockSourceEntries = entries;
+    setEntryStoreState({ entries });
+  });
+};
+
+const setPaginationState = (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
+  act(() => {
+    setEntryStoreState(pagination);
+  });
 };
 
 const applyFilters = (
@@ -378,6 +391,10 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
 
   return {
     screen: render(<HomeScreen />),
+    controls: {
+      setEntries: setSourceEntries,
+      setPagination: setPaginationState,
+    },
     spies: {
       loadEntries: mockEntryStoreState.loadEntries,
       loadSettings: mockSettingsState.loadSettings,
