@@ -71,11 +71,61 @@ describe('SettingsPage assembly', () => {
   it('renders the settings overview card with account, sync and storage summary', async () => {
     const { screen } = await renderSettingsPage({ authenticated: true });
 
-    expect(screen.getByTestId('settings-overview-card')).toBeTruthy();
+    const overviewCard = screen.getByTestId('settings-overview-card');
+    const accountSection = screen.getByTestId('settings-section-account-sync');
+    const findNodeByTestId = (
+      node: unknown,
+      testID: string,
+    ): { props?: { testID?: string }; children?: unknown[] } | null => {
+      if (!node) {
+        return null;
+      }
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = findNodeByTestId(child, testID);
+          if (found) {
+            return found;
+          }
+        }
+        return null;
+      }
+      if (typeof node !== 'object') {
+        return null;
+      }
+      const candidate = node as { props?: { testID?: string }; children?: unknown[] };
+      if (candidate.props?.testID === testID) {
+        return candidate;
+      }
+      if (candidate.children) {
+        for (const child of candidate.children) {
+          const found = findNodeByTestId(child, testID);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+
+    const settingsRootNode = findNodeByTestId(screen.toJSON(), 'settings-page-root');
+    const rootChildTestIds = (settingsRootNode?.children ?? [])
+      .map((child) => (
+        typeof child === 'object' && child !== null && 'props' in child
+          ? (child as { props?: { testID?: string } }).props?.testID
+          : undefined
+      ))
+      .filter((testID): testID is string => typeof testID === 'string');
+    const overviewIndex = rootChildTestIds.indexOf('settings-overview-card');
+    const accountSectionIndex = rootChildTestIds.indexOf('settings-section-account-sync');
+
+    expect(overviewCard).toBeTruthy();
+    expect(accountSection).toBeTruthy();
     expect(screen.getByText('当前账号')).toBeTruthy();
     expect(screen.getByText('同步模式')).toBeTruthy();
     expect(screen.getByText('当前后端')).toBeTruthy();
     expect(screen.getByText('存储概览')).toBeTruthy();
+    expect(overviewIndex).toBeLessThan(accountSectionIndex);
+    expect(overviewIndex).toBe(0);
 
     const dataStorageSection = screen.getByTestId('settings-section-data-storage');
     expect(within(dataStorageSection).getByTestId('settings-storage-card')).toBeTruthy();
