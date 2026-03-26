@@ -197,6 +197,44 @@ describe('BackupPage', () => {
     });
   });
 
+  it('keeps export sheet open silently when save is canceled by user', async () => {
+    let resolveSave: ((value: { saved: boolean; canceled: boolean; fileName: null }) => void) | null = null;
+    let markSaveSettled: (() => void) | null = null;
+    const saveSettled = new Promise<void>((resolve) => {
+      markSaveSettled = resolve;
+    });
+
+    (BackupService.saveBackupToUserDirectory as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<{ saved: boolean; canceled: boolean; fileName: null }>((resolve) => {
+          resolveSave = resolve;
+        }).finally(() => {
+          markSaveSettled?.();
+        })
+    );
+
+    const { getByText, findByTestId, queryByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(BackupService.saveBackupToUserDirectory).toHaveBeenCalledWith(
+        'file:///exports/latest.zip',
+        'latest.zip'
+      );
+    });
+
+    resolveSave?.({ saved: false, canceled: true, fileName: null });
+    await saveSettled;
+
+    await waitFor(() => {
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(showErrorFeedback).not.toHaveBeenCalled();
+      expect(queryByTestId('backup-export-sheet')).toBeTruthy();
+    });
+  });
+
   it('shows branded feedback when export save fails', async () => {
     (BackupService.saveBackupToUserDirectory as jest.Mock).mockResolvedValueOnce({
       saved: false,
@@ -231,6 +269,26 @@ describe('BackupPage', () => {
         expect.objectContaining({
           title: '导出失败',
           dedupeKey: 'backup-export-create-failed',
+        })
+      );
+    });
+  });
+
+  it('shows branded feedback when save to files throws', async () => {
+    (BackupService.saveBackupToUserDirectory as jest.Mock).mockRejectedValueOnce(
+      new Error('disk full')
+    );
+
+    const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导出'));
+    fireEvent.press(await findByTestId('backup-export-save'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '保存失败',
+          dedupeKey: 'backup-export-save-failed',
         })
       );
     });
