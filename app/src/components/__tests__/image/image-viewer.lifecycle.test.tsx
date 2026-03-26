@@ -1,23 +1,13 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Modal } from 'react-native';
+import { Image, Modal } from 'react-native';
 
 jest.mock('../../image-viewer/useImageViewerController', () => ({
-  useImageViewerController: () => ({
-    phase: 'idle',
-    showActionSheet: false,
-    backdropAnimatedStyle: {},
-    heroAnimatedStyle: {},
-    imageAnimatedStyle: {},
-    composedGesture: {},
-    handleRequestClose: jest.fn(),
-    closeActionSheet: jest.fn(),
-    handleSaveToAlbum: jest.fn(),
-    handleShare: jest.fn(),
-  }),
+  useImageViewerController: jest.fn(),
 }));
 
 import { ImageViewer } from '../../ImageViewer';
+import { useImageViewerController } from '../../image-viewer/useImageViewerController';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -45,7 +35,36 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+type ImageViewerControllerState = ReturnType<typeof useImageViewerController>;
+const useImageViewerControllerMock = useImageViewerController as jest.MockedFunction<
+  typeof useImageViewerController
+>;
+
+const buildControllerState = (
+  overrides?: Partial<ImageViewerControllerState>,
+): ImageViewerControllerState => ({
+  phase: 'idle',
+  showActionSheet: false,
+  backdropAnimatedStyle: {},
+  heroAnimatedStyle: {},
+  imageAnimatedStyle: {},
+  composedGesture: {},
+  handleRequestClose: jest.fn(),
+  closeActionSheet: jest.fn(),
+  handleSaveToAlbum: jest.fn(),
+  handleShare: jest.fn(),
+  ...overrides,
+});
+
+const resetControllerState = (overrides?: Partial<ImageViewerControllerState>) => {
+  useImageViewerControllerMock.mockReturnValue(buildControllerState(overrides));
+};
+
 describe('ImageViewer lifecycle', () => {
+  beforeEach(() => {
+    resetControllerState();
+  });
+
   it('does not render the viewer shell when visible is false', () => {
     let tree: renderer.ReactTestRenderer;
 
@@ -62,5 +81,55 @@ describe('ImageViewer lifecycle', () => {
     const modal = tree.root.findByType(Modal);
     expect(modal.props.visible).toBe(false);
     expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
+  });
+
+  it('renders the viewer shell and current image when visible is true', () => {
+    resetControllerState({ phase: 'open' });
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri='file:///image-a.jpg'
+          onClose={jest.fn()}
+        />
+      );
+    });
+
+    const modal = tree.root.findByType(Modal);
+    const image = tree.root.findByType(Image);
+    expect(modal.props.visible).toBe(true);
+    expect(tree.root.findByProps({ testID: 'image-viewer-root' })).toBeTruthy();
+    expect(image.props.source).toEqual({ uri: 'file:///image-a.jpg' });
+  });
+
+  it('updates the rendered image when imageUri changes on rerender', () => {
+    resetControllerState({ phase: 'open' });
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri='file:///image-a.jpg'
+          onClose={jest.fn()}
+        />
+      );
+    });
+
+    act(() => {
+      tree.update(
+        <ImageViewer
+          visible
+          imageUri='file:///image-b.jpg'
+          onClose={jest.fn()}
+        />
+      );
+    });
+
+    expect(tree.root.findByType(Image).props.source).toEqual({ uri: 'file:///image-b.jpg' });
   });
 });
