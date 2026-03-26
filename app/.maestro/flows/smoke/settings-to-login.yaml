@@ -1,0 +1,34 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/open-sidebar.yaml
+- runFlow:
+    when:
+      visible:
+        id: sidebar-shell
+    commands:
+      - tapOn:
+          id: sidebar-menu-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-page-root
+    timeout: 10000
+- assertVisible:
+    id: settings-page-root
+- scrollUntilVisible:
+    element:
+      text: 账户
+    direction: UP
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: settings-open-login
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: settings-open-login
+- assertVisible:
+    id: login-page-root
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: settings-page-root

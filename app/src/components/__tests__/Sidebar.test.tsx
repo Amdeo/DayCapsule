@@ -125,7 +125,33 @@ describe('Sidebar shell', () => {
     expect(mockHelpPage).not.toHaveBeenCalled();
   });
 
-  it('only mounts the requested detail page when opening a menu item', () => {
+  it('calls onClose when the header close button is pressed', () => {
+    const onClose = jest.fn();
+    const screen = render(
+      <Sidebar
+        drawerProgress={{ value: 1 }}
+        onClose={onClose}
+        showSettings={false}
+        setShowSettings={jest.fn()}
+        showAbout={false}
+        setShowAbout={jest.fn()}
+        showStats={false}
+        setShowStats={jest.fn()}
+        showTags={false}
+        setShowTags={jest.fn()}
+        showBackup={false}
+        setShowBackup={jest.fn()}
+        showHelp={false}
+        setShowHelp={jest.fn()}
+      />
+    );
+
+    fireEvent.press(screen.getByText('close'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('only mounts the requested detail page when opening the stats menu item', () => {
     const screen = render(<SidebarHarness />);
 
     fireEvent.press(screen.getByText('统计'));
@@ -137,4 +163,27 @@ describe('Sidebar shell', () => {
     expect(mockBackupPage).not.toHaveBeenCalled();
     expect(mockHelpPage).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['sidebar-menu-settings', mockSettingsPage],
+    ['sidebar-menu-about', mockAboutPage],
+    ['sidebar-menu-tags', mockTagsPage],
+    ['sidebar-menu-backup', mockBackupPage],
+    ['sidebar-menu-help', mockHelpPage],
+  ] as const)(
+    'only mounts the requested detail page when opening %s',
+    (testId, expectedPageMock) => {
+      const screen = render(<SidebarHarness />);
+
+      fireEvent.press(screen.getByTestId(testId));
+
+      expect(expectedPageMock).toHaveBeenCalledTimes(1);
+      expect(mockSettingsPage).toHaveBeenCalledTimes(expectedPageMock === mockSettingsPage ? 1 : 0);
+      expect(mockAboutPage).toHaveBeenCalledTimes(expectedPageMock === mockAboutPage ? 1 : 0);
+      expect(mockStatsPage).toHaveBeenCalledTimes(0);
+      expect(mockTagsPage).toHaveBeenCalledTimes(expectedPageMock === mockTagsPage ? 1 : 0);
+      expect(mockBackupPage).toHaveBeenCalledTimes(expectedPageMock === mockBackupPage ? 1 : 0);
+      expect(mockHelpPage).toHaveBeenCalledTimes(expectedPageMock === mockHelpPage ? 1 : 0);
+    }
+  );
 });

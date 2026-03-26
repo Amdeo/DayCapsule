@@ -144,6 +144,9 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
     if (!processing) {
       processing = processQueue().finally(() => {
         processing = null;
+        if (queued.size > 0) {
+          void ensureProcessing();
+        }
       });
     }
     return processing;

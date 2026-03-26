@@ -217,4 +217,69 @@ describe('photoUploadQueue', () => {
     expect(queue.deps.markUploading).not.toHaveBeenCalled();
     expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
   });
+
+  it('continues draining entries that are enqueued while another photo upload is already in flight', async () => {
+    const firstEntry = makePhotoEntry({
+      id: 'photo-local-1',
+      media: [makePhotoEntry().media![0]],
+    });
+    const secondEntry = makePhotoEntry({
+      id: 'photo-local-2',
+      media: [
+        {
+          ...makePhotoEntry().media![1],
+          uri: 'file:///cache/media/photos/display/photo_3.jpg',
+          thumbnail: 'file:///cache/media/photos/thumbnails/thumb_3.jpg',
+          metadata: {
+            ...makePhotoEntry().media![1].metadata!,
+            localMediaId: 'local-media-3',
+          },
+        },
+      ],
+    });
+
+    let queue!: ReturnType<typeof createPhotoUploadQueue>;
+    queue = createPhotoUploadQueue({
+      getPendingEntries: jest.fn().mockResolvedValue([]),
+      getEntryById: jest.fn(async (id: string) => {
+        if (id === firstEntry.id) return firstEntry;
+        if (id === secondEntry.id) return secondEntry;
+        return null;
+      }),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPendingUpload: jest.fn().mockResolvedValue(undefined),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockResolvedValueOnce({
+          id: 'media-1',
+          url: 'https://cdn/photo_1.jpg',
+          remoteHash: 'remote-hash-1',
+          validationStatus: 'healthy',
+          validationError: null,
+        })
+        .mockResolvedValueOnce({
+          id: 'media-2',
+          url: 'https://cdn/photo_3.jpg',
+          remoteHash: 'remote-hash-3',
+          validationStatus: 'healthy',
+          validationError: null,
+        }),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn((id: string) => {
+        if (id === firstEntry.id) {
+          queue.enqueue(secondEntry.id);
+        }
+      }),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    queue.enqueue(firstEntry.id);
+    await queue.waitForIdle();
+
+    expect(queue.deps.markUploading).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markUploading).toHaveBeenNthCalledWith(1, firstEntry.id);
+    expect(queue.deps.markUploading).toHaveBeenNthCalledWith(2, secondEntry.id);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(2);
+  });
 });

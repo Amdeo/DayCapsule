@@ -3,6 +3,7 @@ import * as DB from '@/src/database/operations';
 import { createCloudSyncService } from '../cloudSyncService';
 import { getApiClient } from '@/src/services/apiClient';
 import * as FileSystem from 'expo-file-system/legacy';
+import { logger } from '@/src/utils/logger';
 
 jest.mock('@/src/database/sqlite', () => ({
   getDatabase: jest.fn(() => ({})),
@@ -359,5 +360,62 @@ describe('cloudSyncOverviewService', () => {
 
     expect(snapshot.local.mediaBytes).toBe(750);
     expect(FileSystem.getInfoAsync).toHaveBeenCalledTimes(3);
+  });
+
+  it('falls back to zeroed local counts when local overview queries fail', async () => {
+    mockGetStatus.mockResolvedValueOnce({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      initialSyncState: 'ready',
+      pendingEntries: 2,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 1,
+    });
+    (DB.getLocalSyncOverviewCounts as jest.Mock).mockRejectedValueOnce(new Error('local counts unavailable'));
+    (DB.getAllEntries as jest.Mock).mockRejectedValueOnce(new Error('local media unavailable'));
+    mockGet.mockResolvedValueOnce({
+      entryCount: 20,
+      photoCount: 8,
+      voiceCount: 5,
+      mediaCount: 12,
+      mediaBytes: 2048,
+    });
+
+    const service = createCloudSyncOverviewService();
+    const snapshot = await service.getSnapshot();
+
+    expect(snapshot).toMatchObject({
+      lastSyncAt: 1700000000000,
+      lastSyncError: null,
+      pendingEntries: 2,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 1,
+      local: {
+        entryCount: 0,
+        photoCount: 0,
+        voiceCount: 0,
+        mediaBytes: 0,
+      },
+      cloud: {
+        entryCount: 20,
+        photoCount: 8,
+        voiceCount: 5,
+        mediaCount: 12,
+        mediaBytes: 2048,
+      },
+      cloudError: null,
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[cloudSyncOverview] get local overview counts failed:',
+      expect.any(Error)
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[cloudSyncOverview] get local media bytes failed:',
+      expect.any(Error)
+    );
   });
 });

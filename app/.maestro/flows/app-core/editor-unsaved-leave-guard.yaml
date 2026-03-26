@@ -1,0 +1,9 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow: ../../common/open-entry-editor.yaml
+- tapOn:
+    id: entry-editor-content-input
+- inputText: " E2E"
+- back
+- assertVisible: "放弃修改？"

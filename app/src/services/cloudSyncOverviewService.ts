@@ -43,7 +43,14 @@ interface CloudOverviewPayload {
   mediaBytes: number;
 }
 
+type LocalOverviewCounts = Awaited<ReturnType<typeof DB.getLocalSyncOverviewCounts>>;
+
 const LOCAL_MEDIA_STAT_CONCURRENCY = 4;
+const EMPTY_LOCAL_COUNTS: LocalOverviewCounts = {
+  entryCount: 0,
+  photoCount: 0,
+  voiceCount: 0,
+};
 
 const isRemoteUrl = (uri: string): boolean => /^https?:\/\//i.test(uri.trim());
 
@@ -113,6 +120,24 @@ const getLocalMediaBytes = async (): Promise<number> => {
   return sizes.reduce((total, size) => total + size, 0);
 };
 
+const getSafeLocalOverviewCounts = async (): Promise<LocalOverviewCounts> => {
+  try {
+    return await DB.getLocalSyncOverviewCounts();
+  } catch (error) {
+    logger.warn('[cloudSyncOverview] get local overview counts failed:', error);
+    return EMPTY_LOCAL_COUNTS;
+  }
+};
+
+const getSafeLocalMediaBytes = async (): Promise<number> => {
+  try {
+    return await getLocalMediaBytes();
+  } catch (error) {
+    logger.warn('[cloudSyncOverview] get local media bytes failed:', error);
+    return 0;
+  }
+};
+
 export function createCloudSyncOverviewService(): SyncOverviewServiceApi {
   const cloudSyncService = createCloudSyncService();
   const api = getApiClient();
@@ -128,8 +153,8 @@ export function createCloudSyncOverviewService(): SyncOverviewServiceApi {
 
     const [status, localCounts, localMediaBytes, cloudOverview] = await Promise.all([
       cloudSyncService.getStatus(),
-      DB.getLocalSyncOverviewCounts(),
-      getLocalMediaBytes(),
+      getSafeLocalOverviewCounts(),
+      getSafeLocalMediaBytes(),
       cloudOverviewPromise,
     ]);
 

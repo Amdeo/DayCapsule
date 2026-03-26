@@ -142,4 +142,71 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.markUploading).not.toHaveBeenCalled();
     expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
   });
+
+  it('continues draining entries that are enqueued while another voice upload is already in flight', async () => {
+    const firstEntry = makeVoiceEntry({ id: 'voice-local-1' });
+    const secondEntry = makeVoiceEntry({
+      id: 'voice-local-2',
+      media: [
+        {
+          uri: 'file:///cache/voice-2.m4a',
+          mimeType: 'audio/m4a',
+          size: 1024,
+          duration: 8000,
+        },
+      ],
+    });
+
+    let queue!: ReturnType<typeof createVoiceUploadQueue>;
+    queue = createVoiceUploadQueue({
+      getPendingEntries: jest.fn().mockResolvedValue([]),
+      getEntryById: jest.fn(async (id: string) => {
+        if (id === firstEntry.id) return firstEntry;
+        if (id === secondEntry.id) return secondEntry;
+        return null;
+      }),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPending: jest.fn().mockResolvedValue(undefined),
+      removeLocalEntry: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' })
+        .mockResolvedValueOnce({ id: 'media-2', url: 'https://cdn/voice-2.m4a' }),
+      createRemoteEntry: jest.fn()
+        .mockResolvedValueOnce({
+          id: 'remote-1',
+          type: 'voice',
+          content: '',
+          timestamp: 1774105000000,
+          syncStatus: 'synced',
+          recordingStatus: 'completed',
+          recordingDuration: 12,
+          media: [{ uri: 'https://cdn/voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
+        })
+        .mockResolvedValueOnce({
+          id: 'remote-2',
+          type: 'voice',
+          content: '',
+          timestamp: 1774105001000,
+          syncStatus: 'synced',
+          recordingStatus: 'completed',
+          recordingDuration: 8,
+          media: [{ uri: 'https://cdn/voice-2.m4a', mimeType: 'audio/m4a', size: 1024, duration: 8000 }],
+        }),
+      onEntryUploading: jest.fn((id: string) => {
+        if (id === firstEntry.id) {
+          queue.enqueue(secondEntry.id);
+        }
+      }),
+      onEntryPending: jest.fn(),
+      onEntrySynced: jest.fn(),
+    });
+
+    queue.enqueue(firstEntry.id);
+    await queue.waitForIdle();
+
+    expect(queue.deps.markUploading).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markUploading).toHaveBeenNthCalledWith(1, firstEntry.id);
+    expect(queue.deps.markUploading).toHaveBeenNthCalledWith(2, secondEntry.id);
+    expect(queue.deps.removeLocalEntry).toHaveBeenCalledTimes(2);
+  });
 });

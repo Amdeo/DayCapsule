@@ -32,6 +32,7 @@ jest.mock('@/src/services/photoIntegrityService', () => ({
 
 import { createPhotoRepairService } from '../photoRepairService';
 import type { MediaRepairIssue } from '../cloudMediaSyncService';
+import { logger } from '@/src/utils/logger';
 
 describe('photoRepairService', () => {
   const issue: MediaRepairIssue = {
@@ -46,6 +47,10 @@ describe('photoRepairService', () => {
     integrityStatus: 'repair_prompt_required',
     integrityReason: 'cloud hash mismatch while local original is still healthy',
   };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('re-uploads the healthy local source and marks the entry pending sync when the user confirms repair', async () => {
     const mockGetEntryById = jest.fn().mockResolvedValue({
@@ -163,5 +168,76 @@ describe('photoRepairService', () => {
     expect(mockUploadFile).not.toHaveBeenCalled();
     expect(mockUpdateEntry).not.toHaveBeenCalled();
     expect(mockSyncNow).not.toHaveBeenCalled();
+  });
+
+  it('logs the uploaded remote media details when sync confirmation fails after a repair upload', async () => {
+    const mockGetEntryById = jest.fn().mockResolvedValue({
+      id: 'entry-1',
+      type: 'photo',
+      content: '',
+      timestamp: 1,
+      updatedAt: 2,
+      syncStatus: 'synced',
+      media: [
+        {
+          uri: issue.localUri,
+          remoteUri: issue.remoteUri,
+          mimeType: 'image/jpeg',
+          size: 2048,
+          metadata: {
+            localMediaId: 'local-1',
+            persistedHash: 'local-good',
+            remoteHash: 'remote-bad',
+            integrityStatus: 'repair_prompt_required',
+            repairable: true,
+            createdAt: 1,
+            modifiedAt: 1,
+          },
+        },
+      ],
+    });
+    const mockUpdateEntry = jest.fn().mockResolvedValue(undefined);
+    const mockUploadFile = jest.fn().mockResolvedValue({
+      id: 'media-new',
+      url: '/api/media/media-new',
+      remoteHash: 'sha256-new',
+      validationStatus: 'healthy',
+      validationError: null,
+    });
+    const mockSyncNow = jest.fn().mockRejectedValue(new Error('sync unavailable'));
+    const mockFingerprintPhotoFile = jest.fn().mockResolvedValue({
+      uri: issue.localUri,
+      sha256: 'local-good',
+      size: 2048,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    });
+
+    await expect(createPhotoRepairService({
+      getEntryById: mockGetEntryById,
+      updateEntry: mockUpdateEntry,
+      uploadFile: mockUploadFile,
+      syncNow: mockSyncNow,
+      fingerprintPhotoFile: mockFingerprintPhotoFile,
+      now: () => 1234,
+    }).repair(issue)).rejects.toThrow('sync unavailable');
+
+    expect(mockUpdateEntry).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({
+        syncStatus: 'pending',
+        syncOp: 'update',
+      }),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.repair.failed',
+      expect.objectContaining({
+        remoteUri: '/api/media/media-new',
+        remoteHash: 'sha256-new',
+        integrityStatus: 'repair_failed',
+        integrityReason: 'sync unavailable',
+      }),
+    );
   });
 });

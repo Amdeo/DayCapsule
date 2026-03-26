@@ -1,6 +1,11 @@
 appId: com.memorycapsule.app
 ---
 - runFlow: ../../common/open-settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-open-tag-management
+    direction: DOWN
+    timeout: 10000
 - tapOn:
     id: settings-open-tag-management
 - assertVisible:

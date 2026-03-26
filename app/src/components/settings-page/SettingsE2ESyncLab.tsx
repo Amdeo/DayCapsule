@@ -6,6 +6,7 @@ import { SettingsSection } from './SettingsSection';
 interface SettingsE2ESyncLabProps {
   onInjectSuspectRepairable: () => void | Promise<void>;
   onInjectRepairPending: () => void | Promise<void>;
+  onInjectTextDetailFixture: () => void | Promise<void>;
   onClearFixtures: () => void | Promise<void>;
   onShowRepairPrompt: () => void;
 }
@@ -13,6 +14,7 @@ interface SettingsE2ESyncLabProps {
 export function SettingsE2ESyncLab({
   onInjectSuspectRepairable,
   onInjectRepairPending,
+  onInjectTextDetailFixture,
   onClearFixtures,
   onShowRepairPrompt,
 }: SettingsE2ESyncLabProps) {
@@ -35,6 +37,15 @@ export function SettingsE2ESyncLab({
           testID="e2e-sync-fixture-repair-pending"
           onPress={() => {
             void onInjectRepairPending();
+          }}
+        />
+        <SettingButton
+          icon="document-text"
+          title="注入 text detail fixture"
+          subtitle="写入 1 条稳定文本记录，便于 Maestro detail 回归"
+          testID="e2e-sync-fixture-text-detail"
+          onPress={() => {
+            void onInjectTextDetailFixture();
           }}
         />
         <SettingButton

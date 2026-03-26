@@ -34,12 +34,14 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 let latestCalendarTimelineItemProps: Record<string, unknown> | undefined;
+let mockCalendarTimelineItemPropsByEntryId: Record<string, Record<string, unknown>> = {};
 
 jest.mock('../CalendarTimelineItem', () => ({
   CalendarTimelineItem: ({ entry, ...rest }: { entry: Entry } & Record<string, unknown>) => {
     const React = require('react');
     const { View, Text } = require('react-native');
     latestCalendarTimelineItemProps = rest;
+    mockCalendarTimelineItemPropsByEntryId[entry.id] = rest;
 
     return (
       <View>
@@ -155,6 +157,7 @@ const calendarProps = {
 describe('CalendarView full-card behavior', () => {
   beforeEach(() => {
     latestCalendarTimelineItemProps = undefined;
+    mockCalendarTimelineItemPropsByEntryId = {};
   });
 
   it('renders calendar view shell and content header', () => {
@@ -209,12 +212,33 @@ describe('CalendarView full-card behavior', () => {
     expect(getByTestId('calendar-deselect-btn')).toBeTruthy();
   });
 
+  it('点击无记录的日期时显示当天无记录', () => {
+    const { getByText, queryByText } = render(<CalendarView {...calendarProps} />);
+
+    fireEvent.press(getByText('16'));
+
+    expect(getByText('3月16日 · 0 条')).toBeTruthy();
+    expect(getByText('当天无记录')).toBeTruthy();
+    expect(queryByText('文字内容 t1')).toBeNull();
+  });
+
   it('再次点击同一天恢复全月显示', () => {
     const { getByText, queryByText } = render(<CalendarView {...calendarProps} />);
 
     fireEvent.press(getByText('18'));
     fireEvent.press(getByText('18'));
 
+    expect(getByText('文字内容 t1')).toBeTruthy();
+    expect(queryByText('文字内容 t2')).toBeNull();
+  });
+
+  it('点击取消按钮后恢复全月显示', () => {
+    const { getByText, getByTestId, queryByText } = render(<CalendarView {...calendarProps} />);
+
+    fireEvent.press(getByText('18'));
+    fireEvent.press(getByTestId('calendar-deselect-btn'));
+
+    expect(getByText('全月 · 5 条')).toBeTruthy();
     expect(getByText('文字内容 t1')).toBeTruthy();
     expect(queryByText('文字内容 t2')).toBeNull();
   });
@@ -230,5 +254,34 @@ describe('CalendarView full-card behavior', () => {
     expect(queryByTestId('calendar-deselect-btn')).toBeNull();
     expect(getByText('文字内容 t2')).toBeTruthy();
     expect(queryByText('文字内容 t1')).toBeNull();
+  });
+
+  it('在本月无记录时显示空月提示', () => {
+    const { getByText, queryByTestId } = render(
+      <CalendarView
+        {...calendarProps}
+        entries={[febText]}
+      />
+    );
+
+    expect(getByText('全月 · 0 条')).toBeTruthy();
+    expect(getByText('本月暂无记录')).toBeTruthy();
+    expect(queryByTestId('calendar-deselect-btn')).toBeNull();
+  });
+
+  it('透传 action sheet 状态和打开回调到日历时间线项', () => {
+    const actionSheetOpen = jest.fn();
+
+    render(
+      <CalendarView
+        {...calendarProps}
+        activeActionSheetId="v1"
+        onActionSheetOpen={actionSheetOpen}
+      />
+    );
+
+    expect(mockCalendarTimelineItemPropsByEntryId.v1?.isActionSheetActive).toBe(true);
+    expect(mockCalendarTimelineItemPropsByEntryId.p1?.isActionSheetActive).toBe(false);
+    expect(mockCalendarTimelineItemPropsByEntryId.v1?.onActionSheetOpen).toBe(actionSheetOpen);
   });
 });

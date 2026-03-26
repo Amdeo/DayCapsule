@@ -139,8 +139,11 @@ export function createPhotoRepairService(
   const repair = async (issue: MediaRepairIssue): Promise<void> => {
     logger.log('photo.repair.confirmed', buildRepairLogPayload(issue));
 
+    let fingerprint: PhotoFileFingerprint | undefined;
+    let upload: UploadFileResponse | undefined;
+
     try {
-      const fingerprint = await resolvedDeps.fingerprintPhotoFile(issue.localUri);
+      fingerprint = await resolvedDeps.fingerprintPhotoFile(issue.localUri);
       if (issue.persistedHash && fingerprint.sha256 !== issue.persistedHash) {
         throw new Error(LOCAL_SOURCE_UNAVAILABLE_ERROR);
       }
@@ -149,7 +152,7 @@ export function createPhotoRepairService(
         await resolvedDeps.getEntryById(issue.entryId),
         issue,
       );
-      const upload = await resolvedDeps.uploadFile(
+      upload = await resolvedDeps.uploadFile(
         '/media/upload',
         issue.localUri,
         'file',
@@ -180,9 +183,9 @@ export function createPhotoRepairService(
     } catch (error) {
       logger.log('photo.repair.failed', buildRepairLogPayload(
         issue,
-        undefined,
-        issue.remoteUri,
-        issue.remoteHash,
+        fingerprint,
+        upload?.url,
+        upload?.remoteHash,
         'repair_failed',
         error instanceof Error ? error.message : 'Photo repair failed',
       ));

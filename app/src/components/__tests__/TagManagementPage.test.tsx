@@ -11,20 +11,32 @@ const mockResetToDefaults = jest.fn();
 const mockReorderCommonTags = jest.fn();
 const responderConfigs: any[] = [];
 
-let mockStoreState: { tags: string[]; isLoaded: boolean } = {
+const defaultStoreState = {
   tags: ['工作', '学习', '旅行'],
   isLoaded: true,
 };
 
-function setMockCommonTagsState(next: Partial<typeof mockStoreState>) {
-  mockStoreState = { ...mockStoreState, ...next };
+let mockStoreState = { ...defaultStoreState };
+
+function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {}) {
+  mockStoreState = { ...defaultStoreState, ...overrides };
+}
+
+function pressLatestAlertButton(text: string) {
+  const buttons = (Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] ?? [];
+  buttons.find((button: { text?: string }) => button.text === text)?.onPress?.();
+}
+
+function resetTagManagementMocks() {
+  jest.clearAllMocks();
+  responderConfigs.length = 0;
+  setMockCommonTagsState();
 }
 
 jest.mock('@/src/store/commonTagsStore', () => ({
   DEFAULT_PRESET_TAGS: ['工作', '学习', '旅行'],
   useCommonTagsStore: () => ({
-    tags: mockStoreState.tags,
-    isLoaded: mockStoreState.isLoaded,
+    ...mockStoreState,
     loadCommonTags: mockLoadCommonTags,
     addCommonTag: mockAddCommonTag,
     removeCommonTag: mockRemoveCommonTag,
@@ -54,8 +66,7 @@ jest.mock('../DetailPageShell', () => ({
 
 describe('TagManagementPage preset tags', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    responderConfigs.length = 0;
+    resetTagManagementMocks();
     jest.useFakeTimers();
     setMockCommonTagsState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
@@ -98,44 +109,117 @@ describe('TagManagementPage preset tags', () => {
     expect(mockLoadCommonTags).not.toHaveBeenCalled();
   });
 
+  it('loads common tags only when visible and not loaded', () => {
+    setMockCommonTagsState({ isLoaded: false });
+    const screen = render(<TagManagementPage visible={false} onClose={jest.fn()} />);
+
+    expect(mockLoadCommonTags).not.toHaveBeenCalled();
+
+    screen.rerender(<TagManagementPage visible onClose={jest.fn()} />);
+
+    expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
+  });
+
   it('adds a preset tag from the management page', async () => {
     const screen = render(<TagManagementPage visible onClose={() => {}} />);
 
-    fireEvent.changeText(screen.getByPlaceholderText('输入新预制标签'), '灵感');
+    fireEvent.changeText(screen.getByTestId('tag-management-add-input'), '灵感');
     await act(async () => {
-      fireEvent.press(screen.getByText('添加'));
+      fireEvent.press(screen.getByTestId('tag-management-add-button'));
     });
 
     expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '');
   });
 
-  it('does not add a preset tag and alerts when at limit', async () => {
-    // 先在未达上限时设置 inputValue，保证输入行为稳定；再切到达上限触发 handleAdd 的保护分支。
-    setMockCommonTagsState({
-      tags: Array.from({ length: MAX_TAGS - 1 }, (_, i) => `标签${i + 1}`),
-      isLoaded: true,
-    });
+  it('submits trimmed text from submitEditing and clears the input', async () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
 
-    const screen = render(<TagManagementPage visible onClose={() => {}} />);
-    fireEvent.changeText(screen.getByPlaceholderText('输入新预制标签'), '灵感');
-
-    setMockCommonTagsState({
-      tags: Array.from({ length: MAX_TAGS }, (_, i) => `标签${i + 1}`),
-    });
-    screen.rerender(<TagManagementPage visible onClose={() => {}} />);
-
-    const input = screen.getByPlaceholderText(`最多 ${MAX_TAGS} 个预制标签`);
+    fireEvent.changeText(screen.getByTestId('tag-management-add-input'), '  灵感  ');
     await act(async () => {
-      // RNTL 对 `editable={false}` 的 TextInput 可能不会触发 submitEditing 事件，
-      // 这里直接调用回调以确保命中 controller 的 atLimit 分支。
-      input.props.onSubmitEditing?.({ nativeEvent: { text: '灵感' } });
+      fireEvent(screen.getByTestId('tag-management-add-input'), 'submitEditing');
+    });
+
+    expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '');
+  });
+
+  it('does not call addCommonTag when pressing add with empty input', async () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('tag-management-add-button'));
+    });
+
+    expect(mockAddCommonTag).not.toHaveBeenCalled();
+  });
+
+  it('does not call addCommonTag when the input only contains whitespace', async () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByTestId('tag-management-add-input'), '   ');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('tag-management-add-button'));
+    });
+
+    expect(mockAddCommonTag).not.toHaveBeenCalled();
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '   ');
+  });
+
+  it('disables the input and add button when preset tags reach MAX_TAGS', () => {
+    setMockCommonTagsState({ tags: Array.from({ length: MAX_TAGS }, (_, index) => `标签${index}`) });
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('editable', false);
+    expect(screen.getByTestId('tag-management-add-button')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(screen.getByPlaceholderText(`最多 ${MAX_TAGS} 个预制标签`)).toBeTruthy();
+  });
+
+  it('shows an alert and does not add tags when preset tags already reach MAX_TAGS', async () => {
+    setMockCommonTagsState({ tags: Array.from({ length: MAX_TAGS }, (_, index) => `标签${index}`) });
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+    const input = screen.getByTestId('tag-management-add-input');
+
+    act(() => {
+      input.props.onChangeText('灵感');
+    });
+
+    await act(async () => {
+      await input.props.onSubmitEditing();
     });
 
     expect(mockAddCommonTag).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledWith('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
   });
 
-  it('reorders preset tags after dragging the handle', async () => {
+  it('cancels and confirms delete through alert actions', () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('preset-tag-delete-0'));
+    pressLatestAlertButton('取消');
+    expect(mockRemoveCommonTag).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('preset-tag-delete-0'));
+    pressLatestAlertButton('删除');
+    expect(mockRemoveCommonTag).toHaveBeenCalledWith('工作');
+  });
+
+  it('cancels and confirms reset to default preset tags through alert actions', () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('tag-management-reset-button'));
+    pressLatestAlertButton('取消');
+    expect(mockResetToDefaults).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('tag-management-reset-button'));
+    pressLatestAlertButton('恢复');
+    expect(mockResetToDefaults).toHaveBeenCalledTimes(1);
+  });
+
+  it('reorders preset tags after dragging across a row threshold', async () => {
     render(<TagManagementPage visible onClose={() => {}} />);
 
     act(() => {
@@ -152,5 +236,56 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockReorderCommonTags).toHaveBeenCalledWith(0, 2);
+  });
+
+  it('does not reorder when drag never crosses a row threshold', async () => {
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    act(() => {
+      responderConfigs[0].onPanResponderGrant();
+      jest.advanceTimersByTime(200);
+      responderConfigs[0].onPanResponderMove(null, { dy: 20 });
+    });
+
+    await act(async () => {
+      await responderConfigs[0].onPanResponderRelease();
+    });
+
+    expect(mockReorderCommonTags).not.toHaveBeenCalled();
+  });
+
+  it('reorders preset tags when dragging is terminated after crossing a row threshold', async () => {
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    act(() => {
+      responderConfigs[0].onPanResponderGrant();
+      jest.advanceTimersByTime(200);
+    });
+
+    act(() => {
+      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
+    });
+
+    await act(async () => {
+      await responderConfigs[0].onPanResponderTerminate();
+    });
+
+    expect(mockReorderCommonTags).toHaveBeenCalledWith(0, 2);
+  });
+
+  it('does not reorder when dragging is terminated before the long-press threshold is reached', async () => {
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    act(() => {
+      responderConfigs[0].onPanResponderGrant();
+      jest.advanceTimersByTime(100);
+      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
+    });
+
+    await act(async () => {
+      await responderConfigs[0].onPanResponderTerminate();
+    });
+
+    expect(mockReorderCommonTags).not.toHaveBeenCalled();
   });
 });

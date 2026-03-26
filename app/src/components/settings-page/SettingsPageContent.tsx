@@ -60,6 +60,7 @@ interface SettingsPageContentProps {
   onClearCache: () => void;
   onInjectSuspectRepairable?: () => void | Promise<void>;
   onInjectRepairPending?: () => void | Promise<void>;
+  onInjectTextDetailFixture?: () => void | Promise<void>;
   onClearSyncFixtures?: () => void | Promise<void>;
   onShowSyncRepairPrompt?: () => void;
   onOpenTagManagement: () => void;
@@ -106,6 +107,7 @@ export function SettingsPageContent({
   onClearCache,
   onInjectSuspectRepairable,
   onInjectRepairPending,
+  onInjectTextDetailFixture,
   onClearSyncFixtures,
   onShowSyncRepairPrompt,
   onOpenTagManagement,
@@ -139,6 +141,7 @@ export function SettingsPageContent({
               subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
               rightComponent={(
                 <Switch
+                  testID="settings-switch-cloud-mode"
                   value={cloudMode === true}
                   onValueChange={onCloudModeToggle}
                   disabled={cloudMode === 'switching' || isSwitchingMode}
@@ -167,6 +170,7 @@ export function SettingsPageContent({
             icon="person-add"
             title="登录 / 注册"
             subtitle="登录后可使用云端同步功能"
+            testID="settings-open-login"
             onPress={onShowLogin}
           />
         )}
@@ -179,6 +183,7 @@ export function SettingsPageContent({
           subtitle="接收提醒和更新"
           rightComponent={(
             <Switch
+              testID="settings-switch-notifications"
               value={notifications}
               onValueChange={onNotificationsChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
@@ -195,6 +200,7 @@ export function SettingsPageContent({
           subtitle="进入后台时自动保存到本地"
           rightComponent={(
             <Switch
+              testID="settings-switch-auto-backup"
               value={autoBackup}
               onValueChange={onAutoBackupChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
@@ -208,6 +214,7 @@ export function SettingsPageContent({
           subtitle="保存原始质量照片"
           rightComponent={(
             <Switch
+              testID="settings-switch-high-quality-photos"
               value={highQualityPhotos}
               onValueChange={onHighQualityPhotosChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
@@ -273,6 +280,7 @@ export function SettingsPageContent({
         <SettingsE2ESyncLab
           onInjectSuspectRepairable={onInjectSuspectRepairable ?? (() => undefined)}
           onInjectRepairPending={onInjectRepairPending ?? (() => undefined)}
+          onInjectTextDetailFixture={onInjectTextDetailFixture ?? (() => undefined)}
           onClearFixtures={onClearSyncFixtures ?? (() => undefined)}
           onShowRepairPrompt={onShowSyncRepairPrompt ?? (() => undefined)}
         />

@@ -44,6 +44,12 @@ describe('AboutPage', () => {
     jest.restoreAllMocks();
   });
 
+  it('renders nothing when the page is hidden', () => {
+    const screen = render(<AboutPage visible={false} onClose={jest.fn()} />);
+
+    expect(screen.queryByTestId('about-page-root')).toBeNull();
+  });
+
   it('renders the about page sections inside the existing shell', () => {
     const screen = render(<AboutPage visible onClose={jest.fn()} />);
 
@@ -52,6 +58,7 @@ describe('AboutPage', () => {
     expect(screen.getByText('功能特性')).toBeTruthy();
     expect(screen.getByText('技术栈')).toBeTruthy();
     expect(screen.getByText('更多信息')).toBeTruthy();
+    expect(screen.getByText('Built with ❤️ using 2025-2026 modern React Native tech stack')).toBeTruthy();
   });
 
   it('opens the expected links from the info buttons', async () => {

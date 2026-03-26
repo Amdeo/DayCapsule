@@ -17,7 +17,8 @@ jest.mock('../DetailPageShell', () => ({
 }));
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { act, render, fireEvent, waitFor, userEvent } from '@testing-library/react-native';
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
@@ -34,6 +35,14 @@ const mockRegister = jest.fn();
 beforeEach(() => jest.clearAllMocks());
 
 describe('LoginPage', () => {
+  it('renders nothing when the page is hidden', () => {
+    const screen = render(
+      <LoginPage visible={false} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    expect(screen.queryByTestId('login-page-root')).toBeNull();
+  });
+
   it('renders the login page shell inside the existing detail shell', () => {
     const { getByPlaceholderText, getByText, getByTestId } = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
@@ -69,6 +78,83 @@ describe('LoginPage', () => {
     });
   });
 
+  it('alerts when email or password is missing and does not call login', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('登录'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(mockLogin).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.press(screen.getByText('登录'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(mockLogin).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'user@test.com');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), '');
+    fireEvent.press(screen.getByText('登录'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(mockLogin).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('calls onSuccess and clears inputs after a successful login', async () => {
+    mockLogin.mockResolvedValueOnce(undefined);
+    const onSuccess = jest.fn();
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={onSuccess} />
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), ' user@test.com ');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.press(screen.getByText('登录'));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('user@test.com', 'Password1');
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
+  });
+
+  it('prevents duplicate submits and hides submit text while loading', async () => {
+    const user = userEvent.setup();
+    let resolveLogin: () => void;
+    mockLogin.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveLogin = resolve;
+        })
+    );
+    const onSuccess = jest.fn();
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={onSuccess} />
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
+
+    await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('登录')).toBeNull());
+
+    expect(screen.getByTestId('login-page-submit-button').props.accessibilityState?.disabled).toBe(true);
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
+    expect(mockLogin).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveLogin!();
+    });
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
   it('shows branded feedback when login fails', async () => {
     mockLogin.mockRejectedValueOnce(new Error('401'));
     const { getByPlaceholderText, getByText } = render(
@@ -96,6 +182,130 @@ describe('LoginPage', () => {
 
     fireEvent.press(getByText('没有账户？注册'));
     expect(getByPlaceholderText('确认密码')).toBeTruthy();
+    expect(getByText('密码要求：8-64位，含大小写字母和数字')).toBeTruthy();
     expect(getByText('注册')).toBeTruthy();
+  });
+
+  it('returns to login mode and hides register-only fields after toggling back', () => {
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('没有账户？注册'));
+    expect(screen.getByPlaceholderText('确认密码')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('已有账户？登录'));
+
+    expect(screen.queryByPlaceholderText('确认密码')).toBeNull();
+    expect(screen.queryByText('密码要求：8-64位，含大小写字母和数字')).toBeNull();
+    expect(screen.getByText('登录')).toBeTruthy();
+  });
+
+  it('alerts when register passwords do not match', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const { getByPlaceholderText, getByText } = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(getByText('没有账户？注册'));
+    fireEvent.changeText(getByPlaceholderText('邮箱'), 'test@test.com');
+    fireEvent.changeText(getByPlaceholderText('密码'), 'Password1');
+    fireEvent.changeText(getByPlaceholderText('确认密码'), 'Password2');
+    fireEvent.press(getByText('注册'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '两次输入的密码不一致');
+    expect(mockRegister).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('prevents duplicate submits while loading in register mode', async () => {
+    const user = userEvent.setup();
+    let resolveRegister: () => void;
+    mockRegister.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRegister = resolve;
+        })
+    );
+    const onSuccess = jest.fn();
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={onSuccess} />
+    );
+
+    fireEvent.press(screen.getByText('没有账户？注册'));
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.changeText(screen.getByPlaceholderText('确认密码'), 'Password1');
+
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
+
+    await waitFor(() => expect(mockRegister).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('注册')).toBeNull());
+
+    expect(screen.getByTestId('login-page-submit-button').props.accessibilityState?.disabled).toBe(true);
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
+    expect(mockRegister).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRegister!();
+    });
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+  });
+
+  it('clears confirm password when switching modes', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(getByText('没有账户？注册'));
+    fireEvent.changeText(getByPlaceholderText('确认密码'), 'Password1');
+    fireEvent.press(getByText('已有账户？登录'));
+    fireEvent.press(getByText('没有账户？注册'));
+
+    expect(getByPlaceholderText('确认密码')).toHaveProp('value', '');
+  });
+
+  it('calls onSuccess and clears inputs after a successful register', async () => {
+    mockRegister.mockResolvedValueOnce(undefined);
+    const onSuccess = jest.fn();
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={onSuccess} />
+    );
+
+    fireEvent.press(screen.getByText('没有账户？注册'));
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), ' user@test.com ');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.changeText(screen.getByPlaceholderText('确认密码'), 'Password1');
+    fireEvent.press(screen.getByText('注册'));
+
+    await waitFor(() => {
+      expect(mockRegister).toHaveBeenCalledWith('user@test.com', 'Password1');
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('确认密码')).toHaveProp('value', '');
+  });
+
+  it('shows register-specific feedback when register fails', async () => {
+    mockRegister.mockRejectedValueOnce(new Error('409'));
+    const { getByPlaceholderText, getByText } = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(getByText('没有账户？注册'));
+    fireEvent.changeText(getByPlaceholderText('邮箱'), 'test@test.com');
+    fireEvent.changeText(getByPlaceholderText('密码'), 'Password1');
+    fireEvent.changeText(getByPlaceholderText('确认密码'), 'Password1');
+    fireEvent.press(getByText('注册'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '注册失败',
+          dedupeKey: 'auth-register-failed',
+        })
+      );
+    });
   });
 });

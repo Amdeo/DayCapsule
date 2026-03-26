@@ -38,6 +38,7 @@ export function useEntryCardController({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
+  const interactionStateRef = useRef<CardInteractionState>('idle');
 
   const stopRequestInFlightRef = useRef(false);
   const swipeableRef = useRef<Swipeable>(null);
@@ -64,6 +65,11 @@ export function useEntryCardController({
     }
   }, []);
 
+  const setInteractionStateSafely = useCallback((nextState: CardInteractionState) => {
+    interactionStateRef.current = nextState;
+    setInteractionState(nextState);
+  }, []);
+
   const closeActionSheetAndResetCard = useCallback(() => {
     clearOpenSheetTimeout();
     clearResetCardTimeout();
@@ -72,13 +78,13 @@ export function useEntryCardController({
       entry.id,
       interactionState,
     );
-    setInteractionState('closing');
+    setInteractionStateSafely('closing');
     setShowActionSheet(false);
     resetCardTimeoutRef.current = setTimeout(() => {
-      setInteractionState('idle');
+      setInteractionStateSafely('idle');
       resetCardTimeoutRef.current = null;
     }, ENTRY_ACTION_SHEET_EXIT_DURATION);
-  }, [clearOpenSheetTimeout, clearResetCardTimeout, entry.id, interactionState]);
+  }, [clearOpenSheetTimeout, clearResetCardTimeout, entry.id, interactionState, setInteractionStateSafely]);
 
   useEffect(() => {
     if (
@@ -124,7 +130,7 @@ export function useEntryCardController({
         return;
       }
 
-      if (interactionState !== 'idle' || showActionSheet) {
+      if (interactionStateRef.current !== 'idle' || showActionSheet) {
         logger.log('[EntryCard] ignore duplicate swipe trigger', entry.id, interactionState);
         return;
       }
@@ -133,11 +139,11 @@ export function useEntryCardController({
       clearResetCardTimeout();
       swipeableRef.current?.close();
       onActionSheetOpen?.(entry.id);
-      setInteractionState('pendingSheet');
+      setInteractionStateSafely('pendingSheet');
       openSheetTimeoutRef.current = setTimeout(() => {
         logger.log('[EntryCard] opening action sheet after delay', entry.id);
         setShowActionSheet(true);
-        setInteractionState('sheetOpen');
+        setInteractionStateSafely('sheetOpen');
         openSheetTimeoutRef.current = null;
       }, ACTION_SHEET_OPEN_DELAY);
     },
@@ -146,7 +152,9 @@ export function useEntryCardController({
       clearResetCardTimeout,
       entry.id,
       interactionState,
+      interactionStateRef,
       onActionSheetOpen,
+      setInteractionStateSafely,
       showActionSheet,
     ],
   );

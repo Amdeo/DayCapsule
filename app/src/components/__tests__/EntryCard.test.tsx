@@ -159,10 +159,12 @@ jest.mock('react-native-gesture-handler', () => {
 // ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from 'react';
+import { Alert } from 'react-native';
 import { render, fireEvent, act, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
 import { logger } from '@/src/utils/logger';
+import { VoiceService } from '@/src/services/voiceService';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -204,6 +206,16 @@ const pendingUploadVoiceEntry: Entry = {
   syncStatus: 'pending_upload',
   recordingStatus: 'completed',
   media: [{ uri: 'file:///voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
+};
+
+const playableVoiceEntry: Entry = {
+  id: 'voice-playable-1',
+  type: 'voice',
+  content: '一段语音说明',
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+  recordingStatus: 'completed',
+  media: [{ uri: 'file:///voice-playable.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
 };
 
 const recordingVoiceEntry: Entry = {
@@ -250,6 +262,7 @@ describe('EntryCard swipe actions', () => {
     act(() => {
       jest.runOnlyPendingTimers();
     });
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -406,6 +419,22 @@ describe('EntryCard swipe actions', () => {
     expect(onActionSheetOpen).toHaveBeenCalledWith(mockEntry.id);
   });
 
+  it('ignores duplicate swipe lifecycle callbacks and opens the sheet only once', () => {
+    const onActionSheetOpen = jest.fn();
+    const { getByTestId, getAllByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} onActionSheetOpen={onActionSheetOpen} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableWillOpen('right');
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(onActionSheetOpen).toHaveBeenCalledTimes(1);
+    expect(getAllByTestId('entry-action-sheet')).toHaveLength(1);
+  });
+
   it('calls onEdit when edit is pressed in action sheet', () => {
     const onEdit = jest.fn();
     const { getByTestId } = render(
@@ -474,6 +503,36 @@ describe('EntryCard swipe actions', () => {
 
     expect(onView).toHaveBeenCalledWith(mockEntry);
     expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it('opens the image viewer when pressing a photo card body', () => {
+    const photoEntry: Entry = {
+      id: 'photo-card-open-1',
+      type: 'photo',
+      content: '',
+      timestamp: 1700000000000,
+      syncStatus: 'synced',
+      media: [{ uri: 'file://photo-open.jpg', mimeType: 'image/jpeg', size: 1024 }],
+    };
+
+    render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('entry-card'));
+
+    expect(screen.getByTestId('image-viewer-uri').props.children).toBe('file://photo-open.jpg');
+  });
+
+  it('shows a playback failure alert when voice playback throws', async () => {
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    (VoiceService.playAudio as jest.Mock).mockRejectedValueOnce(new Error('decoder failed'));
+
+    render(<EntryCard entry={playableVoiceEntry} onDelete={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('entry-card'));
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('播放失败', '无法播放此音频，请重试');
   });
 });
 

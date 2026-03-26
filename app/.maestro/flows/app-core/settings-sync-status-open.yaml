@@ -1,0 +1,22 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow:
+    when:
+      visible: "发现云端媒体异常"
+    commands:
+      - tapOn: "稍后处理"
+- runFlow:
+    when:
+      visible: "媒体同步状态"
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: error-feedback-card
+    commands:
+      - tapOn:
+          id: error-feedback-action-0
+- runFlow: ../../common/open-sync-status.yaml
+- assertVisible: "媒体同步状态"

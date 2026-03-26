@@ -16,8 +16,10 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 import React from 'react';
+import { Modal } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import * as Reanimated from 'react-native-reanimated';
+import renderer from 'react-test-renderer';
 import { EntryActionSheet } from '../EntryActionSheet';
 
 describe('EntryActionSheet', () => {
@@ -168,6 +170,33 @@ describe('EntryActionSheet', () => {
     );
 
     fireEvent.press(getByTestId('action-sheet-overlay'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onClose when tapping the menu cancel action', () => {
+    const onClose = jest.fn();
+    const { getByTestId } = render(
+      <EntryActionSheet {...baseProps} visible={true} onClose={onClose} />
+    );
+
+    fireEvent.press(getByTestId('action-sheet-cancel'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes modal onRequestClose to onClose', () => {
+    const onClose = jest.fn();
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <EntryActionSheet {...baseProps} visible={true} onClose={onClose} />
+      );
+    });
+
+    const modal = tree!.root.findByType(Modal);
+    modal.props.onRequestClose();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

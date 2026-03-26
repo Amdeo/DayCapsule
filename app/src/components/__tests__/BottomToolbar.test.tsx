@@ -26,4 +26,34 @@ describe('BottomToolbar', () => {
     expect(onPress).toHaveBeenNthCalledWith(2, 'photo');
     expect(onPress).toHaveBeenNthCalledWith(3, 'voice');
   });
+
+  it('keeps the three toolbar buttons at the expected touch size', () => {
+    const screen = render(<BottomToolbar onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('bottom-toolbar-button-text')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+    expect(screen.getByTestId('bottom-toolbar-button-photo')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+    expect(screen.getByTestId('bottom-toolbar-button-voice')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+  });
+
+  it('keeps the toolbar root anchored near the bottom center', () => {
+    const screen = render(<BottomToolbar onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('bottom-toolbar-root')).toHaveStyle({
+      position: 'absolute',
+      bottom: 30,
+      alignItems: 'center',
+    });
+  });
 });

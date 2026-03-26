@@ -1,6 +1,7 @@
 import { useSyncStore } from '../syncStore';
 import { useCloudSyncIndicatorStore } from '../cloudSyncIndicatorStore';
 import * as DB from '@/src/database/operations';
+import { logger } from '@/src/utils/logger';
 
 let mockIsAuthenticated = true;
 let mockCloudMode: boolean | 'switching' = true;
@@ -71,7 +72,49 @@ describe('cloudSyncIndicatorStore', () => {
   });
 
   it('returns hidden when cloud mode is disabled', async () => {
+    useCloudSyncIndicatorStore.setState({
+      pendingEntries: 3,
+      pendingUploads: 2,
+      uploadingEntries: 1,
+      failedEntries: 1,
+      uiState: 'failed',
+    });
     mockCloudMode = false;
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState()).toMatchObject({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'hidden',
+    });
+  });
+
+  it('returns hidden and clears stale counts when cloud mode is switching', async () => {
+    useCloudSyncIndicatorStore.setState({
+      pendingEntries: 5,
+      pendingUploads: 4,
+      uploadingEntries: 1,
+      failedEntries: 2,
+      uiState: 'pending',
+    });
+    mockCloudMode = 'switching';
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState()).toMatchObject({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'hidden',
+    });
+  });
+
+  it('returns hidden when the user is not authenticated', async () => {
+    mockIsAuthenticated = false;
 
     await useCloudSyncIndicatorStore.getState().refresh();
 
@@ -104,5 +147,68 @@ describe('cloudSyncIndicatorStore', () => {
     await useCloudSyncIndicatorStore.getState().refresh();
 
     expect(useCloudSyncIndicatorStore.getState().uiState).toBe('failed');
+  });
+
+  it('returns pending when there are pending entries and uploads without active failures', async () => {
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockResolvedValueOnce({
+      pendingEntries: 2,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+    });
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState()).toMatchObject({
+      pendingEntries: 2,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'pending',
+    });
+  });
+
+  it('returns synced when the latest summary is fully clean', async () => {
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockResolvedValueOnce({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+    });
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState()).toMatchObject({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'synced',
+    });
+  });
+
+  it('keeps the previous indicator state and logs a warning when refresh fails', async () => {
+    useCloudSyncIndicatorStore.setState({
+      pendingEntries: 1,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'pending',
+    });
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockRejectedValueOnce(new Error('db unavailable'));
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState()).toMatchObject({
+      pendingEntries: 1,
+      pendingUploads: 1,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      uiState: 'pending',
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[cloudSyncIndicatorStore] refresh failed:',
+      expect.any(Error)
+    );
   });
 });

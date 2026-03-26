@@ -16,7 +16,7 @@ import { useEntryEditorController } from './entry-editor/useEntryEditorControlle
 interface EntryEditorProps {
   visible: boolean;
   entry: Entry | null;
-  onSave: (id: string, content: string, tags: string[]) => void;
+  onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -28,11 +28,14 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     commonTags,
     currentTagsList,
     typeMeta,
+    canSave,
+    isSaving,
     setContent,
     setTagsInput,
     handleAddSuggestion,
     handleRemoveTag,
     handleSave,
+    handleRequestClose,
   } = useEntryEditorController({
     visible,
     entry,
@@ -43,20 +46,37 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
   if (!visible || !entry) return null;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleRequestClose}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable
+          testID="entry-editor-backdrop"
+          style={styles.backdrop}
+          disabled={isSaving}
+          onPress={handleRequestClose}
+        />
 
         <View style={styles.editorPage}>
           <View testID="entry-editor-header" style={styles.headerBar}>
-            <Pressable onPress={onClose} style={styles.headerButton}>
+            <Pressable
+              testID="entry-editor-back-button"
+              accessibilityState={{ disabled: isSaving }}
+              disabled={isSaving}
+              onPress={handleRequestClose}
+              style={styles.headerButton}
+            >
               <Text style={styles.headerButtonText}>返回</Text>
             </Pressable>
             <Text style={styles.headerTitle}>编辑记录</Text>
-            <Pressable onPress={handleSave} style={styles.headerButton}>
+            <Pressable
+              testID="entry-editor-save-button"
+              accessibilityState={{ disabled: !canSave }}
+              disabled={!canSave}
+              onPress={handleSave}
+              style={styles.headerButton}
+            >
               <Text style={styles.headerSaveText}>保存</Text>
             </Pressable>
           </View>

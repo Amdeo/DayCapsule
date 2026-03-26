@@ -100,6 +100,9 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
     if (!processing) {
       processing = processQueue().finally(() => {
         processing = null;
+        if (queued.size > 0) {
+          void ensureProcessing();
+        }
       });
     }
     return processing;

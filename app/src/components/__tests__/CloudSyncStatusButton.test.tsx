@@ -11,23 +11,37 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 describe('CloudSyncStatusButton', () => {
+  it('keeps the button shell at the expected floating size', () => {
+    const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('cloud-sync-button')).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    });
+  });
+
   it('renders static cloud with green dot for synced state', () => {
     const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
     expect(screen.getByTestId('cloud-sync-dot-synced')).toBeTruthy();
+    expect(screen.getByText('cloud-outline')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
   });
 
   it('renders static cloud with orange dot for pending state', () => {
     const screen = render(<CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
   });
 
   it('renders static cloud with red dot for failed state', () => {
     const screen = render(<CloudSyncStatusButton uiState="failed" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-dot-failed')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
   });
 
   it('renders animated cloud shell for syncing state', () => {
@@ -35,6 +49,10 @@ describe('CloudSyncStatusButton', () => {
 
     expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
     expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
+    expect(screen.getByText('cloud-outline')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-failed')).toBeNull();
   });
 
   it('calls onPress when tapped', () => {
@@ -44,5 +62,11 @@ describe('CloudSyncStatusButton', () => {
     fireEvent.press(screen.getByTestId('cloud-sync-button'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes the cloud sync action as an accessible button', () => {
+    const screen = render(<CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('cloud-sync-button').props.accessibilityRole).toBe('button');
   });
 });

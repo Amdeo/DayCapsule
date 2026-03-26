@@ -25,6 +25,18 @@ describe('ErrorFeedbackModal', () => {
     expect(screen.getByText('重试')).toBeTruthy();
   });
 
+  it('returns null when hidden or when request is null', () => {
+    const hidden = render(
+      <ErrorFeedbackModal visible={false} request={request} onDismiss={jest.fn()} />
+    );
+    const empty = render(
+      <ErrorFeedbackModal visible request={null} onDismiss={jest.fn()} />
+    );
+
+    expect(hidden.queryByTestId('error-feedback-card')).toBeNull();
+    expect(empty.queryByTestId('error-feedback-card')).toBeNull();
+  });
+
   it('calls onDismiss when backdrop is pressed', () => {
     const onDismiss = jest.fn();
     const screen = render(
@@ -76,5 +88,23 @@ describe('ErrorFeedbackModal', () => {
 
     expect(screen.getByTestId('error-feedback-action-repair-media')).toBeTruthy();
     expect(screen.getByTestId('error-feedback-action-sync-now')).toBeTruthy();
+  });
+
+  it('invokes the action callback when a feedback action is pressed', () => {
+    const onRetry = jest.fn();
+    const screen = render(
+      <ErrorFeedbackModal
+        visible
+        request={{
+          title: '同步失败',
+          actions: [{ label: '重试', role: 'primary', onPress: onRetry }],
+        }}
+        onDismiss={jest.fn()}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('error-feedback-action-0'));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

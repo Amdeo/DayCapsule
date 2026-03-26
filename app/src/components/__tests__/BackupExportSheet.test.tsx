@@ -24,10 +24,17 @@ describe('BackupExportSheet', () => {
     const { getByTestId, getByText, queryByText } = render(<BackupExportSheet {...baseProps} />);
 
     expect(getByTestId('backup-export-sheet')).toBeTruthy();
+    expect(getByText('backup_2026-03-17.zip')).toBeTruthy();
     expect(getByText('保存到文件')).toBeTruthy();
     expect(getByText('取消')).toBeTruthy();
     expect(queryByText('发送到微信')).toBeNull();
     expect(queryByText('更多方式')).toBeNull();
+  });
+
+  it('returns null when the export sheet is hidden', () => {
+    const { queryByTestId } = render(<BackupExportSheet {...baseProps} visible={false} />);
+
+    expect(queryByTestId('backup-export-sheet')).toBeNull();
   });
 
   it('renders iOS export label when provided', () => {
@@ -47,5 +54,22 @@ describe('BackupExportSheet', () => {
 
     expect(baseProps.onSaveToFiles).toHaveBeenCalledTimes(1);
     expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes when the overlay backdrop is pressed', () => {
+    const { getByTestId } = render(<BackupExportSheet {...baseProps} />);
+
+    fireEvent.press(getByTestId('backup-export-overlay'));
+
+    expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trigger save when only the cancel action is used', () => {
+    const { getByTestId } = render(<BackupExportSheet {...baseProps} />);
+
+    fireEvent.press(getByTestId('backup-export-cancel'));
+
+    expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+    expect(baseProps.onSaveToFiles).not.toHaveBeenCalled();
   });
 });

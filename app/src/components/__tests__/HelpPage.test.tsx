@@ -44,6 +44,12 @@ describe('HelpPage', () => {
     jest.restoreAllMocks();
   });
 
+  it('renders nothing when the page is hidden', () => {
+    const screen = render(<HelpPage visible={false} onClose={jest.fn()} />);
+
+    expect(screen.queryByTestId('help-page-root')).toBeNull();
+  });
+
   it('renders the FAQ list and contact section inside the existing shell', () => {
     const screen = render(<HelpPage visible onClose={jest.fn()} />);
 
@@ -62,6 +68,17 @@ describe('HelpPage', () => {
     fireEvent.press(screen.getByText('如何添加文字记录？'));
 
     expect(screen.getByText(answer)).toBeTruthy();
+  });
+
+  it('collapses the faq answer when the same item is pressed again', () => {
+    const screen = render(<HelpPage visible onClose={jest.fn()} />);
+    const answer = '点击底部蓝色 + 按钮，选择"文字"，输入内容后点击保存。';
+
+    fireEvent.press(screen.getByText('如何添加文字记录？'));
+    expect(screen.getByText(answer)).toBeTruthy();
+
+    fireEvent.press(screen.getByText('如何添加文字记录？'));
+    expect(screen.queryByText(answer)).toBeNull();
   });
 
   it('opens the feedback mail link when pressed', () => {

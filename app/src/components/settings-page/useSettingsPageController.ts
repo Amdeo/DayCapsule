@@ -33,7 +33,6 @@ interface UseSettingsPageControllerOptions {
   savePhotoHeight: (value: PhotoHeightPreset) => void | Promise<void>;
   saveCalendarDensity: (value: CalendarDensity) => void | Promise<void>;
   resetSettings: () => void | Promise<void>;
-  enableCloudMode: () => void | Promise<void>;
 }
 
 function formatUsedSpace(totalSize: number) {
@@ -54,11 +53,9 @@ export function useSettingsPageController({
   savePhotoHeight,
   saveCalendarDensity,
   resetSettings,
-  enableCloudMode,
 }: UseSettingsPageControllerOptions) {
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [showTagMgmt, setShowTagMgmt] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [currentServerUrl, setCurrentServerUrl] = useState('');
   const [backendDraftUrl, setBackendDraftUrl] = useState('');
   const [recentServerUrls, setRecentServerUrls] = useState<string[]>([]);
@@ -231,19 +228,6 @@ export function useSettingsPageController({
     setShowTagMgmt(false);
   }, []);
 
-  const openLogin = useCallback(() => {
-    setShowLogin(true);
-  }, []);
-
-  const closeLogin = useCallback(() => {
-    setShowLogin(false);
-  }, []);
-
-  const handleLoginSuccess = useCallback(async () => {
-    setShowLogin(false);
-    await enableCloudMode();
-  }, [enableCloudMode]);
-
   const handleBackendDraftUrlChange = useCallback((value: string) => {
     setBackendDraftUrl(value);
     setBackendTestStatus('idle');
@@ -313,7 +297,6 @@ export function useSettingsPageController({
   return {
     usedSpace,
     showTagMgmt,
-    showLogin,
     photoCount,
     voiceCount,
     currentServerUrl,
@@ -325,9 +308,6 @@ export function useSettingsPageController({
     canSaveBackendServer,
     openTagManagement,
     closeTagManagement,
-    openLogin,
-    closeLogin,
-    handleLoginSuccess,
     handleNotifications,
     handleAutoBackup,
     handleHighQualityPhotos,

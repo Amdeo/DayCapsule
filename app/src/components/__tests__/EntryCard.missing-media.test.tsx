@@ -186,28 +186,6 @@ const voiceEntryWithEmptyMedia: Entry = {
   media: [],
 };
 
-const textEntry: Entry = {
-  id: 't1',
-  type: 'text',
-  content: '一条普通文本记录',
-  tags: [],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-};
-
-const PHOTO_CARD_BG = '#CCE9EF';
-const PHOTO_CARD_BG_PRESSED = '#BDDEE5';
-const PHOTO_IMAGE_BG = '#ECE7E0';
-
-const longTextEntry: Entry = {
-  id: 't2',
-  type: 'text',
-  content: '这是一条很长的文本记录，'.repeat(12),
-  tags: ['标签1', '标签2', '标签3', '标签4'],
-  timestamp: 1700000000000,
-  syncStatus: 'synced',
-};
-
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('EntryCard — 媒体文件丢失', () => {
@@ -237,53 +215,6 @@ describe('EntryCard — 媒体文件丢失', () => {
     expect(queryByTestId('image-viewer')).toBeTruthy();
   });
 
-  it('图片正常时点击卡片应打开 ImageViewer', () => {
-    const { getByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
-    );
-
-    // 不触发 onError，直接点击
-    fireEvent.press(getByTestId('entry-card'));
-
-    expect(getByTestId('image-viewer')).toBeTruthy();
-  });
-
-  it('图片卡片默认应使用统一后的中性背景', () => {
-    const { getByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
-    );
-
-    expect(getByTestId('entry-card')).toHaveStyle({
-      backgroundColor: PHOTO_CARD_BG,
-    });
-  });
-
-  it('图片卡片按下时应切换到更深一档的中性背景', () => {
-    const { getByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
-    );
-
-    fireEvent(getByTestId('entry-card'), 'pressIn');
-    expect(getByTestId('entry-card')).toHaveStyle({
-      backgroundColor: PHOTO_CARD_BG_PRESSED,
-    });
-
-    fireEvent(getByTestId('entry-card'), 'pressOut');
-    expect(getByTestId('entry-card')).toHaveStyle({
-      backgroundColor: PHOTO_CARD_BG,
-    });
-  });
-
-  it('图片区域默认背景应使用统一的中性浅灰', () => {
-    const { getByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
-    );
-
-    expect(getByTestId('photo-image-0')).toHaveStyle({
-      backgroundColor: PHOTO_IMAGE_BG,
-    });
-  });
-
   // ── 音频丢失 ──────────────────────────────────────────────────────────────
 
   it('语音卡片渲染时不应预检音频文件是否存在', () => {
@@ -301,7 +232,9 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
 
-    fireEvent.press(getByTestId('entry-card'));
+    await act(async () => {
+      fireEvent.press(getByTestId('entry-card'));
+    });
 
     expect(await findByText('音频文件已丢失')).toBeTruthy();
   });
@@ -313,7 +246,9 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
 
-    fireEvent.press(getByTestId('entry-card'));
+    await act(async () => {
+      fireEvent.press(getByTestId('entry-card'));
+    });
     await findByText('音频文件已丢失');
 
     expect(VoiceService.playAudio).not.toHaveBeenCalled();
@@ -324,7 +259,9 @@ describe('EntryCard — 媒体文件丢失', () => {
       <EntryCard entry={voiceEntry} onDelete={jest.fn()} />
     );
 
-    fireEvent.press(getByTestId('entry-card'));
+    await act(async () => {
+      fireEvent.press(getByTestId('entry-card'));
+    });
 
     await waitFor(() => {
       expect(queryByText('音频文件已丢失')).toBeNull();
@@ -345,131 +282,5 @@ describe('EntryCard — 媒体文件丢失', () => {
     );
 
     expect(queryByText('00:00')).toBeNull();
-  });
-
-  it('长按卡片时应展开内容且不显示旧的 ActionSheet 时间文案', () => {
-    const { getByTestId, getByText, queryByText } = render(
-      <EntryCard entry={longTextEntry} onDelete={jest.fn()} />
-    );
-
-    const content = getByText(longTextEntry.content);
-    expect(content.props.numberOfLines).toBe(4);
-    expect(getByText('点击展开更多')).toBeTruthy();
-
-    fireEvent(getByTestId('entry-card'), 'longPress');
-
-    expect(content.props.numberOfLines).toBeUndefined();
-    expect(queryByText('点击展开更多')).toBeNull();
-    expect(
-      queryByText(
-        new Date(longTextEntry.timestamp).toLocaleString('zh-CN', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      )
-    ).toBeNull();
-  });
-
-  it('用 Swipeable 包裹卡片内容并在滑动打开后显示底部操作面板', () => {
-    jest.useFakeTimers();
-
-    const onActionSheetOpen = jest.fn();
-    const { getByTestId, queryByTestId } = render(
-      <EntryCard
-        entry={textEntry}
-        onDelete={jest.fn()}
-        onActionSheetOpen={onActionSheetOpen}
-      />
-    );
-
-    const swipeable = getByTestId('swipeable');
-
-    expect(swipeable).toBeTruthy();
-    expect(getByTestId('entry-card')).toBeTruthy();
-    expect(swipeable.props.friction).toBe(1.2);
-    expect(swipeable.props.leftThreshold).toBe(40);
-    expect(swipeable.props.rightThreshold).toBe(24);
-    expect(swipeable.props.overshootRight).toBe(false);
-    expect(swipeable.props.dragOffsetFromRightEdge).toBe(10);
-    expect(typeof swipeable.props.renderRightActions).toBe('function');
-
-    act(() => {
-      swipeable.props.onSwipeableOpen('right');
-    });
-
-    expect(queryByTestId('entry-action-sheet')).toBeNull();
-    expect(onActionSheetOpen).toHaveBeenCalledWith(textEntry.id);
-
-    act(() => {
-      jest.advanceTimersByTime(100);
-    });
-
-    expect(getByTestId('entry-action-sheet')).toBeTruthy();
-    jest.useRealTimers();
-  });
-
-  it('图片丢失时左滑后仍应显示底部操作面板', () => {
-    jest.useFakeTimers();
-
-    const onDelete = jest.fn();
-    const { getByTestId, queryByTestId } = render(
-      <EntryCard entry={photoEntry} onDelete={onDelete} />
-    );
-
-    // 模拟图片加载失败
-    fireEvent(getByTestId('photo-image-0'), 'error');
-
-    expect(queryByTestId('entry-action-sheet')).toBeNull();
-    expect(getByTestId('swipeable')).toBeTruthy();
-
-    act(() => {
-      getByTestId('swipeable').props.onSwipeableOpen('right');
-    });
-
-    expect(queryByTestId('entry-action-sheet')).toBeNull();
-
-    act(() => {
-      jest.advanceTimersByTime(100);
-    });
-
-    expect(getByTestId('entry-action-sheet')).toBeTruthy();
-    expect(getByTestId('action-sheet-edit')).toBeTruthy();
-    expect(getByTestId('action-sheet-delete')).toBeTruthy();
-    jest.useRealTimers();
-  });
-
-  it('音频丢失时左滑后仍应显示底部操作面板', async () => {
-    jest.useFakeTimers();
-
-    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false });
-
-    const onDelete = jest.fn();
-    const { findByText, getByTestId, queryByTestId } = render(
-      <EntryCard entry={voiceEntry} onDelete={onDelete} />
-    );
-
-    fireEvent.press(getByTestId('entry-card'));
-    await findByText('音频文件已丢失');
-
-    expect(queryByTestId('entry-action-sheet')).toBeNull();
-    expect(getByTestId('swipeable')).toBeTruthy();
-
-    act(() => {
-      getByTestId('swipeable').props.onSwipeableOpen('right');
-    });
-
-    expect(queryByTestId('entry-action-sheet')).toBeNull();
-
-    act(() => {
-      jest.advanceTimersByTime(100);
-    });
-
-    expect(getByTestId('entry-action-sheet')).toBeTruthy();
-    expect(getByTestId('action-sheet-edit')).toBeTruthy();
-    expect(getByTestId('action-sheet-delete')).toBeTruthy();
-    jest.useRealTimers();
   });
 });

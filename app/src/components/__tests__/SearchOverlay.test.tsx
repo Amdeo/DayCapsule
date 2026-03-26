@@ -5,6 +5,10 @@ import { SearchOverlay } from '../SearchOverlay';
 const mockApplySearchFilters = jest.fn();
 const mockGetAllTags = jest.fn(async () => ['旅行', '工作']);
 const mockLoadCommonTags = jest.fn();
+let mockCommonTagsState = {
+  tags: ['灵感'],
+  isLoaded: true,
+};
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -19,8 +23,7 @@ jest.mock('@/src/store/entryStore', () => ({
 
 jest.mock('@/src/store/commonTagsStore', () => ({
   useCommonTagsStore: () => ({
-    tags: ['灵感'],
-    isLoaded: true,
+    ...mockCommonTagsState,
     loadCommonTags: mockLoadCommonTags,
   }),
 }));
@@ -36,6 +39,17 @@ jest.mock('@expo/vector-icons', () => {
 describe('SearchOverlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCommonTagsState = {
+      tags: ['灵感'],
+      isLoaded: true,
+    };
+  });
+
+  it('returns null and does not fetch tags when hidden', () => {
+    const screen = render(<SearchOverlay visible={false} onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    expect(screen.queryByTestId('search-overlay-root')).toBeNull();
+    expect(mockGetAllTags).not.toHaveBeenCalled();
   });
 
   it('renders the existing full-screen search shell when visible', async () => {
@@ -48,6 +62,27 @@ describe('SearchOverlay', () => {
     expect(screen.getByText('类型')).toBeTruthy();
     expect(screen.getByText('时间')).toBeTruthy();
     expect(screen.getByText('标签')).toBeTruthy();
+  });
+
+  it('loads common tags when the shared tag store is not hydrated yet', async () => {
+    mockCommonTagsState = {
+      tags: [],
+      isLoaded: false,
+    };
+
+    render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
+      expect(mockGetAllTags).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('renders a stable cancel button testID for dismiss flows', async () => {
+    const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('search-overlay-cancel-button')).toBeTruthy();
   });
 
   it('resets local filters from the reset action without closing the overlay', async () => {

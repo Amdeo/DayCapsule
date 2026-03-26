@@ -51,6 +51,13 @@ describe('FilterBar', () => {
     mockGetAllTags.mockResolvedValue(['工作', '灵感']);
   });
 
+  it('returns null and does not fetch tags when hidden', () => {
+    const screen = render(<FilterBar isVisible={false} onClose={jest.fn()} />);
+
+    expect(screen.queryByTestId('filter-bar-root')).toBeNull();
+    expect(mockGetAllTags).not.toHaveBeenCalled();
+  });
+
   it('renders filter bar shell when visible', async () => {
     const screen = render(<FilterBar isVisible onClose={jest.fn()} />);
 
@@ -83,6 +90,24 @@ describe('FilterBar', () => {
     });
 
     expect(screen.getByTestId('filter-bar-reset-button')).toBeTruthy();
+  });
+
+  it('resets active type, date and tag filters from the reset action', async () => {
+    mockStoreState.filterType = 'photo';
+    mockStoreState.filterDateRange = 'week';
+    mockStoreState.selectedTags = ['工作'];
+
+    const screen = render(<FilterBar isVisible onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(mockGetAllTags).toHaveBeenCalled();
+    });
+
+    fireEvent.press(screen.getByTestId('filter-bar-reset-button'));
+
+    expect(mockSetFilterType).toHaveBeenCalledWith('all');
+    expect(mockSetFilterDateRange).toHaveBeenCalledWith('all');
+    expect(mockClearTags).toHaveBeenCalledTimes(1);
   });
 
   it('shows tag modal shell after opening tag picker', async () => {

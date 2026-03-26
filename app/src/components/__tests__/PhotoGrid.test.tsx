@@ -63,12 +63,38 @@ const makeRemoteFallbackPhoto = (): MediaInfo => ({
 const radius = { borderRadius: 10 };
 
 describe('PhotoGrid', () => {
+  it('0 photo: renders nothing', () => {
+    const { queryByTestId } = render(
+      <PhotoGrid photos={[]} maxPhotoHeight={280} photoImageRadius={radius} />
+    );
+
+    expect(queryByTestId('photo-image-0')).toBeNull();
+    expect(queryByTestId('photo-grid-root')).toBeNull();
+  });
+
   it('1 photo: renders photo-image-0, no photo-grid wrapper', () => {
     render(
       <PhotoGrid photos={[makePhoto(0)]} maxPhotoHeight={280} photoImageRadius={radius} />
     );
     expect(screen.getByTestId('photo-image-0')).toBeTruthy();
     expect(screen.queryByTestId('photo-grid')).toBeNull();
+  });
+
+  it('1 photo: maps the tap back to index 0', () => {
+    const onPhotoPress = jest.fn();
+
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+        onPhotoPress={onPhotoPress}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('photo-image-0'));
+
+    expect(onPhotoPress).toHaveBeenCalledWith(0);
   });
 
   it('2 photos: renders two-photo collage instead of square grid', () => {
@@ -207,6 +233,26 @@ describe('PhotoGrid', () => {
     const photos = [makePhoto(0), makePhoto(1), makePhoto(2)];
     render(<PhotoGrid photos={photos} maxPhotoHeight={280} photoImageRadius={radius} />);
     expect(screen.getByTestId('photo-cell-2')).toBeTruthy();
+  });
+
+  it('3 photos: maps grid cell taps to the original indexes', () => {
+    const photos = [makePhoto(0), makePhoto(1), makePhoto(2)];
+    const onPhotoPress = jest.fn();
+
+    render(
+      <PhotoGrid
+        photos={photos}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+        onPhotoPress={onPhotoPress}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('photo-cell-0'));
+    fireEvent.press(screen.getByTestId('photo-cell-2'));
+
+    expect(onPhotoPress).toHaveBeenNthCalledWith(1, 0);
+    expect(onPhotoPress).toHaveBeenNthCalledWith(2, 2);
   });
 
   it('4 photos: renders 4 cells, no overflow', () => {

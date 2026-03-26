@@ -31,6 +31,7 @@ export function TagsPageContent({
       {tagStats.map(({ tag, count }) => (
         <TouchableOpacity
           key={tag}
+          testID="tags-page-row"
           style={styles.tagRow}
           activeOpacity={0.7}
           onPress={onClose}

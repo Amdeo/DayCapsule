@@ -52,6 +52,18 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   } = useSettingsStore();
 
   const { user, isAuthenticated, logout } = useAuthStore();
+  const [showLogin, setShowLogin] = React.useState(false);
+  const [loginIntent, setLoginIntent] = React.useState<'account' | 'cloud-gating' | null>(null);
+
+  const openLogin = React.useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
+    setLoginIntent(intent);
+    setShowLogin(true);
+  }, []);
+
+  const closeLogin = React.useCallback(() => {
+    setShowLogin(false);
+    setLoginIntent(null);
+  }, []);
 
   const {
     isSwitchingMode,
@@ -63,13 +75,12 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     cloudMode,
     setCloudMode,
     logout,
-    onRequireLogin: () => openLogin(),
+    onRequireLogin: () => openLogin('cloud-gating'),
   });
 
   const {
     usedSpace,
     showTagMgmt,
-    showLogin,
     photoCount,
     voiceCount,
     currentServerUrl,
@@ -81,9 +92,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     canSaveBackendServer,
     openTagManagement,
     closeTagManagement,
-    openLogin,
-    closeLogin,
-    handleLoginSuccess,
     handleNotifications,
     handleAutoBackup,
     handleHighQualityPhotos,
@@ -109,8 +117,15 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     savePhotoHeight,
     saveCalendarDensity,
     resetSettings,
-    enableCloudMode,
   });
+
+  const handleLoginSuccess = React.useCallback(async () => {
+    const intent = loginIntent;
+    closeLogin();
+    if (intent === 'cloud-gating') {
+      await enableCloudMode();
+    }
+  }, [closeLogin, enableCloudMode, loginIntent]);
 
   return (
     <DetailPageShell visible={visible} title="设置" onClose={onClose}>
@@ -143,7 +158,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
             void showCloudSyncStatusAlert();
           }}
           onLogout={handleLogout}
-          onShowLogin={openLogin}
+          onShowLogin={() => openLogin('account')}
           onNotificationsChange={handleNotifications}
           onAutoBackupChange={handleAutoBackup}
           onHighQualityPhotosChange={handleHighQualityPhotos}
@@ -157,6 +172,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onClearCache={handleClearCache}
           onInjectSuspectRepairable={() => e2eSyncLabService.injectSuspectRepairable()}
           onInjectRepairPending={() => e2eSyncLabService.injectRepairPending()}
+          onInjectTextDetailFixture={() => e2eSyncLabService.injectTextDetailFixture()}
           onClearSyncFixtures={() => e2eSyncLabService.clearFixtures()}
           onShowSyncRepairPrompt={() => showPhotoRepairPrompt()}
           onOpenTagManagement={openTagManagement}

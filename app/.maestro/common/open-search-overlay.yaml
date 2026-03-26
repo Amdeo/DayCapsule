@@ -1,0 +1,111 @@
+appId: com.memorycapsule.app
+---
+- runFlow:
+    when:
+      visible: "发现云端媒体异常"
+    commands:
+      - tapOn: "稍后处理"
+- runFlow:
+    when:
+      visible: "媒体同步状态"
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: error-feedback-card
+    commands:
+      - tapOn:
+          id: error-feedback-action-0
+- runFlow:
+    when:
+      visible:
+        id: action-sheet-cancel
+    commands:
+      - tapOn:
+          id: action-sheet-cancel
+- runFlow:
+    when:
+      visible:
+        id: image-viewer-root
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: search-overlay-cancel-button
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: search-overlay-clear-query-button
+          commands:
+            - tapOn:
+                id: search-overlay-clear-query-button
+      - runFlow:
+          when:
+            visible:
+              id: search-overlay-reset-button
+          commands:
+            - tapOn:
+                id: search-overlay-reset-button
+      - tapOn:
+          id: search-overlay-cancel-button
+- runFlow:
+    when:
+      visible:
+        id: entry-editor-back-button
+    commands:
+      - tapOn:
+          id: entry-editor-back-button
+- runFlow:
+    when:
+      visible: "放弃修改？"
+    commands:
+      - tapOn: "放弃修改"
+- runFlow:
+    when:
+      visible:
+        id: detail-page-back-button
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: settings-page-root
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: sidebar-shell
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
+    timeout: 5000
+- assertVisible:
+    id: home-screen-root
+- tapOn:
+    id: searchbar-search-box
+- extendedWaitUntil:
+    visible:
+      id: search-overlay-root
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: search-overlay-clear-query-button
+    commands:
+      - tapOn:
+          id: search-overlay-clear-query-button
+- runFlow:
+    when:
+      visible:
+        id: search-overlay-reset-button
+    commands:
+      - tapOn:
+          id: search-overlay-reset-button
+- assertVisible:
+    id: search-overlay-root

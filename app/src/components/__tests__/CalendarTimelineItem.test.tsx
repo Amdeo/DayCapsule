@@ -51,4 +51,20 @@ describe('CalendarTimelineItem', () => {
     expect(latestEntryCardProps?.calendarDensity).toBe('default');
     expect(latestEntryCardProps?.cardSpacing).toBe(0);
   });
+
+  it('adjusts the timeline spacing for compact density and forwards action-sheet state', () => {
+    const onActionSheetOpen = jest.fn();
+    const screen = render(
+      <CalendarTimelineItem
+        entry={entry}
+        density="compact"
+        isActionSheetActive
+        onActionSheetOpen={onActionSheetOpen}
+      />
+    );
+
+    expect(screen.getByTestId('calendar-timeline-item-root')).toHaveStyle({ paddingBottom: 10 });
+    expect(latestEntryCardProps?.isActionSheetActive).toBe(true);
+    expect(latestEntryCardProps?.onActionSheetOpen).toBe(onActionSheetOpen);
+  });
 });
