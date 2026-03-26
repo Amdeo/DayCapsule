@@ -44,4 +44,13 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
   });
+
+  it('opens the login dialog from the real unauthenticated account entry', async () => {
+    // Note: unauthenticated real UI does not render the cloud-mode switch; only the login entry is available.
+    const { screen } = renderSettingsPage({ authenticated: false });
+
+    fireEvent.press(screen.getByText('登录 / 注册'));
+
+    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+  });
 });
