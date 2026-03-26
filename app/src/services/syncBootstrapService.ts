@@ -201,60 +201,66 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
   const runInitialFlow = async (source: 'cloud' | 'local'): Promise<void> => {
     if (source === 'cloud') {
       await useSyncStore.getState().setInitialSyncState('restoring');
-      const exported = await client.get<Partial<Entry>[]>('/entries/export');
-      const restoredEntries = (exported ?? []).map(normalizeImportedEntry);
-      await DB.clearAllEntries();
-      await DB.restoreEntries(restoredEntries);
-      const mediaValidationRun = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
-        const total = countCloudRestoreMediaValidationTargets(restoredEntries);
-        return {
-          summary: {
-            status: 'failed' as const,
-            total,
-            downloaded: 0,
-            missing: 0,
-            failed: total,
-            suspect: 0,
-            repairable: 0,
-            lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
-            lastValidatedAt: Date.now(),
-          },
-          issues: [],
-        };
-      });
-      await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
-      useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
-      if (mediaValidationRun.issues.length > 0) {
-        showPhotoRepairPrompt();
+      try {
+        const exported = await client.get<Partial<Entry>[]>('/entries/export');
+        const restoredEntries = (exported ?? []).map(normalizeImportedEntry);
+        await DB.clearAllEntries();
+        await DB.restoreEntries(restoredEntries);
+        const mediaValidationRun = await createCloudMediaSyncService().validateEntries(restoredEntries).catch((error) => {
+          const total = countCloudRestoreMediaValidationTargets(restoredEntries);
+          return {
+            summary: {
+              status: 'failed' as const,
+              total,
+              downloaded: 0,
+              missing: 0,
+              failed: total,
+              suspect: 0,
+              repairable: 0,
+              lastError: error instanceof Error ? error.message : 'Failed to validate restored cloud media',
+              lastValidatedAt: Date.now(),
+            },
+            issues: [],
+          };
+        });
+        await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
+        useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
+        if (mediaValidationRun.issues.length > 0) {
+          showPhotoRepairPrompt();
+        }
+      } finally {
+        await useSyncStore.getState().setInitialSyncState('ready');
       }
-      await useSyncStore.getState().setInitialSyncState('ready');
       return;
     }
 
     await useSyncStore.getState().setInitialSyncState('backing-up');
-    const entries = await DB.getAllEntries();
-    for (const entry of entries) {
-      if (entry.syncStatus === 'pending_upload' || entry.syncStatus === 'uploading') {
-        continue;
-      }
+    try {
+      const entries = await DB.getAllEntries();
+      for (const entry of entries) {
+        if (entry.syncStatus === 'pending_upload' || entry.syncStatus === 'uploading') {
+          continue;
+        }
 
-      const preparedMedia = await prepareEntryMediaForCloudBackup(
-        entry,
-        (localUri, options) => client.uploadFile('/media/upload', localUri, 'file', options)
-      );
-      if (preparedMedia) {
-        await DB.updateEntry(entry.id, { media: preparedMedia });
-      }
+        const preparedMedia = await prepareEntryMediaForCloudBackup(
+          entry,
+          (localUri, options) => client.uploadFile('/media/upload', localUri, 'file', options)
+        );
+        if (preparedMedia) {
+          await DB.updateEntry(entry.id, { media: preparedMedia });
+        }
 
-      await DB.updateEntry(entry.id, {
-        syncStatus: entry.syncStatus === 'pending_delete' ? 'pending_delete' : 'pending',
-        syncOp: entry.syncStatus === 'pending_delete' || entry.syncOp === 'delete' ? 'delete' : 'create',
-        baseUpdatedAt: entry.baseUpdatedAt ?? entry.updatedAt,
-        deleted: entry.deleted ?? false,
-      });
+        await DB.updateEntry(entry.id, {
+          syncStatus: entry.syncStatus === 'pending_delete' ? 'pending_delete' : 'pending',
+          syncOp: entry.syncStatus === 'pending_delete' || entry.syncOp === 'delete' ? 'delete' : 'create',
+          baseUpdatedAt: entry.baseUpdatedAt ?? entry.updatedAt,
+          deleted: entry.deleted ?? false,
+        });
+      }
+      logger.log('[syncBootstrap] local entries marked for cloud backup');
+    } finally {
+      await useSyncStore.getState().setInitialSyncState('ready');
     }
-    await useSyncStore.getState().setInitialSyncState('ready');
-    logger.log('[syncBootstrap] local entries marked for cloud backup');
   };
 
   return {

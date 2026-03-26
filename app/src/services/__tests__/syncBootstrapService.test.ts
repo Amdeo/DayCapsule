@@ -499,4 +499,54 @@ describe('syncBootstrapService', () => {
       }),
     );
   });
+
+  it('resets initial sync state when first local backup fails during media upload', async () => {
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'photo-local-fail',
+        type: 'photo',
+        content: '本地图片',
+        timestamp: 1700000002000,
+        syncStatus: 'synced',
+        media: [
+          {
+            uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-fail.jpg',
+            mimeType: 'image/jpeg',
+            size: 4096,
+            metadata: {
+              localMediaId: 'bootstrap-local-media-fail',
+              sourceHash: 'source-hash-fail',
+              persistedHash: 'persisted-hash-fail',
+              width: 1200,
+              height: 900,
+              createdAt: 1700000002000,
+              modifiedAt: 1700000002000,
+            },
+          },
+        ],
+      },
+    ]);
+    mockUploadFile.mockRejectedValueOnce(new Error('upload unavailable'));
+
+    const service = createSyncBootstrapService();
+
+    await expect(service.runInitialFlow('local')).rejects.toThrow('upload unavailable');
+
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'backing-up');
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
+    expect(DB.updateEntry).not.toHaveBeenCalled();
+  });
+
+  it('resets initial sync state when cloud restore export fails before local restore begins', async () => {
+    mockApiGet.mockRejectedValueOnce(new Error('export unavailable'));
+
+    const service = createSyncBootstrapService();
+
+    await expect(service.runInitialFlow('cloud')).rejects.toThrow('export unavailable');
+
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(1, 'restoring');
+    expect(mockSetInitialSyncState).toHaveBeenNthCalledWith(2, 'ready');
+    expect(DB.clearAllEntries).not.toHaveBeenCalled();
+    expect(DB.restoreEntries).not.toHaveBeenCalled();
+  });
 });
