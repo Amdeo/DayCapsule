@@ -1,7 +1,7 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 // Mock useSafeAreaInsets，模拟 Android 状态栏高度 28dp
 jest.mock('react-native-safe-area-context', () => ({
@@ -81,5 +81,32 @@ describe('SearchBar 安全区适配', () => {
 
     expect(getByTestId('searchbar-search-box')).toBeTruthy();
     expect(getByTestId('searchbar-view-mode-toggle')).toBeTruthy();
+  });
+
+  it('fires menu, search and view-mode callbacks from the stable anchors', () => {
+    const onMenuPress = jest.fn();
+    const onSearchFocus = jest.fn();
+    const onViewModePress = jest.fn();
+    const { getByTestId } = render(
+      <SearchBar
+        onMenuPress={onMenuPress}
+        onSearchFocus={onSearchFocus}
+        onViewModePress={onViewModePress}
+      />
+    );
+
+    fireEvent.press(getByTestId('searchbar-menu-button-pressable'));
+    fireEvent.press(getByTestId('searchbar-search-box'));
+    fireEvent.press(getByTestId('searchbar-view-mode-toggle'));
+
+    expect(onMenuPress).toHaveBeenCalledTimes(1);
+    expect(onSearchFocus).toHaveBeenCalledTimes(1);
+    expect(onViewModePress).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the view-mode toggle when no handler is provided', () => {
+    const { queryByTestId } = render(<SearchBar />);
+
+    expect(queryByTestId('searchbar-view-mode-toggle')).toBeNull();
   });
 });
