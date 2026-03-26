@@ -39,7 +39,9 @@ jest.mock('react-native-gesture-handler', () => {
 
   return {
     GestureDetector: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-    GestureHandlerRootView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    GestureHandlerRootView: (
+      { children, ...rest }: { children: React.ReactNode; testID?: string; style?: any },
+    ) => <View {...rest}>{children}</View>,
   };
 });
 
