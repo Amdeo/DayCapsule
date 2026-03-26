@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
@@ -60,18 +60,51 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByTestId('settings-open-help')).toBeTruthy();
     expect(screen.getByTestId('settings-open-about')).toBeTruthy();
+
+    const displaySection = screen.getByTestId('settings-section-display');
+    const dataStorageSection = screen.getByTestId('settings-section-data-storage');
+
+    expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
+    expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
   });
 
-  it('opens help and about pages from support entries', async () => {
+  it('opens help page from support entry with real close path', async () => {
     const { screen } = await renderSettingsPage();
 
     fireEvent.press(screen.getByTestId('settings-open-help'));
     expect(await screen.findByTestId('help-page-root')).toBeTruthy();
-    expect(screen.getAllByText('帮助与反馈').length).toBeGreaterThan(1);
+    expect(screen.getByTestId('detail-page-title-帮助与反馈')).toBeTruthy();
+
+    const backdrops = screen.getAllByTestId('detail-page-backdrop');
+    fireEvent.press(backdrops[backdrops.length - 1]);
+    await waitFor(() => {
+      expect(screen.queryByTestId('help-page-root')).toBeNull();
+    });
+  });
+
+  it('opens about page from support entry with real close path', async () => {
+    const { screen } = await renderSettingsPage();
 
     fireEvent.press(screen.getByTestId('settings-open-about'));
     expect(await screen.findByTestId('about-page-root')).toBeTruthy();
-    expect(screen.getAllByText('关于').length).toBeGreaterThan(1);
+    expect(screen.getByTestId('detail-page-title-关于')).toBeTruthy();
+
+    const backdrops = screen.getAllByTestId('detail-page-backdrop');
+    fireEvent.press(backdrops[backdrops.length - 1]);
+    await waitFor(() => {
+      expect(screen.queryByTestId('about-page-root')).toBeNull();
+    });
+  });
+
+  it('keeps help and about mutually exclusive when switching entries', async () => {
+    const { screen } = await renderSettingsPage();
+
+    fireEvent.press(screen.getByTestId('settings-open-help'));
+    expect(await screen.findByTestId('help-page-root')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('settings-open-about'));
+    expect(await screen.findByTestId('about-page-root')).toBeTruthy();
+    expect(screen.queryByTestId('help-page-root')).toBeNull();
   });
 
   it('opens the login dialog from the real unauthenticated account entry', async () => {

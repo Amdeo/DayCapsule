@@ -293,15 +293,21 @@ jest.mock('../../DetailPageShell', () => ({
     children,
     title,
     visible,
+    onClose,
   }: {
     children: React.ReactNode;
     title: string;
     visible: boolean;
+    onClose: () => void;
   }) => {
     const React = require('react');
-    const { Text, View } = require('react-native');
+    const { Pressable, Text, View } = require('react-native');
     return visible ? (
-      <View testID="settings-page-shell">
+      <View testID="detail-page-shell">
+        <Pressable testID="detail-page-backdrop" onPress={onClose}>
+          <Text>backdrop</Text>
+        </Pressable>
+        <Text testID={`detail-page-title-${title}`}>{title}</Text>
         <Text>{title}</Text>
         {children}
       </View>

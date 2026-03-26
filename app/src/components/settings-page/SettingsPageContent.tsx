@@ -195,20 +195,6 @@ export function SettingsPageContent({
       </SettingsSection>
 
       <SettingsSection title="内容显示">
-        <SettingItem
-          icon="image"
-          title="高质量照片"
-          subtitle="保存原始质量照片"
-          rightComponent={(
-            <Switch
-              testID="settings-switch-high-quality-photos"
-              value={highQualityPhotos}
-              onValueChange={onHighQualityPhotosChange}
-              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        />
         <SettingsSegmentedSelector
           icon="albums"
           title="卡片间距"
@@ -241,6 +227,20 @@ export function SettingsPageContent({
               testID="settings-switch-auto-backup"
               value={autoBackup}
               onValueChange={onAutoBackupChange}
+              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
+              thumbColor="#FFFFFF"
+            />
+          )}
+        />
+        <SettingItem
+          icon="image"
+          title="高质量照片"
+          subtitle="保存原始质量照片"
+          rightComponent={(
+            <Switch
+              testID="settings-switch-high-quality-photos"
+              value={highQualityPhotos}
+              onValueChange={onHighQualityPhotosChange}
               trackColor={SETTINGS_SWITCH_TRACK_COLORS}
               thumbColor="#FFFFFF"
             />

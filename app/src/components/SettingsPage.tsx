@@ -57,6 +57,16 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const [showAbout, setShowAbout] = React.useState(false);
   const [loginIntent, setLoginIntent] = React.useState<'account' | 'cloud-gating' | null>(null);
 
+  const openHelp = React.useCallback(() => {
+    setShowAbout(false);
+    setShowHelp(true);
+  }, []);
+
+  const openAbout = React.useCallback(() => {
+    setShowHelp(false);
+    setShowAbout(true);
+  }, []);
+
   const openLogin = React.useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
     setLoginIntent(intent);
     setShowLogin(true);
@@ -178,8 +188,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onClearSyncFixtures={() => e2eSyncLabService.clearFixtures()}
           onShowSyncRepairPrompt={() => showPhotoRepairPrompt()}
           onOpenTagManagement={openTagManagement}
-          onOpenHelp={() => setShowHelp(true)}
-          onOpenAbout={() => setShowAbout(true)}
+          onOpenHelp={openHelp}
+          onOpenAbout={openAbout}
           onResetSettings={handleResetSettings}
         />
         <SettingsPageDialogs
