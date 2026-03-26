@@ -144,7 +144,7 @@ export function SettingsPageContent({
         />
         {isAuthenticated ? (
           <>
-            <SettingItem icon="person" title={userEmail ?? ''} subtitle="已登录" />
+            <SettingItem icon="person" title={userEmail ?? '已登录'} subtitle="已登录" />
             <SettingItem
               icon="cloud"
               title="云端模式"

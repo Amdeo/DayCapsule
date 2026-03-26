@@ -68,6 +68,81 @@ describe('SettingsPage assembly', () => {
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
   });
 
+  it('renders settings sections in fixed order and keeps reset action in danger section', async () => {
+    const { screen } = await renderSettingsPage();
+
+    const findNodeByTestId = (
+      node: unknown,
+      testID: string,
+    ): { props?: { testID?: string }; children?: unknown[] } | null => {
+      if (!node) {
+        return null;
+      }
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = findNodeByTestId(child, testID);
+          if (found) {
+            return found;
+          }
+        }
+        return null;
+      }
+      if (typeof node !== 'object') {
+        return null;
+      }
+      const candidate = node as { props?: { testID?: string }; children?: unknown[] };
+      if (candidate.props?.testID === testID) {
+        return candidate;
+      }
+      if (candidate.children) {
+        for (const child of candidate.children) {
+          const found = findNodeByTestId(child, testID);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return null;
+    };
+
+    const settingsRootNode = findNodeByTestId(screen.toJSON(), 'settings-page-root');
+    const rootChildren = settingsRootNode?.children ?? [];
+    const findSectionIndex = (testID: string) => rootChildren.findIndex((child) => (
+      typeof child === 'object'
+      && child !== null
+      && 'props' in child
+      && (child as { props?: { testID?: string } }).props?.testID === testID
+    ));
+
+    const accountSyncIndex = findSectionIndex('settings-section-account-sync');
+    const remindersIndex = findSectionIndex('settings-section-reminders');
+    const displayIndex = findSectionIndex('settings-section-display');
+    const dataStorageIndex = findSectionIndex('settings-section-data-storage');
+    const tagsIndex = findSectionIndex('settings-section-tags');
+    const supportIndex = findSectionIndex('settings-section-support');
+    const dangerIndex = findSectionIndex('settings-section-danger');
+
+    expect(accountSyncIndex).toBeGreaterThanOrEqual(0);
+    expect(accountSyncIndex).toBeLessThan(remindersIndex);
+    expect(remindersIndex).toBeLessThan(displayIndex);
+    expect(displayIndex).toBeLessThan(dataStorageIndex);
+    expect(dataStorageIndex).toBeLessThan(tagsIndex);
+    expect(tagsIndex).toBeLessThan(supportIndex);
+    expect(supportIndex).toBeLessThan(dangerIndex);
+
+    const supportSection = screen.getByTestId('settings-section-support');
+    const dangerSection = screen.getByTestId('settings-section-danger');
+    expect(within(dangerSection).getByText('重置设置')).toBeTruthy();
+    expect(within(supportSection).queryByText('重置设置')).toBeNull();
+  });
+
+  it('falls back to non-empty account title when authenticated user email is missing', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: true, userEmail: null });
+    const accountSection = screen.getByTestId('settings-section-account-sync');
+
+    expect(within(accountSection).getAllByText('已登录').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('renders the settings overview card with account, sync and storage summary', async () => {
     const { screen } = await renderSettingsPage({ authenticated: true });
 
