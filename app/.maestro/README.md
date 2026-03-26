@@ -76,6 +76,8 @@ maestro test app/.maestro/flows/smoke/home-to-settings.yaml
 maestro test app/.maestro/flows/smoke/settings-to-login.yaml
 ```
 
+`settings-to-login.yaml` 会改变登录态，建议单条执行，不要和其他 smoke flow 混跑。
+
 云同步 happy path：
 
 ```bash
@@ -121,7 +123,6 @@ npm run android
 ## 批量执行
 
 ```bash
-maestro test app/.maestro/flows/smoke
 cd app && bash .maestro/scripts/run-app-core.sh
 maestro test app/.maestro/flows/cloud-sync
 ```

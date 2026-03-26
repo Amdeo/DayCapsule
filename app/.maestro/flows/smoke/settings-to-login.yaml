@@ -1,10 +1,33 @@
 appId: com.memorycapsule.app
 ---
-- runFlow: ../../common/open-settings.yaml
+- runFlow: ../../common/open-sidebar.yaml
 - runFlow:
     when:
-      visible: "退出登录"
+      visible:
+        id: sidebar-shell
     commands:
+      - tapOn:
+          id: sidebar-menu-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-page-root
+    timeout: 10000
+- assertVisible:
+    id: settings-page-root
+- scrollUntilVisible:
+    element:
+      text: 账户
+    direction: UP
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible: "登录 / 注册"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: 退出登录
+          direction: DOWN
+          timeout: 10000
       - tapOn:
           text: 退出登录
       - tapOn:
