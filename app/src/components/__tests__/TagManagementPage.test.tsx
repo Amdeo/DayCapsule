@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, PanResponder, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { TagManagementPage } from '../TagManagementPage';
+import { MAX_TAGS } from '../tag-management-page/tagManagementConfig';
 
 const mockLoadCommonTags = jest.fn();
 const mockAddCommonTag = jest.fn();
@@ -10,11 +11,20 @@ const mockResetToDefaults = jest.fn();
 const mockReorderCommonTags = jest.fn();
 const responderConfigs: any[] = [];
 
+let mockStoreState: { tags: string[]; isLoaded: boolean } = {
+  tags: ['工作', '学习', '旅行'],
+  isLoaded: true,
+};
+
+function setMockCommonTagsState(next: Partial<typeof mockStoreState>) {
+  mockStoreState = { ...mockStoreState, ...next };
+}
+
 jest.mock('@/src/store/commonTagsStore', () => ({
   DEFAULT_PRESET_TAGS: ['工作', '学习', '旅行'],
   useCommonTagsStore: () => ({
-    tags: ['工作', '学习', '旅行'],
-    isLoaded: true,
+    tags: mockStoreState.tags,
+    isLoaded: mockStoreState.isLoaded,
     loadCommonTags: mockLoadCommonTags,
     addCommonTag: mockAddCommonTag,
     removeCommonTag: mockRemoveCommonTag,
@@ -47,6 +57,7 @@ describe('TagManagementPage preset tags', () => {
     jest.clearAllMocks();
     responderConfigs.length = 0;
     jest.useFakeTimers();
+    setMockCommonTagsState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     jest.spyOn(PanResponder, 'create').mockImplementation((config: any) => {
       responderConfigs.push(config);
@@ -80,6 +91,13 @@ describe('TagManagementPage preset tags', () => {
     expect(screen.getByText('#工作')).toBeTruthy();
   });
 
+  it('does not load common tags when visible=true and isLoaded=true', () => {
+    setMockCommonTagsState({ isLoaded: true });
+    render(<TagManagementPage visible onClose={() => {}} />);
+
+    expect(mockLoadCommonTags).not.toHaveBeenCalled();
+  });
+
   it('adds a preset tag from the management page', async () => {
     const screen = render(<TagManagementPage visible onClose={() => {}} />);
 
@@ -89,6 +107,32 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+  });
+
+  it('does not add a preset tag and alerts when at limit', async () => {
+    // 先在未达上限时设置 inputValue，保证输入行为稳定；再切到达上限触发 handleAdd 的保护分支。
+    setMockCommonTagsState({
+      tags: Array.from({ length: MAX_TAGS - 1 }, (_, i) => `标签${i + 1}`),
+      isLoaded: true,
+    });
+
+    const screen = render(<TagManagementPage visible onClose={() => {}} />);
+    fireEvent.changeText(screen.getByPlaceholderText('输入新预制标签'), '灵感');
+
+    setMockCommonTagsState({
+      tags: Array.from({ length: MAX_TAGS }, (_, i) => `标签${i + 1}`),
+    });
+    screen.rerender(<TagManagementPage visible onClose={() => {}} />);
+
+    const input = screen.getByPlaceholderText(`最多 ${MAX_TAGS} 个预制标签`);
+    await act(async () => {
+      // RNTL 对 `editable={false}` 的 TextInput 可能不会触发 submitEditing 事件，
+      // 这里直接调用回调以确保命中 controller 的 atLimit 分支。
+      input.props.onSubmitEditing?.({ nativeEvent: { text: '灵感' } });
+    });
+
+    expect(mockAddCommonTag).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
   });
 
   it('reorders preset tags after dragging the handle', async () => {
