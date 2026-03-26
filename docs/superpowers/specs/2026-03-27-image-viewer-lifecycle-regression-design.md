@@ -2,7 +2,7 @@
 
 ## 状态
 
-- 当前状态：已确认设计，待写实现计划
+- 当前状态：已确认修订设计，待按修订方案重做实现
 - 用户确认日期：2026-03-27
 
 ## 背景
@@ -126,17 +126,18 @@
 
 ### 2. 测试策略
 
-本轮测试对象是 `ImageViewer` 组件本身，不直接测试 hook。
+本轮测试对象是 `ImageViewer` 组件本身，且 `IVL-02` 到 `IVL-04` 必须直连真实 `useImageViewerController` 主路径，不允许再用 controller mock 人工注入 `phase`、`handleRequestClose` 或其他生命周期结果。
 
 允许的 mock 范围：
 
-- `useImageViewerController`
 - `react-native-gesture-handler`
 - `react-native-reanimated`
 - `safe-area-context`
+- `@/src/utils/logger`
 
 不允许的做法：
 
+- 对 `useImageViewerController` 做整体验证路径上的 mock
 - 为了测试去改写 `ImageViewer` 的业务逻辑
 - 把整个 `ImageViewerScene` 替换成失真过大的空壳
 - 为测试添加大段与生产代码无关的分支
@@ -146,6 +147,12 @@
 - `image-viewer-root`
 
 只有在当前组件没有稳定图片节点时，才补最小 testID。
+
+补充约束：
+
+- `IVL-02` 和 `IVL-03` 必须证明 `visible=true` 后真实 controller 能把 viewer 推进到可见主图态，而不是只验证“给定 `phase='open'` 时 scene 会渲染”
+- `IVL-04` 必须验证 `Modal -> controller.handleRequestClose -> onClose -> visible=false rerender` 这条真实接线，不得把 `handleRequestClose` 和 `onClose` 简化成同一个 mock 函数对象
+- 对 hidden/close 的断言可以读取 `Modal.props.visible` 作为补充证据，但不要把测试核心建立在 RN/Jest 对 `Modal visible=false` 是否保留子树的内部语义上
 
 ### 3. 首批回归用例
 
@@ -230,7 +237,7 @@
 - 优先保持测试文件职责清晰，而不是把一切都堆进 `navigation` 文件
 - 优先做最小 testID 增强，而不是对 viewer 组件做结构性改造
 
-这意味着本轮不会覆盖所有图片查看器相关风险，但会把“打开 / 更新 / 关闭”这条最容易静默回归的主链路锁住。
+这意味着本轮不会覆盖所有图片查看器相关风险，但会把“打开 / 更新 / 关闭”这条最容易静默回归的主链路锁住。为了确保这条主链路真正被锁住，本轮允许接受少量环境 mock，但不再接受 controller 层的 shortcut mock。
 
 ## 后续扩展
 

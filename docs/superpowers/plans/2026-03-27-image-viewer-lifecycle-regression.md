@@ -4,7 +4,7 @@
 
 **Goal:** 为 `ImageViewer` 补齐页面级生命周期回归，锁住不可见空渲染、可见时当前图片展示、图片源切换更新和关闭后收回。
 
-**Architecture:** 继续保留现有 `actions / action-sheet / navigation` 测试职责不变，新建一个独立 lifecycle 测试文件承接 viewer 壳层的打开、更新、关闭闭环。优先通过现有 `image-viewer-root` 和 React Test Renderer 的组件树断言完成测试，只有在无法稳定读取当前图片 URI 时才对 `ImageViewerScene` 做最小可测性增强。
+**Architecture:** 继续保留现有 `actions / action-sheet / navigation` 测试职责不变，新建一个独立 lifecycle 测试文件承接 viewer 壳层的打开、更新、关闭闭环。`IVL-02` 到 `IVL-04` 必须直连真实 `useImageViewerController` 主路径，只保留 `gesture-handler / reanimated / safe-area-context` 这类环境 mock；只有在无法稳定读取当前图片 URI 时才对 `ImageViewerScene` 做最小可测性增强。
 
 **Tech Stack:** React Native, Jest, React Test Renderer, React Native Testing Library, TypeScript
 
@@ -12,12 +12,9 @@
 
 ## 验证结果
 
-- 2026-03-27：已运行
-  `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/image-viewer.actions.test.ts src/components/__tests__/image/image-viewer.action-sheet.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx --runInBand`
-  - 结果：PASS（5 个 suite，16 个测试全部通过）
-- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
-  - 结果：PASS（111 个 suite，740 个测试全部通过）
-  - 备注：Jest 结束后仍提示既有 open handles 警告，但测试结果本身全绿
+- 2026-03-27：上一轮基于 controller mock 的 viewer lifecycle 验证结果已作废
+  - 原因：最终验收确认 `IVL-02` 到 `IVL-04` 没有直连真实 `useImageViewerController`，只验证了壳层 wiring，不满足修订后的设计目标
+  - 处理：本 plan 之后的验证需在“真实 controller + 环境 mock”方案下重新执行并重记结果
 
 ## Scope Note
 
@@ -121,7 +118,23 @@ git commit -m "test(image): add image viewer lifecycle baseline"
 - Modify: `app/src/components/image-viewer/ImageViewerScene.tsx`
 - Test: `app/src/components/__tests__/image/image-viewer.lifecycle.test.tsx`
 
-- [ ] **Step 1: Write the failing visible-state and image-update regressions**
+- [ ] **Step 1: Rewrite the lifecycle suite to use the real controller before adding visible/update regressions**
+
+在 `app/src/components/__tests__/image/image-viewer.lifecycle.test.tsx`：
+
+- 删除针对 `useImageViewerController` 的 mock 与 `buildControllerState/resetControllerState` 辅助
+- 保留最小环境 mock：
+  - `react-native-safe-area-context`
+  - `react-native-gesture-handler`
+  - `react-native-reanimated`
+  - `@/src/utils/logger`
+
+要求：
+
+- `IVL-02` 到 `IVL-04` 不允许再人工注入 `phase='open'`
+- 如果在恢复真实 controller 后 `IVL-01` 需要同步调整 hidden-state 断言，可以一起做最小修正，但不要新增无关断言
+
+- [ ] **Step 2: Add the failing visible-state and image-update regressions**
 
 在同一测试文件继续新增：
 
@@ -164,13 +177,21 @@ it('updates the rendered image when imageUri changes on rerender', () => {
 });
 ```
 
-- [ ] **Step 2: Run the lifecycle suite to verify the new cases fail**
+- [ ] **Step 3: Run the lifecycle suite to verify the new cases fail**
 
 Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
-Expected: FAIL，优先因为当前主图节点没有稳定 `testID="image-viewer-image"`，或当前断言方式无法稳定定位主图。
+Expected: FAIL，优先因为：
 
-- [ ] **Step 3: Add the smallest image-node test anchor only if needed**
+- 真实 controller/动画时序下 viewer 还没有稳定可断言的主图节点
+- 或当前断言方式无法在真实 controller 路径下稳定定位主图
+
+不接受的失败形态：
+
+- 再次因为 `useImageViewerController` mock 注入方式导致测试人为通过
+- 再次通过 mock 把 `phase` 手工设成 `'open'`
+
+- [ ] **Step 4: Add the smallest image-node test anchor only if needed**
 
 如果通过 `findByType(Image)` 或 `findAllByType(Image)` 已能稳定定位主图，则不要修改生产代码。
 
@@ -188,13 +209,13 @@ Expected: FAIL，优先因为当前主图节点没有稳定 `testID="image-viewe
 
 不要给 opening/closing hero image 额外补多个 testID，避免测试锚点膨胀。
 
-- [ ] **Step 4: Re-run the lifecycle suite to verify open/update behavior passes**
+- [ ] **Step 5: Re-run the lifecycle suite to verify open/update behavior passes**
 
 Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: PASS（`IVL-01` 到 `IVL-03` 全部通过）
 
-- [ ] **Step 5: Commit the visible/update regressions**
+- [ ] **Step 6: Commit the visible/update regressions**
 
 ```bash
 git add app/src/components/__tests__/image/image-viewer.lifecycle.test.tsx app/src/components/image-viewer/ImageViewerScene.tsx
@@ -208,7 +229,7 @@ git commit -m "test(image): add image viewer lifecycle regressions"
 - Modify: `app/src/components/__tests__/image/image-viewer.navigation.test.tsx`
 - Test: `app/src/components/__tests__/image/image-viewer.lifecycle.test.tsx`
 
-- [ ] **Step 1: Write the failing close/unmount regression**
+- [ ] **Step 1: Write the failing close/unmount regression on the real controller path**
 
 新增 `IVL-04`：
 
@@ -259,6 +280,12 @@ const modal = tree.root.findByType(Modal);
 expect(modal.props.visible).toBe(false);
 expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
 ```
+
+补充约束：
+
+- 不允许把 `handleRequestClose` 和 `onClose` 变成同一个 mock 函数对象
+- 不允许重新引入 controller mock 来手工制造关闭链路
+- `onRequestClose -> controller.handleRequestClose -> onClose -> visible=false rerender` 必须仍然走真实 controller 的主路径
 
 如果旧的 `image-viewer.navigation.test.tsx` 因共享 mock 或 testID 调整受影响，只做最小同步，不新增新行为断言。
 
