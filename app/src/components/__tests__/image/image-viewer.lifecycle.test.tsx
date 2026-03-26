@@ -140,4 +140,40 @@ describe('ImageViewer lifecycle', () => {
     const updated = findCurrentImage(tree, 'file:///image-b.jpg');
     expect(updated.props.source).toEqual({ uri: 'file:///image-b.jpg' });
   });
+
+  it('removes the viewer shell after close is requested and visible becomes false', () => {
+    const onClose = jest.fn();
+    resetControllerState({ phase: 'open', handleRequestClose: onClose });
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri='file:///image-a.jpg'
+          onClose={onClose}
+        />
+      );
+    });
+
+    const modal = tree.root.findByType(Modal);
+    act(() => {
+      modal.props.onRequestClose();
+    });
+
+    act(() => {
+      tree.update(
+        <ImageViewer
+          visible={false}
+          imageUri='file:///image-a.jpg'
+          onClose={onClose}
+        />
+      );
+    });
+
+    const hiddenModal = tree.root.findByType(Modal);
+    expect(hiddenModal.props.visible).toBe(false);
+    expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
+  });
 });
