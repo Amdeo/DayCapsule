@@ -17,6 +17,33 @@ type OverallCloudSyncState = {
   tone: 'accent' | 'error';
 };
 
+function getFeedbackMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message.length > 0) {
+      return message;
+    }
+  }
+
+  if (typeof error === 'string') {
+    const message = error.trim();
+    if (message.length > 0) {
+      return message;
+    }
+  }
+
+  return fallbackMessage;
+}
+
+function buildCloudSyncStatusRefreshFailedFeedback(error: unknown): ErrorFeedbackRequest {
+  return {
+    title: '状态刷新失败',
+    message: getFeedbackMessage(error, '同步已完成，但暂时无法刷新最新云同步状态，请稍后重试。'),
+    dedupeKey: 'cloud-sync-status-refresh-failed',
+    actions: [{ label: '知道了', role: 'primary' }],
+  };
+}
+
 const EMPTY_MEDIA_SUMMARY: NonNullable<SyncOverviewSnapshot['lastMediaValidationSummary']> = {
   status: 'idle',
   total: 0,
@@ -246,25 +273,30 @@ function buildCloudSyncStatusFeedback(
 }
 
 export async function showCloudSyncStatusAlert(): Promise<void> {
-  const cloudSync = createCloudSyncService();
-  const overviewService = createCloudSyncOverviewService();
+  const showStatusFeedback = async (): Promise<void> => {
+    const snapshot = await createCloudSyncOverviewService().getSnapshot();
+    const onSyncNow = async (): Promise<void> => {
+      try {
+        await createCloudSyncService().syncNow();
+      } catch (error) {
+        logger.warn('[showCloudSyncStatusAlert] 手动云同步失败:', error);
+        showErrorFeedback(buildCloudSyncFailedFeedback(error));
+        return;
+      }
 
-  const onSyncNow = async (): Promise<void> => {
-    try {
-      await cloudSync.syncNow();
-      const refreshed = await overviewService.getSnapshot();
-      showErrorFeedback(buildCloudSyncStatusFeedback(refreshed, onSyncNow));
-    } catch (error) {
-      logger.warn('[showCloudSyncStatusAlert] 手动云同步失败:', error);
-      showErrorFeedback(buildCloudSyncFailedFeedback(error));
-    }
+      try {
+        await showStatusFeedback();
+      } catch (error) {
+        logger.warn('[showCloudSyncStatusAlert] 手动同步后刷新云同步状态失败:', error);
+        showErrorFeedback(buildCloudSyncStatusRefreshFailedFeedback(error));
+      }
+    };
+
+    showErrorFeedback(buildCloudSyncStatusFeedback(snapshot, onSyncNow));
   };
 
   try {
-    const snapshot = await overviewService.getSnapshot();
-    showErrorFeedback(
-      buildCloudSyncStatusFeedback(snapshot, onSyncNow),
-    );
+    await showStatusFeedback();
   } catch (error) {
     logger.warn('[showCloudSyncStatusAlert] 获取云同步状态失败:', error);
     showErrorFeedback(buildCloudSyncFailedFeedback(error));
