@@ -50,6 +50,19 @@ describe('ErrorBoundary', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('renders children normally when no error is thrown', () => {
+    allowRender = true;
+    const screen = render(
+      <ErrorBoundary>
+        <FlakyChild />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('恢复成功')).toBeTruthy();
+    expect(screen.queryByTestId('error-boundary-root')).toBeNull();
+    expect(mockCaptureException).not.toHaveBeenCalled();
+  });
+
   it('renders the fallback shell when a child throws', () => {
     const screen = render(
       <ErrorBoundary>
