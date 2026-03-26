@@ -84,9 +84,9 @@ describe('Sidebar shell', () => {
     expect(getByTestId('sidebar-menu-backup')).toBeTruthy();
     expect(getByTestId('sidebar-menu-settings')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
-    expect(getByText('查看记录趋势和数据分布')).toBeTruthy();
-    expect(getByText('管理数据备份与跨设备同步')).toBeTruthy();
-    expect(getByText('调整应用偏好和系统选项')).toBeTruthy();
+    expect(getByText('查看记录、照片、语音概览')).toBeTruthy();
+    expect(getByText('管理本地备份与云端同步')).toBeTruthy();
+    expect(getByText('调整账号、显示和存储偏好')).toBeTruthy();
     expect(getByText('DayCapsule v1.0.0')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });
   });

@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-27-sidebar-settings-ia-redesign.md`
 
-**Status:** 待执行
+**Status:** 已执行（Task 4 收口完成，lint 有基线遗留失败）
 
 ---
 
@@ -318,7 +318,7 @@ git commit -m "feat: add settings overview summary card"
 - Modify: `docs/superpowers/specs/2026-03-27-sidebar-settings-ia-redesign.md`
 - Modify: `docs/superpowers/plans/2026-03-27-sidebar-settings-ia-redesign.md`
 
-- [ ] **Step 1: 先补一个侧栏标题 / 副标题断言**
+- [x] **Step 1: 先补一个侧栏标题 / 副标题断言**
 
 在 `app/src/components/__tests__/Sidebar.test.tsx` 增加对副标题的断言，例如：
 
@@ -328,13 +328,13 @@ expect(screen.getByText('管理本地备份与云端同步')).toBeTruthy();
 expect(screen.getByText('调整账号、显示和存储偏好')).toBeTruthy();
 ```
 
-- [ ] **Step 2: 运行侧栏测试，确认副标题断言先失败**
+- [x] **Step 2: 运行侧栏测试，确认副标题断言先失败**
 
 Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
 
 Expected: FAIL，原因应包含副标题文本尚未渲染。
 
-- [ ] **Step 3: 完成侧栏视觉收口的最小实现**
+- [x] **Step 3: 完成侧栏视觉收口的最小实现**
 
 在 `SidebarPanel.tsx` / `Sidebar.styles.ts` 中完成：
 
@@ -345,7 +345,7 @@ Expected: FAIL，原因应包含副标题文本尚未渲染。
 
 这一步只做视觉层次增强，不再修改导航关系。
 
-- [ ] **Step 4: 跑完整回归**
+- [x] **Step 4: 跑完整回归**
 
 Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
 
@@ -370,7 +370,7 @@ Expected: PASS
 - `标签管理` 仍可从设置页进入
 - 设置页的摘要卡、支持区和危险操作区视觉层级清晰
 
-- [ ] **Step 5: 更新文档状态并提交最终收口**
+- [x] **Step 5: 更新文档状态并提交最终收口**
 
 要求：
 
@@ -384,15 +384,23 @@ git commit -m "refactor: redesign sidebar and settings information architecture"
 
 ## 最终验证清单
 
-- [ ] `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
-- [ ] `cd app && npm run test:frontend:settings`
-- [ ] `cd app && npm run typecheck`
-- [ ] `cd app && npm run lint`
-- [ ] 手动验证菜单只保留 3 个一级入口
-- [ ] 手动验证帮助与关于已迁入设置页支持区
-- [ ] 手动验证标签管理已迁入设置页且仍可打开
-- [ ] 手动验证顶部摘要卡和数据与存储摘要卡视觉层级正确
-- [ ] 文档状态已回填
+- [x] `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+- [x] `cd app && npm run test:frontend:settings`
+- [x] `cd app && npm run typecheck`
+- [ ] `cd app && npm run lint`（FAIL，分支基线存在大量 style-guard 遗留错误，非本任务引入）
+- [x] 手动验证菜单只保留 3 个一级入口
+- [x] 手动验证帮助与关于已迁入设置页支持区
+- [x] 手动验证标签管理已迁入设置页且仍可打开
+- [x] 手动验证顶部摘要卡和数据与存储摘要卡视觉层级正确
+- [x] 文档状态已回填
+
+## Task 4 执行结果（2026-03-27）
+
+- Step 1：已确认 `Sidebar.test.tsx` 原本已有副标题断言，但文案非最终版本；已更新为最终文案。
+- Step 2：已执行 `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx` 并得到预期失败（缺少新副标题文案）。
+- Step 3：已在 `SidebarPanel.tsx`/`Sidebar.styles.ts` 完成最小视觉收口，未调整导航关系。
+- Step 4：完整回归中，`Sidebar + Settings` 相关测试与 `typecheck` 通过；`lint` 因基线遗留规则报错未通过。
+- Step 5：spec/plan 状态已回填，提交见本任务 commit。
 
 ## 本地结构化 Review 结论
 

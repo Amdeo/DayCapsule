@@ -2,9 +2,22 @@
 
 ## 状态
 
-- 当前状态：设计已确认，待用户 review
+- 当前状态：已实现（含回归验证，lint 存在基线遗留失败）
 - 设计确认日期：2026-03-27
+- 实现完成日期：2026-03-27
 - 相关范围：`SidebarPanel`、`sidebarConfig`、`SettingsPage`、`SettingsPageContent`
+
+## 实现与验证结果
+
+- 2026-03-27：侧栏已完成视觉收口，标题区补充轻说明文本，一级入口采用完整卡片行，`设置` 前分隔保留，右箭头与图标容器层级统一。
+- 2026-03-27：`Sidebar` 副标题断言已按最终文案锁定为：
+  - `查看记录、照片、语音概览`
+  - `管理本地备份与云端同步`
+  - `调整账号、显示和存储偏好`
+- 2026-03-27：执行 `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`，结果 PASS（2 suites, 18 tests）。
+- 2026-03-27：执行 `cd app && npm run test:frontend:settings`，结果 PASS（6 suites, 23 tests）。
+- 2026-03-27：执行 `cd app && npm run typecheck`，结果 PASS。
+- 2026-03-27：执行 `cd app && npm run lint`，结果 FAIL；失败集中于分支内既有 `style-guard/no-new-stylesheet-create` 与 `style-guard/no-static-inline-styles` 规则报错，属于本任务范围外的基线问题。
 
 ## 评审记录
 
