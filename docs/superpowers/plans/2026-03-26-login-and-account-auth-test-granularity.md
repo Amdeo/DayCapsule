@@ -29,8 +29,12 @@
 
 - Modify: `app/src/components/__tests__/LoginPage.test.tsx`
   Purpose: 扩展登录页表单校验、成功/失败回流、模式切换和 loading 覆盖。
+- Modify: `app/src/components/SettingsPage.tsx`
+  Purpose: 把“普通账户入口登录”与“云端 gating 登录”分流到不同的打开意图，供账户专项测试锁定 AC-09 / AC-10。
+- Modify: `app/src/components/settings-page/useSettingsPageController.ts`
+  Purpose: 为登录弹窗维护最小的 `loginIntent` 状态，并让 `handleLoginSuccess` 只在云端 gating 场景触发 `enableCloudMode`。
 - Modify: `app/src/components/__tests__/helpers/renderSettingsPage.tsx`
-  Purpose: 为账户区测试提供更可控的 auth / login-dialog mock 面，能区分“普通登录入口”和“云端 gating 登录入口”的成功语义。
+  Purpose: 为账户区测试提供更可控的 auth / login-dialog mock 面，能驱动最新登录弹窗回调，并在测试间重置状态。
 - Create: `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx`
   Purpose: 承接设置页账户区专项测试，避免把 `SettingsPage.test.tsx` 继续做大。
 - Modify: `app/src/components/__tests__/SettingsPage.test.tsx`
@@ -123,9 +127,11 @@ git add app/src/components/__tests__/LoginPage.test.tsx
 git commit -m "test(auth): expand login page coverage"
 ```
 
-### Task 2: Add Settings Account Auth Test Harness And Suites
+### Task 2: Add Settings Account Auth Intent, Harness And Suites
 
 **Files:**
+- Modify: `app/src/components/SettingsPage.tsx`
+- Modify: `app/src/components/settings-page/useSettingsPageController.ts`
 - Modify: `app/src/components/__tests__/helpers/renderSettingsPage.tsx`
 - Create: `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx`
 - Modify: `app/src/components/__tests__/SettingsPage.test.tsx`
@@ -170,24 +176,59 @@ it('opens the login dialog instead of enabling cloud mode when unauthenticated u
 
 Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
 
-Expected: FAIL，因为当前 `renderSettingsPage.tsx` 还无法区分普通登录成功与 gating 登录成功，也还没有稳定暴露登录弹窗 props 供测试驱动。
+Expected: FAIL，因为当前 `handleLoginSuccess` 会无条件 `enableCloudMode()`，还不满足普通入口成功只关闭弹窗的语义；同时测试 helper 也还没有稳定暴露登录弹窗 props 供测试驱动。
 
-- [ ] **Step 3: Extend renderSettingsPage helper minimally**
+- [ ] **Step 3: Implement the minimal source-aware login flow**
+
+在 `app/src/components/settings-page/useSettingsPageController.ts` 中增加最小状态：
+
+```tsx
+const [loginIntent, setLoginIntent] = useState<'account' | 'cloud-gating' | null>(null);
+
+const openLogin = useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
+  setLoginIntent(intent);
+  setShowLogin(true);
+}, []);
+```
+
+并把登录成功语义改成：
+
+```tsx
+const handleLoginSuccess = useCallback(async () => {
+  const intent = loginIntent;
+  setShowLogin(false);
+  setLoginIntent(null);
+  if (intent === 'cloud-gating') {
+    await enableCloudMode();
+  }
+}, [enableCloudMode, loginIntent]);
+```
+
+同时在 `closeLogin()` 中清空 `loginIntent`，并在 `app/src/components/SettingsPage.tsx` 接线：
+
+- `useSettingsPageCloudMode({ onRequireLogin: () => openLogin('cloud-gating') })`
+- `SettingsPageContent` 保持现有 props，不新增 `onRequireLogin`，只把 `onShowLogin={() => openLogin('account')}` 传给账户入口
+
+这样 Task 2 的专项测试才能真实区分 AC-09 与 AC-10。
+
+- [ ] **Step 4: Extend renderSettingsPage helper minimally**
 
 在 `app/src/components/__tests__/helpers/renderSettingsPage.tsx` 中：
 
 1. 把 `LoginPage` mock 从纯文本节点改成“可见时渲染 testID + 暴露最新 props”：
 
 ```tsx
-let latestLoginPageProps: {
+type MockLoginPageProps = {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void | Promise<void>;
-} | null = null;
+};
+
+let latestLoginPageProps: MockLoginPageProps | null = null;
 
 jest.mock('../../LoginPage', () => ({
-  LoginPage: (props: typeof latestLoginPageProps) => {
-    latestLoginPageProps = props as any;
+  LoginPage: (props: MockLoginPageProps) => {
+    latestLoginPageProps = props;
     ...
   },
 }));
@@ -201,9 +242,10 @@ export function triggerLatestLoginSuccess() {
 }
 ```
 
-3. 保持现有 tag-management/login dialog 的可见性 mock，不去真实渲染 `LoginPage` 表单。
+3. 在 `resetRenderSettingsPageMocks()` 里把 `latestLoginPageProps = null`，避免测试间串数据。
+4. 保持现有 tag-management/login dialog 的可见性 mock，不去真实渲染 `LoginPage` 表单。
 
-- [ ] **Step 4: Implement the account-auth tests and verify them**
+- [ ] **Step 5: Implement the account-auth tests and verify them**
 
 在 `settings-page.account-auth.test.tsx` 中用 `Alert.alert.mock.calls` 取确认按钮：
 
@@ -218,8 +260,12 @@ function pressLatestAlertButton(text: string) {
 
 ```tsx
 expect(mocks.settings.setCloudMode).toHaveBeenNthCalledWith(1, false);
-expect(mocks.entries.loadEntries).toHaveBeenCalled();
-expect(mocks.auth.logout).toHaveBeenCalled();
+const setCloudModeOrder = (mocks.settings.setCloudMode as jest.Mock).mock.invocationCallOrder[0];
+const loadEntriesOrder = mocks.entries.loadEntries.mock.invocationCallOrder[0];
+const logoutOrder = mocks.auth.logout.mock.invocationCallOrder[0];
+
+expect(setCloudModeOrder).toBeLessThan(loadEntriesOrder);
+expect(loadEntriesOrder).toBeLessThan(logoutOrder);
 ```
 
 对普通入口成功和 gating 成功，分别通过：
@@ -227,18 +273,23 @@ expect(mocks.auth.logout).toHaveBeenCalled();
 - 先点“登录 / 注册”后调用 `triggerLatestLoginSuccess()`
 - 先切换云端模式为开，再调用 `triggerLatestLoginSuccess()`
 
-然后断言两种路径语义不同。
+然后断言两种路径语义不同：
 
-- [ ] **Step 5: Re-run the settings suites to verify they pass**
+- 普通入口成功后登录弹窗关闭，但 `enableCloudMode` 路径不被触发
+- gating 成功后登录弹窗关闭，并进入 `setCloudMode('switching')` / `enableCloudMode` 链路
+
+同时在 `SettingsPage.test.tsx` 只保留一条最小账户入口稳定断言，避免和专项文件重复覆盖。
+
+- [ ] **Step 6: Re-run the settings suites to verify they pass**
 
 Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add app/src/components/__tests__/helpers/renderSettingsPage.tsx app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx app/src/components/__tests__/SettingsPage.test.tsx
+git add app/src/components/SettingsPage.tsx app/src/components/settings-page/useSettingsPageController.ts app/src/components/__tests__/helpers/renderSettingsPage.tsx app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx app/src/components/__tests__/SettingsPage.test.tsx
 git commit -m "test(auth): cover settings account auth states"
 ```
 
