@@ -1,6 +1,7 @@
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
     getString: jest.fn().mockResolvedValue(null),
+    getStringSync: jest.fn().mockReturnValue(null),
     setString: jest.fn().mockResolvedValue(undefined),
     setObject: jest.fn().mockResolvedValue(undefined),
     getObject: jest.fn().mockResolvedValue(null),
@@ -16,6 +17,7 @@ import { Storage } from '@/src/utils/storage';
 import {
   clearCurrentServerUrl,
   getCurrentServerUrl,
+  getCurrentServerUrlSync,
   getRecentServerUrls,
   getServerKey,
   normalizeServerUrl,
@@ -31,6 +33,11 @@ describe('backendEnvironmentService', () => {
   it('normalizes server urls by trimming spaces and trailing slash', () => {
     expect(normalizeServerUrl(' https://api.example.com/ ')).toBe('https://api.example.com');
     expect(normalizeServerUrl('http://localhost:8080///')).toBe('http://localhost:8080');
+  });
+
+  it('strips a trailing /api suffix while preserving nested base paths', () => {
+    expect(normalizeServerUrl('https://api.example.com/app/api/')).toBe('https://api.example.com/app');
+    expect(normalizeServerUrl('https://api.example.com/app/API')).toBe('https://api.example.com/app');
   });
 
   it('rejects invalid server urls', () => {
@@ -55,6 +62,13 @@ describe('backendEnvironmentService', () => {
     await setCurrentServerUrl('https://api.example.com/');
 
     expect(Storage.setString).toHaveBeenCalledWith('backend:currentServerUrl', 'https://api.example.com');
+  });
+
+  it('reads the normalized current server url from sync storage when cache is cold', () => {
+    void clearCurrentServerUrl();
+    (Storage.getStringSync as jest.Mock | undefined)?.mockReturnValueOnce?.('https://sync.example.com/api/');
+
+    expect(getCurrentServerUrlSync()).toBe('https://sync.example.com');
   });
 
   it('clears the persisted current server url', async () => {

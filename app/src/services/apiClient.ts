@@ -80,6 +80,14 @@ export function normalizeApiBaseURL(
 export function createApiClient(baseURL: string): ApiClient {
   let refreshPromise: Promise<boolean> | null = null;
 
+  const getNetworkErrorMessage = (error: unknown, fallbackMessage: string): string => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return fallbackMessage;
+  };
+
   const getScopedAuthKey = (key: string): string => {
     const currentServerUrl = getCurrentServerUrlSync();
     if (!currentServerUrl) {
@@ -221,7 +229,7 @@ export function createApiClient(baseURL: string): ApiClient {
       if ((e as Error).name === 'AbortError') {
         throw new ApiError('TIMEOUT', 'Request timed out', 0);
       }
-      throw new ApiError('NETWORK_ERROR', (e as Error).message, 0);
+      throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -262,7 +270,7 @@ export function createApiClient(baseURL: string): ApiClient {
     } catch (e) {
       if (e instanceof ApiError) throw e;
       if ((e as Error).name === 'AbortError') throw new ApiError('TIMEOUT', 'Request timed out', 0);
-      throw new ApiError('NETWORK_ERROR', (e as Error).message, 0);
+      throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -323,7 +331,7 @@ export function createApiClient(baseURL: string): ApiClient {
         if ((e as Error).name === 'AbortError') {
           throw new ApiError('TIMEOUT', 'Upload timed out', 0);
         }
-        throw new ApiError('NETWORK_ERROR', (e as Error).message, 0);
+        throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
       } finally {
         clearTimeout(timeoutId);
       }

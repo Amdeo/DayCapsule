@@ -190,6 +190,16 @@ describe('apiClient', () => {
     });
   });
 
+  it('falls back to a generic network error message when fetch rejects with a non-Error value', async () => {
+    mockFetch.mockRejectedValueOnce('socket hang up');
+
+    await expect(client.get('/entries')).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'NETWORK_ERROR',
+      message: 'Network request failed',
+    });
+  });
+
   it('sends photo integrity metadata with multipart uploads', async () => {
     const appendSpy = jest.spyOn(FormData.prototype, 'append');
     mockFetch.mockResolvedValueOnce({
