@@ -10,6 +10,14 @@
 
 ---
 
+## 验证结果
+
+- 2026-03-27：已运行
+  `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx 'app/(tabs)/__tests__/index.timeline-state.test.tsx' --runInBand`
+  - 结果：PASS（4 个 suite，20 个测试全部通过）
+- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
+  - 结果：PASS（110 个 suite，722 个测试全部通过）
+
 ## Scope Note
 
 本 plan 只实现以下 4 条首页时间线主交互回归：
