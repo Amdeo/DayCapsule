@@ -111,4 +111,30 @@ describe('Timeline home cloud sync status', () => {
       expect(mockShowCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
     }
   );
+
+  it('renders the sync status action after the cloud indicator becomes visible on rerender', () => {
+    mockUiState = 'hidden';
+    const screen = render(<Timeline />);
+
+    expect(screen.queryByTestId('cloud-sync-button')).toBeNull();
+
+    mockUiState = 'syncing';
+    screen.rerender(<Timeline />);
+
+    expect(screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
+  });
+
+  it('swaps the syncing spinner for a synced dot when the cloud indicator settles', () => {
+    mockUiState = 'syncing';
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
+
+    mockUiState = 'synced';
+    screen.rerender(<Timeline />);
+
+    expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
+    expect(screen.getByTestId('cloud-sync-dot-synced')).toBeTruthy();
+  });
 });
