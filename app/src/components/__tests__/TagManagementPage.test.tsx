@@ -109,6 +109,7 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '');
   });
 
   it('loads common tags only when visible and not loaded', () => {
@@ -150,6 +151,18 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockAddCommonTag).not.toHaveBeenCalled();
+  });
+
+  it('does not call addCommonTag when the input only contains whitespace', async () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByTestId('tag-management-add-input'), '   ');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('tag-management-add-button'));
+    });
+
+    expect(mockAddCommonTag).not.toHaveBeenCalled();
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '   ');
   });
 
   it('disables the input and add button when preset tags reach MAX_TAGS', () => {
@@ -232,6 +245,41 @@ describe('TagManagementPage preset tags', () => {
 
     await act(async () => {
       await responderConfigs[0].onPanResponderRelease();
+    });
+
+    expect(mockReorderCommonTags).not.toHaveBeenCalled();
+  });
+
+  it('reorders preset tags when dragging is terminated after crossing a row threshold', async () => {
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    act(() => {
+      responderConfigs[0].onPanResponderGrant();
+      jest.advanceTimersByTime(200);
+    });
+
+    act(() => {
+      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
+    });
+
+    await act(async () => {
+      await responderConfigs[0].onPanResponderTerminate();
+    });
+
+    expect(mockReorderCommonTags).toHaveBeenCalledWith(0, 2);
+  });
+
+  it('does not reorder when dragging is terminated before the long-press threshold is reached', async () => {
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    act(() => {
+      responderConfigs[0].onPanResponderGrant();
+      jest.advanceTimersByTime(100);
+      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
+    });
+
+    await act(async () => {
+      await responderConfigs[0].onPanResponderTerminate();
     });
 
     expect(mockReorderCommonTags).not.toHaveBeenCalled();
