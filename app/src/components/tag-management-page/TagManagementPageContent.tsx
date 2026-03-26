@@ -38,7 +38,11 @@ export function TagManagementPageContent({
 }: TagManagementPageContentProps) {
   return (
     <View testID="tag-management-root">
-      <TouchableOpacity style={styles.resetRow} onPress={onReset}>
+      <TouchableOpacity
+        testID="tag-management-reset-button"
+        style={styles.resetRow}
+        onPress={onReset}
+      >
         <Ionicons name="refresh" size={18} color="#6A89CC" />
         <Text style={styles.resetText}>恢复初始预制标签</Text>
       </TouchableOpacity>
@@ -63,6 +67,7 @@ export function TagManagementPageContent({
 
       <View style={styles.addRow}>
         <TextInput
+          testID="tag-management-add-input"
           style={[styles.addInput, atLimit && styles.addInputDisabled]}
           value={inputValue}
           onChangeText={onInputChange}
@@ -73,6 +78,7 @@ export function TagManagementPageContent({
           onSubmitEditing={onAdd}
         />
         <TouchableOpacity
+          testID="tag-management-add-button"
           style={[styles.addButton, atLimit && styles.addButtonDisabled]}
           onPress={onAdd}
           disabled={atLimit}

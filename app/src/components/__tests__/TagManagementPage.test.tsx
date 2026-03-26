@@ -9,12 +9,21 @@ const mockRemoveCommonTag = jest.fn();
 const mockResetToDefaults = jest.fn();
 const mockReorderCommonTags = jest.fn();
 const responderConfigs: any[] = [];
+const defaultStoreState = {
+  tags: ['工作', '学习', '旅行'],
+  isLoaded: true,
+};
+
+let mockStoreState = { ...defaultStoreState };
+
+function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {}) {
+  mockStoreState = { ...defaultStoreState, ...overrides };
+}
 
 jest.mock('@/src/store/commonTagsStore', () => ({
   DEFAULT_PRESET_TAGS: ['工作', '学习', '旅行'],
   useCommonTagsStore: () => ({
-    tags: ['工作', '学习', '旅行'],
-    isLoaded: true,
+    ...mockStoreState,
     loadCommonTags: mockLoadCommonTags,
     addCommonTag: mockAddCommonTag,
     removeCommonTag: mockRemoveCommonTag,
@@ -46,6 +55,7 @@ describe('TagManagementPage preset tags', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     responderConfigs.length = 0;
+    setMockCommonTagsState();
     jest.useFakeTimers();
     jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     jest.spyOn(PanResponder, 'create').mockImplementation((config: any) => {
@@ -89,6 +99,29 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+  });
+
+  it('loads common tags only when visible and not loaded', () => {
+    setMockCommonTagsState({ isLoaded: false });
+    const { rerender } = render(<TagManagementPage visible={false} onClose={jest.fn()} />);
+
+    expect(mockLoadCommonTags).not.toHaveBeenCalled();
+
+    rerender(<TagManagementPage visible onClose={jest.fn()} />);
+
+    expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
+  });
+
+  it('submits trimmed text from submitEditing and clears the input', async () => {
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByTestId('tag-management-add-input'), '  灵感  ');
+    await act(async () => {
+      fireEvent(screen.getByTestId('tag-management-add-input'), 'submitEditing');
+    });
+
+    expect(mockAddCommonTag).toHaveBeenCalledWith('灵感');
+    expect(screen.getByTestId('tag-management-add-input')).toHaveProp('value', '');
   });
 
   it('reorders preset tags after dragging the handle', async () => {
