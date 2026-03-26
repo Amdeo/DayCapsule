@@ -3,6 +3,14 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
 import { FeedbackHost } from '../FeedbackHost';
 
+const mockLoggerError = jest.fn();
+
+jest.mock('@/src/utils/logger', () => ({
+  logger: {
+    error: (...args: unknown[]) => mockLoggerError(...args),
+  },
+}));
+
 jest.mock('../ErrorFeedbackModal', () => ({
   ErrorFeedbackModal: ({ visible, request, onDismiss }: any) => {
     const { Pressable, Text, View } = require('react-native');
@@ -31,6 +39,7 @@ jest.mock('../ErrorFeedbackModal', () => ({
 
 describe('FeedbackHost', () => {
   beforeEach(() => {
+    mockLoggerError.mockClear();
     useErrorFeedbackStore.setState({
       current: null,
       activeDedupeKey: null,
@@ -84,5 +93,33 @@ describe('FeedbackHost', () => {
     fireEvent.press(screen.getByTestId('feedback-host-dismiss'));
 
     expect(useErrorFeedbackStore.getState().current).toBeNull();
+  });
+
+  it('dismisses and logs when a wrapped action rejects', async () => {
+    const actionError = new Error('同步按钮执行失败');
+    useErrorFeedbackStore.getState().show({
+      title: '网络异常',
+      actions: [
+        {
+          label: '重试',
+          role: 'primary',
+          onPress: jest.fn().mockRejectedValue(actionError),
+        },
+      ],
+    });
+
+    const screen = render(<FeedbackHost />);
+
+    await expect(
+      act(async () => {
+        fireEvent.press(screen.getByTestId('feedback-host-action-0'));
+      })
+    ).resolves.toBeUndefined();
+
+    expect(useErrorFeedbackStore.getState().current).toBeNull();
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      '[FeedbackHost] feedback action failed:',
+      actionError
+    );
   });
 });

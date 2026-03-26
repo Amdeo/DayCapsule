@@ -1,6 +1,7 @@
 import React from 'react';
 import { ErrorFeedbackModal } from '@/src/components/ErrorFeedbackModal';
 import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
+import { logger } from '@/src/utils/logger';
 
 export function FeedbackHost() {
   const current = useErrorFeedbackStore((state) => state.current);
@@ -19,7 +20,11 @@ export function FeedbackHost() {
           ...action,
           onPress: async () => {
             dismiss();
-            await action.onPress?.();
+            try {
+              await action.onPress?.();
+            } catch (error) {
+              logger.error('[FeedbackHost] feedback action failed:', error);
+            }
           },
         })),
       }}
