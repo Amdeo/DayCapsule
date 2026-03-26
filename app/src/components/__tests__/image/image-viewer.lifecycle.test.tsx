@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Modal } from 'react-native';
+import { Image, Modal } from 'react-native';
 
 import { ImageViewer } from '../../ImageViewer';
 
@@ -66,6 +66,18 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+const findOpenPhaseImageByUri = (
+  tree: renderer.ReactTestRenderer,
+  expectedUri: string,
+) => {
+  const images = tree.root.findAllByType(Image);
+  const candidates = images.filter(
+    (image) => image.props?.source?.uri === expectedUri,
+  );
+  expect(candidates).toHaveLength(1);
+  return candidates[0];
+};
+
 describe('ImageViewer lifecycle', () => {
   it('does not render the viewer shell when visible is false', async () => {
     let tree: renderer.ReactTestRenderer;
@@ -101,7 +113,7 @@ describe('ImageViewer lifecycle', () => {
     const modal = tree.root.findByType(Modal);
     expect(modal.props.visible).toBe(true);
     expect(tree.root.findByProps({ testID: 'image-viewer-root' })).toBeTruthy();
-    expect(tree.root.findByProps({ testID: 'image-viewer-image' }).props.source).toEqual({
+    expect(findOpenPhaseImageByUri(tree, 'file:///image-a.jpg').props.source).toEqual({
       uri: 'file:///image-a.jpg',
     });
   });
@@ -129,7 +141,7 @@ describe('ImageViewer lifecycle', () => {
       );
     });
 
-    expect(tree.root.findByProps({ testID: 'image-viewer-image' }).props.source).toEqual({
+    expect(findOpenPhaseImageByUri(tree, 'file:///image-b.jpg').props.source).toEqual({
       uri: 'file:///image-b.jpg',
     });
   });
