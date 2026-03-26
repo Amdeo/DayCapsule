@@ -21,11 +21,11 @@ appId: com.memorycapsule.app
     timeout: 10000
 - scrollUntilVisible:
     element:
-      text: 登录 / 注册
+      id: settings-open-login
     direction: DOWN
     timeout: 10000
 - tapOn:
-    text: 登录 / 注册
+    id: settings-open-login
 - assertVisible:
     id: login-page-root
 - tapOn:

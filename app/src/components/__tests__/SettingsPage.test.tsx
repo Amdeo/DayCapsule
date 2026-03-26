@@ -20,6 +20,7 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByTestId('settings-page-root')).toBeTruthy();
     expect(screen.getByTestId('settings-backend-card')).toBeTruthy();
     expect(screen.getByText('账户')).toBeTruthy();
+    expect(screen.getByTestId('settings-open-login')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
     expect(screen.getByText('登录后可使用云端同步功能')).toBeTruthy();
     expect(screen.getByText('日历内容区密度')).toBeTruthy();
@@ -49,7 +50,7 @@ describe('SettingsPage assembly', () => {
     // Note: unauthenticated real UI does not render the cloud-mode switch; only the login entry is available.
     const { screen } = renderSettingsPage({ authenticated: false });
 
-    fireEvent.press(screen.getByText('登录 / 注册'));
+    fireEvent.press(screen.getByTestId('settings-open-login'));
 
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });

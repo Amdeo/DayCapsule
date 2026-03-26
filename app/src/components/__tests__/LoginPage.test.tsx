@@ -17,7 +17,7 @@ jest.mock('../DetailPageShell', () => ({
 }));
 
 import React from 'react';
-import { Alert, TouchableOpacity } from 'react-native';
+import { Alert } from 'react-native';
 import { act, render, fireEvent, waitFor, userEvent } from '@testing-library/react-native';
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
@@ -25,19 +25,6 @@ import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockLogin = jest.fn();
 const mockRegister = jest.fn();
-
-const findHostNode = (node: any): any => {
-  if (!node) return null;
-  if (typeof node.type === 'string') return node;
-  if (node.children && node.children.length) {
-    for (const child of node.children) {
-      if (typeof child === 'string') continue;
-      const host = findHostNode(child);
-      if (host) return host;
-    }
-  }
-  return null;
-};
 
 (useAuthStore as unknown as jest.Mock).mockReturnValue({
   login: mockLogin,
@@ -145,17 +132,13 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
 
-    await user.press(screen.getByText('登录'));
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
 
     await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('登录')).toBeNull());
 
-    const buttonsAfterLoading = screen.UNSAFE_getAllByType(TouchableOpacity);
-    const loadingButton = buttonsAfterLoading.find((button) => button.props.disabled);
-    expect(loadingButton).toBeTruthy();
-    const loadingHost = findHostNode(loadingButton);
-    expect(loadingHost).toBeTruthy();
-    await user.press(loadingHost);
+    expect(screen.getByTestId('login-page-submit-button').props.accessibilityState?.disabled).toBe(true);
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
     expect(mockLogin).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -230,17 +213,13 @@ describe('LoginPage', () => {
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
     fireEvent.changeText(screen.getByPlaceholderText('确认密码'), 'Password1');
 
-    await user.press(screen.getByText('注册'));
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
 
     await waitFor(() => expect(mockRegister).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('注册')).toBeNull());
 
-    const buttonsAfterLoading = screen.UNSAFE_getAllByType(TouchableOpacity);
-    const loadingButton = buttonsAfterLoading.find((button) => button.props.disabled);
-    expect(loadingButton).toBeTruthy();
-    const loadingHost = findHostNode(loadingButton);
-    expect(loadingHost).toBeTruthy();
-    await user.press(loadingHost);
+    expect(screen.getByTestId('login-page-submit-button').props.accessibilityState?.disabled).toBe(true);
+    await user.press(screen.getByTestId('login-page-submit-button-target'));
     expect(mockRegister).toHaveBeenCalledTimes(1);
 
     await act(async () => {

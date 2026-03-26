@@ -69,15 +69,19 @@ export function LoginPageForm({
       ) : null}
 
       <TouchableOpacity
+        testID="login-page-submit-button"
+        accessibilityState={{ disabled: isLoading }}
         style={[styles.button, isLoading && styles.buttonDisabled]}
         onPress={onSubmit}
         disabled={isLoading}
       >
-        {isLoading ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text style={styles.buttonText}>{isRegister ? '注册' : '登录'}</Text>
-        )}
+        <View testID="login-page-submit-button-target">
+          {isLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>{isRegister ? '注册' : '登录'}</Text>
+          )}
+        </View>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.switchButton} onPress={onToggleMode}>

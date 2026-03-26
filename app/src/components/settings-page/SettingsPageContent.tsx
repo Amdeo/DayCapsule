@@ -170,6 +170,7 @@ export function SettingsPageContent({
             icon="person-add"
             title="登录 / 注册"
             subtitle="登录后可使用云端同步功能"
+            testID="settings-open-login"
             onPress={onShowLogin}
           />
         )}

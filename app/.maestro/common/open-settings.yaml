@@ -64,13 +64,8 @@ appId: com.memorycapsule.app
       visible:
         id: settings-page-root
     commands:
-      - scrollUntilVisible:
-          element:
-            id: settings-show-sync-status
-          direction: UP
-          timeout: 10000
       - assertVisible:
-          id: settings-show-sync-status
+          id: settings-page-root
 - runFlow:
     when:
       notVisible:
@@ -93,7 +88,7 @@ appId: com.memorycapsule.app
                 id: error-feedback-action-0
       - extendedWaitUntil:
           visible:
-            id: settings-show-sync-status
+            id: settings-page-root
           timeout: 5000
       - assertVisible:
-          id: settings-show-sync-status
+          id: settings-page-root

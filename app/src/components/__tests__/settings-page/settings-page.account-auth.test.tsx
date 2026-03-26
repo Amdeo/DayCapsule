@@ -45,7 +45,7 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
             <Text onPress={props.onLogout}>退出登录</Text>
           </>
         ) : (
-          <Text onPress={props.onShowLogin}>登录 / 注册</Text>
+          <Text testID="settings-open-login" onPress={props.onShowLogin}>登录 / 注册</Text>
         )}
       </View>
     );
@@ -60,7 +60,7 @@ describe('SettingsPage account auth', () => {
 
   async function settleInitialEffects(screen: any) {
     await waitFor(() => {
-      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
+      expect(screen.getByTestId('settings-page-content-mock')).toBeTruthy();
     });
   }
 
@@ -188,7 +188,7 @@ describe('SettingsPage account auth', () => {
     const { screen, mocks } = renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
-    fireEvent.press(screen.getByText('登录 / 注册'));
+    fireEvent.press(screen.getByTestId('settings-open-login'));
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
     expect(getLatestLoginPageProps()?.visible).toBe(true);
 

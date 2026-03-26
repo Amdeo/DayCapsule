@@ -52,6 +52,18 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   } = useSettingsStore();
 
   const { user, isAuthenticated, logout } = useAuthStore();
+  const [showLogin, setShowLogin] = React.useState(false);
+  const [loginIntent, setLoginIntent] = React.useState<'account' | 'cloud-gating' | null>(null);
+
+  const openLogin = React.useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
+    setLoginIntent(intent);
+    setShowLogin(true);
+  }, []);
+
+  const closeLogin = React.useCallback(() => {
+    setShowLogin(false);
+    setLoginIntent(null);
+  }, []);
 
   const {
     isSwitchingMode,
@@ -69,7 +81,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const {
     usedSpace,
     showTagMgmt,
-    showLogin,
     photoCount,
     voiceCount,
     currentServerUrl,
@@ -81,9 +92,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     canSaveBackendServer,
     openTagManagement,
     closeTagManagement,
-    openLogin,
-    closeLogin,
-    handleLoginSuccess,
     handleNotifications,
     handleAutoBackup,
     handleHighQualityPhotos,
@@ -109,8 +117,15 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     savePhotoHeight,
     saveCalendarDensity,
     resetSettings,
-    enableCloudMode,
   });
+
+  const handleLoginSuccess = React.useCallback(async () => {
+    const intent = loginIntent;
+    closeLogin();
+    if (intent === 'cloud-gating') {
+      await enableCloudMode();
+    }
+  }, [closeLogin, enableCloudMode, loginIntent]);
 
   return (
     <DetailPageShell visible={visible} title="设置" onClose={onClose}>
