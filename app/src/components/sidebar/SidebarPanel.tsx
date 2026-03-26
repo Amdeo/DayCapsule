@@ -19,12 +19,6 @@ export function SidebarPanel({
   onClose,
   onPressMenuItem,
 }: SidebarPanelProps) {
-  const subtitleByAction: Record<SidebarAction, string> = {
-    stats: '查看记录、照片、语音概览',
-    backup: '管理本地备份与云端同步',
-    settings: '调整账号、显示和存储偏好',
-  };
-
   return (
     <View testID={testID} style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTopPadding }]}>
@@ -52,7 +46,7 @@ export function SidebarPanel({
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuText}>{item.label}</Text>
-                <Text style={styles.menuDescription}>{subtitleByAction[item.action] ?? item.description}</Text>
+                <Text style={styles.menuDescription}>{item.description}</Text>
               </View>
               <View style={styles.menuChevronContainer}>
                 <Ionicons name="chevron-forward" size={16} color="#C8CFDB" />

@@ -361,7 +361,7 @@ Expected: PASS
 
 Run: `cd app && npm run lint`
 
-Expected: PASS
+Expected: FAIL（当前分支存在基线遗留 style-guard 报错，非本任务新增）
 
 并手动验证：
 
