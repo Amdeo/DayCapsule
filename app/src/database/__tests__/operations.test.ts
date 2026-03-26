@@ -232,12 +232,30 @@ describe('database/operations', () => {
   // ─── getEntriesPage ─────────────────────────────────────────────────────────
 
   describe('getEntriesPage', () => {
+    it('存在 deleted 列时应该排除逻辑删除记录', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([
+          { name: 'id' },
+          { name: 'type' },
+          { name: 'content' },
+          { name: 'timestamp' },
+          { name: 'deleted' },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await getEntriesPage({}, 20);
+
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
+      expect(sql).toContain('WHERE e.deleted = 0');
+      expect(params).toEqual([20]);
+    });
+
     it('无过滤条件时应该查询全部并带 LIMIT', async () => {
       mockDb.getAllAsync.mockResolvedValue([]);
 
       await getEntriesPage({}, 20);
 
-      const [sql, params] = mockDb.getAllAsync.mock.calls[0];
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
       expect(sql).toContain('ORDER BY e.timestamp DESC LIMIT ?');
       expect(params).toEqual([20]);
     });
@@ -247,7 +265,7 @@ describe('database/operations', () => {
 
       await getEntriesPage({}, 20, 1700000000000);
 
-      const [sql, params] = mockDb.getAllAsync.mock.calls[0];
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
       expect(sql).toContain('e.timestamp < ?');
       expect(params[0]).toBe(1700000000000);
     });
@@ -257,7 +275,7 @@ describe('database/operations', () => {
 
       await getEntriesPage({ type: 'photo' }, 20);
 
-      const [sql, params] = mockDb.getAllAsync.mock.calls[0];
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
       expect(sql).toContain('e.type = ?');
       expect(params).toContain('photo');
     });
@@ -267,7 +285,7 @@ describe('database/operations', () => {
 
       await getEntriesPage({ search: '旅行' }, 20);
 
-      const [sql, params] = mockDb.getAllAsync.mock.calls[0];
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
       expect(sql).toContain('LIKE ?');
       expect(params).toContain('%旅行%');
     });
@@ -277,7 +295,7 @@ describe('database/operations', () => {
 
       await getEntriesPage({ tags: ['工作', '重要'] }, 20);
 
-      const [sql, params] = mockDb.getAllAsync.mock.calls[0];
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
       expect(sql.match(/entry_tags/g)?.length).toBe(2); // 两个 tag 各一个子查询
       expect(params).toContain('工作');
       expect(params).toContain('重要');

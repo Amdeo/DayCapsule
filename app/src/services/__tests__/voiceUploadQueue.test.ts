@@ -3,12 +3,23 @@ jest.mock('@/src/database/operations', () => ({
   getEntryById: jest.fn(),
   updateEntry: jest.fn(),
   deleteEntry: jest.fn(),
+  restoreEntries: jest.fn(),
 }));
+
+const mockUploadFile = jest.fn();
+const mockPost = jest.fn();
 
 jest.mock('@/src/services/apiClient', () => ({
   getApiClient: jest.fn(() => ({
-    uploadFile: jest.fn(),
-    post: jest.fn(),
+    uploadFile: mockUploadFile,
+    post: mockPost,
+  })),
+}));
+
+const mockSyncNow = jest.fn();
+jest.mock('../cloudSyncService', () => ({
+  createCloudSyncService: jest.fn(() => ({
+    syncNow: mockSyncNow,
   })),
 }));
 
@@ -17,7 +28,11 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import type { Entry } from '@/src/types/entry';
-import { createVoiceUploadQueue } from '../voiceUploadQueue';
+import * as DB from '@/src/database/operations';
+import {
+  createVoiceUploadQueue,
+  flushPendingVoiceUploads,
+} from '../voiceUploadQueue';
 
 const makeVoiceEntry = (overrides: Partial<Entry> = {}): Entry => ({
   id: 'voice-local-1',
@@ -50,28 +65,12 @@ describe('voiceUploadQueue', () => {
       getEntryById: jest.fn().mockResolvedValue(entry),
       markUploading: jest.fn().mockResolvedValue(undefined),
       markPending: jest.fn().mockResolvedValue(undefined),
-      removeLocalEntry: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn().mockResolvedValue({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
-      createRemoteEntry: jest.fn().mockResolvedValue({
-        id: 'remote-1',
-        type: 'voice',
-        content: '',
-        timestamp: 1774105000000,
-        syncStatus: 'synced',
-        recordingStatus: 'completed',
-        recordingDuration: 12,
-        media: [
-          {
-            uri: 'https://cdn/voice.m4a',
-            mimeType: 'audio/m4a',
-            size: 2048,
-            duration: 12000,
-          },
-        ],
-      }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
       onEntryUploading: jest.fn(),
       onEntryPending: jest.fn(),
-      onEntrySynced: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     await queue.flushPending();
@@ -79,13 +78,10 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.markUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.uploadMedia).toHaveBeenCalledWith('file:///cache/voice.m4a');
-    expect(queue.deps.createRemoteEntry).toHaveBeenCalled();
-    expect(queue.deps.removeLocalEntry).toHaveBeenCalledWith('voice-local-1');
-    expect(queue.deps.onEntrySynced).toHaveBeenCalledWith(
+    expect(queue.deps.markPendingSync).toHaveBeenCalledWith(
       'voice-local-1',
       expect.objectContaining({
-        id: 'remote-1',
-        syncStatus: 'synced',
+        syncStatus: 'pending',
         media: [
           expect.objectContaining({
             uri: 'file:///cache/voice.m4a',
@@ -93,6 +89,13 @@ describe('voiceUploadQueue', () => {
           }),
         ],
       })
+    );
+    expect(queue.deps.triggerSync).toHaveBeenCalledTimes(1);
+    expect(queue.deps.onEntryPendingSync).toHaveBeenCalledWith(
+      'voice-local-1',
+      expect.objectContaining({
+        syncStatus: 'pending',
+      }),
     );
   });
 
@@ -103,12 +106,12 @@ describe('voiceUploadQueue', () => {
       getEntryById: jest.fn().mockResolvedValue(entry),
       markUploading: jest.fn().mockResolvedValue(undefined),
       markPending: jest.fn().mockResolvedValue(undefined),
-      removeLocalEntry: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn().mockRejectedValue(new Error('network down')),
-      createRemoteEntry: jest.fn(),
+      markPendingSync: jest.fn(),
+      triggerSync: jest.fn(),
       onEntryUploading: jest.fn(),
       onEntryPending: jest.fn(),
-      onEntrySynced: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     await queue.flushPending();
@@ -116,7 +119,7 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.markUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.markPending).toHaveBeenCalledWith('voice-local-1');
-    expect(queue.deps.removeLocalEntry).not.toHaveBeenCalled();
+    expect(queue.deps.markPendingSync).not.toHaveBeenCalled();
     expect(queue.deps.onEntryPending).toHaveBeenCalledWith('voice-local-1');
   });
 
@@ -127,12 +130,12 @@ describe('voiceUploadQueue', () => {
       getEntryById: jest.fn().mockResolvedValue(entry),
       markUploading: jest.fn().mockResolvedValue(undefined),
       markPending: jest.fn().mockResolvedValue(undefined),
-      removeLocalEntry: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn().mockResolvedValue({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
-      createRemoteEntry: jest.fn(),
+      markPendingSync: jest.fn(),
+      triggerSync: jest.fn(),
       onEntryUploading: jest.fn(),
       onEntryPending: jest.fn(),
-      onEntrySynced: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     queue.enqueue('voice-local-1');
@@ -167,38 +170,18 @@ describe('voiceUploadQueue', () => {
       }),
       markUploading: jest.fn().mockResolvedValue(undefined),
       markPending: jest.fn().mockResolvedValue(undefined),
-      removeLocalEntry: jest.fn().mockResolvedValue(undefined),
       uploadMedia: jest.fn()
         .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' })
         .mockResolvedValueOnce({ id: 'media-2', url: 'https://cdn/voice-2.m4a' }),
-      createRemoteEntry: jest.fn()
-        .mockResolvedValueOnce({
-          id: 'remote-1',
-          type: 'voice',
-          content: '',
-          timestamp: 1774105000000,
-          syncStatus: 'synced',
-          recordingStatus: 'completed',
-          recordingDuration: 12,
-          media: [{ uri: 'https://cdn/voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
-        })
-        .mockResolvedValueOnce({
-          id: 'remote-2',
-          type: 'voice',
-          content: '',
-          timestamp: 1774105001000,
-          syncStatus: 'synced',
-          recordingStatus: 'completed',
-          recordingDuration: 8,
-          media: [{ uri: 'https://cdn/voice-2.m4a', mimeType: 'audio/m4a', size: 1024, duration: 8000 }],
-        }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
       onEntryUploading: jest.fn((id: string) => {
         if (id === firstEntry.id) {
           queue.enqueue(secondEntry.id);
         }
       }),
       onEntryPending: jest.fn(),
-      onEntrySynced: jest.fn(),
+      onEntryPendingSync: jest.fn(),
     });
 
     queue.enqueue(firstEntry.id);
@@ -207,6 +190,36 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.markUploading).toHaveBeenCalledTimes(2);
     expect(queue.deps.markUploading).toHaveBeenNthCalledWith(1, firstEntry.id);
     expect(queue.deps.markUploading).toHaveBeenNthCalledWith(2, secondEntry.id);
-    expect(queue.deps.removeLocalEntry).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(2);
+  });
+
+  it('default queue should keep the local voice entry and mark it pending after media upload', async () => {
+    const entry = makeVoiceEntry();
+
+    (DB.getVoiceEntriesBySyncStatus as jest.Mock).mockResolvedValue([entry]);
+    (DB.getEntryById as jest.Mock).mockResolvedValue(entry);
+    (DB.updateEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.deleteEntry as jest.Mock).mockResolvedValue(undefined);
+    (DB.restoreEntries as jest.Mock).mockResolvedValue(['remote-voice-1']);
+    mockUploadFile.mockResolvedValue({ id: 'media-1', url: 'https://cdn/voice.m4a' });
+    mockPost.mockResolvedValue(undefined);
+
+    await flushPendingVoiceUploads();
+
+    expect(DB.deleteEntry).not.toHaveBeenCalled();
+    expect(DB.restoreEntries).not.toHaveBeenCalled();
+    expect(DB.updateEntry).toHaveBeenCalledWith(
+      'voice-local-1',
+      expect.objectContaining({
+        syncStatus: 'pending',
+        media: [
+          expect.objectContaining({
+            uri: 'file:///cache/voice.m4a',
+            remoteUri: 'https://cdn/voice.m4a',
+          }),
+        ],
+      })
+    );
+    expect(mockSyncNow).toHaveBeenCalledTimes(1);
   });
 });
