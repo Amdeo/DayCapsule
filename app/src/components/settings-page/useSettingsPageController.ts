@@ -59,6 +59,7 @@ export function useSettingsPageController({
   const [usedSpace, setUsedSpace] = useState('计算中...');
   const [showTagMgmt, setShowTagMgmt] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [loginIntent, setLoginIntent] = useState<'account' | 'cloud-gating' | null>(null);
   const [currentServerUrl, setCurrentServerUrl] = useState('');
   const [backendDraftUrl, setBackendDraftUrl] = useState('');
   const [recentServerUrls, setRecentServerUrls] = useState<string[]>([]);
@@ -231,18 +232,24 @@ export function useSettingsPageController({
     setShowTagMgmt(false);
   }, []);
 
-  const openLogin = useCallback(() => {
+  const openLogin = useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
+    setLoginIntent(intent);
     setShowLogin(true);
   }, []);
 
   const closeLogin = useCallback(() => {
     setShowLogin(false);
+    setLoginIntent(null);
   }, []);
 
   const handleLoginSuccess = useCallback(async () => {
+    const intent = loginIntent;
     setShowLogin(false);
-    await enableCloudMode();
-  }, [enableCloudMode]);
+    setLoginIntent(null);
+    if (intent === 'cloud-gating') {
+      await enableCloudMode();
+    }
+  }, [enableCloudMode, loginIntent]);
 
   const handleBackendDraftUrlChange = useCallback((value: string) => {
     setBackendDraftUrl(value);

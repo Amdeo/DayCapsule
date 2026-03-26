@@ -63,7 +63,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     cloudMode,
     setCloudMode,
     logout,
-    onRequireLogin: () => openLogin(),
+    onRequireLogin: () => openLogin('cloud-gating'),
   });
 
   const {
@@ -143,7 +143,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
             void showCloudSyncStatusAlert();
           }}
           onLogout={handleLogout}
-          onShowLogin={openLogin}
+          onShowLogin={() => openLogin('account')}
           onNotificationsChange={handleNotifications}
           onAutoBackupChange={handleAutoBackup}
           onHighQualityPhotosChange={handleHighQualityPhotos}

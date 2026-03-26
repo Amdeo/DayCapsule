@@ -6,6 +6,12 @@ type SettingsPageProps = {
   onClose: () => void;
 };
 
+type LoginPageProps = {
+  visible: boolean;
+  onClose?: () => void;
+  onSuccess?: () => void | Promise<void>;
+};
+
 const mockDefaultPersistedSettings = {
   notifications: false,
   autoBackup: false,
@@ -54,6 +60,7 @@ const mockDefaultCloudSyncSnapshot = {
 let mockPersistedSettings = { ...mockDefaultPersistedSettings };
 let mockShowE2ESyncLab = false;
 let previousE2ESyncLabEnv = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+let latestLoginPageProps: LoginPageProps | null = null;
 
 const mockSettingsState = {
   ...mockDefaultPersistedSettings,
@@ -303,10 +310,11 @@ jest.mock('../../TagManagementPage', () => ({
 }));
 
 jest.mock('../../LoginPage', () => ({
-  LoginPage: ({ visible }: { visible: boolean }) => {
+  LoginPage: (props: LoginPageProps) => {
     const React = require('react');
     const { Text } = require('react-native');
-    return visible ? <Text testID="settings-login-dialog">login</Text> : null;
+    latestLoginPageProps = props;
+    return props.visible ? <Text testID="settings-login-dialog">login</Text> : null;
   },
 }));
 
@@ -324,6 +332,7 @@ export function resetRenderSettingsPageMocks() {
   jest.clearAllMocks();
   mockPersistedSettings = { ...mockDefaultPersistedSettings };
   mockShowE2ESyncLab = false;
+  latestLoginPageProps = null;
   if (previousE2ESyncLabEnv == null) {
     delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
   } else {
@@ -373,6 +382,10 @@ export function resetRenderSettingsPageMocks() {
   mockInjectRepairPending.mockResolvedValue(undefined);
   mockInjectTextDetailFixture.mockResolvedValue(undefined);
   mockClearSyncFixtures.mockResolvedValue(undefined);
+}
+
+export function triggerLatestLoginSuccess() {
+  return latestLoginPageProps?.onSuccess?.();
 }
 
 export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {

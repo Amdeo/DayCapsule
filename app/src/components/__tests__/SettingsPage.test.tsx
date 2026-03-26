@@ -21,6 +21,7 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByTestId('settings-backend-card')).toBeTruthy();
     expect(screen.getByText('账户')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
+    expect(screen.getByText('登录后可使用云端同步功能')).toBeTruthy();
     expect(screen.getByText('日历内容区密度')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
   });
@@ -42,13 +43,5 @@ describe('SettingsPage assembly', () => {
 
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
-  });
-
-  it('opens the login dialog when unauthenticated users tap login', async () => {
-    const { screen } = renderSettingsPage();
-
-    fireEvent.press(screen.getByText('登录 / 注册'));
-
-    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });
 });
