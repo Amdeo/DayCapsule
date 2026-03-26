@@ -8,12 +8,13 @@ interface SettingsSectionProps {
 }
 
 const SETTINGS_SECTION_TEST_IDS: Record<string, string> = {
-  账户: 'settings-section-account',
-  通知: 'settings-section-notifications',
-  数据: 'settings-section-data',
-  存储: 'settings-section-storage',
-  其他: 'settings-section-other',
-  后端: 'settings-section-backend',
+  '账户与同步': 'settings-section-account-sync',
+  '提醒': 'settings-section-reminders',
+  '内容显示': 'settings-section-display',
+  '数据与存储': 'settings-section-data-storage',
+  '标签管理': 'settings-section-tags',
+  '支持': 'settings-section-support',
+  '危险操作': 'settings-section-danger',
 };
 
 export function SettingsSection({ title, children }: SettingsSectionProps) {

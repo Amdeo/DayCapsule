@@ -64,6 +64,8 @@ interface SettingsPageContentProps {
   onClearSyncFixtures?: () => void | Promise<void>;
   onShowSyncRepairPrompt?: () => void;
   onOpenTagManagement: () => void;
+  onOpenHelp: () => void;
+  onOpenAbout: () => void;
   onResetSettings: () => void;
 }
 
@@ -111,11 +113,13 @@ export function SettingsPageContent({
   onClearSyncFixtures,
   onShowSyncRepairPrompt,
   onOpenTagManagement,
+  onOpenHelp,
+  onOpenAbout,
   onResetSettings,
 }: SettingsPageContentProps) {
   return (
     <>
-      <SettingsSection title="后端">
+      <SettingsSection title="账户与同步">
         <SettingsBackendServerCard
           currentServerUrl={currentServerUrl}
           draftServerUrl={backendDraftUrl}
@@ -129,9 +133,6 @@ export function SettingsPageContent({
           onSave={onSaveBackendServer}
           onSelectRecentServer={onSelectRecentBackendServer}
         />
-      </SettingsSection>
-
-      <SettingsSection title="账户">
         {isAuthenticated ? (
           <>
             <SettingItem icon="person" title={userEmail ?? ''} subtitle="已登录" />
@@ -176,7 +177,7 @@ export function SettingsPageContent({
         )}
       </SettingsSection>
 
-      <SettingsSection title="通知">
+      <SettingsSection title="提醒">
         <SettingItem
           icon="notifications"
           title="推送通知"
@@ -193,21 +194,7 @@ export function SettingsPageContent({
         />
       </SettingsSection>
 
-      <SettingsSection title="数据">
-        <SettingItem
-          icon="cloud-upload"
-          title="自动备份"
-          subtitle="进入后台时自动保存到本地"
-          rightComponent={(
-            <Switch
-              testID="settings-switch-auto-backup"
-              value={autoBackup}
-              onValueChange={onAutoBackupChange}
-              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        />
+      <SettingsSection title="内容显示">
         <SettingItem
           icon="image"
           title="高质量照片"
@@ -242,6 +229,29 @@ export function SettingsPageContent({
           value={photoHeight}
           onChange={onPhotoHeightChange}
         />
+      </SettingsSection>
+
+      <SettingsSection title="数据与存储">
+        <SettingItem
+          icon="cloud-upload"
+          title="自动备份"
+          subtitle="进入后台时自动保存到本地"
+          rightComponent={(
+            <Switch
+              testID="settings-switch-auto-backup"
+              value={autoBackup}
+              onValueChange={onAutoBackupChange}
+              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
+              thumbColor="#FFFFFF"
+            />
+          )}
+        />
+        <SettingsStorageInfo
+          usedSpace={usedSpace}
+          entryCount={entryCount}
+          photoCount={photoCount}
+          voiceCount={voiceCount}
+        />
         <SettingButton
           icon="trash"
           title="清除缓存"
@@ -250,16 +260,7 @@ export function SettingsPageContent({
         />
       </SettingsSection>
 
-      <SettingsSection title="存储">
-        <SettingsStorageInfo
-          usedSpace={usedSpace}
-          entryCount={entryCount}
-          photoCount={photoCount}
-          voiceCount={voiceCount}
-        />
-      </SettingsSection>
-
-      <SettingsSection title="其他">
+      <SettingsSection title="标签管理">
         <SettingButton
           icon="pricetag"
           title="预制标签管理"
@@ -267,6 +268,26 @@ export function SettingsPageContent({
           testID="settings-open-tag-management"
           onPress={onOpenTagManagement}
         />
+      </SettingsSection>
+
+      <SettingsSection title="支持">
+        <SettingButton
+          icon="help-circle"
+          title="帮助与反馈"
+          subtitle="查看常见问题并联系支持"
+          testID="settings-open-help"
+          onPress={onOpenHelp}
+        />
+        <SettingButton
+          icon="information-circle"
+          title="关于"
+          subtitle="查看应用信息与技术栈"
+          testID="settings-open-about"
+          onPress={onOpenAbout}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="危险操作">
         <SettingButton
           icon="refresh"
           title="重置设置"

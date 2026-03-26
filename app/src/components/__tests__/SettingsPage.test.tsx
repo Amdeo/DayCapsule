@@ -19,7 +19,7 @@ describe('SettingsPage assembly', () => {
 
     expect(screen.getByTestId('settings-page-root')).toBeTruthy();
     expect(screen.getByTestId('settings-backend-card')).toBeTruthy();
-    expect(screen.getByText('账户')).toBeTruthy();
+    expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByTestId('settings-open-login')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
     expect(screen.getByText('登录后可使用云端同步功能')).toBeTruthy();
@@ -39,11 +39,39 @@ describe('SettingsPage assembly', () => {
     const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
-      expect(screen.getByText('其他')).toBeTruthy();
+      expect(screen.getByText('标签管理')).toBeTruthy();
     });
 
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
+  });
+
+  it('renders the regrouped settings sections and support entries', async () => {
+    const { screen } = await renderSettingsPage();
+
+    expect(screen.getByText('账户与同步')).toBeTruthy();
+    expect(screen.getByText('提醒')).toBeTruthy();
+    expect(screen.getByText('内容显示')).toBeTruthy();
+    expect(screen.getByText('数据与存储')).toBeTruthy();
+    expect(screen.getByText('标签管理')).toBeTruthy();
+    expect(screen.getByText('支持')).toBeTruthy();
+    expect(screen.getByText('危险操作')).toBeTruthy();
+
+    expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
+    expect(screen.getByTestId('settings-open-help')).toBeTruthy();
+    expect(screen.getByTestId('settings-open-about')).toBeTruthy();
+  });
+
+  it('opens help and about pages from support entries', async () => {
+    const { screen } = await renderSettingsPage();
+
+    fireEvent.press(screen.getByTestId('settings-open-help'));
+    expect(await screen.findByTestId('help-page-root')).toBeTruthy();
+    expect(screen.getAllByText('帮助与反馈').length).toBeGreaterThan(1);
+
+    fireEvent.press(screen.getByTestId('settings-open-about'));
+    expect(await screen.findByTestId('about-page-root')).toBeTruthy();
+    expect(screen.getAllByText('关于').length).toBeGreaterThan(1);
   });
 
   it('opens the login dialog from the real unauthenticated account entry', async () => {
