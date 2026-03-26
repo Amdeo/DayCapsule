@@ -22,6 +22,8 @@ export interface VoiceUploadQueue {
   waitForIdle: () => Promise<void>;
 }
 
+const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
+
 function buildPendingSyncEntry(localEntry: Entry, upload: { id: string; url: string }): Entry {
   const localMedia = localEntry.media?.[0];
   const mergedMedia: MediaInfo[] | undefined = localMedia ? [{
@@ -42,6 +44,33 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
   const queued = new Set<string>();
   const canceled = new Set<string>();
   let processing: Promise<void> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryFailureCount = 0;
+
+  const clearRetryTimer = (): void => {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  };
+
+  const resetRetryBackoff = (): void => {
+    clearRetryTimer();
+    retryFailureCount = 0;
+  };
+
+  const scheduleRetry = (): void => {
+    if (retryTimer) {
+      return;
+    }
+
+    const delay = RETRY_BACKOFF_MS[Math.min(retryFailureCount, RETRY_BACKOFF_MS.length - 1)];
+    retryFailureCount += 1;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void flushPendingInternal();
+    }, delay);
+  };
 
   const processQueue = async (): Promise<void> => {
     for (const entryId of Array.from(queued)) {
@@ -85,6 +114,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
 
         await deps.markPendingSync(entryId, pendingSyncEntry);
         deps.onEntryPendingSync?.(entryId, pendingSyncEntry);
+        resetRetryBackoff();
 
         try {
           await deps.triggerSync();
@@ -95,6 +125,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
         logger.warn('[voiceUploadQueue] upload failed, will retry later:', entryId, error);
         await deps.markPending(entryId);
         deps.onEntryPending?.(entryId);
+        scheduleRetry();
       }
     }
   };
@@ -111,10 +142,21 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
     return processing;
   };
 
+  const flushPendingInternal = async (): Promise<void> => {
+    clearRetryTimer();
+    const pendingEntries = await deps.getPendingEntries();
+    pendingEntries.forEach((entry) => {
+      canceled.delete(entry.id);
+      queued.add(entry.id);
+    });
+    await ensureProcessing();
+  };
+
   return {
     deps,
     enqueue(entryId: string) {
       if (!entryId) return;
+      clearRetryTimer();
       canceled.delete(entryId);
       queued.add(entryId);
       void ensureProcessing();
@@ -124,12 +166,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
       queued.delete(entryId);
     },
     async flushPending() {
-      const pendingEntries = await deps.getPendingEntries();
-      pendingEntries.forEach((entry) => {
-        canceled.delete(entry.id);
-        queued.add(entry.id);
-      });
-      await ensureProcessing();
+      await flushPendingInternal();
     },
     async waitForIdle() {
       await ensureProcessing();

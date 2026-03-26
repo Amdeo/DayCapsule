@@ -58,6 +58,11 @@ describe('voiceUploadQueue', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
   it('uploads pending voice entry and replaces it with synced remote entry', async () => {
     const entry = makeVoiceEntry();
     const queue = createVoiceUploadQueue({
@@ -121,6 +126,70 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.markPending).toHaveBeenCalledWith('voice-local-1');
     expect(queue.deps.markPendingSync).not.toHaveBeenCalled();
     expect(queue.deps.onEntryPending).toHaveBeenCalledWith('voice-local-1');
+  });
+
+  it('retries failed voice uploads after the initial backoff window', async () => {
+    jest.useFakeTimers();
+    const entry = makeVoiceEntry();
+    const queue = createVoiceUploadQueue({
+      getPendingEntries: jest.fn()
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPending: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPending: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(15_000);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a scheduled voice retry when flushPending is called manually', async () => {
+    jest.useFakeTimers();
+    const entry = makeVoiceEntry();
+    const queue = createVoiceUploadQueue({
+      getPendingEntries: jest.fn()
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPending: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPending: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(1);
+
+    await queue.flushPending();
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(15_000);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
   });
 
   it('skips canceled entries before starting upload', async () => {

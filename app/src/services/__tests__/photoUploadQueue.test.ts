@@ -54,6 +54,11 @@ describe('photoUploadQueue', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
   it('uploads pending photo media, writes remoteUri, then marks entry pending', async () => {
     const entry = makePhotoEntry();
     const queue = createPhotoUploadQueue({
@@ -193,6 +198,86 @@ describe('photoUploadQueue', () => {
     expect(queue.deps.onEntryUploading).toHaveBeenCalledWith('photo-local-1');
     expect(queue.deps.onEntryPendingUpload).toHaveBeenCalledWith('photo-local-1');
     expect(queue.deps.onEntryPendingSync).not.toHaveBeenCalled();
+  });
+
+  it('retries failed photo uploads after the initial backoff window', async () => {
+    jest.useFakeTimers();
+    const entry = makePhotoEntry({
+      media: [makePhotoEntry().media![0]],
+    });
+    const queue = createPhotoUploadQueue({
+      getPendingEntries: jest.fn()
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPendingUpload: jest.fn().mockResolvedValue(undefined),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({
+          id: 'media-1',
+          url: 'https://cdn/photo_1.jpg',
+          remoteHash: 'remote-hash-1',
+          validationStatus: 'healthy',
+          validationError: null,
+        }),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(15_000);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a scheduled photo retry when flushPending is called manually', async () => {
+    jest.useFakeTimers();
+    const entry = makePhotoEntry({
+      media: [makePhotoEntry().media![0]],
+    });
+    const queue = createPhotoUploadQueue({
+      getPendingEntries: jest.fn()
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPendingUpload: jest.fn().mockResolvedValue(undefined),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({
+          id: 'media-1',
+          url: 'https://cdn/photo_1.jpg',
+          remoteHash: 'remote-hash-1',
+          validationStatus: 'healthy',
+          validationError: null,
+        }),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(1);
+
+    await queue.flushPending();
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(15_000);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
   });
 
   it('does not process canceled photo entries', async () => {
