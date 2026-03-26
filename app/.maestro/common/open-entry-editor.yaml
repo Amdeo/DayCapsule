@@ -1,0 +1,32 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../common/open-e2e-sync-lab.yaml
+- tapOn:
+    id: e2e-sync-fixture-clear
+- tapOn:
+    id: e2e-sync-fixture-text-detail
+- runFlow: ../common/open-search-overlay.yaml
+- inputText: "Text"
+- tapOn:
+    id: search-overlay-submit-button
+- extendedWaitUntil:
+    visible:
+      id: entry-card
+    timeout: 5000
+- assertVisible:
+    id: entry-card
+- swipe:
+    from:
+      id: entry-card
+      index: 0
+    direction: LEFT
+- extendedWaitUntil:
+    visible:
+      id: action-sheet-edit
+    timeout: 3000
+- tapOn:
+    id: action-sheet-edit
+- extendedWaitUntil:
+    visible:
+      id: entry-editor-content-input
+    timeout: 5000

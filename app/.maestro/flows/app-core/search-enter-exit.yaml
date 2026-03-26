@@ -1,0 +1,8 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow: ../../common/open-search-overlay.yaml
+- tapOn:
+    id: search-overlay-cancel-button
+- assertVisible:
+    id: home-screen-root

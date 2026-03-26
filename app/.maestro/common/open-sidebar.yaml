@@ -1,8 +1,64 @@
 appId: com.memorycapsule.app
 ---
-- assertVisible:
-    id: searchbar-menu-button-pressable
-- tapOn:
-    id: searchbar-menu-button-pressable
-- assertVisible:
-    id: sidebar-shell
+- runFlow:
+    when:
+      visible:
+        id: settings-page-root
+    commands:
+      - assertVisible:
+          id: settings-page-root
+- runFlow:
+    when:
+      visible:
+        id: searchbar-menu-button-pressable
+      notVisible:
+        id: sidebar-menu-settings
+    commands:
+      - assertVisible:
+          id: searchbar-menu-button-pressable
+      - runFlow:
+          when:
+            visible:
+              id: searchbar-menu-button
+          commands:
+            - tapOn:
+                id: searchbar-menu-button
+            - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: home-screen-root
+            notVisible:
+              id: sidebar-menu-settings
+          commands:
+            - tapOn:
+                id: searchbar-menu-button-pressable
+            - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible:
+              id: settings-page-root
+          commands:
+            - assertVisible:
+                id: settings-page-root
+      - runFlow:
+          when:
+            visible:
+              id: error-feedback-card
+          commands:
+            - assertVisible:
+                id: error-feedback-card
+      - runFlow:
+          when:
+            visible:
+              id: sidebar-shell
+          commands:
+            - assertVisible:
+                id: sidebar-shell
+      - runFlow:
+          when:
+            notVisible:
+              id: settings-page-root
+          commands:
+            - assertVisible:
+                id: sidebar-shell

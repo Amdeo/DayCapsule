@@ -157,6 +157,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onClearCache={handleClearCache}
           onInjectSuspectRepairable={() => e2eSyncLabService.injectSuspectRepairable()}
           onInjectRepairPending={() => e2eSyncLabService.injectRepairPending()}
+          onInjectTextDetailFixture={() => e2eSyncLabService.injectTextDetailFixture()}
           onClearSyncFixtures={() => e2eSyncLabService.clearFixtures()}
           onShowSyncRepairPrompt={() => showPhotoRepairPrompt()}
           onOpenTagManagement={openTagManagement}

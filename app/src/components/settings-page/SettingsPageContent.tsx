@@ -60,6 +60,7 @@ interface SettingsPageContentProps {
   onClearCache: () => void;
   onInjectSuspectRepairable?: () => void | Promise<void>;
   onInjectRepairPending?: () => void | Promise<void>;
+  onInjectTextDetailFixture?: () => void | Promise<void>;
   onClearSyncFixtures?: () => void | Promise<void>;
   onShowSyncRepairPrompt?: () => void;
   onOpenTagManagement: () => void;
@@ -106,6 +107,7 @@ export function SettingsPageContent({
   onClearCache,
   onInjectSuspectRepairable,
   onInjectRepairPending,
+  onInjectTextDetailFixture,
   onClearSyncFixtures,
   onShowSyncRepairPrompt,
   onOpenTagManagement,
@@ -277,6 +279,7 @@ export function SettingsPageContent({
         <SettingsE2ESyncLab
           onInjectSuspectRepairable={onInjectSuspectRepairable ?? (() => undefined)}
           onInjectRepairPending={onInjectRepairPending ?? (() => undefined)}
+          onInjectTextDetailFixture={onInjectTextDetailFixture ?? (() => undefined)}
           onClearFixtures={onClearSyncFixtures ?? (() => undefined)}
           onShowRepairPrompt={onShowSyncRepairPrompt ?? (() => undefined)}
         />

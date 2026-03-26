@@ -53,6 +53,7 @@ const mockDefaultCloudSyncSnapshot = {
 
 let mockPersistedSettings = { ...mockDefaultPersistedSettings };
 let mockShowE2ESyncLab = false;
+let previousE2ESyncLabEnv = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
 
 const mockSettingsState = {
   ...mockDefaultPersistedSettings,
@@ -147,6 +148,7 @@ export const mockSwitchBackendEnvironment = jest.fn(async () => mockBackendState
 export const mockClearLocalAppData = jest.fn(async () => undefined);
 export const mockInjectSuspectRepairable = jest.fn(async () => undefined);
 export const mockInjectRepairPending = jest.fn(async () => undefined);
+export const mockInjectTextDetailFixture = jest.fn(async () => undefined);
 export const mockClearSyncFixtures = jest.fn(async () => undefined);
 
 const mockUseEntryStore = Object.assign(
@@ -255,6 +257,7 @@ jest.mock('@/src/services/e2eSyncLabService', () => ({
   createE2ESyncLabService: jest.fn(() => ({
     injectSuspectRepairable: (...args: unknown[]) => mockInjectSuspectRepairable(...args),
     injectRepairPending: (...args: unknown[]) => mockInjectRepairPending(...args),
+    injectTextDetailFixture: (...args: unknown[]) => mockInjectTextDetailFixture(...args),
     clearFixtures: (...args: unknown[]) => mockClearSyncFixtures(...args),
   })),
 }));
@@ -321,6 +324,11 @@ export function resetRenderSettingsPageMocks() {
   jest.clearAllMocks();
   mockPersistedSettings = { ...mockDefaultPersistedSettings };
   mockShowE2ESyncLab = false;
+  if (previousE2ESyncLabEnv == null) {
+    delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
+  } else {
+    process.env.EXPO_PUBLIC_E2E_SYNC_LAB = previousE2ESyncLabEnv;
+  }
 
   Object.assign(mockSettingsState, {
     ...mockDefaultPersistedSettings,
@@ -363,6 +371,7 @@ export function resetRenderSettingsPageMocks() {
   mockClearLocalAppData.mockResolvedValue(undefined);
   mockInjectSuspectRepairable.mockResolvedValue(undefined);
   mockInjectRepairPending.mockResolvedValue(undefined);
+  mockInjectTextDetailFixture.mockResolvedValue(undefined);
   mockClearSyncFixtures.mockResolvedValue(undefined);
 }
 
@@ -378,6 +387,7 @@ export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
   } = options;
 
   mockShowE2ESyncLab = e2eSyncLab;
+  previousE2ESyncLabEnv = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
   if (mockShowE2ESyncLab) {
     process.env.EXPO_PUBLIC_E2E_SYNC_LAB = '1';
   } else {
@@ -432,6 +442,7 @@ export function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
       clearLocalAppData: mockClearLocalAppData,
       injectSuspectRepairable: mockInjectSuspectRepairable,
       injectRepairPending: mockInjectRepairPending,
+      injectTextDetailFixture: mockInjectTextDetailFixture,
       clearSyncFixtures: mockClearSyncFixtures,
     },
   };

@@ -7,6 +7,49 @@ appId: com.memorycapsule.app
       - tapOn: "稍后处理"
 - runFlow:
     when:
+      visible: "媒体同步状态"
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: action-sheet-cancel
+    commands:
+      - tapOn:
+          id: action-sheet-cancel
+- runFlow:
+    when:
+      visible:
+        id: image-viewer-root
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: search-overlay-cancel-button
+    commands:
+      - tapOn:
+          id: search-overlay-cancel-button
+- runFlow:
+    when:
+      visible:
+        id: entry-editor-back-button
+    commands:
+      - tapOn:
+          id: entry-editor-back-button
+- runFlow:
+    when:
+      visible: "放弃修改？"
+    commands:
+      - tapOn: "放弃修改"
+- runFlow:
+    when:
+      visible:
+        id: detail-page-back-button
+    commands:
+      - back
+- runFlow:
+    when:
       visible:
         id: error-feedback-card
     commands:
@@ -21,15 +64,36 @@ appId: com.memorycapsule.app
       visible:
         id: settings-page-root
     commands:
+      - scrollUntilVisible:
+          element:
+            id: settings-show-sync-status
+          direction: UP
+          timeout: 10000
       - assertVisible:
-          id: settings-page-root
+          id: settings-show-sync-status
 - runFlow:
     when:
       notVisible:
         id: settings-page-root
     commands:
       - runFlow: open-sidebar.yaml
-      - tapOn:
-          id: sidebar-menu-settings
+      - runFlow:
+          when:
+            visible:
+              id: sidebar-shell
+          commands:
+            - tapOn:
+                id: sidebar-menu-settings
+      - runFlow:
+          when:
+            visible:
+              id: error-feedback-card
+          commands:
+            - tapOn:
+                id: error-feedback-action-0
+      - extendedWaitUntil:
+          visible:
+            id: settings-show-sync-status
+          timeout: 5000
       - assertVisible:
-          id: settings-page-root
+          id: settings-show-sync-status

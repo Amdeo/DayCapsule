@@ -1,0 +1,16 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow: ../../common/open-e2e-sync-lab.yaml
+- tapOn:
+    id: e2e-sync-fixture-clear
+- tapOn:
+    id: e2e-sync-fixture-suspect
+- runFlow:
+    when:
+      visible: "发现云端媒体异常"
+    commands:
+      - tapOn: "稍后处理"
+- tapOn:
+    id: e2e-sync-show-repair-prompt
+- assertVisible: "发现云端媒体异常"

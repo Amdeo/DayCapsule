@@ -17,8 +17,9 @@ const REPAIR_PROMPT_REASON = 'cloud hash mismatch while local original is still 
 const REPAIR_PENDING_REASON = 'waiting for sync confirmation after user-approved repair';
 const E2E_FIXTURE_LOCAL_MEDIA_ID = 'e2e-sync-local-media-1';
 const E2E_FIXTURE_FILENAME = 'e2e-sync-entry-1.png';
-
-let createdFixtureEntryId: string | null = null;
+const E2E_PHOTO_FIXTURE_CONTENT = 'E2E Sync Lab Fixture';
+const E2E_TEXT_FIXTURE_CONTENT = 'E2E Sync Lab Text Detail Fixture';
+const E2E_TEXT_FIXTURE_TAGS = ['e2e-sync-lab', 'detail'];
 
 const IDLE_MEDIA_VALIDATION_SUMMARY: MediaSyncValidationSummary = {
   status: 'idle',
@@ -54,6 +55,7 @@ export interface E2ESyncLabServiceDeps {
 export interface E2ESyncLabService {
   injectSuspectRepairable: () => Promise<void>;
   injectRepairPending: () => Promise<void>;
+  injectTextDetailFixture: () => Promise<void>;
   clearFixtures: () => Promise<void>;
 }
 
@@ -94,19 +96,22 @@ async function prepareDefaultFixturePhoto(): Promise<PreparedFixturePhoto> {
   };
 }
 
-function findRepairTargetEntry(entries: Entry[]): Entry | null {
-  if (createdFixtureEntryId) {
-    const createdEntry = entries.find((entry) => entry.id === createdFixtureEntryId);
-    if (createdEntry && createdEntry.type === 'photo' && Array.isArray(createdEntry.media) && createdEntry.media[0]) {
-      return createdEntry;
-    }
-  }
-
+function findPhotoFixtureEntry(entries: Entry[]): Entry | null {
   return entries.find((entry) =>
     entry.type === 'photo'
     && !entry.deleted
+    && entry.content === E2E_PHOTO_FIXTURE_CONTENT
     && Array.isArray(entry.media)
-    && !!entry.media[0]
+    && entry.media.some((media) => media.metadata?.localMediaId === E2E_FIXTURE_LOCAL_MEDIA_ID)
+  ) ?? null;
+}
+
+function findTextFixtureEntry(entries: Entry[]): Entry | null {
+  return entries.find((entry) =>
+    entry.type === 'text'
+    && !entry.deleted
+    && entry.content === E2E_TEXT_FIXTURE_CONTENT
+    && E2E_TEXT_FIXTURE_TAGS.every((tag) => entry.tags?.includes(tag))
   ) ?? null;
 }
 
@@ -116,7 +121,7 @@ function buildFixtureEntry(
 ): Omit<Entry, 'id' | 'timestamp'> {
   return {
     type: 'photo',
-    content: 'E2E Sync Lab Fixture',
+    content: E2E_PHOTO_FIXTURE_CONTENT,
     media: [
       {
         uri: photo.uri,
@@ -144,14 +149,35 @@ async function ensureRepairTargetEntry(
   deps: E2ESyncLabServiceDeps,
   photo: PreparedFixturePhoto,
 ): Promise<Entry> {
-  const existing = findRepairTargetEntry(deps.getEntries());
+  const existing = findPhotoFixtureEntry(deps.getEntries());
   if (existing) {
     return existing;
   }
 
-  const created = await deps.addLocalEntry(buildFixtureEntry(photo, deps.now()));
-  createdFixtureEntryId = created.id;
-  return created;
+  return deps.addLocalEntry(buildFixtureEntry(photo, deps.now()));
+}
+
+function buildTextFixtureEntry(now: number): Omit<Entry, 'id' | 'timestamp'> {
+  return {
+    type: 'text',
+    content: E2E_TEXT_FIXTURE_CONTENT,
+    tags: E2E_TEXT_FIXTURE_TAGS,
+    syncStatus: 'pending_upload',
+    syncOp: 'create',
+    updatedAt: now,
+    deleted: false,
+  };
+}
+
+async function ensureTextFixtureEntry(
+  deps: E2ESyncLabServiceDeps,
+): Promise<Entry> {
+  const existing = findTextFixtureEntry(deps.getEntries());
+  if (existing) {
+    return existing;
+  }
+
+  return deps.addLocalEntry(buildTextFixtureEntry(deps.now()));
 }
 
 function buildSuspectRepairableIssue(
@@ -226,19 +252,29 @@ export function createE2ESyncLabService(
     resolvedDeps.clearIssues();
   };
 
+  const injectTextDetailFixture = async (): Promise<void> => {
+    await ensureTextFixtureEntry(resolvedDeps);
+  };
+
   const clearFixtures = async (): Promise<void> => {
     await resolvedDeps.setMediaValidationSummary(IDLE_MEDIA_VALIDATION_SUMMARY);
     resolvedDeps.clearIssues();
 
-    if (createdFixtureEntryId) {
-      await resolvedDeps.deleteEntry(createdFixtureEntryId);
-      createdFixtureEntryId = null;
+    const existingPhotoFixture = findPhotoFixtureEntry(resolvedDeps.getEntries());
+    if (existingPhotoFixture) {
+      await resolvedDeps.deleteEntry(existingPhotoFixture.id);
+    }
+
+    const existingTextFixture = findTextFixtureEntry(resolvedDeps.getEntries());
+    if (existingTextFixture) {
+      await resolvedDeps.deleteEntry(existingTextFixture.id);
     }
   };
 
   return {
     injectSuspectRepairable,
     injectRepairPending,
+    injectTextDetailFixture,
     clearFixtures,
   };
 }
