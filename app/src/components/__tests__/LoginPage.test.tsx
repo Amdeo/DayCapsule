@@ -26,6 +26,19 @@ import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 const mockLogin = jest.fn();
 const mockRegister = jest.fn();
 
+const findHostNode = (node: any): any => {
+  if (!node) return null;
+  if (typeof node.type === 'string') return node;
+  if (node.children && node.children.length) {
+    for (const child of node.children) {
+      if (typeof child === 'string') continue;
+      const host = findHostNode(child);
+      if (host) return host;
+    }
+  }
+  return null;
+};
+
 (useAuthStore as unknown as jest.Mock).mockReturnValue({
   login: mockLogin,
   register: mockRegister,
@@ -140,6 +153,9 @@ describe('LoginPage', () => {
     const buttonsAfterLoading = screen.UNSAFE_getAllByType(TouchableOpacity);
     const loadingButton = buttonsAfterLoading.find((button) => button.props.disabled);
     expect(loadingButton).toBeTruthy();
+    const loadingHost = findHostNode(loadingButton);
+    expect(loadingHost).toBeTruthy();
+    await user.press(loadingHost);
     expect(mockLogin).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -193,6 +209,44 @@ describe('LoginPage', () => {
     expect(alertSpy).toHaveBeenCalledWith('提示', '两次输入的密码不一致');
     expect(mockRegister).not.toHaveBeenCalled();
     alertSpy.mockRestore();
+  });
+
+  it('prevents duplicate submits while loading in register mode', async () => {
+    const user = userEvent.setup();
+    let resolveRegister: () => void;
+    mockRegister.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRegister = resolve;
+        })
+    );
+    const onSuccess = jest.fn();
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={onSuccess} />
+    );
+
+    fireEvent.press(screen.getByText('没有账户？注册'));
+    fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'test@test.com');
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.changeText(screen.getByPlaceholderText('确认密码'), 'Password1');
+
+    await user.press(screen.getByText('注册'));
+
+    await waitFor(() => expect(mockRegister).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('注册')).toBeNull());
+
+    const buttonsAfterLoading = screen.UNSAFE_getAllByType(TouchableOpacity);
+    const loadingButton = buttonsAfterLoading.find((button) => button.props.disabled);
+    expect(loadingButton).toBeTruthy();
+    const loadingHost = findHostNode(loadingButton);
+    expect(loadingHost).toBeTruthy();
+    await user.press(loadingHost);
+    expect(mockRegister).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveRegister!();
+    });
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
   });
 
   it('clears confirm password when switching modes', () => {
