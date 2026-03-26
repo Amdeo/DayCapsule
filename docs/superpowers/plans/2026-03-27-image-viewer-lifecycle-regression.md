@@ -15,6 +15,12 @@
 - 2026-03-27：上一轮基于 controller mock 的 viewer lifecycle 验证结果已作废
   - 原因：最终验收确认 `IVL-02` 到 `IVL-04` 没有直连真实 `useImageViewerController`，只验证了壳层 wiring，不满足修订后的设计目标
   - 处理：本 plan 之后的验证需在“真实 controller + 环境 mock”方案下重新执行并重记结果
+- 2026-03-27：已运行
+  `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/image-viewer.actions.test.ts src/components/__tests__/image/image-viewer.action-sheet.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx --runInBand`
+  - 结果：PASS（5 个 suite，16 个测试全部通过）
+- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
+  - 结果：PASS（111 个 suite，740 个测试全部通过）
+  - 备注：Jest 结束后仍提示既有 open handles 警告，但测试结果本身全绿
 
 ## Scope Note
 
