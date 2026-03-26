@@ -16,7 +16,7 @@ module.exports = {
     '^react-native-worklets$': '<rootDir>/__mocks__/react-native-worklets.js',
   },
   testMatch: [
-    '**/__tests__/**/*.{ts,tsx}',
+    '**/__tests__/**/*.{spec,test}.{ts,tsx}',
     '**/*.{spec,test}.{ts,tsx}',
   ],
   collectCoverageFrom: [

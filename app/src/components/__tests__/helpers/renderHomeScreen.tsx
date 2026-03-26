@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 
@@ -81,6 +81,19 @@ const setEntryStoreState = (
     ...patch,
   };
   emitEntryStore();
+};
+
+const setSourceEntries = (entries: Entry[]) => {
+  act(() => {
+    mockSourceEntries = entries;
+    setEntryStoreState({ entries });
+  });
+};
+
+const setPaginationState = (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
+  act(() => {
+    setEntryStoreState(pagination);
+  });
 };
 
 const applyFilters = (
@@ -167,10 +180,20 @@ const mockTimelineContentModule = {
   TimelineContent: ({
     hasEntries,
     displayEntries,
+    onViewEntry,
+    hasMore,
+    loadMore,
+    isLoadingMore,
   }: {
     hasEntries: boolean;
     displayEntries: Entry[];
+    onViewEntry: (entry: Entry) => void;
+    hasMore: boolean;
+    loadMore: () => void;
+    isLoadingMore: boolean;
   }) => {
+    const { Pressable } = require('react-native');
+
     if (!hasEntries) {
       return (
         <View testID="timeline-empty-state">
@@ -182,17 +205,70 @@ const mockTimelineContentModule = {
     return (
       <View testID="timeline-data-state">
         {displayEntries.map((entry) => (
-          <View key={entry.id} testID={`timeline-entry-${entry.id}`}>
-            <Text>{entry.content}</Text>
-          </View>
+          <Pressable
+            key={entry.id}
+            testID={`timeline-entry-card-${entry.id}`}
+            onPress={() => onViewEntry(entry)}
+          >
+            <View testID={`timeline-entry-${entry.id}`}>
+              <Text>{entry.content}</Text>
+            </View>
+          </Pressable>
         ))}
+        {hasMore && !isLoadingMore ? (
+          <Pressable testID="timeline-load-more-trigger" onPress={loadMore}>
+            <Text>加载更多</Text>
+          </Pressable>
+        ) : null}
+        {isLoadingMore ? <View testID="timeline-loading-more-indicator" /> : null}
       </View>
     );
   },
 };
 
 const mockTimelineDialogsModule = {
-  TimelineDialogs: () => null,
+  TimelineDialogs: ({
+    viewingEntry,
+    editingEntry,
+    onCloseViewing,
+    onDetailEdit,
+    onCloseEditing,
+  }: {
+    viewingEntry: Entry | null;
+    editingEntry: Entry | null;
+    onCloseViewing: () => void;
+    onDetailEdit: (entry: Entry) => void;
+    onCloseEditing: () => void;
+  }) => {
+    const { Pressable } = require('react-native');
+
+    return (
+      <>
+        {viewingEntry ? (
+          <View testID="timeline-text-detail">
+            <Text>{viewingEntry.content}</Text>
+            <Pressable
+              testID="timeline-text-detail-edit"
+              onPress={() => onDetailEdit(viewingEntry)}
+            >
+              <Text>编辑</Text>
+            </Pressable>
+            <Pressable testID="timeline-text-detail-close" onPress={onCloseViewing}>
+              <Text>关闭</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {editingEntry ? (
+          <View testID="timeline-entry-editor">
+            <Text>{editingEntry.content}</Text>
+            <Pressable testID="timeline-entry-editor-close" onPress={onCloseEditing}>
+              <Text>关闭编辑</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </>
+    );
+  },
 };
 
 const mockTimelineScrollTopButtonModule = {
@@ -378,8 +454,13 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
 
   return {
     screen: render(<HomeScreen />),
+    controls: {
+      setEntries: setSourceEntries,
+      setPagination: setPaginationState,
+    },
     spies: {
       loadEntries: mockEntryStoreState.loadEntries,
+      loadMore: mockEntryStoreState.loadMore,
       loadSettings: mockSettingsState.loadSettings,
       loadCommonTags: mockCommonTagsState.loadCommonTags,
       refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
