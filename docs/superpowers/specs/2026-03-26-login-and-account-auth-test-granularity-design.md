@@ -127,6 +127,7 @@
 - `app/src/components/settings-page/SettingsPageDialogs.tsx`
 - `app/src/components/settings-page/useSettingsPageCloudMode.ts`
 - `app/src/components/__tests__/SettingsPage.test.tsx`
+- `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx`
 - `app/src/components/__tests__/helpers/renderSettingsPage.tsx`
 
 本次重点验证：
@@ -255,9 +256,15 @@
 - 操作步骤：渲染设置页
 - 预期结果：云端模式开关禁用，避免重复触发
 
-#### `AC-09 登录成功后关闭登录弹窗并进入云端启用流程`
+#### `AC-09 普通账户入口登录成功后只关闭登录弹窗`
 
-- 前置条件：设置页已打开登录弹窗
+- 前置条件：通过“登录 / 注册”入口打开登录弹窗，而不是通过云端模式 gating 拉起
+- 操作步骤：触发 `onLoginSuccess`
+- 预期结果：登录弹窗关闭；这条普通账户入口成功场景不要求额外断言 `enableCloudMode`
+
+#### `AC-10 云端 gating 登录成功后关闭登录弹窗并进入云端启用流程`
+
+- 前置条件：未登录时尝试打开云端模式，因 gating 拉起登录弹窗
 - 操作步骤：触发 `onLoginSuccess`
 - 预期结果：登录弹窗关闭，并调用 `enableCloudMode`
 
@@ -277,7 +284,7 @@
 
 ### `SettingsPage.test.tsx` 与账户专项测试
 
-保留现有总装配与基础入口测试，新增账户专项测试文件承接认证状态分支，避免再把 `SettingsPage.test.tsx` 做成大杂烩。
+保留现有总装配与基础入口测试，新增 `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx` 承接认证状态分支，避免再把 `SettingsPage.test.tsx` 做成大杂烩。implementation plan 可以微调文件名，但默认以这个专项文件为边界。
 
 ### `renderSettingsPage.tsx`
 
@@ -307,7 +314,7 @@
 
 ### 2. 退出登录逻辑同时依赖 `cloudMode` 和 `loadEntries`
 
-如果测试只断 `logout`，容易漏掉“云端模式先切回离线”的关键分支，所以账户区测试必须显式验证调用顺序或至少验证两类动作都发生。
+如果测试只断 `logout`，容易漏掉“云端模式先切回离线”的关键分支，所以账户区测试必须显式验证调用顺序：先切回离线并 reload entries，再执行 `logout`。
 
 ### 3. `LoginPage` 成功后会自动触发 `onSuccess`
 
