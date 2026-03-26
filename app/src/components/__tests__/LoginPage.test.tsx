@@ -35,6 +35,14 @@ const mockRegister = jest.fn();
 beforeEach(() => jest.clearAllMocks());
 
 describe('LoginPage', () => {
+  it('renders nothing when the page is hidden', () => {
+    const screen = render(
+      <LoginPage visible={false} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    expect(screen.queryByTestId('login-page-root')).toBeNull();
+  });
+
   it('renders the login page shell inside the existing detail shell', () => {
     const { getByPlaceholderText, getByText, getByTestId } = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
@@ -174,7 +182,23 @@ describe('LoginPage', () => {
 
     fireEvent.press(getByText('没有账户？注册'));
     expect(getByPlaceholderText('确认密码')).toBeTruthy();
+    expect(getByText('密码要求：8-64位，含大小写字母和数字')).toBeTruthy();
     expect(getByText('注册')).toBeTruthy();
+  });
+
+  it('returns to login mode and hides register-only fields after toggling back', () => {
+    const screen = render(
+      <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('没有账户？注册'));
+    expect(screen.getByPlaceholderText('确认密码')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('已有账户？登录'));
+
+    expect(screen.queryByPlaceholderText('确认密码')).toBeNull();
+    expect(screen.queryByText('密码要求：8-64位，含大小写字母和数字')).toBeNull();
+    expect(screen.getByText('登录')).toBeTruthy();
   });
 
   it('alerts when register passwords do not match', async () => {
