@@ -27,7 +27,6 @@ interface UseSettingsPageControllerOptions {
   notifications: boolean;
   loadSettings: () => void | Promise<void>;
   saveNotifications: (value: boolean) => void | Promise<void>;
-  saveAutoBackup: (value: boolean) => void | Promise<void>;
   saveHighQualityPhotos: (value: boolean) => void | Promise<void>;
   saveCardSpacing: (value: CardSpacing) => void | Promise<void>;
   savePhotoHeight: (value: PhotoHeightPreset) => void | Promise<void>;
@@ -47,7 +46,6 @@ export function useSettingsPageController({
   notifications,
   loadSettings,
   saveNotifications,
-  saveAutoBackup,
   saveHighQualityPhotos,
   saveCardSpacing,
   savePhotoHeight,
@@ -139,13 +137,6 @@ export function useSettingsPageController({
       await saveNotifications(value);
     },
     [saveNotifications],
-  );
-
-  const handleAutoBackup = useCallback(
-    async (value: boolean) => {
-      await saveAutoBackup(value);
-    },
-    [saveAutoBackup],
   );
 
   const handleHighQualityPhotos = useCallback(
@@ -309,7 +300,6 @@ export function useSettingsPageController({
     openTagManagement,
     closeTagManagement,
     handleNotifications,
-    handleAutoBackup,
     handleHighQualityPhotos,
     handleCardSpacing,
     handlePhotoHeight,

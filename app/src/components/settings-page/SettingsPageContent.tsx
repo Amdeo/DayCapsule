@@ -26,7 +26,6 @@ interface SettingsPageContentProps {
   cloudMode: boolean | 'switching';
   isSwitchingMode: boolean;
   notifications: boolean;
-  autoBackup: boolean;
   highQualityPhotos: boolean;
   cardSpacing: CardSpacing;
   photoHeight: PhotoHeightPreset;
@@ -48,7 +47,6 @@ interface SettingsPageContentProps {
   onLogout: () => void;
   onShowLogin: () => void;
   onNotificationsChange: (value: boolean) => void | Promise<void>;
-  onAutoBackupChange: (value: boolean) => void | Promise<void>;
   onHighQualityPhotosChange: (value: boolean) => void | Promise<void>;
   onCardSpacingChange: (value: CardSpacing) => void | Promise<void>;
   onPhotoHeightChange: (value: PhotoHeightPreset) => void | Promise<void>;
@@ -73,7 +71,6 @@ export function SettingsPageContent({
   cloudMode,
   isSwitchingMode,
   notifications,
-  autoBackup,
   highQualityPhotos,
   cardSpacing,
   photoHeight,
@@ -95,7 +92,6 @@ export function SettingsPageContent({
   onLogout,
   onShowLogin,
   onNotificationsChange,
-  onAutoBackupChange,
   onHighQualityPhotosChange,
   onCardSpacingChange,
   onPhotoHeightChange,
@@ -194,20 +190,6 @@ export function SettingsPageContent({
       </SettingsSection>
 
       <SettingsSection title="数据">
-        <SettingItem
-          icon="cloud-upload"
-          title="自动备份"
-          subtitle="进入后台时自动保存到本地"
-          rightComponent={(
-            <Switch
-              testID="settings-switch-auto-backup"
-              value={autoBackup}
-              onValueChange={onAutoBackupChange}
-              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        />
         <SettingItem
           icon="image"
           title="高质量照片"

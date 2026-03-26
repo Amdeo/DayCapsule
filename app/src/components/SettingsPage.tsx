@@ -33,13 +33,11 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   const {
     notifications,
-    autoBackup,
     highQualityPhotos,
     cardSpacing,
     isLoaded,
     loadSettings,
     setNotifications: saveNotifications,
-    setAutoBackup: saveAutoBackup,
     setHighQualityPhotos: saveHighQualityPhotos,
     setCardSpacing: saveCardSpacing,
     photoHeight,
@@ -93,7 +91,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     openTagManagement,
     closeTagManagement,
     handleNotifications,
-    handleAutoBackup,
     handleHighQualityPhotos,
     handleCardSpacing,
     handlePhotoHeight,
@@ -111,7 +108,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     notifications,
     loadSettings,
     saveNotifications,
-    saveAutoBackup,
     saveHighQualityPhotos,
     saveCardSpacing,
     savePhotoHeight,
@@ -136,7 +132,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           cloudMode={cloudMode}
           isSwitchingMode={isSwitchingMode}
           notifications={notifications}
-          autoBackup={autoBackup}
           highQualityPhotos={highQualityPhotos}
           cardSpacing={cardSpacing}
           photoHeight={photoHeight}
@@ -160,7 +155,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onLogout={handleLogout}
           onShowLogin={() => openLogin('account')}
           onNotificationsChange={handleNotifications}
-          onAutoBackupChange={handleAutoBackup}
           onHighQualityPhotosChange={handleHighQualityPhotos}
           onCardSpacingChange={handleCardSpacing}
           onPhotoHeightChange={handlePhotoHeight}

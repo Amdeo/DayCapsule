@@ -14,7 +14,6 @@ type LoginPageProps = {
 
 const mockDefaultPersistedSettings = {
   notifications: false,
-  autoBackup: false,
   highQualityPhotos: true,
   cardSpacing: 'default',
   photoHeight: 'default',
@@ -69,10 +68,6 @@ const mockSettingsState = {
   setNotifications: jest.fn(async (value: boolean) => {
     mockPersistedSettings.notifications = value;
     mockSettingsState.notifications = value;
-  }),
-  setAutoBackup: jest.fn(async (value: boolean) => {
-    mockPersistedSettings.autoBackup = value;
-    mockSettingsState.autoBackup = value;
   }),
   setHighQualityPhotos: jest.fn(async (value: boolean) => {
     mockPersistedSettings.highQualityPhotos = value;

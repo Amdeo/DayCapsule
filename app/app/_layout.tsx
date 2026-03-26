@@ -218,11 +218,8 @@ export default function RootLayout() {
       appStateRef.current = nextState;
 
       if (prev !== 'background' && nextState === 'background') {
-        const [autoBackup, shouldBackup] = await Promise.all([
-          Storage.getString('settings:autoBackup'),
-          BackupService.shouldBackup(),
-        ]);
-        if (autoBackup === 'true' && shouldBackup) {
+        const shouldBackup = await BackupService.shouldBackup();
+        if (shouldBackup) {
           const entries = useEntryStore.getState().entries;
           await BackupService.createBackup(entries).catch((e) =>
             logger.error('自动备份失败:', e)
