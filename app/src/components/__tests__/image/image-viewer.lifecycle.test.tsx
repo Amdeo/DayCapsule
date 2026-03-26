@@ -22,40 +22,28 @@ jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  const makeChainableGesture = () => {
-    const chain: any = {};
-    const returnSelf = () => chain;
-
-    // Tap
-    chain.numberOfTaps = returnSelf;
-    chain.requireExternalGestureToFail = returnSelf;
-    chain.onEnd = returnSelf;
-
-    // LongPress
-    chain.minDuration = returnSelf;
-    chain.onStart = returnSelf;
-
-    // Pinch
-    chain.onUpdate = returnSelf;
-    chain.onEnd = returnSelf;
-
-    // Pan
-    chain.onBegin = returnSelf;
-    chain.onUpdate = returnSelf;
-    chain.onEnd = returnSelf;
-    chain.onFinalize = returnSelf;
-
-    return chain;
+  // Generic chainable gesture stub: any property access or call returns itself.
+  // This keeps lifecycle tests decoupled from the gesture DSL's specific method names.
+  const createChainable = () => {
+    const fn = () => proxy;
+    const proxy: any = new Proxy(fn, {
+      get: () => proxy,
+      apply: () => proxy,
+    });
+    return proxy;
   };
 
-  const Gesture = {
-    Tap: () => makeChainableGesture(),
-    LongPress: () => makeChainableGesture(),
-    Pinch: () => makeChainableGesture(),
-    Pan: () => makeChainableGesture(),
-    Race: (..._gestures: any[]) => ({}),
-    Simultaneous: (..._gestures: any[]) => ({}),
-  };
+  const Gesture = new Proxy(
+    {},
+    {
+      get: (_target, prop: string) => {
+        if (prop === 'Race' || prop === 'Simultaneous') {
+          return (..._gestures: any[]) => createChainable();
+        }
+        return () => createChainable();
+      },
+    },
+  );
 
   return {
     Gesture,
