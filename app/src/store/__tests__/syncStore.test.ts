@@ -2,12 +2,13 @@ import { Storage } from '@/src/utils/storage';
 import { useSyncStore } from '../syncStore';
 
 let mockStorage = new Map<string, string>();
+const mockLoggerError = jest.fn();
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
     log: jest.fn(),
     warn: jest.fn(),
-    error: jest.fn(),
+    error: (...args: unknown[]) => mockLoggerError(...args),
     info: jest.fn(),
     debug: jest.fn(),
   },
@@ -44,6 +45,7 @@ const scopedKey = (scope: string, key: string) => `${scope}:${key}`;
 describe('syncStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLoggerError.mockClear();
     mockStorage = new Map<string, string>();
     (Storage.getString as jest.Mock).mockImplementation(async (key: string) => mockStorage.get(key) ?? null);
     (Storage.setString as jest.Mock).mockImplementation(async (key: string, value: string) => {
@@ -198,5 +200,44 @@ describe('syncStore', () => {
     await useSyncStore.getState().load();
 
     expect(useSyncStore.getState().lastMediaValidationSummary).toBeNull();
+  });
+
+  it('clears stale sync state when loading the current environment fails', async () => {
+    useSyncStore.setState({
+      syncCursor: 42,
+      lastSyncAt: 1700000000123,
+      lastSyncError: '旧环境错误',
+      initialSyncState: 'ready',
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 3,
+        downloaded: 2,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing file',
+        lastValidatedAt: 1234,
+      },
+      isSyncing: true,
+      isLoaded: false,
+    });
+    (Storage.getString as jest.Mock).mockRejectedValueOnce(new Error('storage unavailable'));
+
+    await useSyncStore.getState().load();
+
+    expect(useSyncStore.getState()).toMatchObject({
+      syncCursor: 0,
+      lastSyncAt: null,
+      lastSyncError: null,
+      initialSyncState: 'idle',
+      lastMediaValidationSummary: null,
+      isSyncing: false,
+      isLoaded: true,
+    });
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      '[syncStore] Failed to load sync state:',
+      expect.any(Error)
+    );
   });
 });

@@ -172,7 +172,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
       });
     } catch (error) {
       logger.error('[syncStore] Failed to load sync state:', error);
-      set({ isSyncing: false, isLoaded: true });
+      set({ ...DEFAULT_SYNC_STATE, isLoaded: true });
     }
   },
 
