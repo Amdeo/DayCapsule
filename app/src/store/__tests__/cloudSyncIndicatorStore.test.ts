@@ -59,6 +59,7 @@ describe('cloudSyncIndicatorStore', () => {
       lastSyncAt: null,
       lastSyncError: null,
       initialSyncState: 'idle',
+      lastMediaValidationSummary: null,
       isSyncing: false,
       isLoaded: true,
     });
@@ -185,6 +186,56 @@ describe('cloudSyncIndicatorStore', () => {
       failedEntries: 0,
       uiState: 'synced',
     });
+  });
+
+  it('returns syncing when media validation is still running', async () => {
+    useSyncStore.setState({
+      isSyncing: false,
+      lastSyncError: null,
+      lastMediaValidationSummary: {
+        status: 'running',
+        total: 3,
+        downloaded: 1,
+        missing: 0,
+        failed: 0,
+        suspect: 0,
+        repairable: 0,
+        lastError: null,
+        lastValidatedAt: 1700000000000,
+      },
+    });
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState().uiState).toBe('syncing');
+  });
+
+  it('returns failed when media validation is partial even if metadata sync is otherwise clean', async () => {
+    useSyncStore.setState({
+      isSyncing: false,
+      lastSyncError: null,
+      lastMediaValidationSummary: {
+        status: 'partial',
+        total: 3,
+        downloaded: 2,
+        missing: 1,
+        failed: 0,
+        suspect: 1,
+        repairable: 1,
+        lastError: 'missing thumbnail',
+        lastValidatedAt: 1700000000000,
+      },
+    });
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockResolvedValueOnce({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+    });
+
+    await useCloudSyncIndicatorStore.getState().refresh();
+
+    expect(useCloudSyncIndicatorStore.getState().uiState).toBe('failed');
   });
 
   it('keeps the previous indicator state and logs a warning when refresh fails', async () => {

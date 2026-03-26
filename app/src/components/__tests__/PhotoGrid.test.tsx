@@ -60,6 +60,14 @@ const makeRemoteFallbackPhoto = (): MediaInfo => ({
   size: 1000,
 });
 
+const makePendingRemotePhoto = (): MediaInfo => ({
+  uri: 'http://101.43.120.134:8081/api/media/photo-pending',
+  remoteUri: 'http://101.43.120.134:8081/api/media/photo-pending',
+  remoteThumbnail: 'http://101.43.120.134:8081/api/media/photo-pending-thumb',
+  mimeType: 'image/jpeg',
+  size: 1000,
+});
+
 const radius = { borderRadius: 10 };
 
 describe('PhotoGrid', () => {
@@ -95,6 +103,15 @@ describe('PhotoGrid', () => {
     fireEvent.press(screen.getByTestId('photo-image-0'));
 
     expect(onPhotoPress).toHaveBeenCalledWith(0);
+  });
+
+  it('renders a loading placeholder when the photo is still remote-only', () => {
+    render(
+      <PhotoGrid photos={[makePendingRemotePhoto()]} maxPhotoHeight={280} photoImageRadius={radius} />
+    );
+
+    expect(screen.getByTestId('photo-loading-0')).toBeTruthy();
+    expect(screen.queryByTestId('photo-image-0')).toBeNull();
   });
 
   it('2 photos: renders two-photo collage instead of square grid', () => {

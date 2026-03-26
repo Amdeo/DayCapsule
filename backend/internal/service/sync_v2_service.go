@@ -97,6 +97,20 @@ type SyncResponse struct {
 	Conflicts     []Conflict     `json:"conflicts"`
 }
 
+func shouldIgnoreClientUpdate(existingUpdatedAt, clientUpdatedAt time.Time) bool {
+	return !clientUpdatedAt.IsZero() && !clientUpdatedAt.After(existingUpdatedAt)
+}
+
+func resolveUpdateBase(existingUpdatedAt time.Time, baseUpdatedAt *time.Time, clientUpdatedAt time.Time) time.Time {
+	if !clientUpdatedAt.IsZero() && clientUpdatedAt.After(existingUpdatedAt) {
+		return existingUpdatedAt
+	}
+	if baseUpdatedAt != nil {
+		return *baseUpdatedAt
+	}
+	return existingUpdatedAt
+}
+
 // Sync 应用客户端变更并返回增量变更 + 冲突信息。
 // 真实 DB repository 路径会把 entry 写入与 change log 追加放进同一事务；
 // 测试 doubles 仍走原有接口路径，避免扩大 mock 改动面。
@@ -189,10 +203,16 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 				continue
 			}
 
-			baseUpdatedAt := existing.UpdatedAt
-			if cc.BaseUpdatedAt != nil {
-				baseUpdatedAt = *cc.BaseUpdatedAt
+			clientUpdatedAt := entry.UpdatedAt
+			if shouldIgnoreClientUpdate(existing.UpdatedAt, clientUpdatedAt) {
+				results = append(results, SyncResult{
+					ChangeID: cc.ChangeID,
+					Status:   "ignored",
+					EntryID:  entry.ID,
+				})
+				continue
 			}
+			baseUpdatedAt := resolveUpdateBase(existing.UpdatedAt, cc.BaseUpdatedAt, clientUpdatedAt)
 
 			entry.UpdatedAt = time.Now().UTC()
 			entry.SyncStatus = "synced"
@@ -233,6 +253,14 @@ func (s *SyncV2Service) Sync(ctx context.Context, userID string, req *SyncReques
 				}
 				if latest == nil {
 					return nil, errors.New("conflicted entry missing after sync")
+				}
+				if shouldIgnoreClientUpdate(latest.UpdatedAt, clientUpdatedAt) {
+					results = append(results, SyncResult{
+						ChangeID: cc.ChangeID,
+						Status:   "ignored",
+						EntryID:  entry.ID,
+					})
+					continue
 				}
 				results = append(results, SyncResult{
 					ChangeID: cc.ChangeID,
@@ -408,10 +436,15 @@ func (s *SyncV2Service) applyUpdateTx(
 		}, nil, nil
 	}
 
-	base := existing.UpdatedAt
-	if baseUpdatedAt != nil {
-		base = *baseUpdatedAt
+	clientUpdatedAt := entry.UpdatedAt
+	if shouldIgnoreClientUpdate(existing.UpdatedAt, clientUpdatedAt) {
+		return SyncResult{
+			ChangeID: changeID,
+			Status:   "ignored",
+			EntryID:  entry.ID,
+		}, nil, nil
 	}
+	base := resolveUpdateBase(existing.UpdatedAt, baseUpdatedAt, clientUpdatedAt)
 
 	entry.UpdatedAt = time.Now().UTC()
 	entry.SyncStatus = "synced"
@@ -456,6 +489,13 @@ func (s *SyncV2Service) applyUpdateTx(
 		}
 		if latest == nil {
 			return SyncResult{}, nil, errors.New("conflicted entry missing after sync")
+		}
+		if shouldIgnoreClientUpdate(latest.UpdatedAt, clientUpdatedAt) {
+			return SyncResult{
+				ChangeID: changeID,
+				Status:   "ignored",
+				EntryID:  entry.ID,
+			}, nil, nil
 		}
 		return SyncResult{
 				ChangeID: changeID,

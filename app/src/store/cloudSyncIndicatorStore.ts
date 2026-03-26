@@ -31,17 +31,25 @@ function resolveUiState(
     cloudMode: boolean | 'switching';
     isSyncing: boolean;
     lastSyncError: string | null;
+    mediaValidationStatus: ReturnType<typeof useSyncStore.getState>['lastMediaValidationSummary'] extends infer T
+      ? T extends { status: infer S } ? S | null : null
+      : null;
   },
 ): CloudSyncIndicatorUiState {
   if (!options.isAuthenticated || options.cloudMode !== true) {
     return 'hidden';
   }
 
-  if (options.isSyncing || summary.uploadingEntries > 0) {
+  if (options.isSyncing || summary.uploadingEntries > 0 || options.mediaValidationStatus === 'running') {
     return 'syncing';
   }
 
-  if (options.lastSyncError || summary.failedEntries > 0) {
+  if (
+    options.lastSyncError
+    || summary.failedEntries > 0
+    || options.mediaValidationStatus === 'partial'
+    || options.mediaValidationStatus === 'failed'
+  ) {
     return 'failed';
   }
 
@@ -70,7 +78,7 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set) 
 
     try {
       const summary = await DB.getCloudSyncIndicatorSummary();
-      const { isSyncing, lastSyncError } = useSyncStore.getState();
+      const { isSyncing, lastSyncError, lastMediaValidationSummary } = useSyncStore.getState();
 
       set({
         ...summary,
@@ -79,6 +87,7 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set) 
           cloudMode,
           isSyncing,
           lastSyncError,
+          mediaValidationStatus: lastMediaValidationSummary?.status ?? null,
         }),
       });
     } catch (error) {

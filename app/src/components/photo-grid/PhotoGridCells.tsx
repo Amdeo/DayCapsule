@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Image, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, TouchableOpacity, View } from 'react-native';
 import type { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 import { photoGridStyles as styles } from './PhotoGrid.styles';
 import type { PhotoImageRadiusStyle } from './photoGridTypes';
+import { isPhotoMediaPendingHydration } from '@/src/utils/mediaAvailability';
 
 interface SinglePhotoProps {
   photo: MediaInfo;
@@ -38,6 +39,7 @@ function usePhotoSource(
     PhotoService.getPreferredPhotoUri(photo, kind)
   );
   const [missing, setMissing] = useState(() => sourceUri.length === 0);
+  const pendingHydration = isPhotoMediaPendingHydration(photo);
 
   useEffect(() => {
     const nextSourceUri = PhotoService.getPreferredPhotoUri(photo, kind);
@@ -58,6 +60,7 @@ function usePhotoSource(
   return {
     sourceUri,
     missing,
+    pendingHydration,
     handleError,
   };
 }
@@ -68,7 +71,18 @@ export function SinglePhoto({
   photoImageRadius,
   onPress,
 }: SinglePhotoProps) {
-  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
+  const { sourceUri, missing, pendingHydration, handleError } = usePhotoSource(photo, 'thumbnail');
+
+  if (pendingHydration) {
+    return (
+      <View
+        testID="photo-loading-0"
+        style={[styles.singleLoading, photoImageRadius, { height: maxPhotoHeight }]}
+      >
+        <ActivityIndicator size="small" color="#A68D68" />
+      </View>
+    );
+  }
 
   if (missing) {
     return (
@@ -96,7 +110,18 @@ export function SinglePhoto({
 }
 
 export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
-  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
+  const { sourceUri, missing, pendingHydration, handleError } = usePhotoSource(photo, 'thumbnail');
+
+  if (pendingHydration) {
+    return (
+      <View
+        testID={`${testID}-loading`}
+        style={[styles.gridCellLoading, { width: cellSize, height: cellSize }]}
+      >
+        <ActivityIndicator size="small" color="#A68D68" />
+      </View>
+    );
+  }
 
   if (missing) {
     return (
@@ -129,8 +154,18 @@ export function TwoPhotoCell({
   imageRadiusStyle,
   onPress,
 }: TwoPhotoCellProps) {
-  const { sourceUri, missing, handleError } = usePhotoSource(photo, 'thumbnail');
+  const { sourceUri, missing, pendingHydration, handleError } = usePhotoSource(photo, 'thumbnail');
   const cellStyle = [{ width, height, backgroundColor: '#ECE7E0' }, imageRadiusStyle];
+
+  if (pendingHydration) {
+    return (
+      <View testID={`${testID}-loading`}>
+        <View style={[styles.twoPhotoLoading, ...cellStyle]}>
+          <ActivityIndicator size="small" color="#A68D68" />
+        </View>
+      </View>
+    );
+  }
 
   if (missing) {
     return (

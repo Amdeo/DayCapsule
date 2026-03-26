@@ -4,6 +4,7 @@ import { PhotoService } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
 import { EntryActionSheet } from '../EntryActionSheet';
 import { ImageViewer } from '../ImageViewer';
+import { isPhotoMediaPendingHydration } from '@/src/utils/mediaAvailability';
 
 interface EntryCardDialogsProps {
   entry: Entry;
@@ -30,9 +31,10 @@ export function EntryCardDialogs({
   const preferredViewerUri = selectedMedia
     ? PhotoService.getPreferredPhotoUri(selectedMedia, 'full')
     : '';
+  const canOpenViewer = !!selectedMedia && !isPhotoMediaPendingHydration(selectedMedia);
 
   React.useEffect(() => {
-    if (!showImageViewer || entry.type !== 'photo' || !preferredViewerUri) {
+    if (!showImageViewer || entry.type !== 'photo' || !preferredViewerUri || !canOpenViewer) {
       return;
     }
 
@@ -49,11 +51,11 @@ export function EntryCardDialogs({
         : null,
       preferredViewerUri,
     });
-  }, [entry.id, entry.type, preferredViewerUri, selectedImageIndex, selectedMedia, showImageViewer]);
+  }, [canOpenViewer, entry.id, entry.type, preferredViewerUri, selectedImageIndex, selectedMedia, showImageViewer]);
 
   return (
     <>
-      {entry.type === 'photo' && preferredViewerUri ? (
+      {entry.type === 'photo' && preferredViewerUri && canOpenViewer ? (
         <ImageViewer
           visible={showImageViewer}
           imageUri={preferredViewerUri}

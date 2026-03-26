@@ -171,18 +171,17 @@ describe('cloudSyncService', () => {
     expect(useSyncStore.getState().syncCursor).toBe(10);
   });
 
-  it('replaces the main entry with serverEntry and creates a conflict-local-copy for conflicted results', async () => {
+  it('applies the server version without creating a conflict-local-copy when local update is ignored', async () => {
     mockPost.mockResolvedValueOnce({
       newCursor: 12,
       results: [
-        { changeId: 'change-2', status: 'conflicted', entryId: 'entry-3' },
+        { changeId: 'change-2', status: 'ignored', entryId: 'entry-3' },
       ],
-      serverChanges: [],
-      conflicts: [
+      serverChanges: [
         {
-          changeId: 'change-2',
-          entryId: 'entry-3',
-          serverEntry: {
+          changeId: 12,
+          op: 'update',
+          entry: {
             id: 'entry-3',
             type: 'text',
             content: 'server version',
@@ -190,15 +189,9 @@ describe('cloudSyncService', () => {
             createdAt: '2026-03-22T10:00:00Z',
             updatedAt: '2026-03-22T10:05:00Z',
           },
-          clientEntry: {
-            id: 'entry-3',
-            type: 'text',
-            content: 'local version',
-            tags: ['b'],
-            updatedAt: '2026-03-22T10:04:00Z',
-          },
         },
       ],
+      conflicts: [],
     });
     (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-3' });
 
@@ -209,11 +202,7 @@ describe('cloudSyncService', () => {
       content: 'server version',
       syncStatus: 'synced',
     }));
-    expect(DB.addEntry).toHaveBeenCalledWith(expect.objectContaining({
-      content: 'local version',
-      syncStatus: 'conflict-local-copy',
-      conflictedCopyOf: 'entry-3',
-    }));
+    expect(DB.addEntry).not.toHaveBeenCalled();
   });
 
   it('marks ignored delete results as locally settled without recreating pending rows', async () => {
@@ -451,6 +440,47 @@ describe('cloudSyncService', () => {
         ],
       }),
     ]);
+  });
+
+  it('does not create a conflict-local-copy when a legacy conflict payload is returned', async () => {
+    mockPost.mockResolvedValueOnce({
+      newCursor: 13,
+      results: [
+        { changeId: 'change-legacy-conflict', status: 'conflicted', entryId: 'entry-legacy-conflict' },
+      ],
+      serverChanges: [],
+      conflicts: [
+        {
+          changeId: 'change-legacy-conflict',
+          entryId: 'entry-legacy-conflict',
+          reason: 'server_newer_than_base',
+          serverEntry: {
+            id: 'entry-legacy-conflict',
+            type: 'text',
+            content: 'server wins',
+            tags: ['srv'],
+            createdAt: '2026-03-22T10:00:00Z',
+            updatedAt: '2026-03-22T10:05:00Z',
+          },
+          clientEntry: {
+            id: 'entry-legacy-conflict',
+            type: 'text',
+            content: 'client loses',
+            tags: ['cli'],
+            updatedAt: '2026-03-22T10:04:00Z',
+          },
+        },
+      ],
+    });
+    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-legacy-conflict' });
+
+    await createCloudSyncService().syncNow();
+
+    expect(DB.updateEntry).toHaveBeenCalledWith('entry-legacy-conflict', expect.objectContaining({
+      content: 'server wins',
+      syncStatus: 'synced',
+    }));
+    expect(DB.addEntry).not.toHaveBeenCalled();
   });
 
   it('preserves the existing media summary when no synced media needs validation', async () => {

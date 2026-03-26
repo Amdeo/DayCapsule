@@ -211,7 +211,7 @@ export function createCloudSyncService(): SyncServiceApi {
     };
   };
 
-  const createConflictCopy = async (conflict: ConflictPayload): Promise<Entry | null> => {
+  const applyConflictWinner = async (conflict: ConflictPayload): Promise<Entry | null> => {
     if (!conflict.serverEntry?.id || !conflict.clientEntry?.id) return null;
 
     const existing = await DB.getEntryById(conflict.serverEntry.id);
@@ -223,23 +223,6 @@ export function createCloudSyncService(): SyncServiceApi {
     } else {
       await DB.restoreEntries([mainEntry]);
     }
-
-    const conflictCopy: Omit<Entry, 'id' | 'timestamp'> = {
-      type: conflict.clientEntry.type,
-      content: conflict.clientEntry.content ?? '',
-      tags: parseTags(conflict.clientEntry.tags),
-      media: parseMedia(conflict.clientEntry.media, existing?.media),
-      recordingStatus: conflict.clientEntry.recordingStatus ?? undefined,
-      recordingDuration: conflict.clientEntry.recordingDuration ?? undefined,
-      syncStatus: 'conflict-local-copy',
-      syncOp: 'update',
-      updatedAt: parseTimestamp(conflict.clientEntry.updatedAt) ?? Date.now(),
-      conflictedCopyOf: conflict.serverEntry.id,
-      baseUpdatedAt: parseTimestamp(conflict.serverEntry.updatedAt),
-      userId: conflict.clientEntry.userId ?? conflict.serverEntry.userId ?? undefined,
-      deleted: false,
-    };
-    await DB.addEntry(conflictCopy);
     return mainEntry;
   };
 
@@ -350,7 +333,7 @@ export function createCloudSyncService(): SyncServiceApi {
 
     if (data.conflicts?.length) {
       for (const conflict of data.conflicts) {
-        const conflictEntry = await createConflictCopy(conflict);
+        const conflictEntry = await applyConflictWinner(conflict);
         if (conflictEntry && hasRemoteMedia(conflictEntry)) {
           validationEntries.push(conflictEntry);
         }
