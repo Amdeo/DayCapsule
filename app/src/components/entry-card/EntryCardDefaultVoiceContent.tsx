@@ -8,6 +8,7 @@ import {
   formatEntryCardDuration,
   getEntryMediaDurationSeconds,
 } from './entryCardContentHelpers';
+import { isVoiceMediaPendingHydration } from '@/src/utils/mediaAvailability';
 
 interface EntryCardDefaultVoiceContentProps {
   entry: Entry;
@@ -108,6 +109,42 @@ export function EntryCardDefaultVoiceContent({
 
   if (!entry.media || entry.media.length === 0) {
     return null;
+  }
+
+  if (isVoiceMediaPendingHydration(entry.media[0])) {
+    return (
+      <View style={styles.voiceCard}>
+        <View style={styles.voicePlayRow}>
+          <View
+            testID={`voice-preparing-button-${entry.id}`}
+            style={[styles.voicePlayBtn, styles.voicePlayBtnDisabled]}
+          >
+            <ActivityIndicator
+              testID={`voice-preparing-spinner-${entry.id}`}
+              size="small"
+              color="#FFFFFF"
+            />
+          </View>
+
+          <View style={styles.voiceWaveform}>
+            <WaveformAnimation isRecording={false} color="#D9D9D9" />
+          </View>
+
+          <Text
+            testID={`voice-preparing-label-${entry.id}`}
+            style={styles.voiceUploadingText}
+          >
+            准备中
+          </Text>
+        </View>
+
+        {(entry.transcription?.text || entry.content) ? (
+          <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
+            {entry.transcription?.text || entry.content}
+          </Text>
+        ) : null}
+      </View>
+    );
   }
 
   return (

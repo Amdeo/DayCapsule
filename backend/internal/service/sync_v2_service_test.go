@@ -168,7 +168,7 @@ func TestSyncV2Service_ResultSemantics(t *testing.T) {
 			},
 		},
 		{
-			name: "update returns conflicted when server is newer",
+			name: "update is ignored when server is newer and client edit time is older",
 			seed: func(t *testing.T, entryRepo *repository.EntryRepository, userID string) (*time.Time, *models.Entry) {
 				t.Helper()
 
@@ -199,9 +199,10 @@ func TestSyncV2Service_ResultSemantics(t *testing.T) {
 						ChangeID: "local-update-1",
 						Op:       "update",
 						Entry: models.Entry{
-							ID:      "entry-update-1",
-							Type:    "text",
-							Content: "client version",
+							ID:        "entry-update-1",
+							Type:      "text",
+							Content:   "client version",
+							UpdatedAt: time.Date(2026, 3, 22, 8, 30, 0, 0, time.UTC),
 						},
 					},
 				},
@@ -211,20 +212,11 @@ func TestSyncV2Service_ResultSemantics(t *testing.T) {
 				if len(view.Results) != 1 {
 					t.Fatalf("expected 1 result, got %#v", view.Results)
 				}
-				if view.Results[0].ChangeID != "local-update-1" || view.Results[0].Status != "conflicted" || view.Results[0].EntryID != "entry-update-1" {
+				if view.Results[0].ChangeID != "local-update-1" || view.Results[0].Status != "ignored" || view.Results[0].EntryID != "entry-update-1" {
 					t.Fatalf("unexpected update result: %#v", view.Results[0])
 				}
-				if len(view.Conflicts) != 1 {
-					t.Fatalf("expected 1 conflict, got %#v", view.Conflicts)
-				}
-				if view.Conflicts[0].ChangeID != "local-update-1" || view.Conflicts[0].EntryID != "entry-update-1" || view.Conflicts[0].Reason != "server_newer_than_base" {
-					t.Fatalf("unexpected conflict metadata: %#v", view.Conflicts[0])
-				}
-				if view.Conflicts[0].ServerEntry == nil || view.Conflicts[0].ClientEntry == nil {
-					t.Fatalf("expected serverEntry and clientEntry in conflict, got %#v", view.Conflicts[0])
-				}
-				if view.Conflicts[0].ServerEntry.Content != "server version" || view.Conflicts[0].ClientEntry.Content != "client version" {
-					t.Fatalf("unexpected conflict entries: server=%#v client=%#v", view.Conflicts[0].ServerEntry, view.Conflicts[0].ClientEntry)
+				if len(view.Conflicts) != 0 {
+					t.Fatalf("expected no conflicts, got %#v", view.Conflicts)
 				}
 			},
 		},
@@ -522,7 +514,7 @@ func TestSyncV2Service_AppliedDeleteFallsBackWhenEntryDeleteServiceIsNil(t *test
 	}
 }
 
-func TestSyncV2Service_DoesNotAppendChangeLogForConflictedUpdate(t *testing.T) {
+func TestSyncV2Service_DoesNotAppendChangeLogForIgnoredOlderUpdate(t *testing.T) {
 	db := setupSyncV2TestDB(t)
 	t.Cleanup(func() {
 		_ = db.Close()
@@ -561,9 +553,10 @@ func TestSyncV2Service_DoesNotAppendChangeLogForConflictedUpdate(t *testing.T) {
 				Op:            "update",
 				BaseUpdatedAt: &baseUpdatedAt,
 				Entry: models.Entry{
-					ID:      "entry-update-1",
-					Type:    "text",
-					Content: "client version",
+					ID:        "entry-update-1",
+					Type:      "text",
+					Content:   "client version",
+					UpdatedAt: now.Add(-30 * time.Minute),
 				},
 			},
 		},
@@ -573,11 +566,80 @@ func TestSyncV2Service_DoesNotAppendChangeLogForConflictedUpdate(t *testing.T) {
 	}
 
 	view := decodeSyncV2Response(t, resp)
-	if len(view.Results) != 1 || view.Results[0].Status != "conflicted" {
-		t.Fatalf("expected conflicted update result, got %#v", view.Results)
+	if len(view.Results) != 1 || view.Results[0].Status != "ignored" {
+		t.Fatalf("expected ignored update result, got %#v", view.Results)
 	}
 	if got := countEntryChangesForEntry(t, db, user.ID, "entry-update-1"); got != 0 {
-		t.Fatalf("expected no change log for conflicted update, got %d", got)
+		t.Fatalf("expected no change log for ignored update, got %d", got)
+	}
+}
+
+func TestSyncV2Service_AppliesUpdateWhenClientEditTimeIsNewerThanServer(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.Create("user-lww@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	now := time.Now().UTC()
+	entry := &models.Entry{
+		ID:         "entry-lww-1",
+		Type:       "text",
+		Content:    "server version",
+		Tags:       "[]",
+		Media:      "[]",
+		SyncStatus: "synced",
+		CreatedAt:  now.Add(-2 * time.Hour),
+		UpdatedAt:  now,
+	}
+	if _, err := entryRepo.InsertFromSync(user.ID, entry); err != nil {
+		t.Fatalf("seed entry: %v", err)
+	}
+	baseUpdatedAt := now.Add(-1 * time.Hour)
+	clientUpdatedAt := now.Add(30 * time.Minute)
+
+	svc := NewSyncV2Service(entryRepo, repository.NewChangeRepository(db))
+	resp, err := svc.Sync(context.Background(), user.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID:      "local-update-lww-1",
+				Op:            "update",
+				BaseUpdatedAt: &baseUpdatedAt,
+				Entry: models.Entry{
+					ID:        "entry-lww-1",
+					Type:      "text",
+					Content:   "client newer version",
+					UpdatedAt: clientUpdatedAt,
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied update result, got %#v", view.Results)
+	}
+
+	persisted, err := entryRepo.GetByID(user.ID, "entry-lww-1")
+	if err != nil {
+		t.Fatalf("read updated entry: %v", err)
+	}
+	if persisted == nil || persisted.Content != "client newer version" {
+		t.Fatalf("expected newer client version to win, got %#v", persisted)
+	}
+	if got := countEntryChangesForEntry(t, db, user.ID, "entry-lww-1"); got != 1 {
+		t.Fatalf("expected one change log for applied lww update, got %d", got)
 	}
 }
 

@@ -3,6 +3,7 @@ import type { Swipeable } from 'react-native-gesture-handler';
 import type { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
+import { isEntryMediaPendingHydration } from '@/src/utils/mediaAvailability';
 
 const ACTION_SHEET_OPEN_DELAY = 100;
 
@@ -179,10 +180,18 @@ export function useEntryCardController({
         onView?.(entry);
         break;
       case 'photo':
+        if (isEntryMediaPendingHydration(entry)) {
+          logger.log('图片媒体尚未准备好，忽略点击');
+          break;
+        }
         logger.log('图片记录，打开图片查看器');
         setShowImageViewer(true);
         break;
       case 'voice':
+        if (isEntryMediaPendingHydration(entry)) {
+          logger.log('语音媒体尚未准备好，忽略播放');
+          break;
+        }
         if (entry.media && entry.media.length > 0 && !isPlayingAudio) {
           logger.log('语音记录，触发播放');
           void onPlayAudio();

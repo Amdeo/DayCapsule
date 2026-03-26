@@ -6,6 +6,9 @@ let networkListener: ((state: { isConnected: boolean; isInternetReachable: boole
 const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
 const mockFeedbackHost = jest.fn(() => null);
 const mockShowErrorFeedback = jest.fn();
+const mockSyncNow = jest.fn(async () => undefined);
+let mockIsAuthenticated = false;
+let mockCloudMode = false;
 
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
@@ -151,7 +154,7 @@ jest.mock('@/src/store/entryStore', () => ({
 jest.mock('@/src/store/authStore', () => ({
   useAuthStore: {
     getState: () => ({
-      isAuthenticated: false,
+      isAuthenticated: mockIsAuthenticated,
       loadAuth: jest.fn().mockResolvedValue(undefined),
     }),
   },
@@ -160,7 +163,7 @@ jest.mock('@/src/store/authStore', () => ({
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: {
     getState: () => ({
-      cloudMode: false,
+      cloudMode: mockCloudMode,
     }),
   },
 }));
@@ -192,7 +195,7 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
 
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: jest.fn(() => ({
-    syncNow: jest.fn().mockResolvedValue(undefined),
+    syncNow: mockSyncNow,
   })),
 }));
 
@@ -224,6 +227,7 @@ jest.mock('react-native', () => ({
 import RootLayout from '../_layout';
 import { initDatabase } from '@/src/database/sqlite';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
+import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 
 const flushPromises = async () => {
   await act(async () => {
@@ -238,6 +242,8 @@ describe('RootLayout photo upload triggers', () => {
     jest.clearAllMocks();
     appStateListener = null;
     networkListener = null;
+    mockIsAuthenticated = false;
+    mockCloudMode = false;
   });
 
   it('flushes pending photo uploads on app bootstrap', async () => {
@@ -267,9 +273,13 @@ describe('RootLayout photo upload triggers', () => {
   });
 
   it('flushes pending photo uploads when app becomes active', async () => {
+    mockIsAuthenticated = true;
+    mockCloudMode = true;
     render(<RootLayout />);
     await flushPromises();
     (flushPendingPhotoUploads as jest.Mock).mockClear();
+    (flushPendingVoiceUploads as jest.Mock).mockClear();
+    mockSyncNow.mockClear();
 
     await act(async () => {
       await appStateListener?.('background');
@@ -277,13 +287,19 @@ describe('RootLayout photo upload triggers', () => {
     });
 
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
+    expect(mockSyncNow).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
   });
 
   it('flushes pending photo uploads when network becomes reachable again', async () => {
+    mockIsAuthenticated = true;
+    mockCloudMode = true;
     render(<RootLayout />);
     await flushPromises();
     (flushPendingPhotoUploads as jest.Mock).mockClear();
+    (flushPendingVoiceUploads as jest.Mock).mockClear();
+    mockSyncNow.mockClear();
 
     act(() => {
       networkListener?.({
@@ -295,6 +311,44 @@ describe('RootLayout photo upload triggers', () => {
     await flushPromises();
 
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
+    expect(mockSyncNow).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
+  });
+
+  it('does not run duplicate recovery work while a previous recovery is still in flight', async () => {
+    mockIsAuthenticated = true;
+    mockCloudMode = true;
+    let resolveSync!: () => void;
+    mockSyncNow.mockImplementationOnce(async () => new Promise<void>((resolve) => {
+      resolveSync = resolve;
+    }));
+
+    render(<RootLayout />);
+    await flushPromises();
+    (flushPendingPhotoUploads as jest.Mock).mockClear();
+    (flushPendingVoiceUploads as jest.Mock).mockClear();
+    mockSyncNow.mockClear();
+
+    await act(async () => {
+      const activePromise = appStateListener?.('background');
+      await activePromise;
+      const resumePromise = appStateListener?.('active');
+      act(() => {
+        networkListener?.({
+          isConnected: true,
+          isInternetReachable: true,
+        });
+      });
+      await Promise.resolve();
+      resolveSync();
+      await resumePromise;
+    });
+
+    await flushPromises();
+
+    expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
+    expect(mockSyncNow).toHaveBeenCalledTimes(1);
   });
 });

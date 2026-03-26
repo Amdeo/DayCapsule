@@ -208,6 +208,22 @@ const pendingUploadVoiceEntry: Entry = {
   media: [{ uri: 'file:///voice.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
 };
 
+const pendingHydrationVoiceEntry: Entry = {
+  id: 'voice-pending-hydration-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+  recordingStatus: 'completed',
+  media: [{
+    uri: 'http://101.43.120.134:8081/api/media/voice-1',
+    remoteUri: 'http://101.43.120.134:8081/api/media/voice-1',
+    mimeType: 'audio/m4a',
+    size: 2048,
+    duration: 12000,
+  }],
+};
+
 const playableVoiceEntry: Entry = {
   id: 'voice-playable-1',
   type: 'voice',
@@ -300,6 +316,16 @@ describe('EntryCard swipe actions', () => {
     );
 
     expect(getAllByText('待上传').length).toBeGreaterThan(0);
+  });
+
+  it('shows 准备中 and hides the play button for voice entries whose media is still remote-only', () => {
+    const { getByText, queryByText, queryByTestId } = render(
+      <EntryCard entry={pendingHydrationVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByText('准备中')).toBeTruthy();
+    expect(queryByText('待上传')).toBeNull();
+    expect(queryByTestId('voice-uploading-button-voice-pending-hydration-1')).toBeNull();
   });
 
   it('shows 处理中 and disables stop button when voice entry is stopping', () => {
@@ -719,19 +745,19 @@ describe('EntryCard photo edge-to-edge', () => {
       .spyOn(PhotoService, 'resolvePhotoUri')
       .mockImplementation((uri: string) => `resolved:${uri}`);
 
-    const remotePhotoEntry: Entry = {
+    const localPhotoEntry: Entry = {
       ...photoEntry,
-      id: 'photo-remote-1',
+      id: 'photo-local-1',
       media: [
-        { uri: 'http://localhost:8081/api/media/1', mimeType: 'image/jpeg', size: 1 },
+        { uri: 'file://viewer-local-1.jpg', mimeType: 'image/jpeg', size: 1 },
       ],
     };
 
-    const { getByTestId } = render(<EntryCard entry={remotePhotoEntry} onDelete={jest.fn()} />);
+    const { getByTestId } = render(<EntryCard entry={localPhotoEntry} onDelete={jest.fn()} />);
     fireEvent.press(getByTestId('photo-image-0'));
 
-    expect(resolveSpy).toHaveBeenCalledWith('http://localhost:8081/api/media/1');
-    expect(getByTestId('image-viewer-uri').props.children).toBe('resolved:http://localhost:8081/api/media/1');
+    expect(resolveSpy).toHaveBeenCalledWith('file://viewer-local-1.jpg');
+    expect(getByTestId('image-viewer-uri').props.children).toBe('resolved:file://viewer-local-1.jpg');
 
     resolveSpy.mockRestore();
   });
@@ -756,6 +782,29 @@ describe('EntryCard photo edge-to-edge', () => {
     expect(getByTestId('image-viewer-uri').props.children).toBe(
       'http://101.43.120.134:8081/api/media/photo-1'
     );
+  });
+
+  it('远端图片尚未落地时点击卡片不应打开图片查看器', () => {
+    const pendingRemotePhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-remote-pending-1',
+      media: [
+        {
+          uri: 'http://101.43.120.134:8081/api/media/pending-1',
+          remoteUri: 'http://101.43.120.134:8081/api/media/pending-1',
+          remoteThumbnail: 'http://101.43.120.134:8081/api/media/pending-1-thumb',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+      ],
+    };
+
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={pendingRemotePhotoEntry} onDelete={jest.fn()} />
+    );
+    fireEvent.press(getByTestId('entry-card'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
   });
 
   it('打开图片查看器时应该打印选中媒体与最终路径日志', () => {

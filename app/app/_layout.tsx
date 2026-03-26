@@ -187,6 +187,31 @@ export default function RootLayout() {
   // 监听 App 进入后台，触发自动备份
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const wasNetworkReachableRef = useRef<boolean | null>(null);
+  const pendingCloudRecoveryRef = useRef<Promise<void> | null>(null);
+  const runPendingCloudRecovery = async (label: string): Promise<void> => {
+    if (pendingCloudRecoveryRef.current) {
+      return pendingCloudRecoveryRef.current;
+    }
+
+    pendingCloudRecoveryRef.current = (async () => {
+      if (useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true) {
+        await createCloudSyncService().syncNow().catch((syncError) =>
+          logger.warn(`⚠️ ${label}entry 云同步失败:`, syncError)
+        );
+      }
+      await flushPendingVoiceUploads().catch((queueError) =>
+        logger.warn(`⚠️ ${label}补传待上传语音失败:`, queueError)
+      );
+      await flushPendingPhotoUploads().catch((queueError) =>
+        logger.warn(`⚠️ ${label}补传待上传照片失败:`, queueError)
+      );
+      await refreshCloudSyncIndicator(`${label}后`);
+    })().finally(() => {
+      pendingCloudRecoveryRef.current = null;
+    });
+
+    return pendingCloudRecoveryRef.current;
+  };
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
       const prev = appStateRef.current;
@@ -204,18 +229,7 @@ export default function RootLayout() {
           );
         }
       } else if (prev !== 'active' && nextState === 'active') {
-        if (useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true) {
-          await createCloudSyncService().syncNow().catch((syncError) =>
-            logger.warn('⚠️ 回到前台时 entry 云同步失败:', syncError)
-          );
-        }
-        await flushPendingVoiceUploads().catch((queueError) =>
-          logger.warn('⚠️ 回到前台时补传待上传语音失败:', queueError)
-        );
-        await flushPendingPhotoUploads().catch((queueError) =>
-          logger.warn('⚠️ 回到前台时补传待上传照片失败:', queueError)
-        );
-        await refreshCloudSyncIndicator('回到前台后');
+        await runPendingCloudRecovery('回到前台时');
       }
     });
     return () => subscription.remove();
@@ -228,13 +242,7 @@ export default function RootLayout() {
       wasNetworkReachableRef.current = isReachable;
 
       if (!wasReachable && isReachable) {
-        void flushPendingVoiceUploads().catch((queueError) =>
-          logger.warn('⚠️ 网络恢复时补传待上传语音失败:', queueError)
-        );
-        void flushPendingPhotoUploads().catch((queueError) =>
-          logger.warn('⚠️ 网络恢复时补传待上传照片失败:', queueError)
-        );
-        void refreshCloudSyncIndicator('网络恢复后');
+        void runPendingCloudRecovery('网络恢复时');
       }
     });
 

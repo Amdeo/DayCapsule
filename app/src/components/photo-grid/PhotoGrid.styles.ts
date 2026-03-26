@@ -26,12 +26,31 @@ export const photoGridStyles = StyleSheet.create({
   singleMissing: {
     width: '100%',
     backgroundColor: '#ECE7E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  singleLoading: {
+    width: '100%',
+    backgroundColor: '#ECE7E0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gridCellMissing: {
     backgroundColor: '#ECE7E0',
     borderRadius: 4,
   },
+  gridCellLoading: {
+    backgroundColor: '#ECE7E0',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   twoPhotoMissing: {
     backgroundColor: '#ECE7E0',
+  },
+  twoPhotoLoading: {
+    backgroundColor: '#ECE7E0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
