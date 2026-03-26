@@ -28,6 +28,9 @@ export const settingsPageStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: 12,
   },
   section: {
     marginTop: 24,

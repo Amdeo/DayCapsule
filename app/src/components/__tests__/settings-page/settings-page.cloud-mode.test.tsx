@@ -20,7 +20,7 @@ describe('SettingsPage cloud mode', () => {
     mocks.syncBootstrap.inspectInitialState.mockRejectedValueOnce(new Error('network down'));
 
     await waitFor(() => {
-      expect(screen.getByText('tester@example.com')).toBeTruthy();
+      expect(screen.getAllByText('tester@example.com').length).toBeGreaterThan(0);
     });
 
     fireEvent(screen.getByTestId('settings-switch-cloud-mode'), 'valueChange', true);
@@ -29,7 +29,7 @@ describe('SettingsPage cloud mode', () => {
       expect(mocks.showErrorFeedback).toHaveBeenCalled();
     });
 
-    expect(screen.getByText('数据存储在本地')).toBeTruthy();
+    expect(screen.getAllByText('数据存储在本地').length).toBeGreaterThan(0);
   });
 
   it('keeps local entries when cloud is empty and user switches back to local mode', async () => {

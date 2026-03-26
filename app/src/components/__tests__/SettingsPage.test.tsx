@@ -108,22 +108,28 @@ describe('SettingsPage assembly', () => {
     };
 
     const settingsRootNode = findNodeByTestId(screen.toJSON(), 'settings-page-root');
-    const rootChildTestIds = (settingsRootNode?.children ?? [])
-      .map((child) => (
-        typeof child === 'object' && child !== null && 'props' in child
-          ? (child as { props?: { testID?: string } }).props?.testID
-          : undefined
-      ))
-      .filter((testID): testID is string => typeof testID === 'string');
-    const overviewIndex = rootChildTestIds.indexOf('settings-overview-card');
-    const accountSectionIndex = rootChildTestIds.indexOf('settings-section-account-sync');
+    const rootChildren = settingsRootNode?.children ?? [];
+    const firstRootChild = rootChildren[0] as { props?: { testID?: string } } | undefined;
+    const overviewIndex = rootChildren.findIndex((child) => (
+      typeof child === 'object'
+      && child !== null
+      && 'props' in child
+      && (child as { props?: { testID?: string } }).props?.testID === 'settings-overview-card'
+    ));
+    const accountSectionIndex = rootChildren.findIndex((child) => (
+      typeof child === 'object'
+      && child !== null
+      && 'props' in child
+      && (child as { props?: { testID?: string } }).props?.testID === 'settings-section-account-sync'
+    ));
 
     expect(overviewCard).toBeTruthy();
     expect(accountSection).toBeTruthy();
-    expect(screen.getByText('当前账号')).toBeTruthy();
-    expect(screen.getByText('同步模式')).toBeTruthy();
-    expect(screen.getByText('当前后端')).toBeTruthy();
-    expect(screen.getByText('存储概览')).toBeTruthy();
+    expect(within(overviewCard).getByText('当前账号')).toBeTruthy();
+    expect(within(overviewCard).getByText('同步模式')).toBeTruthy();
+    expect(within(overviewCard).getByText('当前后端')).toBeTruthy();
+    expect(within(overviewCard).getByText('存储概览')).toBeTruthy();
+    expect(firstRootChild?.props?.testID).toBe('settings-overview-card');
     expect(overviewIndex).toBeLessThan(accountSectionIndex);
     expect(overviewIndex).toBe(0);
 

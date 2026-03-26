@@ -19,19 +19,25 @@ function OverviewRow({ label, value }: OverviewRowProps) {
   return (
     <View style={styles.overviewRow}>
       <Text style={styles.overviewLabel}>{label}</Text>
-      <Text style={styles.overviewValue}>{value}</Text>
+      <Text
+        style={styles.overviewValue}
+        numberOfLines={1}
+        ellipsizeMode="middle"
+      >
+        {value}
+      </Text>
     </View>
   );
 }
 
 function getSyncModeLabel(cloudMode: boolean | 'switching'): string {
   if (cloudMode === true) {
-    return '云端';
+    return '数据存储在云端';
   }
   if (cloudMode === 'switching') {
-    return '切换中';
+    return '切换中...';
   }
-  return '本地';
+  return '数据存储在本地';
 }
 
 export function SettingsOverviewCard({
