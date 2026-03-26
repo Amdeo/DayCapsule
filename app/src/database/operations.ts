@@ -713,8 +713,13 @@ export const getEntriesPage = async (
 ): Promise<Entry[]> => {
   try {
     const db = getDatabase();
+    const columns = await getTableColumns(db);
     const conditions: string[] = [];
     const params: any[] = [];
+
+    if (columns.has('deleted')) {
+      conditions.push('e.deleted = 0');
+    }
 
     if (cursor) {
       conditions.push('e.timestamp < ?');

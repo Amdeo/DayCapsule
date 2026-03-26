@@ -566,4 +566,79 @@ describe('cloudSyncService', () => {
     expect(useSyncStore.getState().isSyncing).toBe(false);
     expect(mockRefreshIndicator).toHaveBeenCalled();
   });
+
+  it('runs a follow-up sync when syncNow is requested again during an in-flight sync', async () => {
+    let resolveFirstSync: ((value: {
+      newCursor: number;
+      results: Array<{ changeId: string; status: 'applied'; entryId: string }>;
+      serverChanges: [];
+      conflicts: [];
+    }) => void) | null = null;
+
+    (DB.getEntriesBySyncStatus as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'entry-photo-tail',
+          type: 'photo',
+          content: '',
+          media: [
+            {
+              uri: 'file:///current-device/media/photos/original/photo.jpg',
+              remoteUri: 'https://cdn.example.com/photo-tail.jpg',
+              mimeType: 'image/jpeg',
+              size: 1000,
+            },
+          ],
+          syncStatus: 'pending',
+          syncOp: 'create',
+          timestamp: 1000001,
+          updatedAt: 1000001,
+          baseUpdatedAt: 1000001,
+        },
+      ]);
+
+    mockPost
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveFirstSync = resolve;
+      }))
+      .mockResolvedValueOnce({
+        newCursor: 2,
+        results: [
+          {
+            changeId: 'entry-photo-tail:create:1000001',
+            status: 'applied',
+            entryId: 'entry-photo-tail',
+          },
+        ],
+        serverChanges: [],
+        conflicts: [],
+      });
+
+    const service = createCloudSyncService();
+    const firstRun = service.syncNow();
+    const secondRun = service.syncNow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    resolveFirstSync?.({
+      newCursor: 1,
+      results: [],
+      serverChanges: [],
+      conflicts: [],
+    });
+
+    await Promise.all([firstRun, secondRun]);
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost.mock.calls[1]?.[1]).toMatchObject({
+      clientChanges: [
+        expect.objectContaining({
+          changeId: 'entry-photo-tail:create:1000001',
+          op: 'create',
+        }),
+      ],
+    });
+  });
 });

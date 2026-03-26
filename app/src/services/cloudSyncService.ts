@@ -67,6 +67,8 @@ type SyncResponsePayload = {
 };
 
 let inFlightSync: Promise<void> | null = null;
+let pendingSyncRequested = false;
+let queuedSyncPromise: Promise<void> | null = null;
 
 function parseTags(tags: ServerEntryPayload['tags']): string[] {
   if (Array.isArray(tags)) return tags;
@@ -375,7 +377,21 @@ export function createCloudSyncService(): SyncServiceApi {
 
   const syncNow = async (): Promise<void> => {
     if (inFlightSync) {
-      return inFlightSync;
+      pendingSyncRequested = true;
+
+      if (!queuedSyncPromise) {
+        queuedSyncPromise = (async () => {
+          await inFlightSync;
+          while (pendingSyncRequested) {
+            pendingSyncRequested = false;
+            await syncNow();
+          }
+        })().finally(() => {
+          queuedSyncPromise = null;
+        });
+      }
+
+      return queuedSyncPromise;
     }
 
     inFlightSync = (async () => {

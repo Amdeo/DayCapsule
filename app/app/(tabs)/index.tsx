@@ -292,7 +292,7 @@ export async function handlePhotoSelectForTest(
 
 export default function HomeScreen() {
   const {
-    loadEntries, addEntry, addLocalEntry, updateLocalEntry, replaceEntry, deleteEntry,
+    loadEntries, addEntry, addLocalEntry, updateLocalEntry, deleteEntry,
     updateRecordingStatus, updateRecordingDuration, completeRecording,
   } = useEntryStore();
 
@@ -366,8 +366,12 @@ export default function HomeScreen() {
         }));
         refreshCloudSyncIndicator();
       },
-      onEntrySynced: (localId, entry) => {
-        replaceEntry(localId, entry);
+      onEntryPendingSync: (id, entry) => {
+        useEntryStore.setState((s) => ({
+          entries: s.entries.map((item) => (
+            item.id === id ? { ...item, syncStatus: 'pending', media: entry.media } : item
+          )),
+        }));
         refreshCloudSyncIndicator();
       },
     });
@@ -397,7 +401,7 @@ export default function HomeScreen() {
         refreshCloudSyncIndicator();
       },
     });
-  }, [refreshCloudSyncIndicator, replaceEntry]);
+  }, [refreshCloudSyncIndicator]);
 
   // 卸载时清理录音
   useEffect(() => {
