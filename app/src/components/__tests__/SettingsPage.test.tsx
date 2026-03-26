@@ -33,6 +33,17 @@ describe('SettingsPage assembly', () => {
     expect(await screen.findByTestId('settings-tag-management-dialog')).toBeTruthy();
   });
 
+  it('renders the preset tag management entry with subtitle and stable testID', async () => {
+    const { screen } = renderSettingsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('其他')).toBeTruthy();
+    });
+
+    expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
+    expect(screen.getByText('管理可快速选择的预制标签')).toBeTruthy();
+  });
+
   it('opens the login dialog when unauthenticated users tap login', async () => {
     const { screen } = renderSettingsPage();
 
