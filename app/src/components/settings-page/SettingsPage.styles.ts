@@ -6,6 +6,29 @@ export const SETTINGS_SWITCH_TRACK_COLORS = {
 } as const;
 
 export const settingsPageStyles = StyleSheet.create({
+  overviewCard: {
+    backgroundColor: '#EEF8FA',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D7EEF2',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 7,
+  },
+  overviewLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  overviewValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
   section: {
     marginTop: 24,
   },
@@ -55,9 +78,17 @@ export const settingsPageStyles = StyleSheet.create({
     color: '#A3A3A3',
   },
   storageInfo: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
     borderRadius: 12,
     padding: 16,
+  },
+  storageCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8A8A8A',
+    marginBottom: 4,
   },
   storageRow: {
     flexDirection: 'row',

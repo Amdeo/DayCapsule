@@ -11,6 +11,7 @@ import {
 import { SettingsBackendServerCard } from './SettingsBackendServerCard';
 import { SettingButton, SettingItem } from './SettingRow';
 import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
+import { SettingsOverviewCard } from './SettingsOverviewCard';
 import { SettingsSection } from './SettingsSection';
 import { SettingsSegmentedSelector } from './SettingsSegmentedSelector';
 import { SettingsStorageInfo } from './SettingsStorageInfo';
@@ -119,6 +120,14 @@ export function SettingsPageContent({
 }: SettingsPageContentProps) {
   return (
     <>
+      <SettingsOverviewCard
+        isAuthenticated={isAuthenticated}
+        userEmail={userEmail}
+        cloudMode={cloudMode}
+        currentServerUrl={currentServerUrl}
+        usedSpace={usedSpace}
+      />
+
       <SettingsSection title="账户与同步">
         <SettingsBackendServerCard
           currentServerUrl={currentServerUrl}

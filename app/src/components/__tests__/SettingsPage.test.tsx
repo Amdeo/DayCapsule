@@ -14,7 +14,7 @@ describe('SettingsPage assembly', () => {
     const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
-      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
+      expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
     });
 
     expect(screen.getByTestId('settings-page-root')).toBeTruthy();
@@ -66,6 +66,19 @@ describe('SettingsPage assembly', () => {
 
     expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
+  });
+
+  it('renders the settings overview card with account, sync and storage summary', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: true });
+
+    expect(screen.getByTestId('settings-overview-card')).toBeTruthy();
+    expect(screen.getByText('当前账号')).toBeTruthy();
+    expect(screen.getByText('同步模式')).toBeTruthy();
+    expect(screen.getByText('当前后端')).toBeTruthy();
+    expect(screen.getByText('存储概览')).toBeTruthy();
+
+    const dataStorageSection = screen.getByTestId('settings-section-data-storage');
+    expect(within(dataStorageSection).getByTestId('settings-storage-card')).toBeTruthy();
   });
 
   it('opens help page from support entry with real close path', async () => {
