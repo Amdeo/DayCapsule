@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-27-sidebar-settings-ia-redesign.md`
 
-**Status:** 已执行（Task 4 收口完成，lint 有基线遗留失败）
+**Status:** 已完成（lint 有基线遗留失败）
 
 ---
 
