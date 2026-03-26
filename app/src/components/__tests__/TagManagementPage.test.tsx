@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, PanResponder, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { TagManagementPage } from '../TagManagementPage';
+import { MAX_TAGS } from '../tag-management-page/tagManagementConfig';
 
 const mockLoadCommonTags = jest.fn();
 const mockAddCommonTag = jest.fn();
@@ -121,6 +122,14 @@ describe('TagManagementPage preset tags', () => {
     expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
   });
 
+  it('does not load common tags again when already loaded and visible', () => {
+    setMockCommonTagsState({ isLoaded: true });
+
+    render(<TagManagementPage visible onClose={jest.fn()} />);
+
+    expect(mockLoadCommonTags).not.toHaveBeenCalled();
+  });
+
   it('submits trimmed text from submitEditing and clears the input', async () => {
     const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
 
@@ -144,12 +153,29 @@ describe('TagManagementPage preset tags', () => {
   });
 
   it('disables the input and add button when preset tags reach MAX_TAGS', () => {
-    setMockCommonTagsState({ tags: Array.from({ length: 20 }, (_, index) => `标签${index}`) });
+    setMockCommonTagsState({ tags: Array.from({ length: MAX_TAGS }, (_, index) => `标签${index}`) });
     const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
 
     expect(screen.getByTestId('tag-management-add-input')).toHaveProp('editable', false);
     expect(screen.getByTestId('tag-management-add-button')).toHaveProp('accessibilityState', expect.objectContaining({ disabled: true }));
-    expect(screen.getByPlaceholderText('最多 20 个预制标签')).toBeTruthy();
+    expect(screen.getByPlaceholderText(`最多 ${MAX_TAGS} 个预制标签`)).toBeTruthy();
+  });
+
+  it('shows an alert and does not add tags when preset tags already reach MAX_TAGS', async () => {
+    setMockCommonTagsState({ tags: Array.from({ length: MAX_TAGS }, (_, index) => `标签${index}`) });
+    const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
+    const input = screen.getByTestId('tag-management-add-input');
+
+    act(() => {
+      input.props.onChangeText('灵感');
+    });
+
+    await act(async () => {
+      await input.props.onSubmitEditing();
+    });
+
+    expect(mockAddCommonTag).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
   });
 
   it('cancels and confirms delete through alert actions', () => {
