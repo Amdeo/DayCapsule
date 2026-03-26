@@ -10,6 +10,15 @@
 
 ---
 
+## 验证结果
+
+- 2026-03-27：已运行
+  `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/image-viewer.actions.test.ts src/components/__tests__/image/image-viewer.action-sheet.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx --runInBand`
+  - 结果：PASS（5 个 suite，16 个测试全部通过）
+- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
+  - 结果：PASS（111 个 suite，740 个测试全部通过）
+  - 备注：Jest 结束后仍提示既有 open handles 警告，但测试结果本身全绿
+
 ## Scope Note
 
 本 plan 只实现以下 4 条 `ImageViewer` 生命周期回归：
