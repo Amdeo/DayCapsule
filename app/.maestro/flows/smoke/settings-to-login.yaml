@@ -19,21 +19,6 @@ appId: com.memorycapsule.app
       text: 账户
     direction: UP
     timeout: 10000
-- runFlow:
-    when:
-      notVisible: "登录 / 注册"
-    commands:
-      - scrollUntilVisible:
-          element:
-            text: 退出登录
-          direction: DOWN
-          timeout: 10000
-      - tapOn:
-          text: 退出登录
-      - tapOn:
-          text: 退出
-      - assertVisible:
-          text: 登录 / 注册
 - scrollUntilVisible:
     element:
       text: 登录 / 注册

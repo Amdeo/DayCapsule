@@ -76,7 +76,7 @@ maestro test app/.maestro/flows/smoke/home-to-settings.yaml
 maestro test app/.maestro/flows/smoke/settings-to-login.yaml
 ```
 
-`settings-to-login.yaml` 会改变登录态，建议单条执行，不要和其他 smoke flow 混跑。
+`settings-to-login.yaml` 前置条件为未登录态 app 已启动，建议单条执行，不要和其他 smoke flow 混跑。
 
 云同步 happy path：
 
