@@ -1,59 +1,35 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AboutPage } from '../AboutPage';
 import { BackupPage } from '../BackupPage';
-import { HelpPage } from '../HelpPage';
 import { SettingsPage } from '../SettingsPage';
 import { StatsPage } from '../StatsPage';
-import { TagsPage } from '../TagsPage';
 
 const DETAIL_PAGE_EXIT_DURATION_MS = 300;
 
-type SidebarPageKey =
-  | 'settings'
-  | 'about'
-  | 'stats'
-  | 'tags'
-  | 'backup'
-  | 'help';
+type SidebarPageKey = 'settings' | 'stats' | 'backup';
 
 interface SidebarPagesProps {
   showSettings: boolean;
   setShowSettings: (value: boolean) => void;
-  showAbout: boolean;
-  setShowAbout: (value: boolean) => void;
   showStats: boolean;
   setShowStats: (value: boolean) => void;
-  showTags: boolean;
-  setShowTags: (value: boolean) => void;
   showBackup: boolean;
   setShowBackup: (value: boolean) => void;
-  showHelp: boolean;
-  setShowHelp: (value: boolean) => void;
 }
 
 export function SidebarPages({
   showSettings,
   setShowSettings,
-  showAbout,
-  setShowAbout,
   showStats,
   setShowStats,
-  showTags,
-  setShowTags,
   showBackup,
   setShowBackup,
-  showHelp,
-  setShowHelp,
 }: SidebarPagesProps) {
   const activePage = useMemo<SidebarPageKey | null>(() => {
     if (showSettings) return 'settings';
-    if (showAbout) return 'about';
     if (showStats) return 'stats';
-    if (showTags) return 'tags';
     if (showBackup) return 'backup';
-    if (showHelp) return 'help';
     return null;
-  }, [showAbout, showBackup, showHelp, showSettings, showStats, showTags]);
+  }, [showBackup, showSettings, showStats]);
 
   const [closingPage, setClosingPage] = useState<SidebarPageKey | null>(null);
   const lastActivePageRef = useRef<SidebarPageKey | null>(null);
@@ -91,16 +67,10 @@ export function SidebarPages({
   switch (renderedPage) {
     case 'settings':
       return <SettingsPage visible={activePage === 'settings'} onClose={() => setShowSettings(false)} />;
-    case 'about':
-      return <AboutPage visible={activePage === 'about'} onClose={() => setShowAbout(false)} />;
     case 'stats':
       return <StatsPage visible={activePage === 'stats'} onClose={() => setShowStats(false)} />;
-    case 'tags':
-      return <TagsPage visible={activePage === 'tags'} onClose={() => setShowTags(false)} />;
     case 'backup':
       return <BackupPage visible={activePage === 'backup'} onClose={() => setShowBackup(false)} />;
-    case 'help':
-      return <HelpPage visible={activePage === 'help'} onClose={() => setShowHelp(false)} />;
     default:
       return null;
   }

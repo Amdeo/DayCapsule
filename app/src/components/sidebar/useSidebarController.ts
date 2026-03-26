@@ -14,16 +14,10 @@ type SidebarSetter = (value: boolean) => void;
 export interface SidebarPageStateProps {
   showSettings: boolean;
   setShowSettings: SidebarSetter;
-  showAbout: boolean;
-  setShowAbout: SidebarSetter;
   showStats: boolean;
   setShowStats: SidebarSetter;
-  showTags: boolean;
-  setShowTags: SidebarSetter;
   showBackup: boolean;
   setShowBackup: SidebarSetter;
-  showHelp: boolean;
-  setShowHelp: SidebarSetter;
 }
 
 interface UseSidebarControllerOptions extends SidebarPageStateProps {
@@ -35,11 +29,8 @@ export function useSidebarController({
   drawerProgress,
   onClose,
   setShowSettings,
-  setShowAbout,
   setShowStats,
-  setShowTags,
   setShowBackup,
-  setShowHelp,
 }: UseSidebarControllerOptions) {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -51,16 +42,15 @@ export function useSidebarController({
 
   const actionSetters: Record<SidebarAction, SidebarSetter> = {
     settings: setShowSettings,
-    about: setShowAbout,
     stats: setShowStats,
-    tags: setShowTags,
     backup: setShowBackup,
-    help: setShowHelp,
   };
 
   const handleMenuItemPress = (action: SidebarAction) => {
     onClose();
-    actionSetters[action](true);
+    (Object.keys(actionSetters) as SidebarAction[]).forEach((key) => {
+      actionSetters[key](key === action);
+    });
   };
 
   return {

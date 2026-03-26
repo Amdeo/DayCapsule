@@ -24,6 +24,7 @@ export function SettingsStorageInfo({
 
   return (
     <View testID="settings-storage-card" style={styles.storageInfo}>
+      <Text style={styles.storageCardTitle}>空间与内容统计</Text>
       {rows.map((row) => (
         <View key={row.label} style={styles.storageRow}>
           <Text style={styles.storageLabel}>{row.label}</Text>

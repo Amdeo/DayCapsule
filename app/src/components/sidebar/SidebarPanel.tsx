@@ -22,7 +22,10 @@ export function SidebarPanel({
   return (
     <View testID={testID} style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTopPadding }]}>
-        <Text style={styles.headerTitle}>菜单</Text>
+        <View style={styles.headerTextGroup}>
+          <Text style={styles.headerTitle}>菜单</Text>
+          <Text style={styles.headerSubtitle}>快速进入统计、同步和系统设置</Text>
+        </View>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#4A4A4A" />
         </TouchableOpacity>
@@ -41,8 +44,13 @@ export function SidebarPanel({
               <View style={styles.menuIconContainer}>
                 <Ionicons name={item.icon} size={22} color={item.iconColor} />
               </View>
-              <Text style={styles.menuText}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#D1D1D1" />
+              <View style={styles.menuContent}>
+                <Text style={styles.menuText}>{item.label}</Text>
+                <Text style={styles.menuDescription}>{item.description}</Text>
+              </View>
+              <View style={styles.menuChevronContainer}>
+                <Ionicons name="chevron-forward" size={16} color="#C8CFDB" />
+              </View>
             </TouchableOpacity>
           </React.Fragment>
         ))}
