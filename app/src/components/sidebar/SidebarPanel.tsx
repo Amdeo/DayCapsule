@@ -41,7 +41,10 @@ export function SidebarPanel({
               <View style={styles.menuIconContainer}>
                 <Ionicons name={item.icon} size={22} color={item.iconColor} />
               </View>
-              <Text style={styles.menuText}>{item.label}</Text>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuText}>{item.label}</Text>
+                <Text style={styles.menuDescription}>{item.description}</Text>
+              </View>
               <Ionicons name="chevron-forward" size={20} color="#D1D1D1" />
             </TouchableOpacity>
           </React.Fragment>

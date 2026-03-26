@@ -3,34 +3,19 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { Sidebar } from '../Sidebar';
 
 const mockSettingsPage = jest.fn(() => null);
-const mockAboutPage = jest.fn(() => null);
 const mockStatsPage = jest.fn(() => null);
-const mockTagsPage = jest.fn(() => null);
 const mockBackupPage = jest.fn(() => null);
-const mockHelpPage = jest.fn(() => null);
 
 jest.mock('../SettingsPage', () => ({
   SettingsPage: (props: unknown) => mockSettingsPage(props),
-}));
-
-jest.mock('../AboutPage', () => ({
-  AboutPage: (props: unknown) => mockAboutPage(props),
 }));
 
 jest.mock('../StatsPage', () => ({
   StatsPage: (props: unknown) => mockStatsPage(props),
 }));
 
-jest.mock('../TagsPage', () => ({
-  TagsPage: (props: unknown) => mockTagsPage(props),
-}));
-
 jest.mock('../BackupPage', () => ({
   BackupPage: (props: unknown) => mockBackupPage(props),
-}));
-
-jest.mock('../HelpPage', () => ({
-  HelpPage: (props: unknown) => mockHelpPage(props),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -54,11 +39,8 @@ jest.mock('react-native-reanimated', () => {
 
 function SidebarHarness() {
   const [showSettings, setShowSettings] = React.useState(false);
-  const [showAbout, setShowAbout] = React.useState(false);
   const [showStats, setShowStats] = React.useState(false);
-  const [showTags, setShowTags] = React.useState(false);
   const [showBackup, setShowBackup] = React.useState(false);
-  const [showHelp, setShowHelp] = React.useState(false);
 
   return (
     <Sidebar
@@ -66,18 +48,16 @@ function SidebarHarness() {
       onClose={jest.fn()}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
-      showAbout={showAbout}
-      setShowAbout={setShowAbout}
       showStats={showStats}
       setShowStats={setShowStats}
-      showTags={showTags}
-      setShowTags={setShowTags}
       showBackup={showBackup}
       setShowBackup={setShowBackup}
-      showHelp={showHelp}
-      setShowHelp={setShowHelp}
     />
   );
+}
+
+function renderSidebar() {
+  return render(<SidebarHarness />);
 }
 
 describe('Sidebar shell', () => {
@@ -92,23 +72,17 @@ describe('Sidebar shell', () => {
         onClose={jest.fn()}
         showSettings={false}
         setShowSettings={jest.fn()}
-        showAbout={false}
-        setShowAbout={jest.fn()}
         showStats={false}
         setShowStats={jest.fn()}
-        showTags={false}
-        setShowTags={jest.fn()}
         showBackup={false}
         setShowBackup={jest.fn()}
-        showHelp={false}
-        setShowHelp={jest.fn()}
       />
     );
 
     expect(getByTestId('sidebar-shell')).toBeTruthy();
     expect(getByTestId('sidebar-menu-stats')).toBeTruthy();
+    expect(getByTestId('sidebar-menu-backup')).toBeTruthy();
     expect(getByTestId('sidebar-menu-settings')).toBeTruthy();
-    expect(getByTestId('sidebar-menu-tags')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
     expect(getByText('DayCapsule v1.0.0')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });
@@ -118,11 +92,8 @@ describe('Sidebar shell', () => {
     render(<SidebarHarness />);
 
     expect(mockSettingsPage).not.toHaveBeenCalled();
-    expect(mockAboutPage).not.toHaveBeenCalled();
     expect(mockStatsPage).not.toHaveBeenCalled();
-    expect(mockTagsPage).not.toHaveBeenCalled();
     expect(mockBackupPage).not.toHaveBeenCalled();
-    expect(mockHelpPage).not.toHaveBeenCalled();
   });
 
   it('calls onClose when the header close button is pressed', () => {
@@ -133,16 +104,10 @@ describe('Sidebar shell', () => {
         onClose={onClose}
         showSettings={false}
         setShowSettings={jest.fn()}
-        showAbout={false}
-        setShowAbout={jest.fn()}
         showStats={false}
         setShowStats={jest.fn()}
-        showTags={false}
-        setShowTags={jest.fn()}
         showBackup={false}
         setShowBackup={jest.fn()}
-        showHelp={false}
-        setShowHelp={jest.fn()}
       />
     );
 
@@ -158,32 +123,36 @@ describe('Sidebar shell', () => {
 
     expect(mockStatsPage).toHaveBeenCalledTimes(1);
     expect(mockSettingsPage).not.toHaveBeenCalled();
-    expect(mockAboutPage).not.toHaveBeenCalled();
-    expect(mockTagsPage).not.toHaveBeenCalled();
     expect(mockBackupPage).not.toHaveBeenCalled();
-    expect(mockHelpPage).not.toHaveBeenCalled();
+  });
+
+  it('renders only stats, backup and settings entries in the sidebar menu', () => {
+    const screen = renderSidebar();
+
+    expect(screen.getByTestId('sidebar-menu-stats')).toBeTruthy();
+    expect(screen.getByTestId('sidebar-menu-backup')).toBeTruthy();
+    expect(screen.getByTestId('sidebar-menu-settings')).toBeTruthy();
+
+    expect(screen.queryByTestId('sidebar-menu-tags')).toBeNull();
+    expect(screen.queryByTestId('sidebar-menu-help')).toBeNull();
+    expect(screen.queryByTestId('sidebar-menu-about')).toBeNull();
   });
 
   it.each([
     ['sidebar-menu-settings', mockSettingsPage],
-    ['sidebar-menu-about', mockAboutPage],
-    ['sidebar-menu-tags', mockTagsPage],
+    ['sidebar-menu-stats', mockStatsPage],
     ['sidebar-menu-backup', mockBackupPage],
-    ['sidebar-menu-help', mockHelpPage],
   ] as const)(
-    'only mounts the requested detail page when opening %s',
+    'only mounts the mapped detail page when opening %s',
     (testId, expectedPageMock) => {
-      const screen = render(<SidebarHarness />);
+      const screen = renderSidebar();
 
       fireEvent.press(screen.getByTestId(testId));
 
       expect(expectedPageMock).toHaveBeenCalledTimes(1);
       expect(mockSettingsPage).toHaveBeenCalledTimes(expectedPageMock === mockSettingsPage ? 1 : 0);
-      expect(mockAboutPage).toHaveBeenCalledTimes(expectedPageMock === mockAboutPage ? 1 : 0);
-      expect(mockStatsPage).toHaveBeenCalledTimes(0);
-      expect(mockTagsPage).toHaveBeenCalledTimes(expectedPageMock === mockTagsPage ? 1 : 0);
+      expect(mockStatsPage).toHaveBeenCalledTimes(expectedPageMock === mockStatsPage ? 1 : 0);
       expect(mockBackupPage).toHaveBeenCalledTimes(expectedPageMock === mockBackupPage ? 1 : 0);
-      expect(mockHelpPage).toHaveBeenCalledTimes(expectedPageMock === mockHelpPage ? 1 : 0);
     }
   );
 });

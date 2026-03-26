@@ -3,11 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export type SidebarAction =
   | 'settings'
-  | 'about'
   | 'stats'
-  | 'tags'
-  | 'backup'
-  | 'help';
+  | 'backup';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -16,6 +13,7 @@ export interface SidebarMenuItemConfig {
   icon: IoniconName;
   iconColor: string;
   label: string;
+  description: string;
   dividerBefore?: boolean;
 }
 
@@ -25,36 +23,21 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     icon: 'stats-chart-outline',
     iconColor: '#6A89CC',
     label: '统计',
-  },
-  {
-    action: 'tags',
-    icon: 'pricetags-outline',
-    iconColor: '#A491D3',
-    label: '标签管理',
+    description: '查看记录趋势和数据分布',
   },
   {
     action: 'backup',
     icon: 'cloud-upload-outline',
     iconColor: '#77C9D4',
     label: '备份与同步',
+    description: '管理数据备份与跨设备同步',
   },
   {
     action: 'settings',
     icon: 'settings-outline',
     iconColor: '#737373',
     label: '设置',
+    description: '调整应用偏好和系统选项',
     dividerBefore: true,
-  },
-  {
-    action: 'help',
-    icon: 'help-circle-outline',
-    iconColor: '#737373',
-    label: '帮助与反馈',
-  },
-  {
-    action: 'about',
-    icon: 'information-circle-outline',
-    iconColor: '#737373',
-    label: '关于',
   },
 ];

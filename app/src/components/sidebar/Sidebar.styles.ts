@@ -45,7 +45,7 @@ export const sidebarStyles = StyleSheet.create({
   },
   menuItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -58,11 +58,19 @@ export const sidebarStyles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 16,
   },
-  menuText: {
+  menuContent: {
     flex: 1,
+    paddingTop: 2,
+  },
+  menuText: {
     fontSize: 16,
     fontWeight: '500',
     color: '#4A4A4A',
+  },
+  menuDescription: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#9A9A9A',
   },
   divider: {
     height: 1,

@@ -52,11 +52,8 @@ type SidebarShellProps = Pick<ComponentProps<typeof Sidebar>, 'drawerProgress' |
 
 function SidebarShell({ drawerProgress, onClose }: SidebarShellProps) {
   const [showSettings, setShowSettings] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [showTags, setShowTags] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
 
   return (
     <Sidebar
@@ -64,16 +61,10 @@ function SidebarShell({ drawerProgress, onClose }: SidebarShellProps) {
       onClose={onClose}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
-      showAbout={showAbout}
-      setShowAbout={setShowAbout}
       showStats={showStats}
       setShowStats={setShowStats}
-      showTags={showTags}
-      setShowTags={setShowTags}
       showBackup={showBackup}
       setShowBackup={setShowBackup}
-      showHelp={showHelp}
-      setShowHelp={setShowHelp}
     />
   );
 }
