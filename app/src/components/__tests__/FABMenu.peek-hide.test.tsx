@@ -6,17 +6,22 @@ import { render } from '@testing-library/react-native';
 
 import { FABMenu } from '../FABMenu';
 
+const mockSetLastAddType = jest.fn().mockResolvedValue(undefined);
+const mockTakePhoto = jest.fn();
+const mockPickPhotoFromLibrary = jest.fn();
+let mockLastAddType: 'text' | 'photo' | 'camera' | 'voice' | null = 'text';
+
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: () => ({
-    lastAddType: 'text',
-    setLastAddType: jest.fn().mockResolvedValue(undefined),
+    lastAddType: mockLastAddType,
+    setLastAddType: mockSetLastAddType,
   }),
 }));
 
 jest.mock('@/src/services/photoService', () => ({
   PhotoService: {
-    takePhoto: jest.fn(),
-    pickPhotoFromLibrary: jest.fn(),
+    takePhoto: (...args: unknown[]) => mockTakePhoto(...args),
+    pickPhotoFromLibrary: (...args: unknown[]) => mockPickPhotoFromLibrary(...args),
   },
 }));
 
@@ -38,6 +43,23 @@ describe('FABMenu peek-hide', () => {
       });
     }
   });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLastAddType = 'text';
+    mockTakePhoto.mockResolvedValue(null);
+    mockPickPhotoFromLibrary.mockResolvedValue([]);
+  });
+
+  function findMainResponderView(tree: renderer.ReactTestRenderer) {
+    return tree.root.findAll(
+      (node) =>
+        typeof node.props.onResponderGrant === 'function' &&
+        typeof node.props.onResponderRelease === 'function' &&
+        Array.isArray(node.props.style) &&
+        node.props.style.some((style: { width?: number; height?: number }) => style?.width === 56 && style?.height === 56)
+    )[0];
+  }
 
   it('animates the FAB container down to the peek position when hidden', () => {
     const onSelect = jest.fn();
@@ -80,13 +102,7 @@ describe('FABMenu peek-hide', () => {
       );
     });
 
-    const responderView = tree!.root.findAll(
-      (node) =>
-        typeof node.props.onResponderGrant === 'function' &&
-        typeof node.props.onResponderRelease === 'function' &&
-        Array.isArray(node.props.style) &&
-        node.props.style.some((style: { width?: number; height?: number }) => style?.width === 56 && style?.height === 56)
-    )[0];
+    const responderView = findMainResponderView(tree!);
 
     act(() => {
       responderView.props.onResponderGrant();
@@ -95,6 +111,81 @@ describe('FABMenu peek-hide', () => {
 
     expect(onRevealRequest).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
+
+    panResponderCreateSpy.mockRestore();
+  });
+
+  it('shows the onboarding tip bubble when there is no remembered add type', () => {
+    mockLastAddType = null;
+
+    const { getByText } = render(<FABMenu onSelect={jest.fn()} />);
+
+    expect(getByText('长按选择记录类型')).toBeTruthy();
+  });
+
+  it('triggers the remembered text action on tap when visible', async () => {
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      responderView.props.onResponderRelease({}, { dx: 0, dy: 0 });
+    });
+
+    expect(mockSetLastAddType).toHaveBeenCalledWith('text');
+    expect(onSelect).toHaveBeenCalledWith('text');
+
+    panResponderCreateSpy.mockRestore();
+  });
+
+  it('triggers the remembered photo action on tap when visible', async () => {
+    mockLastAddType = 'photo';
+    mockPickPhotoFromLibrary.mockResolvedValueOnce([{ uri: 'file:///photo-1.jpg' }]);
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      responderView.props.onResponderRelease({}, { dx: 0, dy: 0 });
+    });
+
+    expect(mockSetLastAddType).toHaveBeenCalledWith('photo');
+    expect(mockPickPhotoFromLibrary).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith('photo', [{ uri: 'file:///photo-1.jpg' }]);
 
     panResponderCreateSpy.mockRestore();
   });
