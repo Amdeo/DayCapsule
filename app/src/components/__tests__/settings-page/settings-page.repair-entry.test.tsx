@@ -10,6 +10,28 @@ describe('SettingsPage repair entry', () => {
     resetRenderSettingsPageMocks();
   });
 
+  it('does not render the E2E sync lab section when the env flag is disabled', () => {
+    const { screen } = renderSettingsPage({ e2eSyncLab: false });
+
+    expect(screen.queryByTestId('e2e-sync-lab-root')).toBeNull();
+  });
+
+  it('injects the suspect + repairable fixture from the dedicated lab entry', async () => {
+    const { screen, mocks } = renderSettingsPage({ e2eSyncLab: true });
+
+    fireEvent.press(await screen.findByTestId('e2e-sync-fixture-suspect'));
+
+    expect(mocks.injectSuspectRepairable).toHaveBeenCalledTimes(1);
+  });
+
+  it('injects the repair-pending fixture from the dedicated lab entry', async () => {
+    const { screen, mocks } = renderSettingsPage({ e2eSyncLab: true });
+
+    fireEvent.press(await screen.findByTestId('e2e-sync-fixture-repair-pending'));
+
+    expect(mocks.injectRepairPending).toHaveBeenCalledTimes(1);
+  });
+
   it('reopens the repair prompt from the dedicated repair entry', async () => {
     const { screen, mocks } = renderSettingsPage({ e2eSyncLab: true });
 
@@ -24,6 +46,14 @@ describe('SettingsPage repair entry', () => {
     fireEvent.press(await screen.findByTestId('e2e-sync-fixture-text-detail'));
 
     expect(mocks.injectTextDetailFixture).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears injected sync fixtures from the dedicated lab entry', async () => {
+    const { screen, mocks } = renderSettingsPage({ e2eSyncLab: true });
+
+    fireEvent.press(await screen.findByTestId('e2e-sync-fixture-clear'));
+
+    expect(mocks.clearSyncFixtures).toHaveBeenCalledTimes(1);
   });
 
   it('clears the E2E lab env flag during helper reset', () => {
