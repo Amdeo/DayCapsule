@@ -80,6 +80,12 @@ describe('LoginPage', () => {
 
     expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
     expect(mockLogin).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
+    fireEvent.press(screen.getByText('登录'));
+
+    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(mockLogin).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 
@@ -96,6 +102,7 @@ describe('LoginPage', () => {
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
   });
 
   it('prevents duplicate submits and hides submit text while loading', async () => {
@@ -120,11 +127,9 @@ describe('LoginPage', () => {
     await waitFor(() => expect(mockLogin).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText('登录')).toBeNull());
 
-    const [loadingButton] = screen.UNSAFE_getAllByType(TouchableOpacity);
-    expect(loadingButton.props.disabled).toBe(true);
-    if (!loadingButton.props.disabled) {
-      fireEvent.press(loadingButton);
-    }
+    const buttonsAfterLoading = screen.UNSAFE_getAllByType(TouchableOpacity);
+    const loadingButton = buttonsAfterLoading.find((button) => button.props.disabled);
+    expect(loadingButton).toBeTruthy();
     expect(mockLogin).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -208,6 +213,8 @@ describe('LoginPage', () => {
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
     expect(screen.getByPlaceholderText('邮箱')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('密码')).toHaveProp('value', '');
+    expect(screen.getByPlaceholderText('确认密码')).toHaveProp('value', '');
   });
 
   it('shows register-specific feedback when register fails', async () => {
