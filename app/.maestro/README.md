@@ -65,6 +65,7 @@ app/.maestro/
       home-to-stats.yaml
       home-to-settings.yaml
       settings-to-tag-management.yaml
+      settings-to-login.yaml
       settings-backend-card-visible.yaml
 ```
 
@@ -72,6 +73,7 @@ app/.maestro/
 
 ```bash
 maestro test app/.maestro/flows/smoke/home-to-settings.yaml
+maestro test app/.maestro/flows/smoke/settings-to-login.yaml
 ```
 
 云同步 happy path：
@@ -138,6 +140,7 @@ npm run test:maestro:app-core
 - 首页打开侧边栏后进入统计页
 - 首页打开侧边栏后进入设置页
 - 设置页进入预制标签管理
+- 设置页进入登录页并返回
 - 设置页展示后端连接卡片及关键控件
 - 首页进入搜索浮层并取消返回
 - 通过 `E2E Sync Lab` 注入稳定 text fixture 后进入详情页

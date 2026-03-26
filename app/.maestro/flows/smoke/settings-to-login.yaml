@@ -1,0 +1,26 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/open-settings.yaml
+- runFlow:
+    when:
+      visible: "退出登录"
+    commands:
+      - tapOn:
+          text: 退出登录
+      - tapOn:
+          text: 退出
+      - assertVisible:
+          text: 登录 / 注册
+- scrollUntilVisible:
+    element:
+      text: 登录 / 注册
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    text: 登录 / 注册
+- assertVisible:
+    id: login-page-root
+- tapOn:
+    id: detail-page-back-button
+- assertVisible:
+    id: settings-page-root
