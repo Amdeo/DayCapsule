@@ -28,6 +28,8 @@ export interface PhotoUploadQueue {
   waitForIdle: () => Promise<void>;
 }
 
+const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
+
 function isUploadablePhotoEntry(entry: Entry | null): entry is Entry & { media: MediaInfo[] } {
   return !!entry && entry.type === 'photo' && Array.isArray(entry.media) && entry.media.length > 0;
 }
@@ -95,6 +97,33 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
   const queued = new Set<string>();
   const canceled = new Set<string>();
   let processing: Promise<void> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryFailureCount = 0;
+
+  const clearRetryTimer = (): void => {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  };
+
+  const resetRetryBackoff = (): void => {
+    clearRetryTimer();
+    retryFailureCount = 0;
+  };
+
+  const scheduleRetry = (): void => {
+    if (retryTimer) {
+      return;
+    }
+
+    const delay = RETRY_BACKOFF_MS[Math.min(retryFailureCount, RETRY_BACKOFF_MS.length - 1)];
+    retryFailureCount += 1;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void flushPendingInternal();
+    }, delay);
+  };
 
   const processQueue = async (): Promise<void> => {
     for (const entryId of Array.from(queued)) {
@@ -126,6 +155,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
 
         await deps.markPendingSync(entryId, uploadedMedia);
         deps.onEntryPendingSync?.(entryId, uploadedMedia);
+        resetRetryBackoff();
 
         try {
           await deps.triggerSync();
@@ -136,6 +166,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
         logger.warn('[photoUploadQueue] upload failed, will retry later:', entryId, error);
         await deps.markPendingUpload(entryId);
         deps.onEntryPendingUpload?.(entryId);
+        scheduleRetry();
       }
     }
   };
@@ -152,10 +183,21 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
     return processing;
   };
 
+  const flushPendingInternal = async (): Promise<void> => {
+    clearRetryTimer();
+    const pendingEntries = await deps.getPendingEntries();
+    pendingEntries.forEach((entry) => {
+      canceled.delete(entry.id);
+      queued.add(entry.id);
+    });
+    await ensureProcessing();
+  };
+
   return {
     deps,
     enqueue(entryId: string) {
       if (!entryId) return;
+      clearRetryTimer();
       canceled.delete(entryId);
       queued.add(entryId);
       void ensureProcessing();
@@ -165,12 +207,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
       queued.delete(entryId);
     },
     async flushPending() {
-      const pendingEntries = await deps.getPendingEntries();
-      pendingEntries.forEach((entry) => {
-        canceled.delete(entry.id);
-        queued.add(entry.id);
-      });
-      await ensureProcessing();
+      await flushPendingInternal();
     },
     async waitForIdle() {
       await ensureProcessing();
