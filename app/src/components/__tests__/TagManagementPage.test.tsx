@@ -103,12 +103,14 @@ describe('TagManagementPage preset tags', () => {
 
   it('loads common tags only when visible and not loaded', () => {
     setMockCommonTagsState({ isLoaded: false });
-    const { rerender } = render(<TagManagementPage visible={false} onClose={jest.fn()} />);
+    const screen = render(<TagManagementPage visible={false} onClose={jest.fn()} />);
 
     expect(mockLoadCommonTags).not.toHaveBeenCalled();
+    expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
 
-    rerender(<TagManagementPage visible onClose={jest.fn()} />);
+    screen.rerender(<TagManagementPage visible onClose={jest.fn()} />);
 
+    expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
     expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
   });
 
