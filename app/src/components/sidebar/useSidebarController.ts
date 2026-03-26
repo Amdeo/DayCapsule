@@ -48,7 +48,9 @@ export function useSidebarController({
 
   const handleMenuItemPress = (action: SidebarAction) => {
     onClose();
-    actionSetters[action](true);
+    (Object.keys(actionSetters) as SidebarAction[]).forEach((key) => {
+      actionSetters[key](key === action);
+    });
   };
 
   return {

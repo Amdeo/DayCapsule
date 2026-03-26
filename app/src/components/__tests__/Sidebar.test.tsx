@@ -84,6 +84,9 @@ describe('Sidebar shell', () => {
     expect(getByTestId('sidebar-menu-backup')).toBeTruthy();
     expect(getByTestId('sidebar-menu-settings')).toBeTruthy();
     expect(getByText('统计')).toBeTruthy();
+    expect(getByText('查看记录趋势和数据分布')).toBeTruthy();
+    expect(getByText('管理数据备份与跨设备同步')).toBeTruthy();
+    expect(getByText('调整应用偏好和系统选项')).toBeTruthy();
     expect(getByText('DayCapsule v1.0.0')).toBeTruthy();
     expect(getByTestId('sidebar-footer')).toHaveStyle({ paddingBottom: 16 });
   });
@@ -155,4 +158,17 @@ describe('Sidebar shell', () => {
       expect(mockBackupPage).toHaveBeenCalledTimes(expectedPageMock === mockBackupPage ? 1 : 0);
     }
   );
+
+  it('switches to the newly selected page when selecting another menu entry', () => {
+    const screen = renderSidebar();
+
+    fireEvent.press(screen.getByTestId('sidebar-menu-settings'));
+    expect(mockSettingsPage).toHaveBeenCalledTimes(1);
+    expect(mockBackupPage).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('sidebar-menu-backup'));
+
+    expect(mockBackupPage).toHaveBeenCalledTimes(1);
+    expect(mockSettingsPage).toHaveBeenCalledTimes(1);
+  });
 });
