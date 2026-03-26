@@ -12,6 +12,10 @@ let mockSearchState = {
 const mockApplySearchFilters = jest.fn(async () => undefined);
 const mockGetAllTags = jest.fn(async () => ['旅行', '工作', '海边']);
 const mockLoadCommonTags = jest.fn();
+let mockCommonTagsState = {
+  tags: ['旅行', '工作'],
+  isLoaded: true,
+};
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: () => ({
@@ -23,8 +27,7 @@ jest.mock('@/src/store/entryStore', () => ({
 
 jest.mock('@/src/store/commonTagsStore', () => ({
   useCommonTagsStore: () => ({
-    tags: ['旅行', '工作'],
-    isLoaded: true,
+    ...mockCommonTagsState,
     loadCommonTags: mockLoadCommonTags,
   }),
 }));
@@ -45,6 +48,10 @@ describe('SearchOverlay filters', () => {
       filterType: 'all',
       filterDateRange: 'all',
       selectedTags: [],
+    };
+    mockCommonTagsState = {
+      tags: ['旅行', '工作'],
+      isLoaded: true,
     };
   });
 
@@ -82,5 +89,44 @@ describe('SearchOverlay filters', () => {
     });
     expect(onSearch).toHaveBeenCalledWith('旅行');
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears selected tags from the dedicated clear action before submit', async () => {
+    mockSearchState = {
+      searchQuery: '',
+      filterType: 'all',
+      filterDateRange: 'all',
+      selectedTags: ['旅行'],
+    };
+
+    const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
+
+    fireEvent.press(screen.getByText('清除'));
+    fireEvent.press(screen.getByTestId('search-overlay-submit-button'));
+
+    await waitFor(() => {
+      expect(mockApplySearchFilters).toHaveBeenCalledWith({
+        query: '',
+        type: 'all',
+        dateRange: 'all',
+        tags: [],
+      });
+    });
+  });
+
+  it('shows the empty tag hint when neither store tags nor common tags are available', async () => {
+    mockGetAllTags.mockResolvedValueOnce([]);
+    mockCommonTagsState = {
+      tags: [],
+      isLoaded: true,
+    };
+
+    const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText('暂无标签，在编辑记录时添加')).toBeTruthy();
   });
 });
