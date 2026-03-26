@@ -59,6 +59,7 @@ export function ImageViewerScene({
             <Animated.View style={styles.imageContainer}>
               <Animated.View style={imageAnimatedStyle}>
                 <Image
+                  testID="image-viewer-image"
                   source={{ uri: imageUri }}
                   style={[styles.image, { width: screenWidth, height: screenHeight }]}
                   resizeMode="contain"

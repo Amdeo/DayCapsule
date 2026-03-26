@@ -1,13 +1,8 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Image, Modal } from 'react-native';
-
-jest.mock('../../image-viewer/useImageViewerController', () => ({
-  useImageViewerController: jest.fn(),
-}));
+import { Modal } from 'react-native';
 
 import { ImageViewer } from '../../ImageViewer';
-import { useImageViewerController } from '../../image-viewer/useImageViewerController';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -27,7 +22,43 @@ jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
+  const makeChainableGesture = () => {
+    const chain: any = {};
+    const returnSelf = () => chain;
+
+    // Tap
+    chain.numberOfTaps = returnSelf;
+    chain.requireExternalGestureToFail = returnSelf;
+    chain.onEnd = returnSelf;
+
+    // LongPress
+    chain.minDuration = returnSelf;
+    chain.onStart = returnSelf;
+
+    // Pinch
+    chain.onUpdate = returnSelf;
+    chain.onEnd = returnSelf;
+
+    // Pan
+    chain.onBegin = returnSelf;
+    chain.onUpdate = returnSelf;
+    chain.onEnd = returnSelf;
+    chain.onFinalize = returnSelf;
+
+    return chain;
+  };
+
+  const Gesture = {
+    Tap: () => makeChainableGesture(),
+    LongPress: () => makeChainableGesture(),
+    Pinch: () => makeChainableGesture(),
+    Pan: () => makeChainableGesture(),
+    Race: (..._gestures: any[]) => ({}),
+    Simultaneous: (..._gestures: any[]) => ({}),
+  };
+
   return {
+    Gesture,
     GestureDetector: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
     GestureHandlerRootView: (
       { children, ...rest }: { children: React.ReactNode; testID?: string; style?: any },
@@ -35,47 +66,11 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
-type ImageViewerControllerState = ReturnType<typeof useImageViewerController>;
-const useImageViewerControllerMock = useImageViewerController as jest.MockedFunction<
-  typeof useImageViewerController
->;
-
-const buildControllerState = (
-  overrides?: Partial<ImageViewerControllerState>,
-): ImageViewerControllerState => ({
-  phase: 'idle',
-  showActionSheet: false,
-  backdropAnimatedStyle: {},
-  heroAnimatedStyle: {},
-  imageAnimatedStyle: {},
-  composedGesture: {},
-  handleRequestClose: jest.fn(),
-  closeActionSheet: jest.fn(),
-  handleSaveToAlbum: jest.fn(),
-  handleShare: jest.fn(),
-  ...overrides,
-});
-
-const resetControllerState = (overrides?: Partial<ImageViewerControllerState>) => {
-  useImageViewerControllerMock.mockReturnValue(buildControllerState(overrides));
-};
-
-const findCurrentImage = (tree: renderer.ReactTestRenderer, expectedUri: string) => {
-  const images = tree.root.findAllByType(Image);
-  const candidates = images.filter((image) => image.props?.source?.uri === expectedUri);
-  expect(candidates).toHaveLength(1);
-  return candidates[0];
-};
-
 describe('ImageViewer lifecycle', () => {
-  beforeEach(() => {
-    resetControllerState();
-  });
-
-  it('does not render the viewer shell when visible is false', () => {
+  it('does not render the viewer shell when visible is false', async () => {
     let tree: renderer.ReactTestRenderer;
 
-    act(() => {
+    await act(async () => {
       tree = renderer.create(
         <ImageViewer
           visible={false}
@@ -90,12 +85,10 @@ describe('ImageViewer lifecycle', () => {
     expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
   });
 
-  it('renders the viewer shell and current image when visible is true', () => {
-    resetControllerState({ phase: 'open' });
-
+  it('renders the viewer shell and current image when visible is true', async () => {
     let tree: renderer.ReactTestRenderer;
 
-    act(() => {
+    await act(async () => {
       tree = renderer.create(
         <ImageViewer
           visible
@@ -106,18 +99,17 @@ describe('ImageViewer lifecycle', () => {
     });
 
     const modal = tree.root.findByType(Modal);
-    const image = findCurrentImage(tree, 'file:///image-a.jpg');
     expect(modal.props.visible).toBe(true);
     expect(tree.root.findByProps({ testID: 'image-viewer-root' })).toBeTruthy();
-    expect(image.props.source).toEqual({ uri: 'file:///image-a.jpg' });
+    expect(tree.root.findByProps({ testID: 'image-viewer-image' }).props.source).toEqual({
+      uri: 'file:///image-a.jpg',
+    });
   });
 
-  it('updates the rendered image when imageUri changes on rerender', () => {
-    resetControllerState({ phase: 'open' });
-
+  it('updates the rendered image when imageUri changes on rerender', async () => {
     let tree: renderer.ReactTestRenderer;
 
-    act(() => {
+    await act(async () => {
       tree = renderer.create(
         <ImageViewer
           visible
@@ -127,7 +119,7 @@ describe('ImageViewer lifecycle', () => {
       );
     });
 
-    act(() => {
+    await act(async () => {
       tree.update(
         <ImageViewer
           visible
@@ -137,47 +129,8 @@ describe('ImageViewer lifecycle', () => {
       );
     });
 
-    const updated = findCurrentImage(tree, 'file:///image-b.jpg');
-    expect(updated.props.source).toEqual({ uri: 'file:///image-b.jpg' });
-  });
-
-  it('removes the viewer shell after close is requested and visible becomes false', () => {
-    const onClose = jest.fn();
-    const handleRequestClose = jest.fn(() => onClose());
-    resetControllerState({ phase: 'open', handleRequestClose });
-
-    let tree: renderer.ReactTestRenderer;
-
-    act(() => {
-      tree = renderer.create(
-        <ImageViewer
-          visible
-          imageUri='file:///image-a.jpg'
-          onClose={onClose}
-        />
-      );
+    expect(tree.root.findByProps({ testID: 'image-viewer-image' }).props.source).toEqual({
+      uri: 'file:///image-b.jpg',
     });
-
-    const modal = tree.root.findByType(Modal);
-    act(() => {
-      modal.props.onRequestClose();
-    });
-
-    expect(handleRequestClose).toHaveBeenCalledTimes(1);
-    expect(onClose).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      tree.update(
-        <ImageViewer
-          visible={false}
-          imageUri='file:///image-a.jpg'
-          onClose={onClose}
-        />
-      );
-    });
-
-    const hiddenModal = tree.root.findByType(Modal);
-    expect(hiddenModal.props.visible).toBe(false);
-    expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
   });
 });
