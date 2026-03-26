@@ -60,6 +60,13 @@ const resetControllerState = (overrides?: Partial<ImageViewerControllerState>) =
   useImageViewerControllerMock.mockReturnValue(buildControllerState(overrides));
 };
 
+const findCurrentImage = (tree: renderer.ReactTestRenderer, expectedUri: string) => {
+  const images = tree.root.findAllByType(Image);
+  const candidates = images.filter((image) => image.props?.source?.uri === expectedUri);
+  expect(candidates).toHaveLength(1);
+  return candidates[0];
+};
+
 describe('ImageViewer lifecycle', () => {
   beforeEach(() => {
     resetControllerState();
@@ -99,7 +106,7 @@ describe('ImageViewer lifecycle', () => {
     });
 
     const modal = tree.root.findByType(Modal);
-    const image = tree.root.findByType(Image);
+    const image = findCurrentImage(tree, 'file:///image-a.jpg');
     expect(modal.props.visible).toBe(true);
     expect(tree.root.findByProps({ testID: 'image-viewer-root' })).toBeTruthy();
     expect(image.props.source).toEqual({ uri: 'file:///image-a.jpg' });
@@ -130,6 +137,7 @@ describe('ImageViewer lifecycle', () => {
       );
     });
 
-    expect(tree.root.findByType(Image).props.source).toEqual({ uri: 'file:///image-b.jpg' });
+    const updated = findCurrentImage(tree, 'file:///image-b.jpg');
+    expect(updated.props.source).toEqual({ uri: 'file:///image-b.jpg' });
   });
 });
