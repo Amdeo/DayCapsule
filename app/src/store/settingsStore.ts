@@ -31,7 +31,6 @@ export type LastAddType = 'text' | 'camera' | 'photo' | 'voice';
 interface SettingsState {
   // 设置值
   notifications: boolean;
-  autoBackup: boolean;
   highQualityPhotos: boolean;
   cardSpacing: CardSpacing;
   photoHeight: PhotoHeightPreset;
@@ -46,7 +45,6 @@ interface SettingsState {
 
   // 更新方法
   setNotifications: (value: boolean) => Promise<void>;
-  setAutoBackup: (value: boolean) => Promise<void>;
   setHighQualityPhotos: (value: boolean) => Promise<void>;
   setCardSpacing: (value: CardSpacing) => Promise<void>;
   setPhotoHeight: (value: PhotoHeightPreset) => Promise<void>;
@@ -61,7 +59,6 @@ interface SettingsState {
 
 const SETTINGS_KEYS = {
   notifications:     'settings:notifications',
-  autoBackup:        'settings:autoBackup',
   highQualityPhotos: 'settings:highQualityPhotos',
   cardSpacing:       'settings:cardSpacing',
   photoHeight:       'settings:photoHeight',
@@ -72,7 +69,6 @@ const SETTINGS_KEYS = {
 
 const DEFAULT_SETTINGS = {
   notifications: true,
-  autoBackup: false,
   highQualityPhotos: true,
   cardSpacing: 'default' as CardSpacing,
   photoHeight: 'default' as PhotoHeightPreset,
@@ -94,7 +90,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const scopedKeys = await Promise.all([
         getScopedSettingsKey(SETTINGS_KEYS.notifications),
-        getScopedSettingsKey(SETTINGS_KEYS.autoBackup),
         getScopedSettingsKey(SETTINGS_KEYS.highQualityPhotos),
         getScopedSettingsKey(SETTINGS_KEYS.cardSpacing),
         getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
@@ -103,7 +98,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         getScopedSettingsKey(SETTINGS_KEYS.cloudMode),
       ]);
 
-      const [notif, backup, hq, spacing, ph, density, lat, cm] = await Promise.all([
+      const [notif, hq, spacing, ph, density, lat, cm] = await Promise.all([
         Storage.getString(scopedKeys[0]),
         Storage.getString(scopedKeys[1]),
         Storage.getString(scopedKeys[2]),
@@ -111,7 +106,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         Storage.getString(scopedKeys[4]),
         Storage.getString(scopedKeys[5]),
         Storage.getString(scopedKeys[6]),
-        Storage.getString(scopedKeys[7]),
       ]);
 
       const validSpacing = (value: string | null): CardSpacing => {
@@ -136,7 +130,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       set({
         notifications: notif === null ? DEFAULT_SETTINGS.notifications : notif === 'true',
-        autoBackup: backup === null ? DEFAULT_SETTINGS.autoBackup : backup === 'true',
         highQualityPhotos: hq === null ? DEFAULT_SETTINGS.highQualityPhotos : hq === 'true',
         cardSpacing: spacing === null ? DEFAULT_SETTINGS.cardSpacing : validSpacing(spacing),
         photoHeight: ph === null ? DEFAULT_SETTINGS.photoHeight : validPhotoHeight(ph),
@@ -154,11 +147,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNotifications: async (value) => {
     await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.notifications), String(value));
     set({ notifications: value });
-  },
-
-  setAutoBackup: async (value) => {
-    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.autoBackup), String(value));
-    set({ autoBackup: value });
   },
 
   setHighQualityPhotos: async (value) => {
@@ -194,7 +182,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   resetSettings: async () => {
     const scopedKeys = await Promise.all([
       getScopedSettingsKey(SETTINGS_KEYS.notifications),
-      getScopedSettingsKey(SETTINGS_KEYS.autoBackup),
       getScopedSettingsKey(SETTINGS_KEYS.highQualityPhotos),
       getScopedSettingsKey(SETTINGS_KEYS.cardSpacing),
       getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
@@ -210,7 +197,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       Storage.delete(scopedKeys[4]),
       Storage.delete(scopedKeys[5]),
       Storage.delete(scopedKeys[6]),
-      Storage.delete(scopedKeys[7]),
     ]);
     set({ ...DEFAULT_SETTINGS });
   },

@@ -35,7 +35,6 @@ const scopedKey = (scope: string, key: string) => `${scope}:${key}`;
 const resetStore = () =>
   useSettingsStore.setState({
     notifications: true,
-    autoBackup: false,
     highQualityPhotos: true,
     cardSpacing: 'default',
     photoHeight: 'default',

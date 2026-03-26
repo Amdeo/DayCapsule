@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { waitFor } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
@@ -10,20 +10,12 @@ describe('SettingsPage preferences', () => {
     resetRenderSettingsPageMocks();
   });
 
-  it('persists local preference toggles and restores them on re-open', async () => {
-    const { screen, unmount } = await renderSettingsPage();
+  it('does not render the auto backup preference toggle', async () => {
+    const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
-      expect(screen.getByText('自动备份')).toBeTruthy();
-    });
-
-    fireEvent(screen.getByTestId('settings-switch-auto-backup'), 'valueChange', true);
-    unmount();
-
-    const reopened = await renderSettingsPage();
-
-    await waitFor(() => {
-      expect(reopened.screen.getByTestId('settings-switch-auto-backup').props.value).toBe(true);
+      expect(screen.queryByText('自动备份')).toBeNull();
+      expect(screen.queryByTestId('settings-switch-auto-backup')).toBeNull();
     });
   });
 });

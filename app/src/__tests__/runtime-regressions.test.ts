@@ -19,13 +19,13 @@ describe('runtime regression guards', () => {
     );
   });
 
-  it('reads auto backup prerequisites in parallel when app goes to background', () => {
+  it('only checks backup throttling when app goes to background', () => {
     const layoutPath = path.join(process.cwd(), 'app', '_layout.tsx');
     const source = fs.readFileSync(layoutPath, 'utf8');
 
-    expect(source).toContain('const [autoBackup, shouldBackup] = await Promise.all([');
-    expect(source).toContain("Storage.getString('settings:autoBackup')");
+    expect(source).not.toContain("Storage.getString('settings:autoBackup')");
     expect(source).toContain('BackupService.shouldBackup()');
+    expect(source).toContain('if (shouldBackup) {');
   });
 
   it('only updates recording duration when the value changes', () => {
