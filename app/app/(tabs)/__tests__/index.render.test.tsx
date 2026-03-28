@@ -1,5 +1,6 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { BackHandler } from 'react-native';
 import HomeScreen from '../index';
 
 const mockLoadEntries = jest.fn().mockResolvedValue(undefined);
@@ -91,9 +92,13 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
 }));
 
 jest.mock('@/src/components/Timeline.v2', () => {
-  const { View } = require('react-native');
+  const { View, Pressable } = require('react-native');
   return {
-    Timeline: () => <View testID="timeline-stub" />,
+    Timeline: ({ onMenuPress }: { onMenuPress?: () => void }) => (
+      <View testID="timeline-stub">
+        <Pressable testID="timeline-open-drawer" onPress={onMenuPress} />
+      </View>
+    ),
   };
 });
 
@@ -129,5 +134,22 @@ describe('HomeScreen render shell', () => {
 
     expect(screen.getByTestId('home-screen-root')).toHaveStyle({ flex: 1 });
     expect(screen.getByTestId('timeline-stub')).toBeTruthy();
+  });
+
+  it('removes the hardware back subscription when HomeScreen unmounts with the drawer open', async () => {
+    const remove = jest.fn();
+    const addEventListenerSpy = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation(() => ({ remove }) as any);
+
+    const screen = render(<HomeScreen />);
+    fireEvent.press(screen.getByTestId('timeline-open-drawer'));
+
+    await waitFor(() => {
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+    });
+
+    screen.unmount();
+    expect(remove).toHaveBeenCalledTimes(1);
   });
 });
