@@ -166,4 +166,15 @@ describe('database/migration', () => {
       `ALTER TABLE entries ADD COLUMN local_ready_state TEXT DEFAULT 'ready'`
     );
   });
+
+  it('backfills NULL local_ready_state even when marker is already set', async () => {
+    mockMmkvState.set('local_ready_state_column_added', 'true');
+    mockGetAllAsync.mockResolvedValueOnce([{ name: 'id' }, { name: 'local_ready_state' }]);
+
+    await migrateLocalReadyStateColumn();
+
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      `UPDATE entries SET local_ready_state = 'ready' WHERE local_ready_state IS NULL`
+    );
+  });
 });

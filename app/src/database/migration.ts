@@ -388,10 +388,7 @@ export const migrateLocalReadyStateColumn = async (): Promise<void> => {
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
     const columnNames = new Set(tableInfo.map(col => col.name));
-    const alreadyMarked = migrationStore.getString('local_ready_state_column_added') === 'true';
     const hasColumn = columnNames.has('local_ready_state');
-
-    if (alreadyMarked && hasColumn) return;
 
     if (!hasColumn) {
       await db.runAsync(`ALTER TABLE entries ADD COLUMN local_ready_state TEXT DEFAULT 'ready'`);
