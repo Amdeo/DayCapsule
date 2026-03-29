@@ -3,6 +3,8 @@ import { render, act } from '@testing-library/react-native';
 
 let appStateListener: ((state: 'active' | 'background' | 'inactive') => void | Promise<void>) | null = null;
 let networkListener: ((state: { isConnected: boolean; isInternetReachable: boolean | null }) => void) | null = null;
+let lastAppStateRemove: jest.Mock | null = null;
+let lastNetworkRemove: jest.Mock | null = null;
 const mockRefreshCloudSyncIndicator = jest.fn(async () => undefined);
 const mockFeedbackHost = jest.fn(() => null);
 const mockShowErrorFeedback = jest.fn();
@@ -58,7 +60,9 @@ jest.mock('expo-splash-screen', () => ({
 jest.mock('expo-network', () => ({
   addNetworkStateListener: jest.fn((listener) => {
     networkListener = listener;
-    return { remove: jest.fn() };
+    const removeMock = jest.fn();
+    lastNetworkRemove = removeMock;
+    return { remove: removeMock };
   }),
   getNetworkStateAsync: jest.fn().mockResolvedValue({
     isConnected: false,
@@ -217,7 +221,9 @@ jest.mock('react-native', () => ({
     currentState: 'active',
     addEventListener: jest.fn((_: string, listener: typeof appStateListener) => {
       appStateListener = listener;
-      return { remove: jest.fn() };
+      const removeMock = jest.fn();
+      lastAppStateRemove = removeMock;
+      return { remove: removeMock };
     }),
   },
   LogBox: { ignoreLogs: jest.fn() },
@@ -242,6 +248,8 @@ describe('RootLayout photo upload triggers', () => {
     jest.clearAllMocks();
     appStateListener = null;
     networkListener = null;
+    lastAppStateRemove = null;
+    lastNetworkRemove = null;
     mockIsAuthenticated = false;
     mockCloudMode = false;
   });
@@ -350,5 +358,27 @@ describe('RootLayout photo upload triggers', () => {
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
     expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
     expect(mockSyncNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the AppState subscription when RootLayout unmounts', async () => {
+    const screen = render(<RootLayout />);
+
+    await act(async () => Promise.resolve());
+    const appStateRemove = lastAppStateRemove;
+    screen.unmount();
+
+    expect(appStateRemove).toBeDefined();
+    expect(appStateRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the network subscription when RootLayout unmounts', async () => {
+    const screen = render(<RootLayout />);
+
+    await act(async () => Promise.resolve());
+    const networkRemove = lastNetworkRemove;
+    screen.unmount();
+
+    expect(networkRemove).toBeDefined();
+    expect(networkRemove).toHaveBeenCalledTimes(1);
   });
 });

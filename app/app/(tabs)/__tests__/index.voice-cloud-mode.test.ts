@@ -253,6 +253,7 @@ describe('cloud voice recording helpers', () => {
 
   it('clears active recording timer immediately', () => {
     jest.useFakeTimers();
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
     const timerRef = {
       current: setInterval(() => {}, 100),
     };
@@ -260,7 +261,9 @@ describe('cloud voice recording helpers', () => {
     clearRecordingTimerForTest(timerRef);
 
     expect(timerRef.current).toBeNull();
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
+    clearIntervalSpy.mockRestore();
   });
 
   it('publishes recording duration as whole seconds only', () => {
