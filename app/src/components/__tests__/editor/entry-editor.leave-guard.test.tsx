@@ -48,6 +48,22 @@ describe('EntryEditor leave guard', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the edited content when the user chooses to continue editing', () => {
+    const onClose = jest.fn();
+    const { screen } = renderEntryEditor({ onClose });
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '继续编辑的正文');
+    fireEvent.press(screen.getByTestId('entry-editor-back-button'));
+
+    const actions = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
+    const continueAction = actions.find((action) => action.text === '继续编辑');
+
+    continueAction?.onPress?.();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('继续编辑的正文')).toBeTruthy();
+  });
+
   it('ignores close requests while a save is still in progress', async () => {
     let resolveSave: (() => void) | null = null;
     const onSave = jest.fn(
