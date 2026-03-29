@@ -173,6 +173,7 @@ describe('photoUploadQueue', () => {
   });
 
   it('returns photo entry to pending_upload when any media upload fails', async () => {
+    jest.useFakeTimers();
     const entry = makePhotoEntry();
     const queue = createPhotoUploadQueue({
       getPendingEntries: jest.fn().mockResolvedValue([entry]),

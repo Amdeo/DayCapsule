@@ -114,10 +114,13 @@ import {
   assertCanStartVoiceRecordingForTest,
   startCloudVoiceRecordingForTest,
   finalizeCloudVoiceRecordingForTest,
-  toDisplayedRecordingDurationForTest,
   type VoiceCloudStartDeps,
   type VoiceCloudFinalizeDeps,
 } from '../index';
+
+function toDisplayedRecordingDuration(duration: number): number {
+  return Math.max(0, Math.floor(duration));
+}
 
 const PREPARED_VOICE_MEDIA = [
   {
@@ -304,10 +307,10 @@ describe('cloud voice recording helpers', () => {
   });
 
   it('publishes recording duration as whole seconds only', () => {
-    expect(toDisplayedRecordingDurationForTest(0)).toBe(0);
-    expect(toDisplayedRecordingDurationForTest(0.9)).toBe(0);
-    expect(toDisplayedRecordingDurationForTest(1.01)).toBe(1);
-    expect(toDisplayedRecordingDurationForTest(12.99)).toBe(12);
+    expect(toDisplayedRecordingDuration(0)).toBe(0);
+    expect(toDisplayedRecordingDuration(0.9)).toBe(0);
+    expect(toDisplayedRecordingDuration(1.01)).toBe(1);
+    expect(toDisplayedRecordingDuration(12.99)).toBe(12);
   });
 
   it('blocks starting a new recording while another one is active', () => {

@@ -2,6 +2,8 @@
  * entryStore 单元测试
  */
 
+import { act, waitFor } from '@testing-library/react-native';
+
 const mockDataSource = {
   getEntriesPage: jest.fn().mockResolvedValue([]),
   getEntryCount: jest.fn().mockResolvedValue(0),
@@ -284,13 +286,23 @@ describe('entryStore', () => {
           .mockResolvedValueOnce([{ id: 'stale', type: 'text', content: 'stale', timestamp: 0, syncStatus: 'synced' }]);
 
         const firstLoad = useEntryStore.getState().loadEntries();
-        await Promise.resolve();
 
         await useEntryStore.getState().applySearchFilters({ query: 'fresh' });
 
-        jest.runOnlyPendingTimers();
-        await Promise.resolve();
-        await Promise.resolve();
+        await waitFor(() => {
+          expect(useEntryStore.getState().searchQuery).toBe('fresh');
+          expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
+        });
+
+        await act(async () => {
+          jest.runOnlyPendingTimers();
+        });
+
+        await waitFor(() => {
+          expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(2);
+          expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
+        });
+
         await firstLoad;
 
         expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);

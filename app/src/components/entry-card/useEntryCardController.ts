@@ -188,6 +188,10 @@ export function useEntryCardController({
         setShowImageViewer(true);
         break;
       case 'voice':
+        if (entry.localReadyState === 'processing') {
+          logger.log('语音媒体本地处理中，忽略播放');
+          break;
+        }
         if (isEntryMediaPendingHydration(entry)) {
           logger.log('语音媒体尚未准备好，忽略播放');
           break;
