@@ -14,35 +14,15 @@ import '../global.css';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/components/useColorScheme';
-import { initializeFileSystem } from '@/src/utils/fileSystem';
-import { VoiceService } from '@/src/services/voiceService';
-import { initDatabase } from '@/src/database/sqlite';
-import {
-  migrateFromAsyncStorage,
-  migrateTagsToNormalized,
-  migrateMediaMetadataColumns,
-  migrateToMediaJson,
-  migrateSyncStatusColumn,
-  migrateCloudSyncCoreColumns,
-  migrateLocalReadyStateColumn,
-} from '@/src/database/migration';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { logger } from '@/src/utils/logger';
-import { BackupService } from '@/src/services/backupService';
-import { Storage } from '@/src/utils/storage';
-import { useEntryStore } from '@/src/store/entryStore';
-import { useAuthStore } from '@/src/store/authStore';
-import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
-import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
-import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
-import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
-import { createCloudSyncService } from '@/src/services/cloudSyncService';
-import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { FeedbackHost } from '@/src/components/FeedbackHost';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedbackPresets';
+import { runAppBootstrap } from '@/src/services/appBootstrapService';
+import { createCloudRecoveryRunner, handleAppStateChange } from '@/src/services/appLifecycleService';
 
 LogBox.ignoreLogs([
   "SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead.",
@@ -98,156 +78,32 @@ export default function RootLayout() {
 
   // 初始化文件系统和音频系统
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // 并行初始化互相独立的子系统
-        await Promise.all([
-          initializeFileSystem().then(() => logger.log('✅ 文件系统初始化成功')),
-          VoiceService.initializeAudio().then(() => logger.log('✅ 音频系统初始化成功')),
-        ]);
-
-        // 数据库初始化（必须在迁移之前完成）
-        const dbSuccess = await initDatabase();
-        if (!dbSuccess) {
-          throw new Error('数据库初始化失败');
-        }
-        logger.log('✅ SQLite 数据库初始化成功');
-
-        // 执行数据迁移
-        const migrationResult = await migrateFromAsyncStorage();
-        if (migrationResult.success) {
-          logger.log(`✅ 数据迁移完成，迁移了 ${migrationResult.migratedCount} 条记录`);
-        } else {
-          logger.warn('⚠️ 数据迁移警告:', migrationResult.error);
-          Alert.alert('数据迁移警告', '部分数据可能未正确导入，但应用可以正常使用');
-        }
-
-        // Tags 规范化迁移（幂等，已迁移则跳过）
-        await migrateTagsToNormalized();
-        logger.log('✅ Tags 规范化迁移完成');
-
-        // 媒体元数据列迁移（幂等，已迁移则跳过）
-        await migrateMediaMetadataColumns();
-        logger.log('✅ 媒体元数据列迁移完成');
-
-        // media_json 列迁移（幂等，已迁移则跳过）
-        await migrateToMediaJson();
-        logger.log('✅ media_json 列迁移完成');
-
-        // sync_status 列迁移（幂等，已迁移则跳过）
-        await migrateSyncStatusColumn();
-        logger.log('✅ sync_status 列迁移完成');
-
-        // cloud sync core 列迁移（幂等，已迁移则跳过）
-        await migrateCloudSyncCoreColumns();
-        logger.log('✅ cloud sync core 列迁移完成');
-
-        // local_ready_state 列迁移（幂等，已迁移则跳过）
-        await migrateLocalReadyStateColumn();
-        logger.log('✅ local_ready_state 列迁移完成');
-
-        await cleanupIncompleteLocalEntries().catch((cleanupError) => {
-          logger.warn('⚠️ 启动时清理未完成本地 entry 失败:', cleanupError);
-        });
-
-        // 恢复登录状态
-        await useAuthStore.getState().loadAuth();
-        await useSyncStore.getState().load();
-
-        // 检查 cloudMode 中断恢复
-        const cloudModeRaw = await Storage.getString('settings:cloudMode');
-        const isAuthenticated = useAuthStore.getState().isAuthenticated;
-        if (cloudModeRaw === 'switching') {
-          logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
-          await Storage.setString('settings:cloudMode', 'false');
-          Alert.alert('提示', '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。');
-        } else if (cloudModeRaw === 'true' && isAuthenticated) {
-          try {
-            logger.log('✅ 恢复云端模式，执行本地优先同步初始化');
-            const bootstrap = createSyncBootstrapService();
-            const inspection = await bootstrap.inspectInitialState();
-            const flow = bootstrap.buildInitialFlow(inspection);
-
-            if (flow.type === 'restoring') {
-              await bootstrap.runInitialFlow('cloud');
-            } else if (flow.type === 'backing-up') {
-              await bootstrap.runInitialFlow('local');
-            } else if (flow.type === 'needs-decision') {
-              await useSyncStore.getState().setInitialSyncState('needs-decision');
-            }
-
-            const cloudSync = createCloudSyncService();
-            if (flow.type !== 'needs-decision') {
-              await cloudSync.syncNow();
-            }
-          } catch (syncError) {
-            logger.warn('⚠️ 启动时云同步失败:', syncError);
-          }
-        }
-
-        await flushPendingVoiceUploads().catch((queueError) => {
-          logger.warn('⚠️ 启动时补传待上传语音失败:', queueError);
-        });
-        await flushPendingPhotoUploads().catch((queueError) => {
-          logger.warn('⚠️ 启动时补传待上传照片失败:', queueError);
-        });
-        await refreshCloudSyncIndicator('启动后');
-      } catch (error) {
-        logger.error('❌ 应用初始化失败:', error);
+    void runAppBootstrap({
+      refreshCloudSyncIndicator,
+      onInitializationFailed: () => {
         showErrorFeedback(buildAppInitializationFailedFeedback());
-      }
-    };
-
-    initializeApp();
+      },
+    });
   }, []);
 
   // 监听 App 进入后台，触发自动备份
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const wasNetworkReachableRef = useRef<boolean | null>(null);
-  const pendingCloudRecoveryRef = useRef<Promise<void> | null>(null);
-  const runPendingCloudRecovery = async (label: string): Promise<void> => {
-    if (pendingCloudRecoveryRef.current) {
-      return pendingCloudRecoveryRef.current;
-    }
+  const runPendingCloudRecovery = useRef(
+    createCloudRecoveryRunner({ refreshCloudSyncIndicator, wasNetworkReachableRef })
+  ).current;
 
-    pendingCloudRecoveryRef.current = (async () => {
-      if (useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true) {
-        await createCloudSyncService().syncNow().catch((syncError) =>
-          logger.warn(`⚠️ ${label}entry 云同步失败:`, syncError)
-        );
-      }
-      await flushPendingVoiceUploads().catch((queueError) =>
-        logger.warn(`⚠️ ${label}补传待上传语音失败:`, queueError)
-      );
-      await flushPendingPhotoUploads().catch((queueError) =>
-        logger.warn(`⚠️ ${label}补传待上传照片失败:`, queueError)
-      );
-      await refreshCloudSyncIndicator(`${label}后`);
-    })().finally(() => {
-      pendingCloudRecoveryRef.current = null;
-    });
-
-    return pendingCloudRecoveryRef.current;
-  };
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
       const prev = appStateRef.current;
       appStateRef.current = nextState;
 
-      if (prev !== 'background' && nextState === 'background') {
-        const shouldBackup = await BackupService.shouldBackup();
-        if (shouldBackup) {
-          const entries = useEntryStore.getState().entries;
-          await BackupService.createBackup(entries).catch((e) =>
-            logger.error('自动备份失败:', e)
-          );
-        }
-      } else if (prev !== 'active' && nextState === 'active') {
-        await runPendingCloudRecovery('回到前台时');
-      }
+      void handleAppStateChange(prev, nextState, runPendingCloudRecovery).catch((error) => {
+        logger.error('❌ 处理 AppState 变更失败:', error);
+      });
     });
     return () => subscription.remove();
-  }, []);
+  }, [runPendingCloudRecovery]);
 
   useEffect(() => {
     const subscription = Network.addNetworkStateListener((state) => {
@@ -255,22 +111,13 @@ export default function RootLayout() {
       const wasReachable = wasNetworkReachableRef.current;
       wasNetworkReachableRef.current = isReachable;
 
-      if (!wasReachable && isReachable) {
+      if (wasReachable === false && isReachable) {
         void runPendingCloudRecovery('网络恢复时');
       }
     });
 
-    void Network.getNetworkStateAsync()
-      .then((state) => {
-        wasNetworkReachableRef.current =
-          state.isConnected === true && state.isInternetReachable !== false;
-      })
-      .catch((error) => {
-        logger.warn('⚠️ 初始化网络状态监听失败:', error);
-      });
-
     return () => subscription.remove();
-  }, []);
+  }, [runPendingCloudRecovery]);
 
   useEffect(() => {
     if (loaded) {

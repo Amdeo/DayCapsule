@@ -175,7 +175,7 @@ eas build --platform all --profile preview
 
 1. **不兼容 Expo Go** - MMKV 需要原生模块，必须使用 EAS Build 或 custom dev client
 2. **路径别名** - 使用 `@/src/...` 代替相对路径
-3. **样式规范** - 使用 NativeWind `className`，避免 `StyleSheet`
+3. **样式规范** - 新增样式默认使用 NativeWind `className`，部分旧样式仍在迁移中
 4. **MMKV v4 API** - 使用 `createMMKV()` 工厂函数，删除用 `remove(key)`
 
 ## 📱 核心功能
@@ -189,8 +189,8 @@ eas build --platform all --profile preview
 - ✅ **数据迁移** - AsyncStorage → SQLite（幂等迁移）
 - ✅ **花瓣展开菜单** - 原生动画 FAB
 - ✅ **图片查看器** - 缩放 / 滑动浏览
-- ✅ **TypeScript 严格模式** - 零 tsc 错误
-- ✅ **自动化测试** - 当前仓库 `npm test` 可运行（65 个用例）
+- ✅ **TypeScript 严格模式** - 以 `npm run typecheck` 作为静态类型检查基线
+- ✅ **自动化测试** - 提供按场景拆分的 Jest 命令与 Maestro 冒烟脚本
 
 ## 📚 文档索引
 
@@ -280,7 +280,7 @@ flowchart TD
 
 欢迎 PR 和 Issue！请确保：
 - 代码通过 TypeScript 检查：`npm run typecheck`
-- 测试全部通过：`npm test`
+- 按改动范围运行对应验证命令（例如：`npm test`、`npm run test:maestro:app-core`）
 
 ## 📄 License
 
