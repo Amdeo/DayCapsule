@@ -117,6 +117,7 @@ const rowToEntry = (row: any): Entry => {
     userId: row.user_id ?? undefined,
     deleted: row.deleted == null ? undefined : Boolean(row.deleted),
     updatedAt: row.updated_at ?? row.timestamp,
+    localReadyState: row.local_ready_state ?? 'ready',
   } as Entry;
 };
 
@@ -210,6 +211,30 @@ export const getEntriesBySyncStatus = async (
     return result.map(rowToEntry);
   } catch (error) {
     logger.error('Failed to get entries by sync status:', error);
+    return [];
+  }
+};
+
+export const getEntriesByLocalReadyState = async (
+  states: Array<NonNullable<Entry['localReadyState']>>
+): Promise<Entry[]> => {
+  if (states.length === 0) return [];
+
+  try {
+    const db = getDatabase();
+    const columns = await getTableColumns(db);
+    if (!columns.has('local_ready_state')) return [];
+
+    const placeholders = states.map(() => '?').join(', ');
+    const result = await db.getAllAsync(
+      `SELECT * FROM entries
+       WHERE local_ready_state IN (${placeholders})
+       ORDER BY timestamp DESC`,
+      states,
+    );
+    return result.map(rowToEntry);
+  } catch (error) {
+    logger.error('Failed to get entries by local ready state:', error);
     return [];
   }
 };
@@ -390,6 +415,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     const hasBaseUpdatedAt = columns.has('base_updated_at');
     const hasUserID = columns.has('user_id');
     const hasDeleted = columns.has('deleted');
+    const hasLocalReadyState = columns.has('local_ready_state');
 
     if (hasMediaJson) {
       const mediaJson = entry.media ? JSON.stringify(entry.media) : null;
@@ -397,8 +423,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_json,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
         [
           id, entry.type, entry.content, timestamp,
           entry.tags ? JSON.stringify(entry.tags) : null,
@@ -410,6 +436,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
           ...(hasUserID ? [entry.userId ?? null] : []),
           ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
+          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
         ]
       );
     } else if (hasMediaColumns) {
@@ -423,8 +450,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_uri, media_type, media_duration, media_thumbnail, media_metadata,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
         [
           id,
           entry.type,
@@ -444,6 +471,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
           ...(hasUserID ? [entry.userId ?? null] : []),
           ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
+          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
         ]
       );
     } else {
@@ -453,8 +481,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
           media_uri, media_type, media_duration,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''})`,
+          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
         [
           id,
           entry.type,
@@ -472,6 +500,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
           ...(hasUserID ? [entry.userId ?? null] : []),
           ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
+          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
         ]
       );
     }
@@ -491,6 +520,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       baseUpdatedAt: entry.baseUpdatedAt,
       userId: entry.userId,
       deleted: entry.deleted ?? false,
+      localReadyState: entry.localReadyState ?? 'ready',
     } as Entry;
   } catch (error) {
     logger.error('Failed to add entry:', error);
@@ -515,6 +545,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     const hasBaseUpdatedAt = columns.has('base_updated_at');
     const hasUserID = columns.has('user_id');
     const hasDeleted = columns.has('deleted');
+    const hasLocalReadyState = columns.has('local_ready_state');
 
     if (updates.content !== undefined) {
       fields.push('content = ?');
@@ -575,6 +606,10 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     if (updates.deleted !== undefined && hasDeleted) {
       fields.push('deleted = ?');
       values.push(updates.deleted ? 1 : 0);
+    }
+    if (updates.localReadyState !== undefined && hasLocalReadyState) {
+      fields.push('local_ready_state = ?');
+      values.push(updates.localReadyState);
     }
 
     fields.push('updated_at = ?');

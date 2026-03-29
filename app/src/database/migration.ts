@@ -378,3 +378,31 @@ export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
     logger.error('❌ cloud sync core 列迁移失败:', error);
   }
 };
+
+/**
+ * 为 entries 增加 local_ready_state 列
+ * 幂等：已存在则跳过
+ */
+export const migrateLocalReadyStateColumn = async (): Promise<void> => {
+  const db = getDatabase();
+  try {
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    const columnNames = new Set(tableInfo.map(col => col.name));
+    const alreadyMarked = migrationStore.getString('local_ready_state_column_added') === 'true';
+    const hasColumn = columnNames.has('local_ready_state');
+
+    if (alreadyMarked && hasColumn) return;
+
+    if (!hasColumn) {
+      await db.runAsync(`ALTER TABLE entries ADD COLUMN local_ready_state TEXT DEFAULT 'ready'`);
+      logger.log('✅ 添加 local_ready_state 列');
+    }
+
+    await db.runAsync(`UPDATE entries SET local_ready_state = 'ready' WHERE local_ready_state IS NULL`);
+    invalidateColumnCache();
+    migrationStore.set('local_ready_state_column_added', 'true');
+    logger.log('✅ local_ready_state 列迁移完成');
+  } catch (error) {
+    logger.error('❌ local_ready_state 列迁移失败:', error);
+  }
+};

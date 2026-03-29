@@ -72,6 +72,7 @@ export const initDatabase = async () => {
         base_updated_at INTEGER,
         user_id TEXT,
         deleted INTEGER DEFAULT 0,
+        local_ready_state TEXT DEFAULT 'ready',
         created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
         updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
       );

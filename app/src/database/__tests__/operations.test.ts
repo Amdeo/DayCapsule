@@ -29,6 +29,7 @@ import {
   updateEntry,
   deleteEntry,
   getPhotoEntriesBySyncStatus,
+  getEntriesByLocalReadyState,
   getCloudSyncIndicatorSummary,
   getLocalSyncOverviewCounts,
   markEntryPendingDelete,
@@ -672,6 +673,48 @@ describe('database/operations', () => {
         deleted: true,
       });
     });
+
+    it('reads localReadyState from rows and persists it on add/update', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+        { name: 'local_ready_state' },
+      ]);
+
+      const created = await addEntry({
+        type: 'text',
+        content: '带 localReadyState',
+        localReadyState: 'processing',
+      });
+
+      const [insertSql, insertParams] = mockDb.runAsync.mock.calls[0];
+      expect(insertSql).toContain('local_ready_state');
+      expect(insertParams).toContain('processing');
+      expect(created.localReadyState).toBe('processing');
+
+      await updateEntry(created.id, { localReadyState: 'ready' });
+      const [updateSql, updateParams] = mockDb.runAsync.mock.calls.at(-1) ?? [];
+      expect(updateSql).toContain('local_ready_state = ?');
+      expect(updateParams).toContain('ready');
+
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        {
+          id: created.id,
+          type: 'text',
+          content: '带 localReadyState',
+          timestamp: created.timestamp,
+          tags: null,
+          local_ready_state: 'processing',
+        },
+      ]);
+
+      const rows = await getAllEntries();
+      expect(rows[0].localReadyState).toBe('processing');
+    });
   });
 
   // ─── updateEntry ───────────────────────────────────────────────────────────
@@ -709,6 +752,36 @@ describe('database/operations', () => {
       expect(params).toContain(1700000000000);
       expect(params).toContain('user-1');
       expect(params).toContain(1);
+    });
+  });
+
+  describe('getEntriesByLocalReadyState', () => {
+    it('returns entries by localReadyState', async () => {
+      mockDb.getAllAsync
+        .mockResolvedValueOnce([
+          { name: 'id' },
+          { name: 'type' },
+          { name: 'content' },
+          { name: 'timestamp' },
+          { name: 'local_ready_state' },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'entry-1',
+            type: 'text',
+            content: 'processing row',
+            timestamp: 1,
+            tags: null,
+            local_ready_state: 'processing',
+          },
+        ]);
+
+      const result = await getEntriesByLocalReadyState(['processing']);
+
+      const [sql, params] = mockDb.getAllAsync.mock.calls[1];
+      expect(sql).toContain('local_ready_state IN');
+      expect(params).toEqual(['processing']);
+      expect(result[0].localReadyState).toBe('processing');
     });
   });
 
