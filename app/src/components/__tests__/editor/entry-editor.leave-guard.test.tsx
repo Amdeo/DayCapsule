@@ -65,8 +65,9 @@ describe('EntryEditor leave guard', () => {
     const continueAction = actions.find((action) => action.text === '继续编辑');
 
     expect(continueAction).toBeDefined();
+    expect(continueAction?.onPress).toEqual(expect.any(Function));
 
-    continueAction!.onPress?.();
+    continueAction!.onPress!();
 
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByDisplayValue('继续编辑的正文')).toBeTruthy();
