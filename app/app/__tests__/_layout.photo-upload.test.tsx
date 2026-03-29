@@ -113,6 +113,7 @@ jest.mock('@/src/database/migration', () => ({
   migrateToMediaJson: jest.fn().mockResolvedValue(undefined),
   migrateSyncStatusColumn: jest.fn().mockResolvedValue(undefined),
   migrateCloudSyncCoreColumns: jest.fn().mockResolvedValue(undefined),
+  migrateLocalReadyStateColumn: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/src/components/ErrorBoundary', () => ({
@@ -232,6 +233,7 @@ jest.mock('react-native', () => ({
 
 import RootLayout from '../_layout';
 import { initDatabase } from '@/src/database/sqlite';
+import { migrateLocalReadyStateColumn } from '@/src/database/migration';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
 import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 
@@ -263,6 +265,20 @@ describe('RootLayout photo upload triggers', () => {
     expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
+  });
+
+  it('runs local ready state migration before bootstrap cleanup queues', async () => {
+    render(<RootLayout />);
+
+    await flushPromises();
+
+    expect(migrateLocalReadyStateColumn).toHaveBeenCalledTimes(1);
+    expect((migrateLocalReadyStateColumn as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (flushPendingPhotoUploads as jest.Mock).mock.invocationCallOrder[0]
+    );
+    expect((migrateLocalReadyStateColumn as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (flushPendingVoiceUploads as jest.Mock).mock.invocationCallOrder[0]
+    );
   });
 
   it('shows branded feedback when app initialization fails', async () => {

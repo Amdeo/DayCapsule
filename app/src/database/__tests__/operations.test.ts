@@ -675,7 +675,7 @@ describe('database/operations', () => {
     });
 
     it('reads localReadyState from rows and persists it on add/update', async () => {
-      mockDb.getAllAsync.mockResolvedValueOnce([
+      const tableColumns = [
         { name: 'id' },
         { name: 'type' },
         { name: 'content' },
@@ -683,7 +683,8 @@ describe('database/operations', () => {
         { name: 'tags' },
         { name: 'media_json' },
         { name: 'local_ready_state' },
-      ]);
+      ];
+      mockDb.getAllAsync.mockResolvedValue(tableColumns);
 
       const created = await addEntry({
         type: 'text',
@@ -701,16 +702,21 @@ describe('database/operations', () => {
       expect(updateSql).toContain('local_ready_state = ?');
       expect(updateParams).toContain('ready');
 
-      mockDb.getAllAsync.mockResolvedValueOnce([
-        {
-          id: created.id,
-          type: 'text',
-          content: '带 localReadyState',
-          timestamp: created.timestamp,
-          tags: null,
-          local_ready_state: 'processing',
-        },
-      ]);
+      mockDb.getAllAsync.mockImplementationOnce(async (sql: string) => {
+        if (sql.includes('SELECT * FROM entries')) {
+          return [
+            {
+              id: created.id,
+              type: 'text',
+              content: '带 localReadyState',
+              timestamp: created.timestamp,
+              tags: null,
+              local_ready_state: 'processing',
+            },
+          ];
+        }
+        return tableColumns;
+      });
 
       const rows = await getAllEntries();
       expect(rows[0].localReadyState).toBe('processing');

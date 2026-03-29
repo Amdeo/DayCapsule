@@ -19,8 +19,10 @@ jest.mock('@/src/database/sqlite', () => ({
 }));
 
 const mockMigrateToMediaJson = jest.fn().mockResolvedValue(undefined);
+const mockMigrateLocalReadyStateColumn = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/src/database/migration', () => ({
   migrateToMediaJson: () => mockMigrateToMediaJson(),
+  migrateLocalReadyStateColumn: () => mockMigrateLocalReadyStateColumn(),
 }));
 
 const mockEnsureDirectories = jest.fn().mockResolvedValue(undefined);
@@ -90,7 +92,14 @@ describe('localEnvironmentDataManager', () => {
     expect(mockResetDatabase).toHaveBeenCalledTimes(1);
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
+    expect(mockMigrateLocalReadyStateColumn).toHaveBeenCalledTimes(1);
     expect(mockEnsureDirectories).toHaveBeenCalledTimes(1);
+    expect(mockMigrateToMediaJson.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEnsureDirectories.mock.invocationCallOrder[0]
+    );
     expect(mockAuthLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockSettingsLoad).toHaveBeenCalledTimes(1);
     expect(mockSyncLoad).toHaveBeenCalledTimes(1);

@@ -475,7 +475,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         ]
       );
     } else {
-      // 旧表结构：不使用新列
+      // 兼容更旧的表结构：未启用 media_json/media_metadata 时退回 legacy 媒体列写入
       const firstMedia = Array.isArray(entry.media) ? entry.media[0] : entry.media as any;
       await db.runAsync(
         `INSERT INTO entries (

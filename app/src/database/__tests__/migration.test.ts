@@ -167,7 +167,7 @@ describe('database/migration', () => {
     );
   });
 
-  it('backfills NULL local_ready_state even when marker is already set', async () => {
+  it('backfills NULL local_ready_state whenever the column exists', async () => {
     mockMmkvState.set('local_ready_state_column_added', 'true');
     mockGetAllAsync.mockResolvedValueOnce([{ name: 'id' }, { name: 'local_ready_state' }]);
 
