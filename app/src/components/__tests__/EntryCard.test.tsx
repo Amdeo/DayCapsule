@@ -885,6 +885,31 @@ describe('EntryCard photo edge-to-edge', () => {
     expect(queryByTestId('image-viewer')).toBeNull();
   });
 
+  it('照片只有缩略图资源时点击卡片不应挂载图片查看器', () => {
+    const thumbnailOnlyPhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-thumbnail-only-1',
+      media: [
+        {
+          uri: '',
+          remoteUri: '',
+          thumbnail: 'file:///viewer-thumb-only.jpg',
+          remoteThumbnail: '',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+      ],
+    };
+
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={thumbnailOnlyPhotoEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('entry-card'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
+  });
+
   it('打开图片查看器时应该打印选中媒体与最终路径日志', () => {
     const loggingPhotoEntry: Entry = {
       ...photoEntry,
