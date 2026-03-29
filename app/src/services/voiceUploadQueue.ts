@@ -82,7 +82,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
       }
 
       const entry = await deps.getEntryById(entryId);
-      if (!entry || entry.type !== 'voice' || !entry.media?.[0]?.uri) {
+      if (!entry || entry.type !== 'voice' || entry.localReadyState === 'processing' || !entry.media?.[0]?.uri) {
         continue;
       }
 

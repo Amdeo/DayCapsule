@@ -303,6 +303,32 @@ describe('photoUploadQueue', () => {
     expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
   });
 
+  it('skips entries whose localReadyState is processing', async () => {
+    const entry = makePhotoEntry({
+      localReadyState: 'processing',
+    });
+    const queue = createPhotoUploadQueue({
+      getPendingEntries: jest.fn().mockResolvedValue([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPendingUpload: jest.fn().mockResolvedValue(undefined),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn().mockResolvedValue({ id: 'media-1', url: 'https://cdn/photo_1.jpg' }),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPendingUpload: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+
+    expect(queue.deps.markUploading).not.toHaveBeenCalled();
+    expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
+    expect(queue.deps.markPendingSync).not.toHaveBeenCalled();
+    expect(queue.deps.markPendingUpload).not.toHaveBeenCalled();
+    expect(queue.deps.triggerSync).not.toHaveBeenCalled();
+  });
+
   it('continues draining entries that are enqueued while another photo upload is already in flight', async () => {
     const firstEntry = makePhotoEntry({
       id: 'photo-local-1',

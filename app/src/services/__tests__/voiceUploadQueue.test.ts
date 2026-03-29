@@ -215,6 +215,32 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
   });
 
+  it('skips entries whose localReadyState is processing', async () => {
+    const entry = makeVoiceEntry({
+      localReadyState: 'processing',
+    });
+    const queue = createVoiceUploadQueue({
+      getPendingEntries: jest.fn().mockResolvedValue([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPending: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn().mockResolvedValue({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPending: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+
+    expect(queue.deps.markUploading).not.toHaveBeenCalled();
+    expect(queue.deps.uploadMedia).not.toHaveBeenCalled();
+    expect(queue.deps.markPendingSync).not.toHaveBeenCalled();
+    expect(queue.deps.markPending).not.toHaveBeenCalled();
+    expect(queue.deps.triggerSync).not.toHaveBeenCalled();
+  });
+
   it('continues draining entries that are enqueued while another voice upload is already in flight', async () => {
     const firstEntry = makeVoiceEntry({ id: 'voice-local-1' });
     const secondEntry = makeVoiceEntry({
