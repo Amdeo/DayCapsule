@@ -15,7 +15,7 @@ import { Sidebar } from '@/src/components/Sidebar';
 import { TextEditor } from '@/src/components/TextEditor';
 import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService, PhotoResult } from '@/src/services/photoService';
-import { fingerprintPhotoFile } from '@/src/services/photoIntegrityService';
+import { buildPhotoLogPayload, fingerprintPhotoFile } from '@/src/services/photoIntegrityService';
 import { logger } from '@/src/utils/logger';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
@@ -247,6 +247,21 @@ export async function handlePhotoSelectForTest(
     await deps.updateLocalEntry(createdEntry.id, {
       media: prepared.media,
       localReadyState: 'ready',
+    });
+    prepared.media.forEach((media) => {
+      logger.log('photo.db.entry_saved', buildPhotoLogPayload({
+        entryId: createdEntry.id,
+        localMediaId: media.metadata?.localMediaId,
+        localUri: media.uri,
+        mimeType: media.mimeType,
+        size: media.size,
+        width: media.metadata?.width,
+        height: media.metadata?.height,
+        sourceHash: media.metadata?.sourceHash,
+        persistedHash: media.metadata?.persistedHash,
+        integrityStatus: media.metadata?.integrityStatus,
+        integrityReason: media.metadata?.integrityReason ?? null,
+      }));
     });
 
     try {

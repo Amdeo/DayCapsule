@@ -45,6 +45,29 @@ const cleanupCreatedFiles = async (
   );
 };
 
+const attachCreatedFiles = (
+  error: unknown,
+  createdFiles: string[]
+): PhotoEntryPreparationError => {
+  if (error instanceof Error) {
+    const preparedError = error as PhotoEntryPreparationError;
+    preparedError.createdFiles = [...createdFiles];
+    return preparedError;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const preparedError = error as PhotoEntryPreparationError;
+    preparedError.createdFiles = [...createdFiles];
+    return preparedError;
+  }
+
+  const wrappedError = new Error(
+    typeof error === 'string' ? error : 'Photo entry preparation failed'
+  ) as PhotoEntryPreparationError;
+  wrappedError.createdFiles = [...createdFiles];
+  return wrappedError;
+};
+
 export async function preparePhotoEntryMedia(
   results: PhotoResult[],
   deps: PreparePhotoEntryMediaDeps = defaultDeps
@@ -105,8 +128,6 @@ export async function preparePhotoEntryMedia(
     return { media, createdFiles };
   } catch (error) {
     await cleanupCreatedFiles(createdFiles, deps.deleteLocalFile);
-    const errorWithCreatedFiles = error as PhotoEntryPreparationError;
-    errorWithCreatedFiles.createdFiles = [...createdFiles];
-    throw errorWithCreatedFiles;
+    throw attachCreatedFiles(error, createdFiles);
   }
 }
