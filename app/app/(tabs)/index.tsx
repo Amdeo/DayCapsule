@@ -31,6 +31,14 @@ import {
   enqueuePhotoUpload,
   configurePhotoUploadQueueCallbacks,
 } from '@/src/services/photoUploadQueue';
+import {
+  preparePhotoEntryMedia as preparePhotoEntryMediaService,
+  type PhotoEntryPreparationError,
+} from '@/src/services/photoEntryPreparationService';
+import {
+  prepareVoiceEntryMedia as prepareVoiceEntryMediaService,
+  type VoiceEntryPreparationError,
+} from '@/src/services/voiceEntryPreparationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -72,16 +80,15 @@ function SidebarShell({ drawerProgress, onClose }: SidebarShellProps) {
 const StableSidebarShell = memo(SidebarShell);
 
 export interface PhotoSelectDeps {
-  savePhotoToStorage: (
-    sourceUri: string,
-    fileId: string,
-    quality: 'low' | 'medium' | 'high',
-    aspectRatio?: number
-  ) => Promise<import('@/src/services/photoService').SavedPhotoResult>;
-  deleteLocalFile?: (uri: string) => Promise<void>;
   addLocalEntry: (
     entry: Omit<import('@/src/types/entry').Entry, 'id' | 'timestamp'>
   ) => Promise<import('@/src/types/entry').Entry>;
+  updateLocalEntry: (entryId: string, updates: Partial<Entry>) => Promise<void>;
+  deleteEntry: (entryId: string) => Promise<void>;
+  preparePhotoEntryMedia: (
+    results: import('@/src/services/photoService').PhotoResult[]
+  ) => Promise<import('@/src/services/photoEntryPreparationService').PreparedPhotoEntryMedia>;
+  deleteLocalFile?: (uri: string) => Promise<void>;
   enqueueUpload?: (entryId: string) => void;
   initialSyncStatus?: import('@/src/types/entry').Entry['syncStatus'];
 }
@@ -94,8 +101,13 @@ export interface VoiceCloudStartDeps {
 
 export interface VoiceCloudFinalizeDeps {
   stopRecording: () => Promise<{ uri: string; size: number; duration: number; mimeType: string }>;
-  saveVoiceToCache: (sourceUri: string, entryId: string) => Promise<string>;
+  prepareVoiceEntryMedia: (
+    entryId: string,
+    audioFile: { uri: string; size: number; duration: number; mimeType: string }
+  ) => Promise<import('@/src/services/voiceEntryPreparationService').PreparedVoiceEntryMedia>;
   updateLocalEntry: (entryId: string, updates: Partial<Entry>) => Promise<void>;
+  deleteEntry: (entryId: string) => Promise<void>;
+  deleteLocalFile: (uri: string) => Promise<void>;
   enqueueUpload: (entryId: string) => void;
   preloadAudio: (uri: string) => Promise<void>;
 }
@@ -127,6 +139,7 @@ function buildTemporaryVoiceEntry(now: number): Entry {
     content: '',
     timestamp: now,
     syncStatus: 'pending_upload',
+    localReadyState: 'processing',
     recordingStatus: 'recording',
     recordingDuration: 0,
     media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
@@ -141,6 +154,7 @@ export async function startCloudVoiceRecordingForTest(deps: VoiceCloudStartDeps)
     type: entry.type,
     content: entry.content,
     syncStatus: entry.syncStatus,
+    localReadyState: entry.localReadyState,
     recordingStatus: entry.recordingStatus,
     recordingDuration: entry.recordingDuration,
     media: entry.media,
@@ -159,31 +173,38 @@ export async function finalizeCloudVoiceRecordingForTest(
   try {
     audioFile = await deps.stopRecording();
   } catch (error) {
-    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    await deps.deleteEntry(entryId).catch(() => {});
     throw error;
   }
 
-  let persistedUri: string;
+  let preparedCreatedFiles: string[] = [];
+  let preparedMedia: import('@/src/types/entry').MediaInfo[] = [];
   try {
-    persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
+    const prepared = await deps.prepareVoiceEntryMedia(entryId, audioFile);
+    preparedCreatedFiles = prepared.createdFiles;
+    preparedMedia = prepared.media;
   } catch (error) {
-    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    const createdFiles = (error as VoiceEntryPreparationError).createdFiles ?? [];
+    await Promise.all(createdFiles.map((uri) => deps.deleteLocalFile(uri)));
+    await deps.deleteEntry(entryId).catch(() => {});
     throw error;
   }
 
-  await deps.updateLocalEntry(entryId, {
-    recordingStatus: 'completed',
-    syncStatus: 'pending_upload',
-    recordingDuration: Math.floor(audioFile.duration),
-    media: [{
-      uri: persistedUri,
-      mimeType: audioFile.mimeType,
-      size: audioFile.size,
-      duration: Math.floor(audioFile.duration * 1000),
-    }],
-  });
+  try {
+    await deps.updateLocalEntry(entryId, {
+      recordingStatus: 'completed',
+      localReadyState: 'ready',
+      syncStatus: 'pending_upload',
+      recordingDuration: Math.floor(audioFile.duration),
+      media: preparedMedia,
+    });
+  } catch (error) {
+    await Promise.all(preparedCreatedFiles.map((uri) => deps.deleteLocalFile(uri)));
+    await deps.deleteEntry(entryId).catch(() => {});
+    throw error;
+  }
 
-  deps.preloadAudio(persistedUri).catch((err) => {
+  deps.preloadAudio(preparedMedia[0]?.uri ?? '').catch((err) => {
     logger.warn('[HomeScreen] Failed to preload audio:', err);
   });
 
@@ -198,68 +219,36 @@ export async function handlePhotoSelectForTest(
   results: import('@/src/services/photoService').PhotoResult[],
   deps: PhotoSelectDeps
 ): Promise<void> {
-  const mediaList: import('@/src/types/entry').MediaInfo[] = [];
-  const savedFiles: string[] = [];
-  for (const result of results) {
-    const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const sourceFingerprint = await fingerprintPhotoFile(result.uri, {
+  const previewMedia = results.map((result) => ({
+    uri: result.uri,
+    mimeType: 'image/jpeg' as const,
+    size: 0,
+    metadata: {
       width: result.width,
       height: result.height,
-    });
-    logger.log('photo.capture.received', buildPhotoLogPayload({
-      entryId: fileId,
-      localMediaId: fileId,
-      sourceUri: result.uri,
-      sourceHash: sourceFingerprint.sha256,
-      mimeType: sourceFingerprint.mimeType,
-      size: sourceFingerprint.size,
-      width: sourceFingerprint.width,
-      height: sourceFingerprint.height,
-    }));
-    const savedPhoto = await deps.savePhotoToStorage(
-      result.uri,
-      fileId,
-      'medium',
-      result.aspectRatio
-    );
-    const persistedFingerprint = savedPhoto.persistedFingerprint
-      ?? await fingerprintPhotoFile(savedPhoto.originalUri, {
-        width: savedPhoto.width,
-        height: savedPhoto.height,
-      });
-    const hasIntegrityAnomaly = persistedFingerprint.sha256.length === 0;
+      aspectRatio: result.aspectRatio,
+      createdAt: Date.now(),
+      modifiedAt: Date.now(),
+    },
+  }));
 
-    mediaList.push({
-      uri: savedPhoto.originalUri,
-      mimeType: 'image/jpeg',
-      size: persistedFingerprint.size,
-      thumbnail: savedPhoto.thumbnailUri,
-      metadata: {
-        width: savedPhoto.width,
-        height: savedPhoto.height,
-        aspectRatio: savedPhoto.aspectRatio,
-        localMediaId: fileId,
-        sourceHash: sourceFingerprint.sha256,
-        persistedHash: persistedFingerprint.sha256,
-        integrityStatus: hasIntegrityAnomaly ? 'upload_mismatch' : 'healthy',
-        integrityReason: hasIntegrityAnomaly ? 'persisted-hash-missing' : null,
-        repairable: false,
-        createdAt: Date.now(),
-        modifiedAt: Date.now(),
-      },
-    });
-    savedFiles.push(savedPhoto.originalUri, savedPhoto.thumbnailUri);
-  }
+  const createdEntry = await deps.addLocalEntry({
+    type: 'photo',
+    content: '',
+    syncStatus: deps.initialSyncStatus ?? 'pending_upload',
+    localReadyState: 'processing',
+    media: previewMedia,
+  });
 
+  let preparedCreatedFiles: string[] = [];
   try {
-    const createdEntry = await deps.addLocalEntry({
-      type: 'photo',
-      content: '',
-      syncStatus: deps.initialSyncStatus ?? 'pending_upload',
-      media: mediaList,
+    const prepared = await deps.preparePhotoEntryMedia(results);
+    preparedCreatedFiles = prepared.createdFiles;
+    await deps.updateLocalEntry(createdEntry.id, {
+      media: prepared.media,
+      localReadyState: 'ready',
     });
-
-    mediaList.forEach((media) => {
+    prepared.media.forEach((media) => {
       logger.log('photo.db.entry_saved', buildPhotoLogPayload({
         entryId: createdEntry.id,
         localMediaId: media.metadata?.localMediaId,
@@ -281,9 +270,18 @@ export async function handlePhotoSelectForTest(
       logger.warn('[HomeScreen] Failed to enqueue photo upload:', error);
     }
   } catch (error) {
+    const createdFiles = preparedCreatedFiles.length > 0
+      ? preparedCreatedFiles
+      : (error as PhotoEntryPreparationError).createdFiles ?? [];
     if (deps.deleteLocalFile) {
-      await Promise.all(savedFiles.map((uri) => deps.deleteLocalFile?.(uri)));
+      const deleteLocalFile = deps.deleteLocalFile;
+      await Promise.all(
+        createdFiles.map((uri) => deleteLocalFile(uri).catch(() => undefined))
+      );
     }
+    await deps.deleteEntry(createdEntry.id).catch((deleteError) => {
+      logger.error('[HomeScreen] Failed to clean up failed photo entry:', deleteError);
+    });
     throw error;
   }
 }
@@ -516,8 +514,12 @@ export default function HomeScreen() {
       if (isCloudModeEnabled()) {
         await finalizeCloudVoiceRecordingForTest(id, {
           stopRecording: VoiceService.stopRecording.bind(VoiceService),
-          saveVoiceToCache: (sourceUri, entryId) => VoiceService.saveVoiceToCache(sourceUri, entryId),
+          prepareVoiceEntryMedia: (entryId, audioFile) => prepareVoiceEntryMediaService(entryId, audioFile, {
+            saveVoiceToCache: (sourceUri, currentEntryId) => VoiceService.saveVoiceToCache(sourceUri, currentEntryId),
+          }),
           updateLocalEntry,
+          deleteEntry,
+          deleteLocalFile: deleteFile,
           enqueueUpload: enqueueVoiceUpload,
           preloadAudio: VoiceService.preloadAudio.bind(VoiceService),
         });
@@ -538,7 +540,7 @@ export default function HomeScreen() {
     } finally {
       currentRecordingIdRef.current = null;
     }
-  }, [completeRecording, isCloudModeEnabled, updateLocalEntry]);
+  }, [completeRecording, deleteEntry, isCloudModeEnabled, updateLocalEntry]);
 
   const handleTextSave = useCallback(async (content: string, tags: string[]) => {
     try {
@@ -552,11 +554,17 @@ export default function HomeScreen() {
   const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
       await handlePhotoSelectForTest(results, {
-        savePhotoToStorage: isCloudModeEnabled()
-          ? PhotoService.savePhotoToCache.bind(PhotoService)
-          : PhotoService.savePhotoToStorage.bind(PhotoService),
-        deleteLocalFile: deleteFile,
         addLocalEntry,
+        updateLocalEntry,
+        deleteEntry,
+        preparePhotoEntryMedia: (photoResults) => preparePhotoEntryMediaService(photoResults, {
+          savePhoto: isCloudModeEnabled()
+            ? PhotoService.savePhotoToCache.bind(PhotoService)
+            : PhotoService.savePhotoToStorage.bind(PhotoService),
+          fingerprintPhotoFile,
+          deleteLocalFile: deleteFile,
+        }),
+        deleteLocalFile: deleteFile,
         enqueueUpload: isCloudModeEnabled() ? enqueuePhotoUpload : undefined,
         initialSyncStatus: isCloudModeEnabled() ? 'pending_upload' : 'synced',
       });
@@ -564,7 +572,7 @@ export default function HomeScreen() {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
       Alert.alert('保存失败', '照片保存失败，请重试');
     }
-  }, [addLocalEntry, isCloudModeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
+  }, [addLocalEntry, deleteEntry, isCloudModeEnabled, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 
   const openDrawer = useCallback(() => {
     setDrawerOpen(true);

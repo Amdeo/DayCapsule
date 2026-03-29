@@ -31,7 +31,13 @@ export interface PhotoUploadQueue {
 const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
 
 function isUploadablePhotoEntry(entry: Entry | null): entry is Entry & { media: MediaInfo[] } {
-  return !!entry && entry.type === 'photo' && Array.isArray(entry.media) && entry.media.length > 0;
+  return (
+    !!entry &&
+    entry.type === 'photo' &&
+    entry.localReadyState !== 'processing' &&
+    Array.isArray(entry.media) &&
+    entry.media.length > 0
+  );
 }
 
 async function uploadPhotoMedia(

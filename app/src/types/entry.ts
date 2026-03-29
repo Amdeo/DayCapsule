@@ -42,6 +42,7 @@ export interface Entry {
   deleted?: boolean; // 软删除标记，用于本地优先同步
   syncOp?: 'create' | 'update' | 'delete';
   syncStatus: 'pending' | 'pending_upload' | 'uploading' | 'synced' | 'failed' | 'pending_delete' | 'conflict-local-copy';
+  localReadyState?: 'processing' | 'ready';
 }
 
 /**

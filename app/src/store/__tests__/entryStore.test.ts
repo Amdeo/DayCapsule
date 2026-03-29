@@ -632,6 +632,45 @@ describe('entryStore', () => {
       expect(DB.markEntryPendingDelete).not.toHaveBeenCalled();
       expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
+
+    it('删除 processing 语音卡时应该只做本地删除和文件清理', async () => {
+      const { cancelVoiceUpload } = jest.requireMock('@/src/services/voiceUploadQueue') as {
+        cancelVoiceUpload: jest.Mock;
+      };
+      const { deleteFile } = jest.requireMock('@/src/utils/fileSystem') as {
+        deleteFile: jest.Mock;
+      };
+
+      useSettingsStore.setState({ cloudMode: true });
+      useEntryStore.setState({
+        entries: [
+          {
+            id: 'voice-processing-1',
+            type: 'voice',
+            content: '',
+            timestamp: 1700000000000,
+            syncStatus: 'pending_upload',
+            localReadyState: 'processing',
+            media: [
+              {
+                uri: 'file:///cache/final.m4a',
+                mimeType: 'audio/m4a',
+                size: 2048,
+                duration: 12000,
+              },
+            ],
+          },
+        ],
+      });
+
+      await useEntryStore.getState().deleteEntry('voice-processing-1');
+
+      expect(cancelVoiceUpload).toHaveBeenCalledWith('voice-processing-1');
+      expect(deleteFile).toHaveBeenCalledWith('file:///cache/final.m4a');
+      expect(DB.deleteEntry).toHaveBeenCalledWith('voice-processing-1');
+      expect(mockDataSource.deleteEntry).not.toHaveBeenCalled();
+      expect(DB.markEntryPendingDelete).not.toHaveBeenCalled();
+    });
   });
 
   // ─── filters ────────────────────────────────────────────────────────────────

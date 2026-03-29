@@ -18,6 +18,7 @@ interface EntryCardDefaultContentProps {
   isPlayingAudio: boolean;
   playbackPosition: number;
   isProcessing: boolean;
+  isLocalReadyProcessing: boolean;
   onImagePress: (index: number) => void;
   onPlayAudio: () => void | Promise<void>;
   onStopAudio: () => void | Promise<void>;
@@ -34,6 +35,7 @@ export function EntryCardDefaultContent({
   isPlayingAudio,
   playbackPosition,
   isProcessing,
+  isLocalReadyProcessing,
   onImagePress,
   onPlayAudio,
   onStopAudio,
@@ -56,6 +58,14 @@ export function EntryCardDefaultContent({
             photoImageRadius={photoImageRadius}
             onPhotoPress={onImagePress}
           />
+          {isLocalReadyProcessing ? (
+            <Text
+              testID={`photo-processing-label-${entry.id}`}
+              style={[styles.photoCaption, { paddingBottom: 0, color: '#B0822F', fontWeight: '600' }]}
+            >
+              准备中
+            </Text>
+          ) : null}
           {entry.content ? (
             <Text style={styles.photoCaption} numberOfLines={isExpanded ? undefined : 2}>
               {entry.content}
@@ -70,6 +80,7 @@ export function EntryCardDefaultContent({
           isPlayingAudio={isPlayingAudio}
           playbackPosition={playbackPosition}
           isProcessing={isProcessing}
+          isLocalReadyProcessing={isLocalReadyProcessing}
           onPlayAudio={onPlayAudio}
           onStopAudio={onStopAudio}
           onRunStopRecording={onRunStopRecording}

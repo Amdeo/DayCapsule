@@ -2,6 +2,8 @@ const mockDb = {
   getAllAsync: jest.fn(),
   runAsync: jest.fn(),
 };
+const mockGetAllAsync = mockDb.getAllAsync;
+const mockRunAsync = mockDb.runAsync;
 
 const mockMmkvState = new Map<string, string>();
 const mockInvalidateColumnCache = jest.fn();
@@ -45,7 +47,12 @@ jest.mock('@/src/utils/logger', () => ({
   },
 }));
 
-import { migrateCloudSyncCoreColumns, migrateSyncStatusColumn, migrateToMediaJson } from '../migration';
+import {
+  migrateCloudSyncCoreColumns,
+  migrateLocalReadyStateColumn,
+  migrateSyncStatusColumn,
+  migrateToMediaJson,
+} from '../migration';
 
 describe('database/migration', () => {
   beforeEach(() => {
@@ -150,5 +157,24 @@ describe('database/migration', () => {
       `ALTER TABLE entries ADD COLUMN deleted INTEGER DEFAULT 0`
     );
     expect(mockMmkvState.get('cloud_sync_core_columns_added')).toBe('true');
+  });
+
+  it('adds local_ready_state column when missing', async () => {
+    mockGetAllAsync.mockResolvedValueOnce([{ name: 'id' }, { name: 'sync_status' }]);
+    await migrateLocalReadyStateColumn();
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      `ALTER TABLE entries ADD COLUMN local_ready_state TEXT DEFAULT 'ready'`
+    );
+  });
+
+  it('backfills NULL local_ready_state whenever the column exists', async () => {
+    mockMmkvState.set('local_ready_state_column_added', 'true');
+    mockGetAllAsync.mockResolvedValueOnce([{ name: 'id' }, { name: 'local_ready_state' }]);
+
+    await migrateLocalReadyStateColumn();
+
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      `UPDATE entries SET local_ready_state = 'ready' WHERE local_ready_state IS NULL`
+    );
   });
 });

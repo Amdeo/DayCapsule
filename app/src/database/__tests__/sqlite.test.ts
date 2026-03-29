@@ -55,4 +55,11 @@ describe('sqlite environment isolation', () => {
 
     expect(createEntriesSql).toContain('media_json TEXT');
   });
+
+  it('creates entries table with local_ready_state in the base schema', async () => {
+    await initDatabase();
+    const db = openDatabase() as { execAsync: jest.Mock };
+    const createEntriesSql = db.execAsync.mock.calls[0][0] as string;
+    expect(createEntriesSql).toContain('local_ready_state TEXT DEFAULT \'ready\'');
+  });
 });

@@ -15,6 +15,7 @@ interface EntryCardCalendarPhotoSectionProps {
   isExpanded: boolean;
   resolvedPhotoHeight: number;
   calendarDensity: CalendarDensity;
+  isLocalReadyProcessing: boolean;
   onCardPress: () => void;
   onImagePress: (index: number) => void;
 }
@@ -24,6 +25,7 @@ export function EntryCardCalendarPhotoSection({
   isExpanded,
   resolvedPhotoHeight,
   calendarDensity,
+  isLocalReadyProcessing,
   onCardPress,
   onImagePress,
 }: EntryCardCalendarPhotoSectionProps) {
@@ -42,6 +44,17 @@ export function EntryCardCalendarPhotoSection({
         {mediaCount > 1 ? (
           <View style={styles.calendarPhotoCountOverlay}>
             <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
+          </View>
+        ) : null}
+        {isLocalReadyProcessing ? (
+          <View
+            testID={`calendar-photo-processing-${entry.id}`}
+            style={[
+              styles.calendarPhotoCountOverlay,
+              { left: 8, right: undefined, top: 8, bottom: undefined, backgroundColor: 'rgba(176,130,47,0.82)' },
+            ]}
+          >
+            <Text style={styles.calendarPhotoCountText}>准备中</Text>
           </View>
         ) : null}
       </View>

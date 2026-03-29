@@ -19,6 +19,7 @@ interface EntryCardCalendarContentProps {
   isPlayingAudio: boolean;
   playbackPosition: number;
   isProcessing: boolean;
+  isLocalReadyProcessing: boolean;
   onCardPress: () => void;
   onImagePress: (index: number) => void;
   onPlayAudio: () => void | Promise<void>;
@@ -35,6 +36,7 @@ export function EntryCardCalendarContent({
   isPlayingAudio,
   playbackPosition,
   isProcessing,
+  isLocalReadyProcessing,
   onCardPress,
   onImagePress,
   onPlayAudio,
@@ -63,6 +65,7 @@ export function EntryCardCalendarContent({
         isExpanded={isExpanded}
         resolvedPhotoHeight={resolvedPhotoHeight}
         calendarDensity={calendarDensity}
+        isLocalReadyProcessing={isLocalReadyProcessing}
         onCardPress={onCardPress}
         onImagePress={onImagePress}
       />
@@ -82,6 +85,7 @@ export function EntryCardCalendarContent({
       isPlayingAudio={isPlayingAudio}
       playbackPosition={playbackPosition}
       isProcessing={isProcessing}
+      isLocalReadyProcessing={isLocalReadyProcessing}
       onPlayAudio={onPlayAudio}
       onStopAudio={onStopAudio}
       onRunStopRecording={onRunStopRecording}

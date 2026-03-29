@@ -237,6 +237,40 @@ describe('PhotoService', () => {
     );
   });
 
+  it('savePhotoToStorage returns persisted media info needed for later entry update', async () => {
+    jest
+      .spyOn(PhotoService, 'generateThumbnail')
+      .mockResolvedValue('file:///thumbnail.jpg');
+
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+      uri: 'file:///compressed.jpg',
+      width: 1200,
+      height: 900,
+    });
+
+    const result = await PhotoService.savePhotoToStorage(
+      'file:///source.jpg',
+      'entry',
+      'medium',
+      3024 / 4032
+    );
+
+    expect(result).toEqual({
+      originalUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
+      thumbnailUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_thumb.jpg',
+      aspectRatio: 3024 / 4032,
+      width: 1200,
+      height: 900,
+      persistedFingerprint: expect.objectContaining({
+        uri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
+        sha256: 'persisted-hash',
+        size: 2_000_000,
+        width: 1200,
+        height: 900,
+      }),
+    });
+  });
+
   it('full 图在当前设备已有本地缓存时优先使用本地大图地址', () => {
     expect(
       PhotoService.getPreferredPhotoUri(

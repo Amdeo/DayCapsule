@@ -16,6 +16,7 @@ jest.mock('@/src/store/entryStore', () => ({
     loadEntries: jest.fn(),
     addEntry: jest.fn(),
     addLocalEntry: jest.fn(),
+    updateLocalEntry: jest.fn(),
     deleteEntry: jest.fn(),
     updateRecordingStatus: jest.fn(),
     updateRecordingDuration: jest.fn(),
@@ -108,10 +109,9 @@ jest.mock('@/src/utils/fileSystem', () => ({
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 
-import { Alert } from 'react-native';
-import { fingerprintPhotoFile } from '@/src/services/photoIntegrityService';
+import type { MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
-import { handlePhotoSelectForTest, PhotoSelectDeps } from '../index';
+import { handlePhotoSelectForTest, type PhotoSelectDeps } from '../index';
 
 const PHOTO_RESULT = {
   uri: 'content://media/external/images/1234',
@@ -120,54 +120,84 @@ const PHOTO_RESULT = {
   aspectRatio: 3024 / 4032,
 };
 
-const CACHE_URI =
-  'file:///data/user/0/com.app/cache/media/photos/display/photo_123.jpg';
-
-const THUMBNAIL_URI =
-  'file:///data/user/0/com.app/cache/media/photos/thumbnails/thumb_123.jpg';
-
-const SOURCE_FINGERPRINT = {
-  uri: PHOTO_RESULT.uri,
-  sha256: 'source-hash',
-  size: 8000,
-  width: PHOTO_RESULT.width,
-  height: PHOTO_RESULT.height,
-  mimeType: 'image/jpeg' as const,
+const SECOND_PHOTO_RESULT = {
+  uri: 'content://media/external/images/5678',
+  width: 2048,
+  height: 1536,
+  aspectRatio: 2048 / 1536,
 };
 
-const PERSISTED_FINGERPRINT = {
-  uri: CACHE_URI,
-  sha256: 'persisted-hash',
-  size: 2048,
-  width: 1200,
-  height: 900,
-  mimeType: 'image/jpeg' as const,
-};
+const PREPARED_MEDIA: MediaInfo[] = [
+  {
+    uri: 'file:///cache/media/photos/display/photo_123.jpg',
+    mimeType: 'image/jpeg',
+    size: 2048,
+    thumbnail: 'file:///cache/media/photos/thumbnails/thumb_123.jpg',
+    metadata: {
+      width: 1200,
+      height: 900,
+      aspectRatio: 1200 / 900,
+      localMediaId: 'media-1',
+      sourceHash: 'source-hash',
+      persistedHash: 'persisted-hash',
+      integrityStatus: 'healthy',
+      integrityReason: null,
+      repairable: false,
+      createdAt: 1774104000000,
+      modifiedAt: 1774104000000,
+    },
+  },
+];
 
-const SAVED_PHOTO = {
-  originalUri: CACHE_URI,
-  thumbnailUri: THUMBNAIL_URI,
-  aspectRatio: PHOTO_RESULT.aspectRatio,
-  width: PHOTO_RESULT.width,
-  height: PHOTO_RESULT.height,
-  persistedFingerprint: PERSISTED_FINGERPRINT,
-};
+const MULTI_PREPARED_MEDIA: MediaInfo[] = [
+  ...PREPARED_MEDIA,
+  {
+    uri: 'file:///cache/media/photos/display/photo_456.jpg',
+    mimeType: 'image/jpeg',
+    size: 4096,
+    thumbnail: 'file:///cache/media/photos/thumbnails/thumb_456.jpg',
+    metadata: {
+      width: 1024,
+      height: 768,
+      aspectRatio: 1024 / 768,
+      localMediaId: 'media-2',
+      sourceHash: 'source-hash-2',
+      persistedHash: 'persisted-hash-2',
+      integrityStatus: 'healthy',
+      integrityReason: null,
+      repairable: false,
+      createdAt: 1774104000001,
+      modifiedAt: 1774104000001,
+    },
+  },
+];
+
+const CREATED_FILES = [
+  'file:///cache/media/photos/display/photo_123.jpg',
+  'file:///cache/media/photos/thumbnails/thumb_123.jpg',
+];
 
 type PhotoSelectTestDeps = PhotoSelectDeps & {
   addLocalEntry: jest.Mock;
+  updateLocalEntry: jest.Mock;
+  deleteEntry: jest.Mock;
   enqueueUpload: jest.Mock;
-  addEntry: jest.Mock;
+  preparePhotoEntryMedia: jest.Mock;
 };
-
-const mockFingerprintPhotoFile = fingerprintPhotoFile as jest.Mock;
 
 function makeDeps(overrides: Partial<PhotoSelectTestDeps> = {}): PhotoSelectTestDeps {
   return {
-    savePhotoToStorage: jest.fn().mockResolvedValue(SAVED_PHOTO),
+    savePhotoToStorage: jest.fn(),
     deleteLocalFile: jest.fn().mockResolvedValue(undefined),
-    addEntry: jest.fn().mockResolvedValue(undefined),
     addLocalEntry: jest.fn().mockResolvedValue({ id: 'photo-local-1' }),
+    updateLocalEntry: jest.fn().mockResolvedValue(undefined),
+    deleteEntry: jest.fn().mockResolvedValue(undefined),
     enqueueUpload: jest.fn(),
+    preparePhotoEntryMedia: jest.fn().mockResolvedValue({
+      media: PREPARED_MEDIA,
+      createdFiles: CREATED_FILES,
+    }),
+    initialSyncStatus: 'pending_upload',
     ...overrides,
   } as PhotoSelectTestDeps;
 }
@@ -175,206 +205,155 @@ function makeDeps(overrides: Partial<PhotoSelectTestDeps> = {}): PhotoSelectTest
 describe('handlePhotoSelectForTest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFingerprintPhotoFile.mockImplementation(async (uri: string) => {
-      if (uri === PHOTO_RESULT.uri) {
-        return SOURCE_FINGERPRINT;
-      }
+  });
 
-      return { ...PERSISTED_FINGERPRINT, uri };
+  it('creates photo entry immediately with processing localReadyState and preview uri', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith({
+      type: 'photo',
+      content: '',
+      syncStatus: 'pending_upload',
+      localReadyState: 'processing',
+      media: [
+        expect.objectContaining({
+          uri: PHOTO_RESULT.uri,
+          mimeType: 'image/jpeg',
+          size: 0,
+          metadata: expect.objectContaining({
+            width: PHOTO_RESULT.width,
+            height: PHOTO_RESULT.height,
+            aspectRatio: PHOTO_RESULT.aspectRatio,
+          }),
+        }),
+      ],
     });
   });
 
-  it('savePhotoToStorage 失败时不调用 addLocalEntry', async () => {
+  it('updates the same entry to ready media after local preparation succeeds', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.preparePhotoEntryMedia).toHaveBeenCalledWith([PHOTO_RESULT]);
+    expect(deps.updateLocalEntry).toHaveBeenCalledWith('photo-local-1', {
+      media: PREPARED_MEDIA,
+      localReadyState: 'ready',
+    });
+  });
+
+  it('keeps multiple preview photos visible before updating the same entry to multiple ready media items', async () => {
     const deps = makeDeps({
-      savePhotoToStorage: jest.fn().mockRejectedValue(new Error('disk full')),
+      preparePhotoEntryMedia: jest.fn().mockResolvedValue({
+        media: MULTI_PREPARED_MEDIA,
+        createdFiles: [...CREATED_FILES, 'file:///cache/media/photos/display/photo_456.jpg'],
+      }),
+    });
+
+    await handlePhotoSelectForTest([PHOTO_RESULT, SECOND_PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      media: [
+        expect.objectContaining({ uri: PHOTO_RESULT.uri }),
+        expect.objectContaining({ uri: SECOND_PHOTO_RESULT.uri }),
+      ],
+    }));
+    expect(deps.updateLocalEntry).toHaveBeenCalledWith('photo-local-1', {
+      media: MULTI_PREPARED_MEDIA,
+      localReadyState: 'ready',
+    });
+  });
+
+  it('deletes the created entry when local preparation fails', async () => {
+    const deps = makeDeps({
+      preparePhotoEntryMedia: jest.fn().mockRejectedValue(Object.assign(new Error('disk full'), {
+        createdFiles: CREATED_FILES,
+      })),
     });
 
     await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('disk full');
 
-    expect(deps.addLocalEntry).not.toHaveBeenCalled();
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[0]);
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[1]);
+    expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
+    expect(deps.updateLocalEntry).not.toHaveBeenCalled();
+    expect(deps.enqueueUpload).not.toHaveBeenCalled();
   });
 
-  it('云端照片创建时使用本地 cache URI，并标记为 pending_upload', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(deps.addLocalEntry).toHaveBeenCalledTimes(1);
-    const callArg = deps.addLocalEntry.mock.calls[0][0];
-    expect(callArg.syncStatus).toBe('pending_upload');
-    expect(callArg.media?.[0]?.uri).toBe(CACHE_URI);
-    expect(callArg.media?.[0]?.uri).not.toContain('content://');
-    expect(callArg.media?.[0]?.uri).toContain('cache');
-  });
-
-  it('本地卡片创建成功后立即 enqueue 一次后台上传', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(deps.enqueueUpload).toHaveBeenCalledTimes(1);
-    expect(deps.enqueueUpload).toHaveBeenCalledWith('photo-local-1');
-  });
-
-  it('后台上传入队失败时仍保留本地已创建的照片卡片', async () => {
+  it('cleans up created files when ready update fails after preparation succeeds', async () => {
     const deps = makeDeps({
-      enqueueUpload: jest.fn(() => {
-        throw new Error('queue offline');
-      }),
+      updateLocalEntry: jest.fn().mockRejectedValue(new Error('db write failed')),
     });
 
-    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).resolves.toBeUndefined();
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('db write failed');
 
-    expect(deps.addLocalEntry).toHaveBeenCalledTimes(1);
-    expect(deps.deleteLocalFile).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledWith(
-      '[HomeScreen] Failed to enqueue photo upload:',
-      expect.any(Error),
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[0]);
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[1]);
+    expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
+  });
+
+  it('continues deleting the entry when one cleanup file delete fails', async () => {
+    const deps = makeDeps({
+      deleteLocalFile: jest.fn()
+        .mockRejectedValueOnce(new Error('unlink failed'))
+        .mockResolvedValueOnce(undefined),
+      preparePhotoEntryMedia: jest.fn().mockRejectedValue(Object.assign(new Error('disk full'), {
+        createdFiles: CREATED_FILES,
+      })),
+    });
+
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('disk full');
+
+    expect(deps.deleteLocalFile).toHaveBeenCalledTimes(2);
+    expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
+  });
+
+  it('enqueues upload only after the entry becomes ready in cloud mode', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.updateLocalEntry).toHaveBeenCalledTimes(1);
+    expect(deps.enqueueUpload).toHaveBeenCalledWith('photo-local-1');
+    expect(deps.updateLocalEntry.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.enqueueUpload.mock.invocationCallOrder[0]
     );
   });
 
-  it('离线照片创建时不应入队后台上传，并应标记为 synced', async () => {
-    const deps = makeDeps();
+  it('does not enqueue upload in offline mode and keeps the entry synced', async () => {
+    const deps = makeDeps({
+      initialSyncStatus: 'synced',
+    });
 
     await handlePhotoSelectForTest([PHOTO_RESULT], {
       ...deps,
       enqueueUpload: undefined,
-      initialSyncStatus: 'synced',
     });
 
     expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
       syncStatus: 'synced',
     }));
+    expect(deps.updateLocalEntry).toHaveBeenCalledWith('photo-local-1', {
+      media: PREPARED_MEDIA,
+      localReadyState: 'ready',
+    });
     expect(deps.enqueueUpload).not.toHaveBeenCalled();
   });
 
-  it('savePhotoToStorage 接收临时 URI，addLocalEntry 不使用临时 URI', async () => {
+  it('logs db entry save payloads after local preparation succeeds', async () => {
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
-    expect((deps.savePhotoToStorage as jest.Mock).mock.calls[0][0]).toBe(PHOTO_RESULT.uri);
-    const addCallArg = deps.addLocalEntry.mock.calls[0][0];
-    expect(addCallArg.media?.[0]?.uri).not.toBe(PHOTO_RESULT.uri);
-  });
-
-  it('single photo: addLocalEntry receives media array of length 1', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-    expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(1);
-    const call = deps.addLocalEntry.mock.calls[0][0];
-    expect(call.media).toHaveLength(1);
-    expect(call.media[0].uri).toBe(CACHE_URI);
-  });
-
-  it('复用保存阶段返回的 persistedFingerprint，避免重复计算已保存文件指纹', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(mockFingerprintPhotoFile).toHaveBeenCalledTimes(1);
-    expect(mockFingerprintPhotoFile).toHaveBeenCalledWith(
-      PHOTO_RESULT.uri,
-      expect.objectContaining({
-        width: PHOTO_RESULT.width,
-        height: PHOTO_RESULT.height,
-      }),
-    );
-    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
-      media: [expect.objectContaining({
-        size: PERSISTED_FINGERPRINT.size,
-        metadata: expect.objectContaining({
-          persistedHash: PERSISTED_FINGERPRINT.sha256,
-        }),
-      })],
-    }));
-  });
-
-  it('3 photos: addLocalEntry receives media array of length 3, save called 3 times', async () => {
-    const deps = makeDeps();
-    const results = [PHOTO_RESULT, PHOTO_RESULT, PHOTO_RESULT];
-
-    await handlePhotoSelectForTest(results, deps);
-    expect(deps.savePhotoToStorage).toHaveBeenCalledTimes(3);
-    const call = deps.addLocalEntry.mock.calls[0][0];
-    expect(call.media).toHaveLength(3);
-  });
-
-  it('addLocalEntry 失败时清理本次新建的本地媒体文件', async () => {
-    const deps = makeDeps({
-      addLocalEntry: jest.fn().mockRejectedValue(new Error('upload failed')),
-    });
-
-    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('upload failed');
-
-    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CACHE_URI);
-    expect(deps.deleteLocalFile).toHaveBeenCalledWith(THUMBNAIL_URI);
-  });
-
-  it('stores source and persisted hashes on the new photo entry', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
-      media: [expect.objectContaining({
-        size: PERSISTED_FINGERPRINT.size,
-        metadata: expect.objectContaining({
-          localMediaId: expect.any(String),
-          sourceHash: 'source-hash',
-          persistedHash: 'persisted-hash',
-          integrityStatus: 'healthy',
-          repairable: false,
-        }),
-      })],
-    }));
-  });
-
-  it('downgrades integrity metadata when persisted hash data is unavailable', async () => {
-    const deps = makeDeps({
-      savePhotoToStorage: jest.fn().mockResolvedValue({
-        ...SAVED_PHOTO,
-        persistedFingerprint: {
-          ...PERSISTED_FINGERPRINT,
-          sha256: '',
-        },
-      }),
-    });
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
-      media: [expect.objectContaining({
-        metadata: expect.objectContaining({
-          sourceHash: 'source-hash',
-          persistedHash: '',
-          integrityStatus: 'upload_mismatch',
-          integrityReason: 'persisted-hash-missing',
-          repairable: false,
-        }),
-      })],
-    }));
-  });
-
-  it('logs photo capture and db entry save payloads', async () => {
-    const deps = makeDeps();
-
-    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
-
-    expect(logger.log).toHaveBeenCalledWith(
-      'photo.capture.received',
-      expect.objectContaining({
-        sourceUri: PHOTO_RESULT.uri,
-        sourceHash: SOURCE_FINGERPRINT.sha256,
-      }),
-    );
     expect(logger.log).toHaveBeenCalledWith(
       'photo.db.entry_saved',
       expect.objectContaining({
-        localUri: CACHE_URI,
-        persistedHash: PERSISTED_FINGERPRINT.sha256,
-        integrityStatus: 'healthy',
+        entryId: 'photo-local-1',
+        localUri: PREPARED_MEDIA[0].uri,
+        persistedHash: PREPARED_MEDIA[0].metadata?.persistedHash,
+        integrityStatus: PREPARED_MEDIA[0].metadata?.integrityStatus,
       }),
     );
   });

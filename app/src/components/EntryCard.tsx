@@ -105,7 +105,10 @@ function EntryCard({
   });
 
   const photoImageRadius = getEntryCardPhotoImageRadius(entry);
-  const syncStatusMeta = getEntryCardSyncStatusMeta(entry);
+  const isLocalReadyProcessing = entry.localReadyState === 'processing';
+  const syncStatusMeta = isLocalReadyProcessing
+    ? { iconName: null, iconColor: '#A3A3A3', text: null }
+    : getEntryCardSyncStatusMeta(entry);
 
   const renderRightActions = () => <View style={{ width: 96 }} />;
 
@@ -175,6 +178,7 @@ function EntryCard({
                       isPlayingAudio={isPlayingAudio}
                       playbackPosition={playbackPosition}
                       isProcessing={isProcessing}
+                      isLocalReadyProcessing={isLocalReadyProcessing}
                       onCardPress={handleCardPress}
                       onImagePress={handleImagePress}
                       onPlayAudio={handlePlayAudio}
@@ -192,6 +196,7 @@ function EntryCard({
                       isPlayingAudio={isPlayingAudio}
                       playbackPosition={playbackPosition}
                       isProcessing={isProcessing}
+                      isLocalReadyProcessing={isLocalReadyProcessing}
                       onImagePress={handleImagePress}
                       onPlayAudio={handlePlayAudio}
                       onStopAudio={handleStopAudio}

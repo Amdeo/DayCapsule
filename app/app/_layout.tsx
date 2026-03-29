@@ -17,7 +17,15 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { initializeFileSystem } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { initDatabase } from '@/src/database/sqlite';
-import { migrateFromAsyncStorage, migrateTagsToNormalized, migrateMediaMetadataColumns, migrateToMediaJson, migrateSyncStatusColumn, migrateCloudSyncCoreColumns } from '@/src/database/migration';
+import {
+  migrateFromAsyncStorage,
+  migrateTagsToNormalized,
+  migrateMediaMetadataColumns,
+  migrateToMediaJson,
+  migrateSyncStatusColumn,
+  migrateCloudSyncCoreColumns,
+  migrateLocalReadyStateColumn,
+} from '@/src/database/migration';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { logger } from '@/src/utils/logger';
 import { BackupService } from '@/src/services/backupService';
@@ -29,6 +37,7 @@ import { useSyncStore } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
+import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { FeedbackHost } from '@/src/components/FeedbackHost';
@@ -132,6 +141,14 @@ export default function RootLayout() {
         // cloud sync core 列迁移（幂等，已迁移则跳过）
         await migrateCloudSyncCoreColumns();
         logger.log('✅ cloud sync core 列迁移完成');
+
+        // local_ready_state 列迁移（幂等，已迁移则跳过）
+        await migrateLocalReadyStateColumn();
+        logger.log('✅ local_ready_state 列迁移完成');
+
+        await cleanupIncompleteLocalEntries().catch((cleanupError) => {
+          logger.warn('⚠️ 启动时清理未完成本地 entry 失败:', cleanupError);
+        });
 
         // 恢复登录状态
         await useAuthStore.getState().loadAuth();
