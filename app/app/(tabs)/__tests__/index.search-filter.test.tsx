@@ -43,6 +43,24 @@ describe('HomeScreen search filters', () => {
     });
   });
 
+  it('clears only the search overlay while preserving the base timeline after cancel', async () => {
+    const { screen } = renderHomeScreen({
+      entries: homeEntries,
+      allTags: ['旅行', '海边'],
+    });
+
+    fireEvent.press(screen.getByTestId('searchbar-search-box'));
+    fireEvent.changeText(screen.getByPlaceholderText('搜索记忆...'), '旅行');
+    fireEvent.press(screen.getByTestId('search-overlay-cancel-button'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('search-overlay-root')).toBeNull();
+    });
+
+    expect(screen.getByTestId('timeline-entry-entry-text-1')).toBeTruthy();
+    expect(screen.getByTestId('timeline-entry-entry-photo-1')).toBeTruthy();
+  });
+
   it('applies keyword, type and tag filters from the real home screen search flow', async () => {
     const { screen, spies } = renderHomeScreen({
       entries: homeEntries,
