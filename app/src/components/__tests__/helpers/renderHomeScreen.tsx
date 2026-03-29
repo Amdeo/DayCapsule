@@ -47,6 +47,7 @@ export interface RenderHomeScreenOptions {
   commonTags?: string[];
   cloudSyncUiState?: CloudUiState;
   cloudMode?: boolean;
+  loadEntriesImplementation?: () => Promise<void>;
   initialFilters?: {
     searchQuery?: string;
     filterType?: 'all' | 'text' | 'photo' | 'voice';
@@ -119,14 +120,15 @@ const applyFilters = (
 
 const createEntryStoreState = (
   entries: Entry[],
-  initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {}
+  initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
+  loadEntriesImplementation?: () => Promise<void>
 ): MockEntryStoreState => ({
   entries,
   searchQuery: initialFilters.searchQuery ?? '',
   filterType: initialFilters.filterType ?? 'all',
   filterDateRange: initialFilters.filterDateRange ?? 'all',
   selectedTags: initialFilters.selectedTags ?? [],
-  loadEntries: jest.fn().mockResolvedValue(undefined),
+  loadEntries: jest.fn(loadEntriesImplementation ?? (async () => undefined)),
   addEntry: jest.fn().mockResolvedValue(undefined),
   addLocalEntry: jest.fn().mockResolvedValue({
     id: 'local-entry',
@@ -434,7 +436,11 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   mockSourceEntries = entries;
   mockAllTags = options.allTags ?? Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
   mockCloudSyncUiState = options.cloudSyncUiState ?? 'hidden';
-  mockEntryStoreState = createEntryStoreState(entries, options.initialFilters);
+  mockEntryStoreState = createEntryStoreState(
+    entries,
+    options.initialFilters,
+    options.loadEntriesImplementation
+  );
 
   Object.assign(mockSettingsState, {
     loadSettings: jest.fn().mockResolvedValue(undefined),

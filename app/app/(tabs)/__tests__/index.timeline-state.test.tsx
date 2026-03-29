@@ -35,6 +35,8 @@ describe('HomeScreen timeline state', () => {
   });
 
   it('keeps existing entries visible while the home screen refreshes', async () => {
+    let resolveRefresh: (() => void) | null = null;
+
     const { screen, spies } = renderHomeScreen({
       entries: [
         {
@@ -46,22 +48,22 @@ describe('HomeScreen timeline state', () => {
           syncStatus: 'synced',
         } as Entry,
       ],
+      loadEntriesImplementation: () => new Promise<void>((resolve) => {
+        resolveRefresh = resolve;
+      }),
     });
 
-    let resolveRefresh: (() => void) | null = null;
-    spies.loadEntries.mockImplementationOnce(
-      () => new Promise<void>((resolve) => {
-        resolveRefresh = resolve;
-      })
-    );
-
-    const refreshPromise = spies.loadEntries();
+    await waitFor(() => {
+      expect(spies.loadEntries).toHaveBeenCalledTimes(1);
+    });
 
     expect(screen.getByTestId('timeline-entry-entry-text-1')).toBeTruthy();
     expect(screen.queryByTestId('timeline-empty-state')).toBeNull();
 
     resolveRefresh?.();
-    await refreshPromise;
+    await waitFor(() => {
+      expect(spies.refreshCloudSyncIndicator).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('shows the sync status entry point when the home timeline reports cloud activity', () => {
