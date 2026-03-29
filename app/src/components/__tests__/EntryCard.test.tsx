@@ -1166,6 +1166,32 @@ describe('EntryCard calendar variant', () => {
     expect(screen.getByTestId('calendar-card-shell-calendar-photo-empty')).toBeTruthy();
   });
 
+  it('calendar 单图只有缩略图资源时点击不应挂载图片查看器', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard
+        entry={{
+          ...calendarPhotoSingle,
+          id: 'calendar-photo-thumbnail-only',
+          media: [{
+            uri: '',
+            remoteUri: '',
+            thumbnail: 'file:///calendar-thumb-only.jpg',
+            remoteThumbnail: '',
+            mimeType: 'image/jpeg',
+            size: 1200,
+            metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+          }],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    fireEvent.press(getByTestId('calendar-photo-primary-calendar-photo-thumbnail-only'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
+  });
+
   it('calendar 语音卡暴露播放按钮测试标记', () => {
     render(
       <EntryCard
