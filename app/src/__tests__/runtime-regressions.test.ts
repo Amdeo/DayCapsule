@@ -20,8 +20,8 @@ describe('runtime regression guards', () => {
   });
 
   it('only checks backup throttling when app goes to background', () => {
-    const layoutPath = path.join(process.cwd(), 'app', '_layout.tsx');
-    const source = fs.readFileSync(layoutPath, 'utf8');
+    const lifecyclePath = path.join(process.cwd(), 'src', 'services', 'appLifecycleService.ts');
+    const source = fs.readFileSync(lifecyclePath, 'utf8');
 
     expect(source).not.toContain("Storage.getString('settings:autoBackup')");
     expect(source).toContain('BackupService.shouldBackup()');

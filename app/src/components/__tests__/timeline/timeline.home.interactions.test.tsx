@@ -22,6 +22,17 @@ const photoEntry = {
 } as Entry;
 
 describe('HomeScreen timeline interactions', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
+  });
+
   it('switches from the empty state to timeline entries when the home store receives data', () => {
     const { screen, controls } = renderHomeScreen();
 
@@ -89,6 +100,11 @@ describe('HomeScreen timeline interactions', () => {
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
     fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
     expect(screen.getByTestId('timeline-entry-editor')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('timeline-entry-editor-close'));

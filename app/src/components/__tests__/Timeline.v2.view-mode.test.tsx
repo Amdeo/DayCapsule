@@ -267,6 +267,10 @@ describe('Timeline view mode switching', () => {
     fireEvent.press(screen.getByTestId('mock-entry-card-entry-1'));
     fireEvent.press(screen.getByTestId('mock-text-detail-edit'));
 
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
     const latestEditorProps = mockEntryEditor.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(latestEditorProps.visible).toBe(true);
     expect(latestEditorProps.entry).toMatchObject({ id: 'entry-1' });
