@@ -35,6 +35,10 @@ import {
   preparePhotoEntryMedia as preparePhotoEntryMediaService,
   type PhotoEntryPreparationError,
 } from '@/src/services/photoEntryPreparationService';
+import {
+  prepareVoiceEntryMedia as prepareVoiceEntryMediaService,
+  type VoiceEntryPreparationError,
+} from '@/src/services/voiceEntryPreparationService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -97,8 +101,13 @@ export interface VoiceCloudStartDeps {
 
 export interface VoiceCloudFinalizeDeps {
   stopRecording: () => Promise<{ uri: string; size: number; duration: number; mimeType: string }>;
-  saveVoiceToCache: (sourceUri: string, entryId: string) => Promise<string>;
+  prepareVoiceEntryMedia: (
+    entryId: string,
+    audioFile: { uri: string; size: number; duration: number; mimeType: string }
+  ) => Promise<import('@/src/services/voiceEntryPreparationService').PreparedVoiceEntryMedia>;
   updateLocalEntry: (entryId: string, updates: Partial<Entry>) => Promise<void>;
+  deleteEntry: (entryId: string) => Promise<void>;
+  deleteLocalFile: (uri: string) => Promise<void>;
   enqueueUpload: (entryId: string) => void;
   preloadAudio: (uri: string) => Promise<void>;
 }
@@ -130,6 +139,7 @@ function buildTemporaryVoiceEntry(now: number): Entry {
     content: '',
     timestamp: now,
     syncStatus: 'pending_upload',
+    localReadyState: 'processing',
     recordingStatus: 'recording',
     recordingDuration: 0,
     media: [{ uri: '', mimeType: 'audio/m4a', size: 0, duration: 0 }],
@@ -144,6 +154,7 @@ export async function startCloudVoiceRecordingForTest(deps: VoiceCloudStartDeps)
     type: entry.type,
     content: entry.content,
     syncStatus: entry.syncStatus,
+    localReadyState: entry.localReadyState,
     recordingStatus: entry.recordingStatus,
     recordingDuration: entry.recordingDuration,
     media: entry.media,
@@ -162,31 +173,38 @@ export async function finalizeCloudVoiceRecordingForTest(
   try {
     audioFile = await deps.stopRecording();
   } catch (error) {
-    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    await deps.deleteEntry(entryId).catch(() => {});
     throw error;
   }
 
-  let persistedUri: string;
+  let preparedCreatedFiles: string[] = [];
+  let preparedMedia: import('@/src/types/entry').MediaInfo[] = [];
   try {
-    persistedUri = await deps.saveVoiceToCache(audioFile.uri, entryId);
+    const prepared = await deps.prepareVoiceEntryMedia(entryId, audioFile);
+    preparedCreatedFiles = prepared.createdFiles;
+    preparedMedia = prepared.media;
   } catch (error) {
-    await deps.updateLocalEntry(entryId, { recordingStatus: 'recording' });
+    const createdFiles = (error as VoiceEntryPreparationError).createdFiles ?? [];
+    await Promise.all(createdFiles.map((uri) => deps.deleteLocalFile(uri)));
+    await deps.deleteEntry(entryId).catch(() => {});
     throw error;
   }
 
-  await deps.updateLocalEntry(entryId, {
-    recordingStatus: 'completed',
-    syncStatus: 'pending_upload',
-    recordingDuration: Math.floor(audioFile.duration),
-    media: [{
-      uri: persistedUri,
-      mimeType: audioFile.mimeType,
-      size: audioFile.size,
-      duration: Math.floor(audioFile.duration * 1000),
-    }],
-  });
+  try {
+    await deps.updateLocalEntry(entryId, {
+      recordingStatus: 'completed',
+      localReadyState: 'ready',
+      syncStatus: 'pending_upload',
+      recordingDuration: Math.floor(audioFile.duration),
+      media: preparedMedia,
+    });
+  } catch (error) {
+    await Promise.all(preparedCreatedFiles.map((uri) => deps.deleteLocalFile(uri)));
+    await deps.deleteEntry(entryId).catch(() => {});
+    throw error;
+  }
 
-  deps.preloadAudio(persistedUri).catch((err) => {
+  deps.preloadAudio(preparedMedia[0]?.uri ?? '').catch((err) => {
     logger.warn('[HomeScreen] Failed to preload audio:', err);
   });
 
@@ -480,8 +498,12 @@ export default function HomeScreen() {
       if (isCloudModeEnabled()) {
         await finalizeCloudVoiceRecordingForTest(id, {
           stopRecording: VoiceService.stopRecording.bind(VoiceService),
-          saveVoiceToCache: (sourceUri, entryId) => VoiceService.saveVoiceToCache(sourceUri, entryId),
+          prepareVoiceEntryMedia: (entryId, audioFile) => prepareVoiceEntryMediaService(entryId, audioFile, {
+            saveVoiceToCache: (sourceUri, currentEntryId) => VoiceService.saveVoiceToCache(sourceUri, currentEntryId),
+          }),
           updateLocalEntry,
+          deleteEntry,
+          deleteLocalFile: deleteFile,
           enqueueUpload: enqueueVoiceUpload,
           preloadAudio: VoiceService.preloadAudio.bind(VoiceService),
         });
@@ -502,7 +524,7 @@ export default function HomeScreen() {
     } finally {
       currentRecordingIdRef.current = null;
     }
-  }, [completeRecording, isCloudModeEnabled, updateLocalEntry]);
+  }, [completeRecording, deleteEntry, isCloudModeEnabled, updateLocalEntry]);
 
   const handleTextSave = useCallback(async (content: string, tags: string[]) => {
     try {

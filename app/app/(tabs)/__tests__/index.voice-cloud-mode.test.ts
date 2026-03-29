@@ -119,6 +119,15 @@ import {
   type VoiceCloudFinalizeDeps,
 } from '../index';
 
+const PREPARED_VOICE_MEDIA = [
+  {
+    uri: 'file:///cache/final.m4a',
+    mimeType: 'audio/m4a',
+    size: 2048,
+    duration: 12000,
+  },
+];
+
 function makeStartDeps(overrides: Partial<VoiceCloudStartDeps> = {}): VoiceCloudStartDeps {
   return {
     now: () => 1774104000000,
@@ -140,8 +149,13 @@ function makeFinalizeDeps(overrides: Partial<VoiceCloudFinalizeDeps> = {}): Voic
       size: 2048,
       mimeType: 'audio/m4a',
     }),
-    saveVoiceToCache: jest.fn().mockResolvedValue('file:///cache/final.m4a'),
+    prepareVoiceEntryMedia: jest.fn().mockResolvedValue({
+      media: PREPARED_VOICE_MEDIA,
+      createdFiles: ['file:///cache/final.m4a'],
+    }),
     updateLocalEntry: jest.fn().mockResolvedValue(undefined),
+    deleteEntry: jest.fn().mockResolvedValue(undefined),
+    deleteLocalFile: jest.fn().mockResolvedValue(undefined),
     enqueueUpload: jest.fn(),
     preloadAudio: jest.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -162,6 +176,7 @@ describe('cloud voice recording helpers', () => {
     expect(deps.createLocalEntry).toHaveBeenCalledWith({
       type: 'voice',
       content: '',
+      localReadyState: 'processing',
       recordingStatus: 'recording',
       recordingDuration: 0,
       syncStatus: 'pending_upload',
@@ -171,30 +186,59 @@ describe('cloud voice recording helpers', () => {
       id: '1774104000000_local',
       type: 'voice',
       content: '',
+      localReadyState: 'processing',
       recordingStatus: 'recording',
       recordingDuration: 0,
       syncStatus: 'pending_upload',
     });
   });
 
-  it('finalizes cloud recording by persisting cache file locally and enqueueing upload', async () => {
+  it('keeps the same voice entry in processing while local voice preparation runs', async () => {
+    let resolvePrepare!: (value: { media: typeof PREPARED_VOICE_MEDIA; createdFiles: string[] }) => void;
+    const preparePromise = new Promise<{ media: typeof PREPARED_VOICE_MEDIA; createdFiles: string[] }>((resolve) => {
+      resolvePrepare = resolve;
+    });
+    const deps = makeFinalizeDeps({
+      prepareVoiceEntryMedia: jest.fn(() => preparePromise),
+    });
+
+    const finalizePromise = finalizeCloudVoiceRecordingForTest('temp-voice-processing', deps);
+
+    await Promise.resolve();
+
+    expect(deps.updateLocalEntry).toHaveBeenNthCalledWith(1, 'temp-voice-processing', {
+      recordingStatus: 'stopping',
+    });
+    expect(deps.deleteEntry).not.toHaveBeenCalled();
+    expect(deps.updateLocalEntry).not.toHaveBeenCalledWith('temp-voice-processing', expect.objectContaining({
+      recordingStatus: 'completed',
+    }));
+
+    resolvePrepare({
+      media: PREPARED_VOICE_MEDIA,
+      createdFiles: ['file:///cache/final.m4a'],
+    });
+
+    await expect(finalizePromise).resolves.toBeUndefined();
+  });
+
+  it('marks the voice entry ready after saveVoiceToCache succeeds', async () => {
     const deps = makeFinalizeDeps();
 
     await finalizeCloudVoiceRecordingForTest('temp-voice-1', deps);
 
-    expect(deps.saveVoiceToCache).toHaveBeenCalledWith('file:///cache/recording.m4a', 'temp-voice-1');
+    expect(deps.prepareVoiceEntryMedia).toHaveBeenCalledWith('temp-voice-1', {
+      uri: 'file:///cache/recording.m4a',
+      duration: 12,
+      size: 2048,
+      mimeType: 'audio/m4a',
+    });
     expect(deps.updateLocalEntry).toHaveBeenCalledWith('temp-voice-1', {
       recordingStatus: 'completed',
+      localReadyState: 'ready',
       syncStatus: 'pending_upload',
       recordingDuration: 12,
-      media: [
-        {
-          uri: 'file:///cache/final.m4a',
-          mimeType: 'audio/m4a',
-          size: 2048,
-          duration: 12000,
-        },
-      ],
+      media: PREPARED_VOICE_MEDIA,
     });
     expect(deps.enqueueUpload).toHaveBeenCalledWith('temp-voice-1');
     expect(deps.preloadAudio).toHaveBeenCalledWith('file:///cache/final.m4a');
@@ -227,28 +271,21 @@ describe('cloud voice recording helpers', () => {
     await expect(finalizePromise).resolves.toBeUndefined();
   });
 
-  it('keeps the local voice card when enqueueing background upload fails', async () => {
+  it('deletes the voice entry instead of restoring recording when local preparation fails', async () => {
     const deps = makeFinalizeDeps({
-      enqueueUpload: jest.fn(() => {
-        throw new Error('queue down');
-      }),
+      prepareVoiceEntryMedia: jest.fn().mockRejectedValue(Object.assign(new Error('cache down'), {
+        createdFiles: ['file:///cache/final.m4a'],
+      })),
     });
 
-    await expect(finalizeCloudVoiceRecordingForTest('temp-voice-2', deps)).resolves.toBeUndefined();
+    await expect(finalizeCloudVoiceRecordingForTest('temp-voice-2', deps)).rejects.toThrow('cache down');
 
-    expect(deps.updateLocalEntry).toHaveBeenCalledWith('temp-voice-2', {
-      recordingStatus: 'completed',
-      syncStatus: 'pending_upload',
-      recordingDuration: 12,
-      media: [
-        {
-          uri: 'file:///cache/final.m4a',
-          mimeType: 'audio/m4a',
-          size: 2048,
-          duration: 12000,
-        },
-      ],
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith('file:///cache/final.m4a');
+    expect(deps.deleteEntry).toHaveBeenCalledWith('temp-voice-2');
+    expect(deps.updateLocalEntry).not.toHaveBeenCalledWith('temp-voice-2', {
+      recordingStatus: 'recording',
     });
+    expect(deps.enqueueUpload).not.toHaveBeenCalled();
   });
 
   it('clears active recording timer immediately', () => {
