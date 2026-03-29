@@ -123,22 +123,22 @@ export const entryCardStyles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   calendarPhotoCard: {
-    padding: 10,
+    padding: 0,
   },
   calendarPhotoBodyWrap: {
     position: 'relative',
   },
   calendarPhotoCountOverlay: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: 6,
+    right: 6,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
     backgroundColor: 'rgba(0,0,0,0.38)',
   },
   calendarPhotoMeta: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 10,
   },
@@ -179,6 +179,16 @@ export const entryCardStyles = StyleSheet.create({
   calendarPhotoMultiWrap: {
     flexDirection: 'row',
     gap: 6,
+  },
+  calendarPhotoDoubleWrap: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  calendarPhotoDoubleCell: {
+    flex: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#ECE7E0',
   },
   calendarPhotoPrimary: {
     flex: 1.35,

@@ -39,6 +39,7 @@ export function DetailPageShell({
         <Pressable
           testID="detail-page-backdrop"
           style={StyleSheet.absoluteFill}
+          disabled={!isAnimating}
           onPress={onClose}
         >
           {isAnimating && (

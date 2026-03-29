@@ -33,7 +33,7 @@ export function EntryCardCalendarPhotoSection({
   const hasMeta = !!(entry.content || (entry.tags && entry.tags.length > 0) || entry.transcription);
 
   return (
-    <View style={styles.calendarPhotoCard}>
+    <View testID="calendar-photo-card-root" style={styles.calendarPhotoCard}>
       <View style={styles.calendarPhotoBodyWrap}>
         <EntryCardCalendarPhotoBody
           entry={entry}
@@ -42,7 +42,7 @@ export function EntryCardCalendarPhotoSection({
           onImagePress={onImagePress}
         />
         {mediaCount > 1 ? (
-          <View style={styles.calendarPhotoCountOverlay}>
+          <View testID="calendar-photo-count-overlay" style={styles.calendarPhotoCountOverlay}>
             <Text style={styles.calendarPhotoCountText}>{mediaCount} 张</Text>
           </View>
         ) : null}
@@ -60,7 +60,7 @@ export function EntryCardCalendarPhotoSection({
       </View>
 
       {hasMeta ? (
-        <View style={styles.calendarPhotoMeta}>
+        <View testID="calendar-photo-meta" style={styles.calendarPhotoMeta}>
           {entry.content ? (
             <Text
               style={styles.calendarPhotoCaption}
@@ -120,6 +120,49 @@ function EntryCardCalendarPhotoBody({
           <Image
             source={{ uri: PhotoService.getPreferredPhotoUri(photo, 'thumbnail') }}
             style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (entry.media.length === 2) {
+    const [primary, secondary] = entry.media;
+
+    return (
+      <View
+        testID={`calendar-photo-card-layout-double-${entry.id}`}
+        style={[styles.calendarPhotoDoubleWrap, { height: resolvedPhotoHeight }]}
+      >
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => onImagePress(0)}
+          style={[
+            styles.calendarPhotoDoubleCell,
+            { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
+          ]}
+          testID={`calendar-photo-double-primary-${entry.id}`}
+        >
+          <Image
+            source={{ uri: PhotoService.getPreferredPhotoUri(primary, 'thumbnail') }}
+            style={styles.calendarPhotoImage}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => onImagePress(1)}
+          style={[
+            styles.calendarPhotoDoubleCell,
+            { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
+          ]}
+          testID={`calendar-photo-double-secondary-${entry.id}`}
+        >
+          <Image
+            source={{ uri: PhotoService.getPreferredPhotoUri(secondary, 'thumbnail') }}
+            style={styles.calendarPhotoImage}
             resizeMode="cover"
           />
         </TouchableOpacity>

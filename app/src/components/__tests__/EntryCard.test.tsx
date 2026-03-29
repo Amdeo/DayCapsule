@@ -937,6 +937,28 @@ describe('EntryCard calendar variant', () => {
     ],
   };
 
+  const calendarPhotoDouble: Entry = {
+    id: 'calendar-photo-double',
+    type: 'photo',
+    content: '',
+    timestamp: Date.now(),
+    syncStatus: 'synced',
+    media: [
+      {
+        uri: 'file://calendar-double-1.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+      {
+        uri: 'file://calendar-double-2.jpg',
+        mimeType: 'image/jpeg',
+        size: 1200,
+        metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+      },
+    ],
+  };
+
   const calendarVoice: Entry = {
     id: 'calendar-voice',
     type: 'voice',
@@ -983,6 +1005,85 @@ describe('EntryCard calendar variant', () => {
 
     expect(screen.getByTestId('calendar-photo-card-layout-multi-calendar-photo-multi')).toBeTruthy();
     expect(screen.getByText('+1')).toBeTruthy();
+  });
+
+  it('calendar 双图照片使用左右对半布局而不是三图模板', () => {
+    render(
+      <EntryCard
+        entry={calendarPhotoDouble}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    expect(screen.getByTestId('calendar-photo-card-layout-double-calendar-photo-double')).toBeTruthy();
+    expect(screen.getByTestId('calendar-photo-double-primary-calendar-photo-double')).toBeTruthy();
+    expect(screen.getByTestId('calendar-photo-double-secondary-calendar-photo-double')).toBeTruthy();
+    expect(screen.queryByTestId('calendar-photo-card-layout-multi-calendar-photo-double')).toBeNull();
+  });
+
+  it('calendar 双图照片的间距和内侧圆角与 PhotoGrid 保持一致', () => {
+    render(
+      <EntryCard
+        entry={calendarPhotoDouble}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    const wrapStyle = screen.getByTestId('calendar-photo-card-layout-double-calendar-photo-double').props.style;
+    const primaryStyle = screen.getByTestId('calendar-photo-double-primary-calendar-photo-double').props.style;
+    const secondaryStyle = screen.getByTestId('calendar-photo-double-secondary-calendar-photo-double').props.style;
+
+    const flatWrapStyle = Array.isArray(wrapStyle) ? Object.assign({}, ...wrapStyle) : wrapStyle;
+    const flatPrimaryStyle = Array.isArray(primaryStyle) ? Object.assign({}, ...primaryStyle) : primaryStyle;
+    const flatSecondaryStyle = Array.isArray(secondaryStyle) ? Object.assign({}, ...secondaryStyle) : secondaryStyle;
+
+    expect(flatWrapStyle.gap).toBe(3);
+    expect(flatPrimaryStyle.borderTopRightRadius).toBe(0);
+    expect(flatPrimaryStyle.borderBottomRightRadius).toBe(0);
+    expect(flatSecondaryStyle.borderTopLeftRadius).toBe(0);
+    expect(flatSecondaryStyle.borderBottomLeftRadius).toBe(0);
+  });
+
+  it('calendar 照片卡片让图片贴边并仅为 meta 区保留内边距', () => {
+    render(
+      <EntryCard
+        entry={{
+          ...calendarPhotoDouble,
+          content: '双图说明文案',
+          tags: ['旅行'],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    const photoCardStyle = screen.getByTestId('calendar-photo-card-root').props.style;
+    const metaStyle = screen.getByTestId('calendar-photo-meta').props.style;
+
+    const flatPhotoCardStyle = Array.isArray(photoCardStyle) ? Object.assign({}, ...photoCardStyle) : photoCardStyle;
+    const flatMetaStyle = Array.isArray(metaStyle) ? Object.assign({}, ...metaStyle) : metaStyle;
+
+    expect(flatPhotoCardStyle.padding).toBe(0);
+    expect(flatMetaStyle.paddingHorizontal).toBeGreaterThan(0);
+    expect(flatMetaStyle.paddingTop).toBeGreaterThan(0);
+  });
+
+  it('calendar 贴边照片卡片将数量角标内缩到更贴近图片边缘的位置', () => {
+    render(
+      <EntryCard
+        entry={calendarPhotoDouble}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    const overlayStyle = screen.getByTestId('calendar-photo-count-overlay').props.style;
+    const flatOverlayStyle = Array.isArray(overlayStyle) ? Object.assign({}, ...overlayStyle) : overlayStyle;
+
+    expect(flatOverlayStyle.right).toBe(6);
+    expect(flatOverlayStyle.bottom).toBe(6);
   });
 
   it('calendar 多图卡片点击第三张图时应传第三张图片给 ImageViewer', () => {

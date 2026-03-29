@@ -135,4 +135,46 @@ describe('useTimelineController', () => {
     });
     expect(result.current.editingEntry).toBeNull();
   });
+
+  it('waits for the detail page to close before opening the editor', () => {
+    const entry = {
+      id: 'entry-1',
+      type: 'text',
+      content: '旧内容',
+      timestamp: Date.now(),
+      syncStatus: 'synced',
+    } as any;
+
+    const { result } = renderHook(() =>
+      useTimelineController({
+        updateEntry: jest.fn(),
+      })
+    );
+
+    act(() => {
+      result.current.handleViewEntry(entry);
+    });
+
+    expect(result.current.viewingEntry).toBe(entry);
+    expect(result.current.editingEntry).toBeNull();
+
+    act(() => {
+      result.current.handleDetailEdit(entry);
+    });
+
+    expect(result.current.viewingEntry).toBeNull();
+    expect(result.current.editingEntry).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(299);
+    });
+
+    expect(result.current.editingEntry).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+
+    expect(result.current.editingEntry).toBe(entry);
+  });
 });

@@ -134,4 +134,23 @@ describe('DetailPageShell', () => {
 
     expect(screen.queryByTestId('detail-page-backdrop')).toBeNull();
   });
+
+  it('disables backdrop presses while the shell is in its exit phase', () => {
+    const onClose = jest.fn();
+    const screen = render(
+      <DetailPageShell visible title="帮助" onClose={onClose}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    screen.rerender(
+      <DetailPageShell visible={false} title="帮助" onClose={onClose}>
+        <Text>body</Text>
+      </DetailPageShell>
+    );
+
+    fireEvent.press(screen.getByTestId('detail-page-backdrop'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

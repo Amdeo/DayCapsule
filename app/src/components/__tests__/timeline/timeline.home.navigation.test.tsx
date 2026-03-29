@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+import { act } from 'react-test-renderer';
 import { Timeline } from '../../Timeline.v2';
 import type { Entry } from '@/src/types/entry';
 
@@ -175,7 +176,15 @@ jest.mock('../../FABMenu', () => ({
 
 describe('Timeline home navigation', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
   });
 
   it('opens the text detail page when a timeline card is pressed', () => {
@@ -191,6 +200,10 @@ describe('Timeline home navigation', () => {
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
     fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
     expect(screen.getByTestId('timeline-entry-editor')).toBeTruthy();
@@ -210,6 +223,11 @@ describe('Timeline home navigation', () => {
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
     fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
     fireEvent.press(screen.getByTestId('timeline-entry-editor-save'));
 
     expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
