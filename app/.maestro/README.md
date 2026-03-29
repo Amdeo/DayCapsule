@@ -17,6 +17,7 @@
 - `image-viewer-back-navigation` 会先通过 `E2E Sync Lab` 注入稳定 photo fixture，再通过搜索结果打开 ImageViewer
 - `settings-repair-prompt` 会先通过 `E2E Sync Lab` 注入 suspect fixture，再验证修复提示可再次拉起
 - `search-enter-exit` 只依赖当前可见 UI，不要求预置记录
+- `home-open-settings-and-back` 只依赖当前可见 UI，不要求预置记录
 - `settings-sync-status-open` 需要当前设备上已有登录态，因为“同步状态”入口只在已登录时显示
 - 如需跑异常媒体场景，启动 app 前显式开启 `E2E Sync Lab`：
 
@@ -51,6 +52,7 @@ app/.maestro/
   flows/
     app-core/
       timeline-open-detail.yaml
+      home-open-settings-and-back.yaml
       editor-unsaved-leave-guard.yaml
       search-enter-exit.yaml
       image-viewer-back-navigation.yaml
@@ -90,6 +92,7 @@ app core：
 
 ```bash
 maestro test app/.maestro/flows/app-core/search-enter-exit.yaml
+maestro test app/.maestro/flows/app-core/home-open-settings-and-back.yaml
 maestro test app/.maestro/flows/app-core/settings-sync-status-open.yaml
 maestro test app/.maestro/flows/app-core/timeline-open-detail.yaml
 maestro test app/.maestro/flows/app-core/editor-unsaved-leave-guard.yaml
@@ -128,7 +131,7 @@ cd app && bash .maestro/scripts/run-app-core.sh
 maestro test app/.maestro/flows/cloud-sync
 ```
 
-`run-app-core.sh` 默认只跑无登录前置的 5 条 app-core flow；`settings-sync-status-open.yaml` 保留为单条已登录专项回归，需要在设备已登录后单独执行：
+`run-app-core.sh` 默认只跑无登录前置的 6 条 app-core flow；`settings-sync-status-open.yaml` 保留为单条已登录专项回归，需要在设备已登录后单独执行：
 
 ```bash
 maestro test app/.maestro/flows/app-core/settings-sync-status-open.yaml
@@ -151,6 +154,7 @@ npm run test:maestro:app-core
 - 设置页进入登录页并返回
 - 设置页展示后端连接卡片及关键控件
 - 首页进入搜索浮层并取消返回
+- 首页打开侧边栏进入设置页并返回首页
 - 通过 `E2E Sync Lab` 注入稳定 text fixture 后进入详情页
 - 通过 `E2E Sync Lab` 注入稳定 text fixture 后左滑进入编辑器并触发未保存离开确认
 - 通过 `E2E Sync Lab` 注入稳定 photo fixture 后打开 ImageViewer 并通过系统返回键回到首页
