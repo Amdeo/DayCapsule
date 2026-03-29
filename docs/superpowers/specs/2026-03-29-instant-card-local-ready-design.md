@@ -2,9 +2,9 @@
 
 ## 状态
 
-- 当前状态：已确认设计，待进入 planning
+- 当前状态：已实现并完成验证
 - 用户确认日期：2026-03-29
-- 实现完成日期：未开始
+- 实现完成日期：2026-03-29
 
 ## 评审记录
 
@@ -18,6 +18,24 @@
 - 2026-03-29：已确认本轮同时覆盖离线模式与在线/云端模式，不拆阶段。
 - 2026-03-29：已确认“处理中卡片”直接写入数据库，而不是只保留在前端内存。
 - 2026-03-29：已确认应用重启后若残留未完成卡片，本轮采用“启动清扫”而不是恢复续跑。
+- 2026-03-29：实现完成后补充了一轮代码质量修正，额外加固了照片补全错误对象包装与 ready 日志记录。
+
+## 实现结果
+
+- 已完成 `localReadyState` 的持久化、迁移、CRUD 读写与按状态查询。
+- 已完成启动时 `processing` 卡片清扫，以及照片/语音上传队列对 `processing` entry 的跳过。
+- 已完成照片与语音两条“先插卡、后本地补全、失败删卡”的链路改造。
+- 已完成默认卡片与日历卡片的 `processing` UI，照片继续显示预览，语音显示时长与禁用播放占位。
+
+## 实现偏差说明
+
+- `photoService.ts` 未改成直接返回 `persistedFingerprint`；当前实现改为由 `photoEntryPreparationService.ts` 统一补齐照片完整性元数据，避免把“先插卡”逻辑重新塞回 `PhotoService`。
+- `entryStore.ts` 本身未新增生产逻辑；已有 `pending_upload/uploading` 本地删除路径已满足 processing 语音卡删除需求，因此仅补了回归测试。
+
+## 最终验证结果
+
+- 2026-03-29：`cd app && npx jest --run-in-band --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts src/services/__tests__/localEntryRecoveryService.test.ts src/services/__tests__/photoEntryPreparationService.test.ts src/services/__tests__/voiceEntryPreparationService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts 'app/(tabs)/__tests__/index.photo.test.ts' 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' app/__tests__/_layout.local-ready-cleanup.test.tsx src/components/__tests__/EntryCard.test.tsx`：通过。测试过程中存在既有 `act(...)` console warning 与 Jest open handles 提示，但不影响断言通过。
+- 2026-03-29：`cd app && npx tsc --noEmit`：通过。
 
 ## 背景
 
@@ -379,3 +397,4 @@
 ## Spec Review 留痕
 
 - 2026-03-29：初版 spec 已根据用户确认的产品边界写入，待独立 spec review。
+- 2026-03-29：实现完成后已根据实际落地结果补充状态、偏差和验证记录。

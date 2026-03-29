@@ -274,8 +274,9 @@ export async function handlePhotoSelectForTest(
       ? preparedCreatedFiles
       : (error as PhotoEntryPreparationError).createdFiles ?? [];
     if (deps.deleteLocalFile) {
+      const deleteLocalFile = deps.deleteLocalFile;
       await Promise.all(
-        createdFiles.map((uri) => deps.deleteLocalFile(uri))
+        createdFiles.map((uri) => deleteLocalFile(uri))
       );
     }
     await deps.deleteEntry(createdEntry.id).catch((deleteError) => {

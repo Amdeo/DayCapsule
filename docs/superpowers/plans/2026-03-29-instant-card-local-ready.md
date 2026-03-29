@@ -1,6 +1,6 @@
 # 卡片即时出现与本地补全 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 让文本、照片、语音三类卡片都先出现在列表中，再异步补全本地内容；补全失败时删除卡片并清理本地文件。
 
@@ -80,7 +80,7 @@
 - Test: `app/src/database/__tests__/migration.test.ts`
 - Test: `app/src/database/__tests__/operations.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定 schema 与 CRUD 需要保留 `localReadyState`**
+- [x] **Step 1: 先写失败测试，锁定 schema 与 CRUD 需要保留 `localReadyState`**
 
 在 `app/src/database/__tests__/sqlite.test.ts` 增加：
 
@@ -112,13 +112,13 @@ it('reads localReadyState from rows and persists it on add/update', async () => 
 it('returns entries by localReadyState', async () => {});
 ```
 
-- [ ] **Step 2: 运行定向测试，确认当前实现失败**
+- [x] **Step 2: 运行定向测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts`
 
 Expected: FAIL，原因是当前 schema、迁移和 row mapping 都没有 `local_ready_state`。
 
-- [ ] **Step 3: 最小实现 `localReadyState` 的持久化**
+- [x] **Step 3: 最小实现 `localReadyState` 的持久化**
 
 实现要求：
 
@@ -151,13 +151,13 @@ export const getEntriesByLocalReadyState = async (
 ): Promise<Entry[]> => {}
 ```
 
-- [ ] **Step 4: 回跑定向测试，确认通过**
+- [x] **Step 4: 回跑定向测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/types/entry.ts app/src/database/sqlite.ts app/src/database/migration.ts app/src/database/operations.ts app/src/database/__tests__/sqlite.test.ts app/src/database/__tests__/migration.test.ts app/src/database/__tests__/operations.test.ts
@@ -178,7 +178,7 @@ git commit -m "feat: persist local ready state for entries"
 - Modify: `app/src/services/voiceUploadQueue.ts`
 - Modify: `app/src/services/__tests__/voiceUploadQueue.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定启动清扫与 queue gating**
+- [x] **Step 1: 先写失败测试，锁定启动清扫与 queue gating**
 
 在 `app/src/services/__tests__/localEntryRecoveryService.test.ts` 增加：
 
@@ -204,13 +204,13 @@ it('skips entries whose localReadyState is processing', async () => {});
 it('runs processing entry cleanup before flushing pending uploads', async () => {});
 ```
 
-- [ ] **Step 2: 运行定向测试，确认当前实现失败**
+- [x] **Step 2: 运行定向测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/services/__tests__/localEntryRecoveryService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.local-ready-cleanup.test.tsx`
 
 Expected: FAIL，原因是 recovery service 不存在，队列也不会检查 `localReadyState`。
 
-- [ ] **Step 3: 实现 recovery service 与 queue guard**
+- [x] **Step 3: 实现 recovery service 与 queue guard**
 
 在 `app/src/services/localEntryRecoveryService.ts` 新建：
 
@@ -239,13 +239,13 @@ export async function cleanupIncompleteLocalEntries(deps = defaultDeps): Promise
 entry.localReadyState !== 'processing'
 ```
 
-- [ ] **Step 4: 回跑定向测试，确认通过**
+- [x] **Step 4: 回跑定向测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/services/__tests__/localEntryRecoveryService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.local-ready-cleanup.test.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/services/localEntryRecoveryService.ts app/src/services/__tests__/localEntryRecoveryService.test.ts app/app/_layout.tsx app/app/__tests__/_layout.local-ready-cleanup.test.tsx app/src/services/photoUploadQueue.ts app/src/services/__tests__/photoUploadQueue.test.ts app/src/services/voiceUploadQueue.ts app/src/services/__tests__/voiceUploadQueue.test.ts
@@ -264,7 +264,7 @@ git commit -m "feat: clean up incomplete local entries on startup"
 - Modify: `app/src/services/photoService.ts`
 - Modify: `app/src/services/__tests__/photoService.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定照片即时插卡与失败回滚**
+- [x] **Step 1: 先写失败测试，锁定照片即时插卡与失败回滚**
 
 在 `app/app/(tabs)/__tests__/index.photo.test.ts` 增加：
 
@@ -288,13 +288,13 @@ it('serializes preparation per entryId and writes ready media once', async () =>
 it('returns created files for rollback when saving succeeds', async () => {});
 ```
 
-- [ ] **Step 2: 运行定向测试，确认当前实现失败**
+- [x] **Step 2: 运行定向测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.photo.test.ts' src/services/__tests__/photoEntryPreparationService.test.ts src/services/__tests__/photoService.test.ts`
 
 Expected: FAIL，原因是当前首页照片链路仍会等正式保存完成后才创建 entry。
 
-- [ ] **Step 3: 实现照片补全 service 与首页编排改造**
+- [x] **Step 3: 实现照片补全 service 与首页编排改造**
 
 在 `photoEntryPreparationService.ts` 新建最小接口：
 
@@ -338,13 +338,13 @@ export async function preparePhotoEntryMedia(
 }
 ```
 
-- [ ] **Step 4: 回跑定向测试，确认通过**
+- [x] **Step 4: 回跑定向测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.photo.test.ts' src/services/__tests__/photoEntryPreparationService.test.ts src/services/__tests__/photoService.test.ts`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/services/photoEntryPreparationService.ts app/src/services/__tests__/photoEntryPreparationService.test.ts app/app/'(tabs)'/index.tsx app/app/'(tabs)'/__tests__/index.photo.test.ts app/src/services/photoService.ts app/src/services/__tests__/photoService.test.ts
@@ -363,7 +363,7 @@ git commit -m "feat: show photo cards before local media preparation"
 - Modify: `app/src/store/entryStore.ts`
 - Modify: `app/src/store/__tests__/entryStore.test.ts`
 
-- [ ] **Step 1: 先写失败测试，锁定语音卡片即时保留与失败删除**
+- [x] **Step 1: 先写失败测试，锁定语音卡片即时保留与失败删除**
 
 在 `app/app/(tabs)/__tests__/index.voice-cloud-mode.test.ts` 增加：
 
@@ -385,13 +385,13 @@ it('deletes the voice entry instead of restoring recording when local preparatio
 it('prepares voice media once per entryId and returns created files for rollback', async () => {});
 ```
 
-- [ ] **Step 2: 运行定向测试，确认当前实现失败**
+- [x] **Step 2: 运行定向测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' src/services/__tests__/voiceEntryPreparationService.test.ts src/store/__tests__/entryStore.test.ts`
 
 Expected: FAIL，原因是当前 stop 失败会把语音 entry 改回 `recording`，没有 `localReadyState` 驱动的删除回滚。
 
-- [ ] **Step 3: 用独立 service 改写语音本地补全**
+- [x] **Step 3: 用独立 service 改写语音本地补全**
 
 在 `voiceEntryPreparationService.ts` 新建：
 
@@ -424,13 +424,13 @@ export async function prepareVoiceEntryMedia(
 
 在 `entryStore.ts` 如有必要补一条工具能力，保证“删除正在 processing 的语音卡”只做本地删除和文件清理。
 
-- [ ] **Step 4: 回跑定向测试，确认通过**
+- [x] **Step 4: 回跑定向测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' src/services/__tests__/voiceEntryPreparationService.test.ts src/store/__tests__/entryStore.test.ts`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/services/voiceEntryPreparationService.ts app/src/services/__tests__/voiceEntryPreparationService.test.ts app/app/'(tabs)'/index.tsx app/app/'(tabs)'/__tests__/index.voice-cloud-mode.test.ts app/src/store/entryStore.ts app/src/store/__tests__/entryStore.test.ts
@@ -449,7 +449,7 @@ git commit -m "feat: keep voice cards visible during local preparation"
 - Modify: `app/src/components/entry-card/EntryCardCalendarVoiceSection.tsx`
 - Test: `app/src/components/__tests__/EntryCard.test.tsx`
 
-- [ ] **Step 1: 先写失败测试，锁定 processing UI**
+- [x] **Step 1: 先写失败测试，锁定 processing UI**
 
 在 `app/src/components/__tests__/EntryCard.test.tsx` 增加：
 
@@ -465,13 +465,13 @@ it('keeps text cards rendering normally when localReadyState is ready', () => {}
 - 语音卡片显示“准备中”，播放按钮不可点击
 - 不把 `processing` 文案写进 sync badge
 
-- [ ] **Step 2: 运行定向测试，确认当前实现失败**
+- [x] **Step 2: 运行定向测试，确认当前实现失败**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryCard.test.tsx`
 
 Expected: FAIL，原因是当前 UI 只认 `recordingStatus` / `syncStatus`，没有 `localReadyState`。
 
-- [ ] **Step 3: 最小实现 processing 半成品态**
+- [x] **Step 3: 最小实现 processing 半成品态**
 
 实现要求：
 
@@ -486,13 +486,13 @@ Expected: FAIL，原因是当前 UI 只认 `recordingStatus` / `syncStatus`，�
 - 文本：
   - `ready` 下保持现有行为
 
-- [ ] **Step 4: 回跑定向测试，确认通过**
+- [x] **Step 4: 回跑定向测试，确认通过**
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryCard.test.tsx`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/src/components/EntryCard.tsx app/src/components/entry-card/EntryCardDefaultContent.tsx app/src/components/entry-card/EntryCardDefaultVoiceContent.tsx app/src/components/entry-card/EntryCardCalendarPhotoSection.tsx app/src/components/entry-card/EntryCardCalendarVoiceSection.tsx app/src/components/__tests__/EntryCard.test.tsx
@@ -507,7 +507,7 @@ git commit -m "feat: render processing state for local media cards"
 - Modify: `docs/superpowers/specs/2026-03-29-instant-card-local-ready-design.md`
 - Modify: `docs/superpowers/plans/2026-03-29-instant-card-local-ready.md`
 
-- [ ] **Step 1: 运行目标测试集**
+- [x] **Step 1: 运行目标测试集**
 
 Run:
 
@@ -529,13 +529,13 @@ cd app && npx jest --run-in-band --runTestsByPath \
 
 Expected: PASS
 
-- [ ] **Step 2: 运行类型检查**
+- [x] **Step 2: 运行类型检查**
 
 Run: `cd app && npx tsc --noEmit`
 
 Expected: PASS
 
-- [ ] **Step 3: 更新 spec / plan 的实现结果与验证记录**
+- [x] **Step 3: 更新 spec / plan 的实现结果与验证记录**
 
 在 spec 中补：
 
@@ -549,9 +549,29 @@ Expected: PASS
 - 最终执行说明
 - 验证命令与结果
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-03-29-instant-card-local-ready-design.md docs/superpowers/plans/2026-03-29-instant-card-local-ready.md
 git commit -m "docs: finalize instant card local ready rollout"
 ```
+
+## 最终执行说明
+
+- 已完成 Chunk 1 到 Chunk 6 的全部步骤，所有计划项均已落地。
+- 实现提交顺序：
+  - `1d04e34 feat: persist local ready state for entries`
+  - `0269045 fix: always backfill local ready state during migration`
+  - `523812b fix: run local ready state migration during app initialization`
+  - `68b2678 feat: clean up incomplete local entries on startup`
+  - `f08181e test: strengthen local ready cleanup order assertion`
+  - `48ad4db feat: show photo cards before local media preparation`
+  - `da99ac8 fix: clean up prepared photo files on ready failure`
+  - `7dc5288 fix: harden photo preparation error handling`
+  - `e1f0235 feat: keep voice cards visible during local preparation`
+  - `b2fef05 feat: render processing state for local media cards`
+
+## 验证命令与结果
+
+- `cd app && npx jest --run-in-band --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts src/services/__tests__/localEntryRecoveryService.test.ts src/services/__tests__/photoEntryPreparationService.test.ts src/services/__tests__/voiceEntryPreparationService.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts 'app/(tabs)/__tests__/index.photo.test.ts' 'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' app/__tests__/_layout.local-ready-cleanup.test.tsx src/components/__tests__/EntryCard.test.tsx`：通过。存在既有 `act(...)` console warning 与 Jest open handles 提示，但所有断言通过。
+- `cd app && npx tsc --noEmit`：通过。
