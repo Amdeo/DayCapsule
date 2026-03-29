@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, act } from '@testing-library/react-native';
+import { render, act, waitFor } from '@testing-library/react-native';
 
 let appStateListener: ((state: 'active' | 'background' | 'inactive') => void | Promise<void>) | null = null;
 let networkListener: ((state: { isConnected: boolean; isInternetReachable: boolean | null }) => void) | null = null;
@@ -188,14 +188,6 @@ jest.mock('react-native', () => ({
 
 import RootLayout from '../_layout';
 
-const flushPromises = async () => {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-};
-
 describe('RootLayout bootstrap delegation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -210,11 +202,12 @@ describe('RootLayout bootstrap delegation', () => {
   it('delegates app bootstrap to the bootstrap service', async () => {
     const screen = render(<RootLayout />);
 
-    await flushPromises();
+    await waitFor(() => {
+      expect(mockRunAppBootstrap).toHaveBeenCalledTimes(1);
+    });
 
     expect(mockFeedbackHost).toHaveBeenCalled();
     expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
-    expect(mockRunAppBootstrap).toHaveBeenCalledTimes(1);
     expect(mockRunAppBootstrap).toHaveBeenCalledWith(
       expect.objectContaining({
         refreshCloudSyncIndicator: expect.any(Function),
@@ -230,20 +223,24 @@ describe('RootLayout bootstrap delegation', () => {
 
     render(<RootLayout />);
 
-    await flushPromises();
+    await waitFor(() => {
+      expect(mockShowErrorFeedback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '初始化失败',
+          dedupeKey: 'app-initialization-failed',
+        })
+      );
+    });
 
-    expect(mockShowErrorFeedback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: '初始化失败',
-        dedupeKey: 'app-initialization-failed',
-      })
-    );
   });
 
   it('removes the AppState subscription when RootLayout unmounts', async () => {
     const screen = render(<RootLayout />);
 
-    await act(async () => Promise.resolve());
+    await waitFor(() => {
+      expect(lastAppStateRemove).toBeTruthy();
+    });
+
     const appStateRemove = lastAppStateRemove;
     screen.unmount();
 
@@ -254,7 +251,10 @@ describe('RootLayout bootstrap delegation', () => {
   it('removes the network subscription when RootLayout unmounts', async () => {
     const screen = render(<RootLayout />);
 
-    await act(async () => Promise.resolve());
+    await waitFor(() => {
+      expect(lastNetworkRemove).toBeTruthy();
+    });
+
     const networkRemove = lastNetworkRemove;
     screen.unmount();
 
@@ -265,13 +265,12 @@ describe('RootLayout bootstrap delegation', () => {
   it('does not trigger network recovery when the previous reachability is still unknown', async () => {
     render(<RootLayout />);
 
-    await flushPromises();
+    await waitFor(() => {
+      expect(networkListener).toBeTruthy();
+    });
 
-    expect(networkListener).toBeTruthy();
-
-    await act(async () => {
+    act(() => {
       networkListener?.({ isConnected: true, isInternetReachable: true });
-      await Promise.resolve();
     });
 
     expect(mockRunPendingCloudRecovery).not.toHaveBeenCalled();
@@ -286,7 +285,9 @@ describe('RootLayout bootstrap delegation', () => {
 
     render(<RootLayout />);
 
-    await flushPromises();
+    await waitFor(() => {
+      expect(appStateListener).toBeTruthy();
+    });
 
     await expect(
       act(async () => {

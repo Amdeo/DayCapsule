@@ -128,8 +128,29 @@ export function assertCanStartVoiceRecordingForTest(currentRecordingId: string |
   throw error;
 }
 
-export function toDisplayedRecordingDurationForTest(duration: number): number {
+function toDisplayedRecordingDuration(duration: number): number {
   return Math.max(0, Math.floor(duration));
+}
+
+function createRecordingDurationPoller({
+  entryId,
+  getRecordingDuration,
+  updateRecordingDuration,
+}: {
+  entryId: string;
+  getRecordingDuration: () => Promise<number>;
+  updateRecordingDuration: (entryId: string, duration: number) => void;
+}): () => Promise<void> {
+  let lastDisplayedDuration = -1;
+
+  return async () => {
+    const duration = await getRecordingDuration();
+    const displayedDuration = toDisplayedRecordingDuration(duration);
+    if (displayedDuration !== lastDisplayedDuration) {
+      lastDisplayedDuration = displayedDuration;
+      updateRecordingDuration(entryId, displayedDuration);
+    }
+  };
 }
 
 function buildTemporaryVoiceEntry(now: number): Entry {
@@ -412,14 +433,13 @@ export default function HomeScreen() {
   }, []);
 
   const startRecordingTimer = useCallback((entryId: string) => {
-    let lastDisplayedDuration = -1;
-    recordingTimerRef.current = setInterval(async () => {
-      const duration = await VoiceService.getRecordingDuration();
-      const displayedDuration = toDisplayedRecordingDurationForTest(duration);
-      if (displayedDuration !== lastDisplayedDuration) {
-        lastDisplayedDuration = displayedDuration;
-        updateRecordingDuration(entryId, displayedDuration);
-      }
+    const pollRecordingDuration = createRecordingDurationPoller({
+      entryId,
+      getRecordingDuration: VoiceService.getRecordingDuration.bind(VoiceService),
+      updateRecordingDuration,
+    });
+    recordingTimerRef.current = setInterval(() => {
+      void pollRecordingDuration();
     }, RECORDING_DURATION_POLL_MS);
   }, [updateRecordingDuration]);
 
