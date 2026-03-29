@@ -93,6 +93,23 @@ describe('Timeline home cloud sync status', () => {
     expect(screen.queryByTestId('cloud-sync-button')).toBeNull();
   });
 
+  it('removes stale sync actions when the cloud indicator falls back to hidden on rerender', () => {
+    mockUiState = 'pending';
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+
+    mockUiState = 'hidden';
+    screen.rerender(<Timeline />);
+
+    expect(screen.queryByTestId('cloud-sync-button')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-failed')).toBeNull();
+  });
+
   it.each([
     ['synced', 'cloud-sync-dot-synced'],
     ['pending', 'cloud-sync-dot-pending'],

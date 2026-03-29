@@ -19,3 +19,6 @@ appId: com.memorycapsule.app
     index: 0
 - assertVisible:
     id: text-entry-detail-root
+- back
+- assertVisible:
+    id: home-screen-root

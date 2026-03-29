@@ -32,6 +32,18 @@ describe('SettingsPage repair entry', () => {
     expect(mocks.injectRepairPending).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the dedicated repair entry available after injecting the repair-pending fixture', async () => {
+    const { screen, mocks } = await renderSettingsPage({ e2eSyncLab: true });
+
+    fireEvent.press(await screen.findByTestId('e2e-sync-fixture-repair-pending'));
+
+    expect(mocks.injectRepairPending).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId('e2e-sync-show-repair-prompt'));
+
+    expect(mocks.showSyncRepairPrompt).toHaveBeenCalledTimes(1);
+  });
+
   it('reopens the repair prompt from the dedicated repair entry', async () => {
     const { screen, mocks } = await renderSettingsPage({ e2eSyncLab: true });
 

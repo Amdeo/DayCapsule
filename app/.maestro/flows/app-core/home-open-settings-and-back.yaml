@@ -1,0 +1,15 @@
+appId: com.memorycapsule.app
+---
+- runFlow: ../../common/launch-app.yaml
+- runFlow: ../../common/open-sidebar.yaml
+- tapOn:
+    id: sidebar-menu-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-page-root
+    timeout: 5000
+- assertVisible:
+    id: settings-page-root
+- back
+- assertVisible:
+    id: home-screen-root

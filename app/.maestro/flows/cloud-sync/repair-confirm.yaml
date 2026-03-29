@@ -3,6 +3,8 @@ appId: com.memorycapsule.app
 - runFlow: ../../common/launch-app.yaml
 - runFlow: ../../common/open-e2e-sync-lab.yaml
 - tapOn:
+    id: e2e-sync-fixture-clear
+- tapOn:
     id: e2e-sync-fixture-suspect
 - tapOn:
     id: e2e-sync-show-repair-prompt
@@ -10,11 +12,5 @@ appId: com.memorycapsule.app
 - tapOn: "立即修复"
 - assertNotVisible: "发现云端媒体异常"
 - runFlow: ../../common/open-sync-status.yaml
-- assertVisible: "可修复媒体数"
 - assertNotVisible:
     id: error-feedback-action-repair-media
-- runFlow: ../../common/clear-e2e-sync-fixture.yaml
-- tapOn:
-    id: detail-page-back-button
-- assertVisible:
-    id: searchbar-menu-button

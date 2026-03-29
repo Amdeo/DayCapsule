@@ -50,6 +50,7 @@ describe('CloudSyncStatusButton', () => {
     expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
     expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
     expect(screen.getByText('cloud-outline')).toBeTruthy();
+    expect(screen.queryAllByTestId(/cloud-sync-dot-/)).toHaveLength(0);
     expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
     expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
     expect(screen.queryByTestId('cloud-sync-dot-failed')).toBeNull();

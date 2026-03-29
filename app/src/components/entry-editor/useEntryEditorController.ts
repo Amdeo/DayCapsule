@@ -135,7 +135,7 @@ export function useEntryEditorController({
     }
 
     Alert.alert('放弃修改？', '未保存的修改将会丢失。', [
-      { text: '继续编辑', style: 'cancel' },
+      { text: '继续编辑', style: 'cancel', onPress: () => {} },
       {
         text: '放弃修改',
         style: 'destructive',
