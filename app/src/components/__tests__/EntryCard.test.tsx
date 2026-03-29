@@ -1192,6 +1192,35 @@ describe('EntryCard calendar variant', () => {
     expect(queryByTestId('image-viewer')).toBeNull();
   });
 
+  it('calendar 双图副图只有缩略图资源时点击不应挂载图片查看器', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard
+        entry={{
+          ...calendarPhotoDouble,
+          id: 'calendar-photo-double-thumbnail-only-secondary',
+          media: [
+            calendarPhotoDouble.media![0],
+            {
+              uri: '',
+              remoteUri: '',
+              thumbnail: 'file:///calendar-double-thumb-only.jpg',
+              remoteThumbnail: '',
+              mimeType: 'image/jpeg',
+              size: 1200,
+              metadata: { aspectRatio: 0.9, createdAt: Date.now(), modifiedAt: Date.now() },
+            },
+          ],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    fireEvent.press(getByTestId('calendar-photo-double-secondary-calendar-photo-double-thumbnail-only-secondary'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
+  });
+
   it('calendar 语音卡暴露播放按钮测试标记', () => {
     render(
       <EntryCard
