@@ -192,6 +192,53 @@ describe('voiceUploadQueue', () => {
     expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
   });
 
+  it('resets voice retry backoff after a successful retry so the next failure starts from 15 seconds again', async () => {
+    jest.useFakeTimers();
+    const entry = makeVoiceEntry();
+    const queue = createVoiceUploadQueue({
+      getPendingEntries: jest.fn()
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry])
+        .mockResolvedValueOnce([entry]),
+      getEntryById: jest.fn().mockResolvedValue(entry),
+      markUploading: jest.fn().mockResolvedValue(undefined),
+      markPending: jest.fn().mockResolvedValue(undefined),
+      uploadMedia: jest.fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' })
+        .mockRejectedValueOnce(new Error('network down again'))
+        .mockResolvedValueOnce({ id: 'media-1', url: 'https://cdn/voice.m4a' }),
+      markPendingSync: jest.fn().mockResolvedValue(undefined),
+      triggerSync: jest.fn().mockResolvedValue(undefined),
+      onEntryUploading: jest.fn(),
+      onEntryPending: jest.fn(),
+      onEntryPendingSync: jest.fn(),
+    });
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(15_000);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(2);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(1);
+
+    await queue.flushPending();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(3);
+
+    await jest.advanceTimersByTimeAsync(14_999);
+    await queue.waitForIdle();
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(3);
+
+    await jest.advanceTimersByTimeAsync(1);
+    await queue.waitForIdle();
+
+    expect(queue.deps.uploadMedia).toHaveBeenCalledTimes(4);
+    expect(queue.deps.markPendingSync).toHaveBeenCalledTimes(2);
+  });
+
   it('skips canceled entries before starting upload', async () => {
     const entry = makeVoiceEntry();
     const queue = createVoiceUploadQueue({
