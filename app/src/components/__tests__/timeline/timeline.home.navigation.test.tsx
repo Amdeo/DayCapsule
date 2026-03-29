@@ -246,7 +246,7 @@ describe('Timeline home navigation', () => {
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
   });
 
-  it('returns to the timeline list after closing the text detail page', () => {
+  it('returns from detail-only actions back to a reusable list state after closing', () => {
     const screen = render(<Timeline />);
 
     expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
@@ -254,10 +254,16 @@ describe('Timeline home navigation', () => {
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
 
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
+    expect(screen.getByTestId('timeline-text-detail-edit')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
+    expect(screen.queryByTestId('timeline-text-detail-edit')).toBeNull();
     expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
+
+    expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
   });
 });
