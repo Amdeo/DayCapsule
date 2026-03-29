@@ -168,23 +168,7 @@ describe('EntryCard missing media variants', () => {
     expect(screen.getByTestId('image-viewer')).toBeTruthy();
   });
 
-  it.each([
-    [
-      'repairable metadata',
-      {
-        integrityStatus: 'repair_prompt_required',
-        repairable: true,
-        repairSource: 'local-original',
-      },
-    ],
-    [
-      'repair_pending metadata',
-      {
-        integrityStatus: 'repair_pending',
-        repairable: false,
-      },
-    ],
-  ])('keeps the photo card stable for %s variants', (_label, metadata) => {
+  it('keeps the photo card stable for repairable metadata', () => {
     const entry = createPhotoEntry({
       uri: 'file:///local-photo.jpg',
       mimeType: 'image/jpeg',
@@ -192,7 +176,9 @@ describe('EntryCard missing media variants', () => {
       metadata: {
         createdAt: 1700000000000,
         modifiedAt: 1700000000000,
-        ...metadata,
+        integrityStatus: 'repair_prompt_required',
+        repairable: true,
+        repairSource: 'local-original',
       },
     });
 
@@ -203,5 +189,31 @@ describe('EntryCard missing media variants', () => {
     expect(screen.getByTestId('photo-image-0')).toBeTruthy();
     expect(screen.getByText('说明文字')).toBeTruthy();
     expect(screen.getByTestId('image-viewer')).toBeTruthy();
+  });
+
+  it('keeps repair-pending media in a stable recovery-friendly card state', () => {
+    const entry = createPhotoEntry({
+      uri: '',
+      remoteUri: 'https://cdn.example.com/photo.jpg',
+      remoteThumbnail: 'https://cdn.example.com/photo-thumb.jpg',
+      mimeType: 'image/jpeg',
+      size: 10,
+      metadata: {
+        createdAt: 1700000000000,
+        modifiedAt: 1700000000000,
+        integrityStatus: 'repair_pending',
+        repairable: false,
+      },
+    });
+
+    const screen = render(<EntryCard entry={entry} onDelete={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('entry-card'));
+
+    expect(screen.getByTestId('entry-card')).toBeTruthy();
+    expect(screen.getByTestId('photo-loading-0')).toBeTruthy();
+    expect(screen.queryByTestId('photo-image-0')).toBeNull();
+    expect(screen.getByText('说明文字')).toBeTruthy();
+    expect(screen.queryByTestId('image-viewer')).toBeNull();
   });
 });

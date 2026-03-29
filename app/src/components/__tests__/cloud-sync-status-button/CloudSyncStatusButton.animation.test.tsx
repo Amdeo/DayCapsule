@@ -34,7 +34,7 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
   });
 
   it('进入 syncing 时启动两组 loop 并调用各自 start', () => {
-    const { rerender } = render(
+    const screen = render(
       <CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />,
     );
 
@@ -44,11 +44,13 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
       controller.stop.mockClear();
     });
 
-    rerender(<CloudSyncStatusButton uiState="syncing" onPress={jest.fn()} />);
+    screen.rerender(<CloudSyncStatusButton uiState="syncing" onPress={jest.fn()} />);
 
     expect(loopSpy).toHaveBeenCalledTimes(2);
     expect(loopControllers[0].start).toHaveBeenCalledTimes(1);
     expect(loopControllers[1].start).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('cloud-sync-spinner')).toBeTruthy();
+    expect(screen.queryAllByTestId(/cloud-sync-dot-/)).toHaveLength(0);
   });
 
   it('从 syncing 切回非 syncing 时停止 loop 并重置动画值', () => {
