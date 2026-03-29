@@ -17,6 +17,7 @@ interface EntryCardDefaultVoiceContentProps {
   isPlayingAudio: boolean;
   playbackPosition: number;
   isProcessing: boolean;
+  isLocalReadyProcessing: boolean;
   onPlayAudio: () => void | Promise<void>;
   onStopAudio: () => void | Promise<void>;
   onRunStopRecording: (entryId: string, isStopping: boolean) => void | Promise<void>;
@@ -29,6 +30,7 @@ export function EntryCardDefaultVoiceContent({
   isPlayingAudio,
   playbackPosition,
   isProcessing,
+  isLocalReadyProcessing,
   onPlayAudio,
   onStopAudio,
   onRunStopRecording,
@@ -109,6 +111,41 @@ export function EntryCardDefaultVoiceContent({
 
   if (!entry.media || entry.media.length === 0) {
     return null;
+  }
+
+  if (isLocalReadyProcessing) {
+    return (
+      <View style={styles.voiceCard}>
+        <View style={styles.voicePlayRow}>
+          <TouchableOpacity
+            testID={`voice-processing-button-${entry.id}`}
+            style={[styles.voicePlayBtn, styles.voicePlayBtnDisabled]}
+            disabled
+            activeOpacity={1}
+          >
+            <Ionicons name="hourglass-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <View style={styles.voiceWaveform}>
+            <WaveformAnimation isRecording={false} color="#D9D9D9" />
+          </View>
+
+          <Text testID={`voice-processing-duration-${entry.id}`} style={styles.voiceDuration}>
+            {formatEntryCardDuration(
+              entry.recordingDuration ?? getEntryMediaDurationSeconds(entry.media[0])
+            )}
+          </Text>
+        </View>
+
+        <Text style={styles.voiceUploadingText}>准备中</Text>
+
+        {(entry.transcription?.text || entry.content) ? (
+          <Text style={styles.voiceCaption} numberOfLines={isExpanded ? undefined : 3}>
+            {entry.transcription?.text || entry.content}
+          </Text>
+        ) : null}
+      </View>
+    );
   }
 
   if (isVoiceMediaPendingHydration(entry.media[0])) {

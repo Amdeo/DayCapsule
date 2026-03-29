@@ -19,6 +19,7 @@ interface EntryCardCalendarVoiceSectionProps {
   isPlayingAudio: boolean;
   playbackPosition: number;
   isProcessing: boolean;
+  isLocalReadyProcessing: boolean;
   onPlayAudio: () => void | Promise<void>;
   onStopAudio: () => void | Promise<void>;
   onRunStopRecording: (entryId: string, isStopping: boolean) => void | Promise<void>;
@@ -32,6 +33,7 @@ export function EntryCardCalendarVoiceSection({
   isPlayingAudio,
   playbackPosition,
   isProcessing,
+  isLocalReadyProcessing,
   onPlayAudio,
   onStopAudio,
   onRunStopRecording,
@@ -77,6 +79,45 @@ export function EntryCardCalendarVoiceSection({
           <Ionicons name="alert-circle-outline" size={18} color="#A3A3A3" />
           <Text style={styles.audioMissingText}>音频文件已丢失</Text>
         </View>
+      </View>
+    );
+  }
+
+  if (isLocalReadyProcessing) {
+    return (
+      <View style={styles.calendarVoiceCard}>
+        <View style={styles.calendarVoiceHeader}>
+          <TouchableOpacity
+            testID={`calendar-voice-processing-button-${entry.id}`}
+            style={[styles.calendarVoicePlayBtn, styles.buttonDisabled]}
+            disabled
+            activeOpacity={1}
+          >
+            <Ionicons name="hourglass-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.calendarVoiceTrack}>
+            <View style={styles.calendarVoiceTrackRow}>
+              <View style={styles.calendarVoiceTrackActive}>
+                <WaveformAnimation isRecording={false} color="#EDC98D" />
+              </View>
+              <Text style={styles.calendarVoiceTime}>
+                {formatEntryCardDuration(
+                  entry.recordingDuration ?? getEntryMediaDurationSeconds(entry.media[0])
+                )}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <Text style={styles.calendarVoiceHint}>准备中</Text>
+        {(entry.transcription?.text || entry.content) ? (
+          <Text
+            style={styles.calendarVoiceCaption}
+            numberOfLines={isExpanded ? undefined : calendarDensity === 'compact' ? 2 : 3}
+          >
+            {entry.transcription?.text || entry.content}
+          </Text>
+        ) : null}
+        <EntryCardCalendarTags entry={entry} isExpanded={isExpanded} />
       </View>
     );
   }

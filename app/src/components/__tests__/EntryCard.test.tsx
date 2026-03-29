@@ -224,6 +224,16 @@ const pendingHydrationVoiceEntry: Entry = {
   }],
 };
 
+const processingPhotoEntry: Entry = {
+  id: 'photo-processing-1',
+  type: 'photo',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'synced',
+  localReadyState: 'processing',
+  media: [{ uri: 'file://photo-processing.jpg', mimeType: 'image/jpeg', size: 1024 }],
+};
+
 const playableVoiceEntry: Entry = {
   id: 'voice-playable-1',
   type: 'voice',
@@ -232,6 +242,18 @@ const playableVoiceEntry: Entry = {
   syncStatus: 'synced',
   recordingStatus: 'completed',
   media: [{ uri: 'file:///voice-playable.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
+};
+
+const processingVoiceEntry: Entry = {
+  id: 'voice-processing-1',
+  type: 'voice',
+  content: '',
+  timestamp: 1700000000000,
+  syncStatus: 'pending_upload',
+  localReadyState: 'processing',
+  recordingStatus: 'completed',
+  recordingDuration: 12,
+  media: [{ uri: 'file:///voice-processing.m4a', mimeType: 'audio/m4a', size: 2048, duration: 12000 }],
 };
 
 const recordingVoiceEntry: Entry = {
@@ -326,6 +348,37 @@ describe('EntryCard swipe actions', () => {
     expect(getByText('准备中')).toBeTruthy();
     expect(queryByText('待上传')).toBeNull();
     expect(queryByTestId('voice-uploading-button-voice-pending-hydration-1')).toBeNull();
+  });
+
+  it('shows a photo preview with preparing hint when localReadyState is processing', () => {
+    const { getByTestId, getByText, queryByText } = render(
+      <EntryCard entry={processingPhotoEntry} onDelete={jest.fn()} />
+    );
+
+    expect(getByTestId('photo-image-0')).toBeTruthy();
+    expect(getByText('准备中')).toBeTruthy();
+    expect(queryByText('待上传')).toBeNull();
+  });
+
+  it('shows voice duration and disabled playback placeholder when localReadyState is processing', () => {
+    const { getByTestId, getByText } = render(
+      <EntryCard entry={processingVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('voice-processing-button-voice-processing-1'));
+
+    expect(getByText('准备中')).toBeTruthy();
+    expect(getByText('00:12')).toBeTruthy();
+    expect(VoiceService.playAudio).not.toHaveBeenCalled();
+  });
+
+  it('keeps text cards rendering normally when localReadyState is ready', () => {
+    const { getByText, queryByText } = render(
+      <EntryCard entry={{ ...mockEntry, localReadyState: 'ready' }} onDelete={jest.fn()} />
+    );
+
+    expect(getByText('测试条目内容')).toBeTruthy();
+    expect(queryByText('准备中')).toBeNull();
   });
 
   it('shows 处理中 and disables stop button when voice entry is stopping', () => {
