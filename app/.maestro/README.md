@@ -74,9 +74,11 @@ app/.maestro/
 
 ## 单条执行
 
+以下命令均从 `app/` 目录执行。
+
 ```bash
-maestro test app/.maestro/flows/smoke/home-to-settings.yaml
-maestro test app/.maestro/flows/smoke/settings-to-login.yaml
+maestro test .maestro/flows/smoke/home-to-settings.yaml
+maestro test .maestro/flows/smoke/settings-to-login.yaml
 ```
 
 `settings-to-login.yaml` 前置条件为未登录态 app 已启动，建议单条执行，不要和其他 smoke flow 混跑。
@@ -84,20 +86,20 @@ maestro test app/.maestro/flows/smoke/settings-to-login.yaml
 云同步 happy path：
 
 ```bash
-maestro test app/.maestro/flows/cloud-sync/status-from-settings.yaml
-maestro test app/.maestro/flows/cloud-sync/happy-path-restore.yaml
+maestro test .maestro/flows/cloud-sync/status-from-settings.yaml
+maestro test .maestro/flows/cloud-sync/happy-path-restore.yaml
 ```
 
 app core：
 
 ```bash
-maestro test app/.maestro/flows/app-core/search-enter-exit.yaml
-maestro test app/.maestro/flows/app-core/home-open-settings-and-back.yaml
-maestro test app/.maestro/flows/app-core/settings-sync-status-open.yaml
-maestro test app/.maestro/flows/app-core/timeline-open-detail.yaml
-maestro test app/.maestro/flows/app-core/editor-unsaved-leave-guard.yaml
-maestro test app/.maestro/flows/app-core/image-viewer-back-navigation.yaml
-maestro test app/.maestro/flows/app-core/settings-repair-prompt.yaml
+maestro test .maestro/flows/app-core/search-enter-exit.yaml
+maestro test .maestro/flows/app-core/home-open-settings-and-back.yaml
+maestro test .maestro/flows/app-core/settings-sync-status-open.yaml
+maestro test .maestro/flows/app-core/timeline-open-detail.yaml
+maestro test .maestro/flows/app-core/editor-unsaved-leave-guard.yaml
+maestro test .maestro/flows/app-core/image-viewer-back-navigation.yaml
+maestro test .maestro/flows/app-core/settings-repair-prompt.yaml
 ```
 
 单独验证编辑器未保存离开确认：
@@ -119,9 +121,20 @@ npm run android
 异常场景：
 
 ```bash
-maestro test app/.maestro/flows/cloud-sync/suspect-media.yaml
-maestro test app/.maestro/flows/cloud-sync/repair-later.yaml
-maestro test app/.maestro/flows/cloud-sync/repair-confirm.yaml
+maestro test .maestro/flows/cloud-sync/suspect-media.yaml
+maestro test .maestro/flows/cloud-sync/repair-later.yaml
+maestro test .maestro/flows/cloud-sync/repair-confirm.yaml
+```
+
+本任务拆分后的专项回归命令：
+
+```bash
+maestro test .maestro/flows/app-core/settings-sync-status-open.yaml
+maestro test .maestro/flows/app-core/settings-repair-prompt.yaml
+maestro test .maestro/flows/cloud-sync/suspect-media.yaml
+maestro test .maestro/flows/cloud-sync/repair-later.yaml
+maestro test .maestro/flows/cloud-sync/repair-confirm.yaml
+maestro test .maestro/flows/app-core/image-viewer-back-navigation.yaml
 ```
 
 如果当前不在 app 前台，先在 `app/` 目录重新执行一次：
@@ -140,7 +153,7 @@ maestro test app/.maestro/flows/cloud-sync
 `run-app-core.sh` 默认只跑无登录前置的 6 条 app-core flow；`settings-sync-status-open.yaml` 保留为单条已登录专项回归，需要在设备已登录后单独执行：
 
 ```bash
-maestro test app/.maestro/flows/app-core/settings-sync-status-open.yaml
+maestro test .maestro/flows/app-core/settings-sync-status-open.yaml
 ```
 
 如果直接在 `app/` 目录执行 package scripts：
