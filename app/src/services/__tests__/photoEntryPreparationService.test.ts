@@ -127,4 +127,29 @@ describe('preparePhotoEntryMedia', () => {
     expect(deleteLocalFile).toHaveBeenCalledWith(SAVED_PHOTO.originalUri);
     expect(deleteLocalFile).toHaveBeenCalledWith(SAVED_PHOTO.thumbnailUri);
   });
+
+  it('marks integrity as upload_mismatch when persisted hash data is unavailable', async () => {
+    mockFingerprintPhotoFile
+      .mockResolvedValueOnce(SOURCE_FINGERPRINT)
+      .mockResolvedValueOnce({ ...PERSISTED_FINGERPRINT, sha256: '' });
+
+    const prepared = await preparePhotoEntryMedia([PHOTO_RESULT], {
+      savePhoto: jest.fn().mockResolvedValue(SAVED_PHOTO),
+      fingerprintPhotoFile: mockFingerprintPhotoFile,
+      deleteLocalFile: jest.fn().mockResolvedValue(undefined),
+      now: () => 1774104000000,
+    });
+
+    expect(prepared.media).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          sourceHash: SOURCE_FINGERPRINT.sha256,
+          persistedHash: '',
+          integrityStatus: 'upload_mismatch',
+          integrityReason: 'persisted-hash-missing',
+          repairable: false,
+        }),
+      }),
+    ]);
+  });
 });

@@ -119,6 +119,13 @@ const PHOTO_RESULT = {
   aspectRatio: 3024 / 4032,
 };
 
+const SECOND_PHOTO_RESULT = {
+  uri: 'content://media/external/images/5678',
+  width: 2048,
+  height: 1536,
+  aspectRatio: 2048 / 1536,
+};
+
 const PREPARED_MEDIA: MediaInfo[] = [
   {
     uri: 'file:///cache/media/photos/display/photo_123.jpg',
@@ -137,6 +144,29 @@ const PREPARED_MEDIA: MediaInfo[] = [
       repairable: false,
       createdAt: 1774104000000,
       modifiedAt: 1774104000000,
+    },
+  },
+];
+
+const MULTI_PREPARED_MEDIA: MediaInfo[] = [
+  ...PREPARED_MEDIA,
+  {
+    uri: 'file:///cache/media/photos/display/photo_456.jpg',
+    mimeType: 'image/jpeg',
+    size: 4096,
+    thumbnail: 'file:///cache/media/photos/thumbnails/thumb_456.jpg',
+    metadata: {
+      width: 1024,
+      height: 768,
+      aspectRatio: 1024 / 768,
+      localMediaId: 'media-2',
+      sourceHash: 'source-hash-2',
+      persistedHash: 'persisted-hash-2',
+      integrityStatus: 'healthy',
+      integrityReason: null,
+      repairable: false,
+      createdAt: 1774104000001,
+      modifiedAt: 1774104000001,
     },
   },
 ];
@@ -213,6 +243,28 @@ describe('handlePhotoSelectForTest', () => {
     });
   });
 
+  it('keeps multiple preview photos visible before updating the same entry to multiple ready media items', async () => {
+    const deps = makeDeps({
+      preparePhotoEntryMedia: jest.fn().mockResolvedValue({
+        media: MULTI_PREPARED_MEDIA,
+        createdFiles: [...CREATED_FILES, 'file:///cache/media/photos/display/photo_456.jpg'],
+      }),
+    });
+
+    await handlePhotoSelectForTest([PHOTO_RESULT, SECOND_PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      media: [
+        expect.objectContaining({ uri: PHOTO_RESULT.uri }),
+        expect.objectContaining({ uri: SECOND_PHOTO_RESULT.uri }),
+      ],
+    }));
+    expect(deps.updateLocalEntry).toHaveBeenCalledWith('photo-local-1', {
+      media: MULTI_PREPARED_MEDIA,
+      localReadyState: 'ready',
+    });
+  });
+
   it('deletes the created entry when local preparation fails', async () => {
     const deps = makeDeps({
       preparePhotoEntryMedia: jest.fn().mockRejectedValue(Object.assign(new Error('disk full'), {
@@ -241,6 +293,22 @@ describe('handlePhotoSelectForTest', () => {
     expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
   });
 
+  it('continues deleting the entry when one cleanup file delete fails', async () => {
+    const deps = makeDeps({
+      deleteLocalFile: jest.fn()
+        .mockRejectedValueOnce(new Error('unlink failed'))
+        .mockResolvedValueOnce(undefined),
+      preparePhotoEntryMedia: jest.fn().mockRejectedValue(Object.assign(new Error('disk full'), {
+        createdFiles: CREATED_FILES,
+      })),
+    });
+
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('disk full');
+
+    expect(deps.deleteLocalFile).toHaveBeenCalledTimes(2);
+    expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
+  });
+
   it('enqueues upload only after the entry becomes ready in cloud mode', async () => {
     const deps = makeDeps();
 
@@ -251,5 +319,22 @@ describe('handlePhotoSelectForTest', () => {
     expect(deps.updateLocalEntry.mock.invocationCallOrder[0]).toBeLessThan(
       deps.enqueueUpload.mock.invocationCallOrder[0]
     );
+  });
+
+  it('does not enqueue upload in offline mode and keeps the entry synced', async () => {
+    const deps = makeDeps({
+      enqueueUpload: undefined as unknown as jest.Mock,
+      initialSyncStatus: 'synced',
+    });
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      syncStatus: 'synced',
+    }));
+    expect(deps.updateLocalEntry).toHaveBeenCalledWith('photo-local-1', {
+      media: PREPARED_MEDIA,
+      localReadyState: 'ready',
+    });
   });
 });

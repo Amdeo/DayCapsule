@@ -276,7 +276,7 @@ export async function handlePhotoSelectForTest(
     if (deps.deleteLocalFile) {
       const deleteLocalFile = deps.deleteLocalFile;
       await Promise.all(
-        createdFiles.map((uri) => deleteLocalFile(uri))
+        createdFiles.map((uri) => deleteLocalFile(uri).catch(() => undefined))
       );
     }
     await deps.deleteEntry(createdEntry.id).catch((deleteError) => {
