@@ -4,6 +4,13 @@ appId: com.memorycapsule.app
 - runFlow: ../../common/open-entry-editor.yaml
 - tapOn:
     id: entry-editor-content-input
-- inputText: " E2E"
+- inputText: "继续编辑的正文"
 - back
 - assertVisible: "放弃修改？"
+- tapOn: "继续编辑"
+- assertVisible: "继续编辑的正文"
+- back
+- assertVisible: "放弃修改？"
+- tapOn: "放弃修改"
+- assertVisible:
+    id: home-screen-root

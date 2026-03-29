@@ -100,6 +100,12 @@ maestro test app/.maestro/flows/app-core/image-viewer-back-navigation.yaml
 maestro test app/.maestro/flows/app-core/settings-repair-prompt.yaml
 ```
 
+单独验证编辑器未保存离开确认：
+
+```bash
+cd app && maestro test .maestro/flows/app-core/editor-unsaved-leave-guard.yaml
+```
+
 先启动带 `E2E Sync Lab` 的 app-core 推荐命令：
 
 ```bash
