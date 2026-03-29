@@ -360,12 +360,15 @@ describe('EntryCard swipe actions', () => {
     expect(queryByText('待上传')).toBeNull();
   });
 
-  it('shows voice duration and disabled playback placeholder when localReadyState is processing', () => {
+  it('shows voice duration and disabled playback placeholder when localReadyState is processing', async () => {
     const { getByTestId, getByText } = render(
       <EntryCard entry={processingVoiceEntry} onDelete={jest.fn()} />
     );
 
-    fireEvent.press(getByTestId('voice-processing-button-voice-processing-1'));
+    await act(async () => {
+      fireEvent.press(getByTestId('voice-processing-button-voice-processing-1'));
+      await Promise.resolve();
+    });
 
     expect(getByText('准备中')).toBeTruthy();
     expect(getByText('00:12')).toBeTruthy();

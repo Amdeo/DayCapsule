@@ -105,6 +105,7 @@ describe('voiceUploadQueue', () => {
   });
 
   it('returns entry to pending_upload when media upload fails', async () => {
+    jest.useFakeTimers();
     const entry = makeVoiceEntry();
     const queue = createVoiceUploadQueue({
       getPendingEntries: jest.fn().mockResolvedValue([entry]),
