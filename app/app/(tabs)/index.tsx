@@ -222,8 +222,10 @@ export async function handlePhotoSelectForTest(
     media: previewMedia,
   });
 
+  let preparedCreatedFiles: string[] = [];
   try {
     const prepared = await deps.preparePhotoEntryMedia(results);
+    preparedCreatedFiles = prepared.createdFiles;
     await deps.updateLocalEntry(createdEntry.id, {
       media: prepared.media,
       localReadyState: 'ready',
@@ -235,7 +237,9 @@ export async function handlePhotoSelectForTest(
       logger.warn('[HomeScreen] Failed to enqueue photo upload:', error);
     }
   } catch (error) {
-    const createdFiles = (error as PhotoEntryPreparationError).createdFiles ?? [];
+    const createdFiles = preparedCreatedFiles.length > 0
+      ? preparedCreatedFiles
+      : (error as PhotoEntryPreparationError).createdFiles ?? [];
     if (deps.deleteLocalFile) {
       await Promise.all(
         createdFiles.map((uri) => deps.deleteLocalFile(uri))

@@ -229,6 +229,18 @@ describe('handlePhotoSelectForTest', () => {
     expect(deps.enqueueUpload).not.toHaveBeenCalled();
   });
 
+  it('cleans up created files when ready update fails after preparation succeeds', async () => {
+    const deps = makeDeps({
+      updateLocalEntry: jest.fn().mockRejectedValue(new Error('db write failed')),
+    });
+
+    await expect(handlePhotoSelectForTest([PHOTO_RESULT], deps)).rejects.toThrow('db write failed');
+
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[0]);
+    expect(deps.deleteLocalFile).toHaveBeenCalledWith(CREATED_FILES[1]);
+    expect(deps.deleteEntry).toHaveBeenCalledWith('photo-local-1');
+  });
+
   it('enqueues upload only after the entry becomes ready in cloud mode', async () => {
     const deps = makeDeps();
 
