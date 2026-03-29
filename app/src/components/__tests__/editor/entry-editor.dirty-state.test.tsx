@@ -10,16 +10,20 @@ describe('EntryEditor dirty state', () => {
     resetRenderEntryEditorMocks();
   });
 
-  it('returns to the disabled save state when the user restores the original content', () => {
-    const { screen } = renderEntryEditor();
+  it('keeps save enabled until both content and tags return to their original values', () => {
+    const { screen, entry } = renderEntryEditor();
 
     fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '新的正文');
     expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(false);
 
-    fireEvent.changeText(
-      screen.getByTestId('entry-editor-content-input'),
-      '今天重新看了下这版时间流，感觉还是要把卡片收回主页体系里。'
-    );
+    fireEvent.changeText(screen.getByTestId('entry-editor-tags-input'), '产品, 想法, 复盘');
+    expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(false);
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), entry.content);
+
+    expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(false);
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-tags-input'), entry.tags.join(', '));
 
     expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(true);
   });
