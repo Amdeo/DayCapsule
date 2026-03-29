@@ -61,6 +61,27 @@ describe('photoIntegrityService', () => {
     }));
   });
 
+  it('reuses known dimensions without running image manipulation again', async () => {
+    mockReadAsStringAsync.mockResolvedValueOnce('base64-photo');
+    mockGetInfoAsync.mockResolvedValueOnce({ exists: true, size: 2048 });
+    mockDigestStringAsync.mockResolvedValueOnce('sha256-persisted');
+
+    const result = await fingerprintPhotoFile('file:///persisted.jpg', {
+      width: 1200,
+      height: 900,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      uri: 'file:///persisted.jpg',
+      sha256: 'sha256-persisted',
+      size: 2048,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    }));
+    expect(mockManipulateAsync).not.toHaveBeenCalled();
+  });
+
   it('builds a log payload without forcing null-only optional fields', () => {
     expect(buildPhotoLogPayload({
       entryId: 'entry-1',

@@ -160,13 +160,17 @@ describe('PhotoService', () => {
       'file:///documents/environments/env_https_server_a_example_com/media/photos/original/',
       'entry_thumb.jpg'
     );
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       originalUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_photo.jpg',
       thumbnailUri: 'file:///documents/environments/env_https_server_a_example_com/media/photos/original/entry_thumb.jpg',
       aspectRatio: 1200 / 900,
       width: 1200,
       height: 900,
-    });
+      persistedFingerprint: expect.objectContaining({
+        sha256: 'persisted-hash',
+        size: 2_000_000,
+      }),
+    }));
     expect(deleteFile).toHaveBeenCalledWith('file:///compressed.jpg');
     expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
     expect(mockFingerprintPhotoFile).toHaveBeenCalledWith(
@@ -215,15 +219,22 @@ describe('PhotoService', () => {
       'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/',
       'entry_thumb.jpg'
     );
-    expect(result).toEqual({
+    expect(result).toEqual(expect.objectContaining({
       originalUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/entry_photo.jpg',
       thumbnailUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/entry_thumb.jpg',
       aspectRatio: 1200 / 900,
       width: 1200,
       height: 900,
-    });
+      persistedFingerprint: expect.objectContaining({
+        sha256: 'persisted-hash',
+        size: 2_000_000,
+      }),
+    }));
     expect(deleteFile).toHaveBeenCalledWith('file:///compressed.jpg');
     expect(thumbnailSpy).toHaveBeenCalledWith('file:///compressed.jpg');
+    expect(mockFingerprintPhotoFile).toHaveBeenCalledWith(
+      'file:///cache/environments/env_https_server_a_example_com/media/photos/display/entry_photo.jpg'
+    );
   });
 
   it('full 图在当前设备已有本地缓存时优先使用本地大图地址', () => {

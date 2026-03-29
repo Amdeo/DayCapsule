@@ -19,7 +19,11 @@ import {
   copyFile,
 } from '@/src/utils/fileSystem';
 import { MediaCacheService } from './mediaCacheService';
-import { buildPhotoLogPayload, fingerprintPhotoFile } from './photoIntegrityService';
+import {
+  buildPhotoLogPayload,
+  fingerprintPhotoFile,
+  type PhotoFileFingerprint,
+} from './photoIntegrityService';
 import { MediaError, type MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
@@ -61,6 +65,7 @@ export interface SavedPhotoResult {
   aspectRatio: number;
   width: number;
   height: number;
+  persistedFingerprint?: PhotoFileFingerprint;
 }
 
 /**
@@ -461,6 +466,7 @@ export class PhotoService {
         aspectRatio: finalAspectRatio,
         width,
         height,
+        persistedFingerprint,
       };
     } catch (error) {
       if (error instanceof MediaError) {

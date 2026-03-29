@@ -202,7 +202,10 @@ export async function handlePhotoSelectForTest(
   const savedFiles: string[] = [];
   for (const result of results) {
     const fileId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const sourceFingerprint = await fingerprintPhotoFile(result.uri);
+    const sourceFingerprint = await fingerprintPhotoFile(result.uri, {
+      width: result.width,
+      height: result.height,
+    });
     logger.log('photo.capture.received', buildPhotoLogPayload({
       entryId: fileId,
       localMediaId: fileId,
@@ -219,7 +222,11 @@ export async function handlePhotoSelectForTest(
       'medium',
       result.aspectRatio
     );
-    const persistedFingerprint = await fingerprintPhotoFile(savedPhoto.originalUri);
+    const persistedFingerprint = savedPhoto.persistedFingerprint
+      ?? await fingerprintPhotoFile(savedPhoto.originalUri, {
+        width: savedPhoto.width,
+        height: savedPhoto.height,
+      });
     const hasIntegrityAnomaly = persistedFingerprint.sha256.length === 0;
 
     mediaList.push({

@@ -13,6 +13,11 @@ export type PhotoFileFingerprint = {
   mimeType: 'image/jpeg';
 };
 
+export type PhotoFingerprintOptions = {
+  width?: number;
+  height?: number;
+};
+
 export type IntegrityDecisionInput = {
   persistedHash?: string;
   remoteHash?: string;
@@ -65,7 +70,10 @@ export type PhotoUploadResult = {
   validationError?: string | null;
 };
 
-export async function fingerprintPhotoFile(uri: string): Promise<PhotoFileFingerprint> {
+export async function fingerprintPhotoFile(
+  uri: string,
+  options?: PhotoFingerprintOptions
+): Promise<PhotoFileFingerprint> {
   const fileInfo = await FileSystem.getInfoAsync(uri);
   const size = fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : 0;
 
@@ -80,17 +88,31 @@ export async function fingerprintPhotoFile(uri: string): Promise<PhotoFileFinger
     Crypto.CryptoDigestAlgorithm.SHA256,
     base64,
   );
-  const manipulated = await ImageManipulator.manipulateAsync(uri, [], {
-    compress: 1,
-    format: ImageManipulator.SaveFormat.JPEG,
-  });
+  const width = typeof options?.width === 'number'
+    ? options.width
+    : undefined;
+  const height = typeof options?.height === 'number'
+    ? options.height
+    : undefined;
+
+  let resolvedWidth = width ?? 0;
+  let resolvedHeight = height ?? 0;
+
+  if (resolvedWidth <= 0 || resolvedHeight <= 0) {
+    const manipulated = await ImageManipulator.manipulateAsync(uri, [], {
+      compress: 1,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    resolvedWidth = manipulated.width ?? 0;
+    resolvedHeight = manipulated.height ?? 0;
+  }
 
   return {
     uri,
     sha256,
     size,
-    width: manipulated.width ?? 0,
-    height: manipulated.height ?? 0,
+    width: resolvedWidth,
+    height: resolvedHeight,
     mimeType: 'image/jpeg',
   };
 }

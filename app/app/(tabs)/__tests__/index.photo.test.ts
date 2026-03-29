@@ -126,14 +126,6 @@ const CACHE_URI =
 const THUMBNAIL_URI =
   'file:///data/user/0/com.app/cache/media/photos/thumbnails/thumb_123.jpg';
 
-const SAVED_PHOTO = {
-  originalUri: CACHE_URI,
-  thumbnailUri: THUMBNAIL_URI,
-  aspectRatio: PHOTO_RESULT.aspectRatio,
-  width: PHOTO_RESULT.width,
-  height: PHOTO_RESULT.height,
-};
-
 const SOURCE_FINGERPRINT = {
   uri: PHOTO_RESULT.uri,
   sha256: 'source-hash',
@@ -150,6 +142,15 @@ const PERSISTED_FINGERPRINT = {
   width: 1200,
   height: 900,
   mimeType: 'image/jpeg' as const,
+};
+
+const SAVED_PHOTO = {
+  originalUri: CACHE_URI,
+  thumbnailUri: THUMBNAIL_URI,
+  aspectRatio: PHOTO_RESULT.aspectRatio,
+  width: PHOTO_RESULT.width,
+  height: PHOTO_RESULT.height,
+  persistedFingerprint: PERSISTED_FINGERPRINT,
 };
 
 type PhotoSelectTestDeps = PhotoSelectDeps & {
@@ -267,6 +268,29 @@ describe('handlePhotoSelectForTest', () => {
     expect(call.media[0].uri).toBe(CACHE_URI);
   });
 
+  it('复用保存阶段返回的 persistedFingerprint，避免重复计算已保存文件指纹', async () => {
+    const deps = makeDeps();
+
+    await handlePhotoSelectForTest([PHOTO_RESULT], deps);
+
+    expect(mockFingerprintPhotoFile).toHaveBeenCalledTimes(1);
+    expect(mockFingerprintPhotoFile).toHaveBeenCalledWith(
+      PHOTO_RESULT.uri,
+      expect.objectContaining({
+        width: PHOTO_RESULT.width,
+        height: PHOTO_RESULT.height,
+      }),
+    );
+    expect(deps.addLocalEntry).toHaveBeenCalledWith(expect.objectContaining({
+      media: [expect.objectContaining({
+        size: PERSISTED_FINGERPRINT.size,
+        metadata: expect.objectContaining({
+          persistedHash: PERSISTED_FINGERPRINT.sha256,
+        }),
+      })],
+    }));
+  });
+
   it('3 photos: addLocalEntry receives media array of length 3, save called 3 times', async () => {
     const deps = makeDeps();
     const results = [PHOTO_RESULT, PHOTO_RESULT, PHOTO_RESULT];
@@ -289,9 +313,6 @@ describe('handlePhotoSelectForTest', () => {
   });
 
   it('stores source and persisted hashes on the new photo entry', async () => {
-    mockFingerprintPhotoFile
-      .mockResolvedValueOnce(SOURCE_FINGERPRINT)
-      .mockResolvedValueOnce(PERSISTED_FINGERPRINT);
     const deps = makeDeps();
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
@@ -311,10 +332,15 @@ describe('handlePhotoSelectForTest', () => {
   });
 
   it('downgrades integrity metadata when persisted hash data is unavailable', async () => {
-    mockFingerprintPhotoFile
-      .mockResolvedValueOnce(SOURCE_FINGERPRINT)
-      .mockResolvedValueOnce({ ...PERSISTED_FINGERPRINT, sha256: '' });
-    const deps = makeDeps();
+    const deps = makeDeps({
+      savePhotoToStorage: jest.fn().mockResolvedValue({
+        ...SAVED_PHOTO,
+        persistedFingerprint: {
+          ...PERSISTED_FINGERPRINT,
+          sha256: '',
+        },
+      }),
+    });
 
     await handlePhotoSelectForTest([PHOTO_RESULT], deps);
 
