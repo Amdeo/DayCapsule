@@ -16,6 +16,15 @@ describe('EntryEditor save flow', () => {
     jest.restoreAllMocks();
   });
 
+  it('does not call onSave when the editor is still pristine', () => {
+    const onSave = jest.fn();
+    const { screen } = renderEntryEditor({ onSave });
+
+    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('saves edited content once and closes after the async save resolves', async () => {
     let resolveSave: (() => void) | null = null;
     const onSave = jest.fn(
