@@ -192,6 +192,7 @@ jest.mock('react-native', () => ({
 }));
 
 import RootLayout from '../_layout';
+import { migrateLocalReadyStateColumn } from '@/src/database/migration';
 import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
 import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
 import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
@@ -214,14 +215,18 @@ describe('RootLayout local-ready cleanup order', () => {
 
     await flushPromises();
 
+    expect(migrateLocalReadyStateColumn).toHaveBeenCalledTimes(1);
     expect(cleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
-    expect((cleanupIncompleteLocalEntries as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
-      (flushPendingVoiceUploads as jest.Mock).mock.invocationCallOrder[0]
-    );
-    expect((cleanupIncompleteLocalEntries as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
-      (flushPendingPhotoUploads as jest.Mock).mock.invocationCallOrder[0]
-    );
+
+    const migrationCall = (migrateLocalReadyStateColumn as jest.Mock).mock.invocationCallOrder[0];
+    const cleanupCall = (cleanupIncompleteLocalEntries as jest.Mock).mock.invocationCallOrder[0];
+    const flushVoiceCall = (flushPendingVoiceUploads as jest.Mock).mock.invocationCallOrder[0];
+    const flushPhotoCall = (flushPendingPhotoUploads as jest.Mock).mock.invocationCallOrder[0];
+
+    expect(migrationCall).toBeLessThan(cleanupCall);
+    expect(cleanupCall).toBeLessThan(flushVoiceCall);
+    expect(cleanupCall).toBeLessThan(flushPhotoCall);
   });
 });
