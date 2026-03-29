@@ -211,6 +211,31 @@ describe('PhotoGrid', () => {
     expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
   });
 
+  it('lets the primary collage image fall through to the next available uri before showing missing state', () => {
+    render(
+      <PhotoGrid
+        photos={[makeRemoteFallbackPhoto(), makePhoto(1, 1.2)]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file:///stale/thumb.jpg',
+    });
+
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+    });
+
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
+      uri: 'file:///stale/photo.jpg',
+    });
+    expect(screen.queryByTestId('photo-primary-missing')).toBeNull();
+  });
+
   it('falls back to remote thumbnail when the local thumbnail fails', () => {
     render(
       <PhotoGrid
@@ -231,6 +256,26 @@ describe('PhotoGrid', () => {
     });
   });
 
+  it('falls back to the next available photo uri after the remote thumbnail also fails', () => {
+    render(
+      <PhotoGrid
+        photos={[makeRemoteFallbackPhoto()]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
+      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+    });
+
+    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
+      uri: 'file:///stale/photo.jpg',
+    });
+  });
+
   it('keeps the secondary slot when the secondary image fails to load', () => {
     render(
       <PhotoGrid
@@ -244,6 +289,31 @@ describe('PhotoGrid', () => {
 
     expect(screen.getByTestId('photo-secondary-missing')).toBeTruthy();
     expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
+  });
+
+  it('lets the secondary collage image fall through to the next available uri before showing missing state', () => {
+    render(
+      <PhotoGrid
+        photos={[makePhoto(0, 1), makeRemoteFallbackPhoto()]}
+        maxPhotoHeight={280}
+        photoImageRadius={radius}
+      />
+    );
+
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file:///stale/thumb.jpg',
+    });
+
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
+    });
+
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
+      uri: 'file:///stale/photo.jpg',
+    });
+    expect(screen.queryByTestId('photo-secondary-missing')).toBeNull();
   });
 
   it('3 photos: renders 3 cells', () => {

@@ -8,6 +8,7 @@ const mockHandleRequestClose = jest.fn();
 const mockCloseActionSheet = jest.fn();
 const mockHandleSaveToAlbum = jest.fn();
 const mockHandleShare = jest.fn();
+let mockShowActionSheet = true;
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -35,7 +36,7 @@ jest.mock('react-native-gesture-handler', () => {
 jest.mock('../../image-viewer/useImageViewerController', () => ({
   useImageViewerController: () => ({
     phase: 'open',
-    showActionSheet: true,
+    showActionSheet: mockShowActionSheet,
     backdropAnimatedStyle: {},
     heroAnimatedStyle: {},
     imageAnimatedStyle: {},
@@ -50,6 +51,7 @@ jest.mock('../../image-viewer/useImageViewerController', () => ({
 describe('ImageViewer navigation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockShowActionSheet = true;
   });
 
   it('routes Android back close through modal onRequestClose', () => {
@@ -87,5 +89,22 @@ describe('ImageViewer navigation', () => {
     expect(mockHandleSaveToAlbum).toHaveBeenCalledTimes(1);
     expect(mockHandleShare).toHaveBeenCalledTimes(1);
     expect(mockCloseActionSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the action sheet when debugShowActionSheet is true even if the controller hides it', () => {
+    mockShowActionSheet = false;
+
+    const screen = render(
+      <ImageViewer
+        visible
+        imageUri="file:///image.jpg"
+        onClose={jest.fn()}
+        debugShowActionSheet
+      />
+    );
+
+    expect(screen.getByText('保存到相册')).toBeTruthy();
+    expect(screen.getByText('分享')).toBeTruthy();
+    expect(screen.getByText('取消')).toBeTruthy();
   });
 });

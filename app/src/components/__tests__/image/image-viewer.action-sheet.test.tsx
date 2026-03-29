@@ -41,4 +41,12 @@ describe('ImageViewerActionSheet', () => {
     expect(baseProps.onShare).toHaveBeenCalledTimes(1);
     expect(baseProps.onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('routes overlay dismiss press to onClose', () => {
+    const screen = render(<ImageViewerActionSheet {...baseProps} />);
+
+    fireEvent.press(screen.getByTestId('image-viewer-action-sheet-overlay'));
+
+    expect(baseProps.onClose).toHaveBeenCalledTimes(1);
+  });
 });

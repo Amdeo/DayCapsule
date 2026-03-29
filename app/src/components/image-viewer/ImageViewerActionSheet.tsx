@@ -23,8 +23,12 @@ export function ImageViewerActionSheet({
 
   return (
     <View testID="image-viewer-action-sheet" style={styles.actionSheetOverlay}>
-      <Pressable style={styles.actionSheetOverlayDismissArea} onPress={onClose} />
-      <View style={[styles.actionSheet, { paddingBottom: bottomInset + 8 }]}>
+      <Pressable
+        testID="image-viewer-action-sheet-overlay"
+        style={styles.actionSheetOverlayDismissArea}
+        onPress={onClose}
+      />
+      <View style={[styles.actionSheet, { paddingBottom: bottomInset + 8 }]}> 
         <View style={styles.actionSheetHandle} />
         <TouchableOpacity
           style={styles.actionSheetItem}

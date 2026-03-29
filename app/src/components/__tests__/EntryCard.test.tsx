@@ -860,6 +860,31 @@ describe('EntryCard photo edge-to-edge', () => {
     expect(queryByTestId('image-viewer')).toBeNull();
   });
 
+  it('图片缺少本地与远端可打开资源时点击卡片不应挂载图片查看器', () => {
+    const unavailablePhotoEntry: Entry = {
+      ...photoEntry,
+      id: 'photo-no-viewer-target-1',
+      media: [
+        {
+          uri: '',
+          remoteUri: '',
+          remoteThumbnail: '',
+          thumbnail: '',
+          mimeType: 'image/jpeg',
+          size: 1,
+        },
+      ],
+    };
+
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={unavailablePhotoEntry} onDelete={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('entry-card'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
+  });
+
   it('打开图片查看器时应该打印选中媒体与最终路径日志', () => {
     const loggingPhotoEntry: Entry = {
       ...photoEntry,
