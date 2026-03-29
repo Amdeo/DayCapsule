@@ -18,9 +18,10 @@ describe('EntryEditor save flow', () => {
 
   it('does not call onSave when the editor is still pristine', () => {
     const onSave = jest.fn();
-    const { screen } = renderEntryEditor({ onSave });
+    const { UNSAFE_getByProps } = renderEntryEditor({ onSave });
+    const saveButton = UNSAFE_getByProps({ testID: 'entry-editor-save-button' });
 
-    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+    saveButton.props.onPress();
 
     expect(onSave).not.toHaveBeenCalled();
   });
