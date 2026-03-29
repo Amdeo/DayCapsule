@@ -245,4 +245,19 @@ describe('Timeline home navigation', () => {
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
   });
+
+  it('returns to the timeline list after closing the text detail page', () => {
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
+
+    expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
+
+    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
+    expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
+  });
 });
