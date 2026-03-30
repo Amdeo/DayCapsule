@@ -109,14 +109,18 @@ describe('VoiceService stop recording immediacy', () => {
   });
 
   it('returns 0 duration while stopRecording is still finalizing', async () => {
+    const fileInfoStarted = createDeferred<void>();
     const deferred = createDeferred<{ size: number }>();
-    (getFileInfo as jest.Mock).mockReturnValueOnce(deferred.promise);
+    (getFileInfo as jest.Mock).mockImplementationOnce(() => {
+      fileInfoStarted.resolve();
+      return deferred.promise;
+    });
 
     await VoiceService.startRecording();
 
     const stopPromise = VoiceService.stopRecording();
 
-    await Promise.resolve();
+    await fileInfoStarted.promise;
     await expect(VoiceService.getRecordingDuration()).resolves.toBe(0);
 
     deferred.resolve({ size: 2048 });
