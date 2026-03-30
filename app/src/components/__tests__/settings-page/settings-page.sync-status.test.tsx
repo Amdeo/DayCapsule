@@ -19,6 +19,16 @@ describe('SettingsPage sync status', () => {
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
   });
 
+  it('does not trigger sync status actions when the user is unauthenticated', async () => {
+    const { screen, mocks } = await renderSettingsPage({
+      authenticated: false,
+      cloudMode: false,
+    });
+
+    expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+    expect(mocks.showCloudSyncStatusAlert).not.toHaveBeenCalled();
+  });
+
   it('renders the sync status entry for authenticated users even before cloud mode is enabled', async () => {
     const { screen } = await renderSettingsPage({
       authenticated: true,
