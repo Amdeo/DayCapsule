@@ -19,31 +19,32 @@ describe('renderSettingsPage stability', () => {
       resolveStorageStats = resolve;
     }));
 
-    const renderPromise = renderSettingsPage({ authenticated: true, cloudMode: true });
-    let renderResult:
-      | Awaited<ReturnType<typeof renderSettingsPage>>
-      | null = null;
-    void renderPromise.then((value) => {
-      renderResult = value;
-    });
+    try {
+      const renderPromise = renderSettingsPage({ authenticated: true, cloudMode: true });
+      const settleState = await Promise.race([
+        renderPromise.then(() => 'resolved' as const),
+        new Promise<'timeout'>((resolve) => {
+          setTimeout(() => resolve('timeout'), 100);
+        }),
+      ]);
 
-    await Promise.resolve();
-    await Promise.resolve();
+      // The legacy helper used a fixed flush loop and returned early while
+      // storage stats were still pending. The current helper must keep waiting.
+      expect(settleState).toBe('timeout');
 
-    expect(renderResult).toBeNull();
+      resolveStorageStats?.({ totalSize: 1024 });
 
-    resolveStorageStats?.({ totalSize: 1024 });
+      const { screen } = await renderPromise;
 
-    const { screen } = await renderPromise;
+      expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
 
-    expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
+      const actWarnings = consoleErrorSpy.mock.calls
+        .map((args) => args.map(String).join(' '))
+        .filter((message) => message.includes('not wrapped in act'));
 
-    const actWarnings = consoleErrorSpy.mock.calls
-      .map((args) => args.map(String).join(' '))
-      .filter((message) => message.includes('not wrapped in act'));
-
-    expect(actWarnings).toHaveLength(0);
-
-    consoleErrorSpy.mockRestore();
+      expect(actWarnings).toHaveLength(0);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });
