@@ -51,7 +51,7 @@ export function EntryCardCalendarPhotoSection({
             testID={`calendar-photo-processing-${entry.id}`}
             style={[
               styles.calendarPhotoCountOverlay,
-              { left: 8, right: undefined, top: 8, bottom: undefined, backgroundColor: 'rgba(176,130,47,0.82)' },
+              styles.calendarPhotoProcessingOverlay,
             ]}
           >
             <Text style={styles.calendarPhotoCountText}>准备中</Text>
@@ -140,7 +140,7 @@ function EntryCardCalendarPhotoBody({
           onPress={() => onImagePress(0)}
           style={[
             styles.calendarPhotoDoubleCell,
-            { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
+            styles.calendarPhotoDoubleCellLeft,
           ]}
           testID={`calendar-photo-double-primary-${entry.id}`}
         >
@@ -156,7 +156,7 @@ function EntryCardCalendarPhotoBody({
           onPress={() => onImagePress(1)}
           style={[
             styles.calendarPhotoDoubleCell,
-            { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
+            styles.calendarPhotoDoubleCellRight,
           ]}
           testID={`calendar-photo-double-secondary-${entry.id}`}
         >

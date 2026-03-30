@@ -452,9 +452,13 @@ describe('entryStore', () => {
       });
 
       useEntryStore.getState().setFilterType('voice');
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+
+      await waitFor(() => {
+        const state = useEntryStore.getState();
+        expect(state.filterType).toBe('voice');
+        expect(state.isLoadingMore).toBe(false);
+        expect(state.entries.map((entry) => entry.id)).toEqual(voicePage.map((entry) => entry.id));
+      });
 
       useEntryStore.setState({ cursor: voicePage.at(-1)?.timestamp ?? null, hasMore: true });
       await useEntryStore.getState().loadMore();

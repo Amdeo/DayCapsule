@@ -1,6 +1,4 @@
-import { StyleSheet } from 'react-native';
-
-export const entryCardStyles = StyleSheet.create({
+export const entryCardStyles = {
   syncStatusBadge: {
     position: 'absolute',
     top: 12,
@@ -90,6 +88,11 @@ export const entryCardStyles = StyleSheet.create({
     lineHeight: 20,
     color: '#525252',
   },
+  photoProcessingCaption: {
+    paddingBottom: 0,
+    color: '#B0822F',
+    fontWeight: '600',
+  },
   calendarKickerText: {
     fontSize: 11,
     letterSpacing: 1.2,
@@ -136,6 +139,13 @@ export const entryCardStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     backgroundColor: 'rgba(0,0,0,0.38)',
+  },
+  calendarPhotoProcessingOverlay: {
+    left: 8,
+    top: 8,
+    right: undefined,
+    bottom: undefined,
+    backgroundColor: 'rgba(176,130,47,0.82)',
   },
   calendarPhotoMeta: {
     paddingHorizontal: 10,
@@ -189,6 +199,14 @@ export const entryCardStyles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'hidden',
     backgroundColor: '#ECE7E0',
+  },
+  calendarPhotoDoubleCellLeft: {
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  calendarPhotoDoubleCellRight: {
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
   },
   calendarPhotoPrimary: {
     flex: 1.35,
@@ -567,4 +585,4 @@ export const entryCardStyles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-});
+} as const;
