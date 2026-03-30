@@ -592,7 +592,7 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
       getAllTags: entryStore.state.getAllTags,
       startRecording: mockVoiceStartRecording,
       preloadAudio: mockVoicePreloadAudio,
-      triggerQuickAddVoice: () => fabSelectHandlers.get(entryStore)?.('voice'),
+      triggerQuickAddVoice: runWithActiveEntryStore(entryStore, () => fabSelectHandlers.get(entryStore)?.('voice')),
       loggerError: mockLoggerError,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
     },
