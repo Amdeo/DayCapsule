@@ -18,7 +18,7 @@ const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingUploads = jest.fn(async () => undefined);
+const mockFlushPendingUploads = jest.fn(async () => ({ voiceError: null, photoError: null }));
 const mockAlert = jest.fn();
 const mockLoggerLog = jest.fn();
 const mockLoggerWarn = jest.fn();
@@ -124,6 +124,7 @@ describe('runAppBootstrap', () => {
     mockMigrateFromAsyncStorage.mockResolvedValue({ success: true, migratedCount: 0 });
     mockStorageGetString.mockResolvedValue('false');
     mockBuildInitialFlow.mockReturnValue({ type: 'idle' });
+    mockFlushPendingUploads.mockResolvedValue({ voiceError: null, photoError: null });
   });
 
   it('runs startup dependencies and recovery steps in order before refreshing the indicator', async () => {
@@ -224,5 +225,20 @@ describe('runAppBootstrap', () => {
 
     expect(onInitializationFailed).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).not.toHaveBeenCalled();
+  });
+
+  it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
+    const voiceError = new Error('voice queue failed');
+    const photoError = new Error('photo queue failed');
+    mockFlushPendingUploads.mockResolvedValueOnce({ voiceError, photoError });
+
+    await runAppBootstrap({
+      refreshCloudSyncIndicator,
+      onInitializationFailed,
+    });
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传语音失败:', voiceError);
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传照片失败:', photoError);
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
   });
 });

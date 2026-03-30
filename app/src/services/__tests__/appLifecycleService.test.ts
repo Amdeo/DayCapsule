@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/react-native';
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingUploads = jest.fn(async () => undefined);
+const mockFlushPendingUploads = jest.fn(async () => ({ voiceError: null, photoError: null }));
 const mockGetNetworkStateAsync = jest.fn(async () => ({
   isConnected: true,
   isInternetReachable: true,
@@ -85,7 +85,7 @@ describe('appLifecycleService', () => {
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
     mockSyncNow.mockResolvedValue(undefined);
-    mockFlushPendingUploads.mockResolvedValue(undefined);
+    mockFlushPendingUploads.mockResolvedValue({ voiceError: null, photoError: null });
     mockGetNetworkStateAsync.mockResolvedValue({
       isConnected: true,
       isInternetReachable: true,
@@ -207,5 +207,19 @@ describe('appLifecycleService', () => {
       expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 初始化网络状态监听失败:', error);
     });
     expect(reachabilityRef.current).toBeNull();
+  });
+
+  it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
+    const voiceError = new Error('voice queue failed');
+    const photoError = new Error('photo queue failed');
+    mockFlushPendingUploads.mockResolvedValueOnce({ voiceError, photoError });
+
+    const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
+
+    await runRecovery('回到前台时');
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 回到前台时补传待上传语音失败:', voiceError);
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 回到前台时补传待上传照片失败:', photoError);
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('回到前台时后');
   });
 });

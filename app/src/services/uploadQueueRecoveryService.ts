@@ -6,6 +6,11 @@ export interface UploadQueueRecoveryServiceDeps {
   flushPendingPhotoUploads: () => Promise<void>;
 }
 
+export interface UploadQueueRecoveryResult {
+  voiceError: unknown | null;
+  photoError: unknown | null;
+}
+
 const defaultDeps: UploadQueueRecoveryServiceDeps = {
   flushPendingVoiceUploads,
   flushPendingPhotoUploads,
@@ -26,20 +31,21 @@ export function createUploadQueueRecoveryService(
   };
 
   return {
-    async flushPendingUploads(): Promise<void> {
-      let firstError: unknown = null;
+    async flushPendingUploads(): Promise<UploadQueueRecoveryResult> {
+      const result: UploadQueueRecoveryResult = {
+        voiceError: null,
+        photoError: null,
+      };
 
       await captureFirstError(deps.flushPendingVoiceUploads, (error) => {
-        firstError = firstError ?? error;
+        result.voiceError = error;
       });
 
       await captureFirstError(deps.flushPendingPhotoUploads, (error) => {
-        firstError = firstError ?? error;
+        result.photoError = error;
       });
 
-      if (firstError) {
-        throw firstError;
-      }
+      return result;
     },
   };
 }
