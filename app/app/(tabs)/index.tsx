@@ -39,6 +39,7 @@ import {
   prepareVoiceEntryMedia as prepareVoiceEntryMediaService,
   type VoiceEntryPreparationError,
 } from '@/src/services/voiceEntryPreparationService';
+import { createHomeUploadSyncOrchestration } from '@/src/services/homeUploadSyncOrchestration';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -366,59 +367,10 @@ export default function HomeScreen() {
   }, [loadEntries, refreshCloudSyncIndicator]);
 
   useEffect(() => {
-    configureVoiceUploadQueueCallbacks({
-      onEntryUploading: (id) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((entry) => (
-            entry.id === id ? { ...entry, syncStatus: 'uploading' } : entry
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-      onEntryPending: (id) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((entry) => (
-            entry.id === id ? { ...entry, syncStatus: 'pending_upload' } : entry
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-      onEntryPendingSync: (id, entry) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((item) => (
-            item.id === id ? { ...item, syncStatus: 'pending', media: entry.media } : item
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-    });
-    configurePhotoUploadQueueCallbacks({
-      onEntryUploading: (id) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((entry) => (
-            entry.id === id ? { ...entry, syncStatus: 'uploading' } : entry
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-      onEntryPendingUpload: (id) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((entry) => (
-            entry.id === id ? { ...entry, syncStatus: 'pending_upload' } : entry
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-      onEntryPendingSync: (id, media) => {
-        useEntryStore.setState((s) => ({
-          entries: s.entries.map((entry) => (
-            entry.id === id ? { ...entry, syncStatus: 'pending', media } : entry
-          )),
-        }));
-        refreshCloudSyncIndicator();
-      },
-    });
-  }, [refreshCloudSyncIndicator]);
+    const orchestration = createHomeUploadSyncOrchestration();
+    configureVoiceUploadQueueCallbacks(orchestration.voiceCallbacks);
+    configurePhotoUploadQueueCallbacks(orchestration.photoCallbacks);
+  }, []);
 
   // 卸载时清理录音
   useEffect(() => {
