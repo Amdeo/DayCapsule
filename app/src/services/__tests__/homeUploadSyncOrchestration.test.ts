@@ -111,4 +111,25 @@ describe('homeUploadSyncOrchestration', () => {
 
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalledTimes(6);
   });
+
+  it('preserves existing entry store state when updating entries', () => {
+    const orchestration = createHomeUploadSyncOrchestration({
+      setEntryState: mockSetState,
+      refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
+    });
+
+    orchestration.voiceCallbacks.onEntryUploading?.('entry-1');
+
+    const nextState = mockSetState.mock.calls[0][0]({
+      entries: [makeEntry()],
+      activeQueryKey: 'query-1',
+      isLoading: true,
+    });
+
+    expect(nextState).toMatchObject({
+      activeQueryKey: 'query-1',
+      isLoading: true,
+    });
+    expect(nextState.entries[0].syncStatus).toBe('uploading');
+  });
 });

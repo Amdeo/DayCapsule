@@ -24,6 +24,7 @@ function updateEntryState(
   deps: Required<HomeUploadSyncOrchestrationDeps>
 ): void {
   deps.setEntryState((state) => ({
+    ...state,
     entries: state.entries.map((entry) => (entry.id === id ? updater(entry) : entry)),
   }));
   refreshCloudSyncIndicator(deps.refreshCloudSyncIndicator);
