@@ -1,3 +1,5 @@
+import { waitFor } from '@testing-library/react-native';
+
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
@@ -195,9 +197,9 @@ describe('appLifecycleService', () => {
       wasNetworkReachableRef: reachabilityRef,
     });
 
-    await Promise.resolve();
-
-    expect(reachabilityRef.current).toBe(true);
+    await waitFor(() => {
+      expect(reachabilityRef.current).toBe(true);
+    });
   });
 
   it('logs a warning when initial network reachability lookup fails during runner setup', async () => {
@@ -210,9 +212,9 @@ describe('appLifecycleService', () => {
       wasNetworkReachableRef: reachabilityRef,
     });
 
-    await Promise.resolve();
-
-    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 初始化网络状态监听失败:', error);
+    await waitFor(() => {
+      expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 初始化网络状态监听失败:', error);
+    });
     expect(reachabilityRef.current).toBeNull();
   });
 });

@@ -23,6 +23,9 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import {
+  waitFor,
+} from '@testing-library/react-native';
+import {
   getAllEntries,
   getEntryById,
   addEntry,
@@ -496,8 +499,11 @@ describe('database/operations', () => {
       expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO tags'))).toBe(true);
 
       pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
-      await Promise.resolve();
-      await Promise.resolve();
+      await waitFor(() => {
+        expect(
+          pendingTagWrites.some(({ sql }) => sql.includes('entry_tags'))
+        ).toBe(true);
+      });
 
       expect(pendingTagWrites).toHaveLength(2);
       expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO entry_tags'))).toBe(true);

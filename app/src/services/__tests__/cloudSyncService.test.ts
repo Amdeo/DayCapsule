@@ -3,6 +3,18 @@ import * as DB from '@/src/database/operations';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore } from '@/src/store/syncStore';
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 const mockRefreshIndicator = jest.fn(async () => undefined);
 
 jest.mock('@/src/utils/logger', () => ({
@@ -598,6 +610,7 @@ describe('cloudSyncService', () => {
   });
 
   it('runs a follow-up sync when syncNow is requested again during an in-flight sync', async () => {
+    const firstSyncStarted = createDeferred<void>();
     let resolveFirstSync: ((value: {
       newCursor: number;
       results: Array<{ changeId: string; status: 'applied'; entryId: string }>;
@@ -630,6 +643,7 @@ describe('cloudSyncService', () => {
 
     mockPost
       .mockImplementationOnce(() => new Promise((resolve) => {
+        firstSyncStarted.resolve();
         resolveFirstSync = resolve;
       }))
       .mockResolvedValueOnce({
@@ -647,8 +661,8 @@ describe('cloudSyncService', () => {
 
     const service = createCloudSyncService();
     const firstRun = service.syncNow();
+    await firstSyncStarted.promise;
     const secondRun = service.syncNow();
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mockPost).toHaveBeenCalledTimes(1);
 

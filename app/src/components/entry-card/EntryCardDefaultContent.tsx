@@ -61,7 +61,7 @@ export function EntryCardDefaultContent({
           {isLocalReadyProcessing ? (
             <Text
               testID={`photo-processing-label-${entry.id}`}
-              style={[styles.photoCaption, { paddingBottom: 0, color: '#B0822F', fontWeight: '600' }]}
+              style={[styles.photoCaption, styles.photoProcessingCaption]}
             >
               准备中
             </Text>
