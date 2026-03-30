@@ -1184,6 +1184,37 @@ describe('EntryCard calendar variant', () => {
     expect(queryByTestId('image-viewer')).toBeNull();
   });
 
+  it('calendar 多图右侧第二格只有缩略图资源时点击不应挂载图片查看器', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard
+        entry={{
+          ...calendarPhotoMulti,
+          id: 'calendar-photo-multi-thumbnail-only-secondary-2',
+          media: [
+            calendarPhotoMulti.media![0],
+            calendarPhotoMulti.media![1],
+            {
+              uri: '',
+              remoteUri: '',
+              thumbnail: 'file:///calendar-multi-thumb-only-3.jpg',
+              remoteThumbnail: '',
+              mimeType: 'image/jpeg',
+              size: 1200,
+              metadata: { aspectRatio: 0.75, createdAt: Date.now(), modifiedAt: Date.now() },
+            },
+            calendarPhotoMulti.media![3],
+          ],
+        }}
+        onDelete={jest.fn()}
+        variant="calendar"
+      />
+    );
+
+    fireEvent.press(getByTestId('calendar-photo-secondary-cell-2-calendar-photo-multi-thumbnail-only-secondary-2'));
+
+    expect(queryByTestId('image-viewer')).toBeNull();
+  });
+
   it('calendar 无照片资源时展示专用空状态', () => {
     render(
       <EntryCard
