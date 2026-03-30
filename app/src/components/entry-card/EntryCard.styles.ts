@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native';
+
 export const entryCardStyles = {
   syncStatusBadge: {
     position: 'absolute',
@@ -368,7 +370,7 @@ export const entryCardStyles = {
     fontSize: 18,
     fontWeight: '600',
     color: '#1C1C1E',
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
     minWidth: 60,
     textAlign: 'right',
   },
@@ -425,7 +427,7 @@ export const entryCardStyles = {
     fontSize: 18,
     fontWeight: '600',
     color: '#1C1C1E',
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
     minWidth: 60,
     textAlign: 'right',
   },
@@ -477,7 +479,7 @@ export const entryCardStyles = {
     fontSize: 14,
     fontWeight: '600',
     color: '#8E8E93',
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
     minWidth: 38,
     textAlign: 'right',
   },
@@ -552,7 +554,7 @@ export const entryCardStyles = {
     fontSize: 11,
     fontWeight: '600',
     color: '#A4865C',
-    fontVariant: ['tabular-nums'],
+    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
     minWidth: 34,
     textAlign: 'right',
   },
