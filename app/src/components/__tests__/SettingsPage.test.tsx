@@ -66,6 +66,8 @@ describe('SettingsPage assembly', () => {
 
     expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
+    expect(within(dataStorageSection).getByTestId('settings-storage-card')).toBeTruthy();
+    expect(within(dataStorageSection).getByText('清除缓存')).toBeTruthy();
   });
 
   it('renders settings sections in fixed order and keeps reset action in danger section', async () => {

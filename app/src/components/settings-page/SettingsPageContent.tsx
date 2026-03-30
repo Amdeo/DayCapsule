@@ -8,13 +8,13 @@ import type {
 import {
   SETTINGS_SWITCH_TRACK_COLORS,
 } from './SettingsPage.styles';
-import { SettingsBackendServerCard } from './SettingsBackendServerCard';
+import { SettingsAccountSyncSection } from './SettingsAccountSyncSection';
 import { SettingButton, SettingItem } from './SettingRow';
 import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
 import { SettingsOverviewCard } from './SettingsOverviewCard';
 import { SettingsSection } from './SettingsSection';
 import { SettingsSegmentedSelector } from './SettingsSegmentedSelector';
-import { SettingsStorageInfo } from './SettingsStorageInfo';
+import { SettingsDataStorageSection } from './SettingsDataStorageSection';
 import { SettingsE2ESyncLab } from './SettingsE2ESyncLab';
 import {
   CALENDAR_DENSITY_OPTIONS,
@@ -124,63 +124,27 @@ export function SettingsPageContent({
         usedSpace={usedSpace}
       />
 
-      <SettingsSection title="账户与同步">
-        <SettingsBackendServerCard
-          currentServerUrl={currentServerUrl}
-          draftServerUrl={backendDraftUrl}
-          recentServerUrls={recentServerUrls}
-          testStatus={backendTestStatus}
-          testErrorMessage={backendTestErrorMessage}
-          isSaving={isSavingBackendServer}
-          canSave={canSaveBackendServer}
-          onChangeDraftUrl={onBackendDraftUrlChange}
-          onTestConnection={onTestBackendServer}
-          onSave={onSaveBackendServer}
-          onSelectRecentServer={onSelectRecentBackendServer}
-        />
-        {isAuthenticated ? (
-          <>
-            <SettingItem icon="person" title={userEmail ?? '已登录'} subtitle="已登录" />
-            <SettingItem
-              icon="cloud"
-              title="云端模式"
-              subtitle={cloudMode === 'switching' ? '切换中...' : cloudMode ? '数据存储在云端' : '数据存储在本地'}
-              rightComponent={(
-                <Switch
-                  testID="settings-switch-cloud-mode"
-                  value={cloudMode === true}
-                  onValueChange={onCloudModeToggle}
-                  disabled={cloudMode === 'switching' || isSwitchingMode}
-                  trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-                  thumbColor="#FFFFFF"
-                />
-              )}
-            />
-            <SettingButton
-              icon="cloud-done"
-              title="同步状态"
-              subtitle="查看最近同步时间和待同步条数"
-              testID="settings-show-sync-status"
-              onPress={onShowSyncStatus}
-            />
-            <SettingButton
-              icon="log-out"
-              title="退出登录"
-              subtitle="退出当前账户"
-              onPress={onLogout}
-              danger
-            />
-          </>
-        ) : (
-          <SettingButton
-            icon="person-add"
-            title="登录 / 注册"
-            subtitle="登录后可使用云端同步功能"
-            testID="settings-open-login"
-            onPress={onShowLogin}
-          />
-        )}
-      </SettingsSection>
+      <SettingsAccountSyncSection
+        isAuthenticated={isAuthenticated}
+        userEmail={userEmail}
+        cloudMode={cloudMode}
+        isSwitchingMode={isSwitchingMode}
+        currentServerUrl={currentServerUrl}
+        backendDraftUrl={backendDraftUrl}
+        recentServerUrls={recentServerUrls}
+        backendTestStatus={backendTestStatus}
+        backendTestErrorMessage={backendTestErrorMessage}
+        isSavingBackendServer={isSavingBackendServer}
+        canSaveBackendServer={canSaveBackendServer}
+        onCloudModeToggle={onCloudModeToggle}
+        onShowSyncStatus={onShowSyncStatus}
+        onLogout={onLogout}
+        onShowLogin={onShowLogin}
+        onBackendDraftUrlChange={onBackendDraftUrlChange}
+        onTestBackendServer={onTestBackendServer}
+        onSaveBackendServer={onSaveBackendServer}
+        onSelectRecentBackendServer={onSelectRecentBackendServer}
+      />
 
       <SettingsSection title="提醒">
         <SettingItem
@@ -222,34 +186,15 @@ export function SettingsPageContent({
         />
       </SettingsSection>
 
-      <SettingsSection title="数据与存储">
-        <SettingItem
-          icon="image"
-          title="高质量照片"
-          subtitle="保存原始质量照片"
-          rightComponent={(
-            <Switch
-              testID="settings-switch-high-quality-photos"
-              value={highQualityPhotos}
-              onValueChange={onHighQualityPhotosChange}
-              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        />
-        <SettingsStorageInfo
-          usedSpace={usedSpace}
-          entryCount={entryCount}
-          photoCount={photoCount}
-          voiceCount={voiceCount}
-        />
-        <SettingButton
-          icon="trash"
-          title="清除缓存"
-          subtitle="清空本地记录、媒体和缓存"
-          onPress={onClearCache}
-        />
-      </SettingsSection>
+      <SettingsDataStorageSection
+        highQualityPhotos={highQualityPhotos}
+        usedSpace={usedSpace}
+        entryCount={entryCount}
+        photoCount={photoCount}
+        voiceCount={voiceCount}
+        onHighQualityPhotosChange={onHighQualityPhotosChange}
+        onClearCache={onClearCache}
+      />
 
       <SettingsSection title="标签管理">
         <SettingButton
