@@ -2,8 +2,16 @@ import { waitFor } from '@testing-library/react-native';
 
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
-const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingUploads = jest.fn(async () => ({ voiceError: null, photoError: null }));
+const mockRunCloudRecoveryFlow = jest.fn(
+  async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+    await deps.refreshCloudSyncIndicator();
+    return {
+      syncError: null,
+      queueRecovery: { voiceError: null, photoError: null },
+      refreshError: null,
+    };
+  }
+);
 const mockGetNetworkStateAsync = jest.fn(async () => ({
   isConnected: true,
   isInternetReachable: true,
@@ -22,15 +30,21 @@ jest.mock('@/src/services/backupService', () => ({
   },
 }));
 
+jest.mock('@/src/services/cloudRecoveryFlowService', () => ({
+  createCloudRecoveryFlowService: (deps: unknown) => ({
+    run: () => mockRunCloudRecoveryFlow(deps as { refreshCloudSyncIndicator: () => Promise<void> }),
+  }),
+}));
+
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: () => ({
-    syncNow: (...args: unknown[]) => mockSyncNow(...args),
+    syncNow: jest.fn(async () => undefined),
   }),
 }));
 
 jest.mock('@/src/services/uploadQueueRecoveryService', () => ({
   createUploadQueueRecoveryService: () => ({
-    flushPendingUploads: (...args: unknown[]) => mockFlushPendingUploads(...args),
+    flushPendingUploads: jest.fn(async () => ({ voiceError: null, photoError: null })),
   }),
 }));
 
@@ -84,8 +98,16 @@ describe('appLifecycleService', () => {
     mockEntries = [];
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
-    mockSyncNow.mockResolvedValue(undefined);
-    mockFlushPendingUploads.mockResolvedValue({ voiceError: null, photoError: null });
+    mockRunCloudRecoveryFlow.mockImplementation(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError: null,
+        };
+      }
+    );
     mockGetNetworkStateAsync.mockResolvedValue({
       isConnected: true,
       isInternetReachable: true,
@@ -100,26 +122,18 @@ describe('appLifecycleService', () => {
 
     await runRecovery('网络恢复时');
 
-    expect(mockSyncNow).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
-    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('网络恢复时后');
-    expect(mockSyncNow.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingUploads.mock.invocationCallOrder[0]
-    );
-    expect(mockFlushPendingUploads.mock.invocationCallOrder[0]).toBeLessThan(
-      refreshCloudSyncIndicator.mock.invocationCallOrder[0]
-    );
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('reuses the in-flight recovery promise so concurrent triggers only run once', async () => {
     mockIsAuthenticated = true;
     mockCloudMode = true;
 
-    let resolveSync: (() => void) | undefined;
-    mockSyncNow.mockImplementation(
+    let resolveFlow: (() => void) | undefined;
+    mockRunCloudRecoveryFlow.mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
-          resolveSync = resolve;
+        new Promise((resolve) => {
+          resolveFlow = resolve;
         })
     );
 
@@ -128,13 +142,16 @@ describe('appLifecycleService', () => {
     const first = runRecovery('回到前台时');
     const second = runRecovery('网络恢复时');
 
-    expect(mockSyncNow).toHaveBeenCalledTimes(1);
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
 
-    resolveSync?.();
+    resolveFlow?.({
+      syncError: null,
+      queueRecovery: { voiceError: null, photoError: null },
+      refreshError: null,
+    });
     await Promise.all([first, second]);
 
-    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
-    expect(refreshCloudSyncIndicator).toHaveBeenCalledTimes(1);
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('creates an auto backup when entering background and backup is due', async () => {
@@ -212,7 +229,16 @@ describe('appLifecycleService', () => {
   it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
     const voiceError = new Error('voice queue failed');
     const photoError = new Error('photo queue failed');
-    mockFlushPendingUploads.mockResolvedValueOnce({ voiceError, photoError });
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError, photoError },
+          refreshError: null,
+        };
+      }
+    );
 
     const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
 

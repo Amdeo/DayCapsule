@@ -3,6 +3,7 @@ import * as Network from 'expo-network';
 import { BackupService } from '@/src/services/backupService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
+import { createCloudRecoveryFlowService } from '@/src/services/cloudRecoveryFlowService';
 import { useEntryStore } from '@/src/store/entryStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
@@ -39,20 +40,36 @@ export function createCloudRecoveryRunner(
     }
 
     pendingRecovery = (async () => {
-      if (useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true) {
-        await createCloudSyncService().syncNow().catch((syncError) =>
-          logger.warn(`⚠️ ${label}entry 云同步失败:`, syncError)
-        );
+      const shouldSyncCloud =
+        useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true;
+
+      const recoveryResult = await createCloudRecoveryFlowService({
+        syncNow: async () => {
+          if (!shouldSyncCloud) {
+            return;
+          }
+
+          await createCloudSyncService().syncNow();
+        },
+        flushPendingUploads: () => createUploadQueueRecoveryService().flushPendingUploads(),
+        refreshCloudSyncIndicator: () => deps.refreshCloudSyncIndicator(`${label}后`),
+      }).run();
+
+      if (recoveryResult.syncError) {
+        logger.warn(`⚠️ ${label}entry 云同步失败:`, recoveryResult.syncError);
       }
 
-      const queueRecoveryResult = await createUploadQueueRecoveryService().flushPendingUploads();
+      const queueRecoveryResult = recoveryResult.queueRecovery;
       if (queueRecoveryResult.voiceError) {
         logger.warn(`⚠️ ${label}补传待上传语音失败:`, queueRecoveryResult.voiceError);
       }
       if (queueRecoveryResult.photoError) {
         logger.warn(`⚠️ ${label}补传待上传照片失败:`, queueRecoveryResult.photoError);
       }
-      await deps.refreshCloudSyncIndicator(`${label}后`);
+
+      if (recoveryResult.refreshError) {
+        throw recoveryResult.refreshError;
+      }
     })().finally(() => {
       pendingRecovery = null;
     });
