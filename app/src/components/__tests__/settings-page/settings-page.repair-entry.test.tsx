@@ -80,6 +80,18 @@ describe('SettingsPage repair entry', () => {
     expect(mocks.clearSyncFixtures).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the repair prompt entry available after clearing injected sync fixtures', async () => {
+    const { screen, mocks } = await renderSettingsPage({ e2eSyncLab: true });
+
+    fireEvent.press(await screen.findByTestId('e2e-sync-fixture-clear'));
+
+    expect(mocks.clearSyncFixtures).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId('e2e-sync-show-repair-prompt'));
+
+    expect(mocks.showSyncRepairPrompt).toHaveBeenCalledTimes(1);
+  });
+
   it('clears the E2E lab env flag during helper reset', async () => {
     await renderSettingsPage({ e2eSyncLab: true });
 
