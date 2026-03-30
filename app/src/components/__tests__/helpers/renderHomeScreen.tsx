@@ -62,47 +62,54 @@ type RenderHomeScreenState = {
   derivesAllTagsFromEntries: boolean;
 };
 
-const mockEntryStoreListeners = new Set<() => void>();
+type MockEntryStoreContainer = {
+  state: MockEntryStoreState;
+  listeners: Set<() => void>;
+};
+
 const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockShowCloudSyncStatusAlert = jest.fn();
 
 let mockCloudSyncUiState: CloudUiState = 'hidden';
-let mockEntryStoreState: MockEntryStoreState;
+let defaultMockEntryStore: MockEntryStoreContainer;
 
-const emitEntryStore = () => {
-  mockEntryStoreListeners.forEach((listener) => listener());
+const MockEntryStoreContext = React.createContext<MockEntryStoreContainer | null>(null);
+
+const emitEntryStore = (store: MockEntryStoreContainer) => {
+  store.listeners.forEach((listener) => listener());
 };
 
 const setEntryStoreState = (
+  store: MockEntryStoreContainer,
   update:
     | Partial<MockEntryStoreState>
     | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
 ) => {
-  const patch = typeof update === 'function' ? update(mockEntryStoreState) : update;
-  mockEntryStoreState = {
-    ...mockEntryStoreState,
+  const patch = typeof update === 'function' ? update(store.state) : update;
+  store.state = {
+    ...store.state,
     ...patch,
   };
-  emitEntryStore();
+  emitEntryStore(store);
 };
 
 const deriveAllTags = (entries: Entry[]) => Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
 
-const createSetSourceEntries = (renderState: RenderHomeScreenState) => (entries: Entry[]) => {
+const createSetSourceEntries = (store: MockEntryStoreContainer, renderState: RenderHomeScreenState) => (entries: Entry[]) => {
   act(() => {
     renderState.sourceEntries = entries;
     if (renderState.derivesAllTagsFromEntries) {
       renderState.allTags = deriveAllTags(entries);
     }
-    setEntryStoreState({ entries });
+    setEntryStoreState(store, { entries });
   });
 };
 
-const setPaginationState = (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
+const createSetPaginationState = (store: MockEntryStoreContainer) => (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
   act(() => {
-    setEntryStoreState(pagination);
+    setEntryStoreState(store, pagination);
   });
 };
 
@@ -131,7 +138,12 @@ const createEntryStoreState = (
   entries: Entry[],
   initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
   loadEntriesImplementation: (() => Promise<void>) | undefined,
-  renderState: RenderHomeScreenState
+  renderState: RenderHomeScreenState,
+  setState: (
+    update:
+      | Partial<MockEntryStoreState>
+      | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
+  ) => void
 ): MockEntryStoreState => ({
   entries,
   searchQuery: initialFilters.searchQuery ?? '',
@@ -155,27 +167,27 @@ const createEntryStoreState = (
   updateRecordingDuration: jest.fn(),
   completeRecording: jest.fn().mockResolvedValue(undefined),
   setSearchQuery: jest.fn((query: string) => {
-    setEntryStoreState({ searchQuery: query });
+    setState({ searchQuery: query });
   }),
   setFilterType: jest.fn((type: 'all' | 'text' | 'photo' | 'voice') => {
-    setEntryStoreState({ filterType: type });
+    setState({ filterType: type });
   }),
   setFilterDateRange: jest.fn((filterDateRange: 'all' | 'today' | 'week' | 'month') => {
-    setEntryStoreState({ filterDateRange });
+    setState({ filterDateRange });
   }),
   toggleTag: jest.fn((tag: string) => {
-    setEntryStoreState((current) => ({
+    setState((current) => ({
       selectedTags: current.selectedTags.includes(tag)
         ? current.selectedTags.filter((item) => item !== tag)
         : [...current.selectedTags, tag],
     }));
   }),
   clearTags: jest.fn(() => {
-    setEntryStoreState({ selectedTags: [] });
+    setState({ selectedTags: [] });
   }),
   getAllTags: jest.fn(async () => renderState.allTags),
   applySearchFilters: jest.fn(async (filters) => {
-    setEntryStoreState({
+    setState({
       searchQuery: filters.query ?? '',
       filterType: filters.type ?? 'all',
       filterDateRange: filters.dateRange ?? 'all',
@@ -187,6 +199,24 @@ const createEntryStoreState = (
   isLoadingMore: false,
   hasMore: false,
 });
+
+const createMockEntryStore = (
+  entries: Entry[],
+  initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
+  loadEntriesImplementation: (() => Promise<void>) | undefined,
+  renderState: RenderHomeScreenState
+): MockEntryStoreContainer => {
+  const store = {
+    listeners: new Set<() => void>(),
+    state: null as unknown as MockEntryStoreState,
+  } satisfies MockEntryStoreContainer;
+
+  store.state = createEntryStoreState(entries, initialFilters, loadEntriesImplementation, renderState, (update) => {
+    setEntryStoreState(store, update);
+  });
+
+  return store;
+};
 
 const mockTimelineContentModule = {
   TimelineContent: ({
@@ -301,20 +331,25 @@ const mockTextEditorModule = {
 
 const mockUseEntryStore = Object.assign(
   <T,>(selector?: (state: MockEntryStoreState) => T) => {
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
     const snapshot = React.useSyncExternalStore(
       (listener) => {
-        mockEntryStoreListeners.add(listener);
-        return () => mockEntryStoreListeners.delete(listener);
+        store.listeners.add(listener);
+        return () => store.listeners.delete(listener);
       },
-      () => mockEntryStoreState,
-      () => mockEntryStoreState
+      () => store.state,
+      () => store.state
     );
 
     return selector ? selector(snapshot) : snapshot;
   },
   {
-    getState: () => mockEntryStoreState,
-    setState: setEntryStoreState,
+    getState: () => defaultMockEntryStore.state,
+    setState: (
+      update:
+        | Partial<MockEntryStoreState>
+        | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
+    ) => setEntryStoreState(defaultMockEntryStore, update),
   }
 );
 
@@ -449,12 +484,13 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   };
 
   mockCloudSyncUiState = options.cloudSyncUiState ?? 'hidden';
-  mockEntryStoreState = createEntryStoreState(
+  const entryStore = createMockEntryStore(
     entries,
     options.initialFilters,
     options.loadEntriesImplementation,
     renderState
   );
+  defaultMockEntryStore = entryStore;
 
   Object.assign(mockSettingsState, {
     loadSettings: jest.fn().mockResolvedValue(undefined),
@@ -473,19 +509,23 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   mockShowCloudSyncStatusAlert.mockClear();
 
   return {
-    screen: render(<HomeScreen />),
+    screen: render(
+      <MockEntryStoreContext.Provider value={entryStore}>
+        <HomeScreen />
+      </MockEntryStoreContext.Provider>
+    ),
     controls: {
-      setEntries: createSetSourceEntries(renderState),
-      setPagination: setPaginationState,
+      setEntries: createSetSourceEntries(entryStore, renderState),
+      setPagination: createSetPaginationState(entryStore),
     },
     spies: {
-      loadEntries: mockEntryStoreState.loadEntries,
-      loadMore: mockEntryStoreState.loadMore,
+      loadEntries: entryStore.state.loadEntries,
+      loadMore: entryStore.state.loadMore,
       loadSettings: mockSettingsState.loadSettings,
       loadCommonTags: mockCommonTagsState.loadCommonTags,
       refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
-      applySearchFilters: mockEntryStoreState.applySearchFilters,
-      getAllTags: mockEntryStoreState.getAllTags,
+      applySearchFilters: entryStore.state.applySearchFilters,
+      getAllTags: entryStore.state.getAllTags,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
     },
   };

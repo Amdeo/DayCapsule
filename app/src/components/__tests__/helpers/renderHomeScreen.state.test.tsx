@@ -48,4 +48,35 @@ describe('renderHomeScreen helper state isolation', () => {
     firstRender.screen.unmount();
     secondRender.screen.unmount();
   });
+
+  it('keeps one render\'s store updates from changing another render\'s visible entries', async () => {
+    const firstRender = renderHomeScreen({
+      entries: [workEntry],
+    });
+
+    const secondRender = renderHomeScreen({
+      entries: [travelEntry],
+    });
+
+    expect(firstRender.screen.getByTestId('timeline-entry-entry-work-1')).toBeTruthy();
+    expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
+    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-entry-entry-work-1')).toBeNull();
+
+    await act(async () => {
+      await firstRender.spies.applySearchFilters({
+        query: 'not-found',
+        type: 'all',
+        dateRange: 'all',
+        tags: [],
+      });
+    });
+
+    expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-empty-state')).toBeNull();
+
+    firstRender.screen.unmount();
+    secondRender.screen.unmount();
+  });
 });
