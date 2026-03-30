@@ -1,4 +1,5 @@
 import React from 'react';
+import { AsyncLocalStorage } from 'async_hooks';
 import { act, render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
@@ -56,44 +57,94 @@ export interface RenderHomeScreenOptions {
   };
 }
 
-const mockEntryStoreListeners = new Set<() => void>();
+type RenderHomeScreenState = {
+  sourceEntries: Entry[];
+  allTags: string[];
+  derivesAllTagsFromEntries: boolean;
+};
+
+type MockEntryStoreContainer = {
+  state: MockEntryStoreState;
+  listeners: Set<() => void>;
+};
+
 const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockVoiceStartRecording = jest.fn().mockResolvedValue(undefined);
+const mockVoicePreloadAudio = jest.fn().mockResolvedValue(undefined);
+const mockLoggerError = jest.fn();
 
-let mockSourceEntries: Entry[] = [];
-let mockAllTags: string[] = [];
-let mockCloudSyncUiState: CloudUiState = 'hidden';
-let mockEntryStoreState: MockEntryStoreState;
+let defaultMockEntryStore: MockEntryStoreContainer;
+const activeEntryStore = new AsyncLocalStorage<MockEntryStoreContainer>();
+const fabSelectHandlers = new WeakMap<MockEntryStoreContainer, (type: 'text' | 'photo' | 'voice') => void>();
+const cloudSyncUiStates = new WeakMap<MockEntryStoreContainer, CloudUiState>();
 
-const emitEntryStore = () => {
-  mockEntryStoreListeners.forEach((listener) => listener());
+const MockEntryStoreContext = React.createContext<MockEntryStoreContainer | null>(null);
+
+const resolveActiveEntryStore = (contextStore: MockEntryStoreContainer | null = null) => (
+  contextStore ?? activeEntryStore.getStore() ?? defaultMockEntryStore
+);
+
+const emitEntryStore = (store: MockEntryStoreContainer) => {
+  store.listeners.forEach((listener) => listener());
+};
+
+const runWithActiveEntryStore = <Args extends unknown[], Result>(
+  store: MockEntryStoreContainer,
+  callback: (...args: Args) => Result
+) => (...args: Args) => {
+  const previousStore = defaultMockEntryStore;
+  defaultMockEntryStore = store;
+
+  return activeEntryStore.run(store, () => {
+    const result = callback(...args);
+    if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+      return (result as PromiseLike<unknown>).finally(() => {
+        if (defaultMockEntryStore === store) {
+          defaultMockEntryStore = previousStore;
+        }
+      }) as Result;
+    }
+
+    if (defaultMockEntryStore === store) {
+      defaultMockEntryStore = previousStore;
+    }
+
+    return result;
+  });
 };
 
 const setEntryStoreState = (
+  store: MockEntryStoreContainer,
   update:
     | Partial<MockEntryStoreState>
     | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
 ) => {
-  const patch = typeof update === 'function' ? update(mockEntryStoreState) : update;
-  mockEntryStoreState = {
-    ...mockEntryStoreState,
+  const patch = typeof update === 'function' ? update(store.state) : update;
+  store.state = {
+    ...store.state,
     ...patch,
   };
-  emitEntryStore();
+  emitEntryStore(store);
 };
 
-const setSourceEntries = (entries: Entry[]) => {
+const deriveAllTags = (entries: Entry[]) => Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
+
+const createSetSourceEntries = (store: MockEntryStoreContainer, renderState: RenderHomeScreenState) => (entries: Entry[]) => {
   act(() => {
-    mockSourceEntries = entries;
-    setEntryStoreState({ entries });
+    renderState.sourceEntries = entries;
+    if (renderState.derivesAllTagsFromEntries) {
+      renderState.allTags = deriveAllTags(entries);
+    }
+    setEntryStoreState(store, { entries });
   });
 };
 
-const setPaginationState = (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
+const createSetPaginationState = (store: MockEntryStoreContainer) => (pagination: Pick<MockEntryStoreState, 'hasMore' | 'isLoadingMore'>) => {
   act(() => {
-    setEntryStoreState(pagination);
+    setEntryStoreState(store, pagination);
   });
 };
 
@@ -121,7 +172,13 @@ const applyFilters = (
 const createEntryStoreState = (
   entries: Entry[],
   initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
-  loadEntriesImplementation?: () => Promise<void>
+  loadEntriesImplementation: (() => Promise<void>) | undefined,
+  renderState: RenderHomeScreenState,
+  setState: (
+    update:
+      | Partial<MockEntryStoreState>
+      | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
+  ) => void
 ): MockEntryStoreState => ({
   entries,
   searchQuery: initialFilters.searchQuery ?? '',
@@ -129,7 +186,16 @@ const createEntryStoreState = (
   filterDateRange: initialFilters.filterDateRange ?? 'all',
   selectedTags: initialFilters.selectedTags ?? [],
   loadEntries: jest.fn(loadEntriesImplementation ?? (async () => undefined)),
-  addEntry: jest.fn().mockResolvedValue(undefined),
+  addEntry: jest.fn(async (entry: Omit<Entry, 'id' | 'timestamp'>) => {
+    const createdEntry = {
+      ...entry,
+      id: `mock-entry-${renderState.sourceEntries.length + 1}`,
+      timestamp: Date.now(),
+    } as Entry;
+
+    renderState.sourceEntries = [createdEntry, ...renderState.sourceEntries];
+    setState({ entries: renderState.sourceEntries });
+  }),
   addLocalEntry: jest.fn().mockResolvedValue({
     id: 'local-entry',
     type: 'text',
@@ -145,38 +211,56 @@ const createEntryStoreState = (
   updateRecordingDuration: jest.fn(),
   completeRecording: jest.fn().mockResolvedValue(undefined),
   setSearchQuery: jest.fn((query: string) => {
-    setEntryStoreState({ searchQuery: query });
+    setState({ searchQuery: query });
   }),
   setFilterType: jest.fn((type: 'all' | 'text' | 'photo' | 'voice') => {
-    setEntryStoreState({ filterType: type });
+    setState({ filterType: type });
   }),
   setFilterDateRange: jest.fn((filterDateRange: 'all' | 'today' | 'week' | 'month') => {
-    setEntryStoreState({ filterDateRange });
+    setState({ filterDateRange });
   }),
   toggleTag: jest.fn((tag: string) => {
-    setEntryStoreState((current) => ({
+    setState((current) => ({
       selectedTags: current.selectedTags.includes(tag)
         ? current.selectedTags.filter((item) => item !== tag)
         : [...current.selectedTags, tag],
     }));
   }),
   clearTags: jest.fn(() => {
-    setEntryStoreState({ selectedTags: [] });
+    setState({ selectedTags: [] });
   }),
-  getAllTags: jest.fn(async () => mockAllTags),
+  getAllTags: jest.fn(async () => renderState.allTags),
   applySearchFilters: jest.fn(async (filters) => {
-    setEntryStoreState({
+    setState({
       searchQuery: filters.query ?? '',
       filterType: filters.type ?? 'all',
       filterDateRange: filters.dateRange ?? 'all',
       selectedTags: filters.tags ?? [],
-      entries: applyFilters(mockSourceEntries, filters),
+      entries: applyFilters(renderState.sourceEntries, filters),
     });
   }),
   loadMore: jest.fn(),
   isLoadingMore: false,
   hasMore: false,
 });
+
+const createMockEntryStore = (
+  entries: Entry[],
+  initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
+  loadEntriesImplementation: (() => Promise<void>) | undefined,
+  renderState: RenderHomeScreenState
+): MockEntryStoreContainer => {
+  const store = {
+    listeners: new Set<() => void>(),
+    state: null as unknown as MockEntryStoreState,
+  } satisfies MockEntryStoreContainer;
+
+  store.state = createEntryStoreState(entries, initialFilters, loadEntriesImplementation, renderState, (update) => {
+    setEntryStoreState(store, update);
+  });
+
+  return store;
+};
 
 const mockTimelineContentModule = {
   TimelineContent: ({
@@ -195,6 +279,7 @@ const mockTimelineContentModule = {
     isLoadingMore: boolean;
   }) => {
     const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
 
     if (!hasEntries) {
       return (
@@ -210,7 +295,7 @@ const mockTimelineContentModule = {
           <Pressable
             key={entry.id}
             testID={`timeline-entry-card-${entry.id}`}
-            onPress={() => onViewEntry(entry)}
+            onPress={runWithActiveEntryStore(store, () => onViewEntry(entry))}
           >
             <View testID={`timeline-entry-${entry.id}`}>
               <Text>{entry.content}</Text>
@@ -218,7 +303,7 @@ const mockTimelineContentModule = {
           </Pressable>
         ))}
         {hasMore && !isLoadingMore ? (
-          <Pressable testID="timeline-load-more-trigger" onPress={loadMore}>
+          <Pressable testID="timeline-load-more-trigger" onPress={runWithActiveEntryStore(store, loadMore)}>
             <Text>加载更多</Text>
           </Pressable>
         ) : null}
@@ -243,6 +328,7 @@ const mockTimelineDialogsModule = {
     onCloseEditing: () => void;
   }) => {
     const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
 
     return (
       <>
@@ -251,11 +337,11 @@ const mockTimelineDialogsModule = {
             <Text>{viewingEntry.content}</Text>
             <Pressable
               testID="timeline-text-detail-edit"
-              onPress={() => onDetailEdit(viewingEntry)}
+              onPress={runWithActiveEntryStore(store, () => onDetailEdit(viewingEntry))}
             >
               <Text>编辑</Text>
             </Pressable>
-            <Pressable testID="timeline-text-detail-close" onPress={onCloseViewing}>
+            <Pressable testID="timeline-text-detail-close" onPress={runWithActiveEntryStore(store, onCloseViewing)}>
               <Text>关闭</Text>
             </Pressable>
           </View>
@@ -263,7 +349,7 @@ const mockTimelineDialogsModule = {
         {editingEntry ? (
           <View testID="timeline-entry-editor">
             <Text>{editingEntry.content}</Text>
-            <Pressable testID="timeline-entry-editor-close" onPress={onCloseEditing}>
+            <Pressable testID="timeline-entry-editor-close" onPress={runWithActiveEntryStore(store, onCloseEditing)}>
               <Text>关闭编辑</Text>
             </Pressable>
           </View>
@@ -278,7 +364,24 @@ const mockTimelineScrollTopButtonModule = {
 };
 
 const mockFabMenuModule = {
-  FABMenu: () => null,
+  FABMenu: ({
+    onSelect,
+  }: {
+    onSelect: (type: 'text' | 'photo' | 'voice') => void;
+  }) => {
+    const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
+    fabSelectHandlers.set(store, onSelect);
+
+    return (
+      <Pressable
+        testID="home-quick-add-voice"
+        onPress={runWithActiveEntryStore(store, () => onSelect('voice'))}
+      >
+        <Text>录音</Text>
+      </Pressable>
+    );
+  },
 };
 
 const mockSidebarModule = {
@@ -291,20 +394,25 @@ const mockTextEditorModule = {
 
 const mockUseEntryStore = Object.assign(
   <T,>(selector?: (state: MockEntryStoreState) => T) => {
+    const store = resolveActiveEntryStore(React.useContext(MockEntryStoreContext));
     const snapshot = React.useSyncExternalStore(
       (listener) => {
-        mockEntryStoreListeners.add(listener);
-        return () => mockEntryStoreListeners.delete(listener);
+        store.listeners.add(listener);
+        return () => store.listeners.delete(listener);
       },
-      () => mockEntryStoreState,
-      () => mockEntryStoreState
+      () => store.state,
+      () => store.state
     );
 
     return selector ? selector(snapshot) : snapshot;
   },
   {
-    getState: () => mockEntryStoreState,
-    setState: setEntryStoreState,
+    getState: () => resolveActiveEntryStore().state,
+    setState: (
+      update:
+        | Partial<MockEntryStoreState>
+        | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
+    ) => setEntryStoreState(resolveActiveEntryStore(), update),
   }
 );
 
@@ -335,8 +443,12 @@ const mockUseCommonTagsStore = Object.assign(
 );
 
 const mockUseCloudSyncIndicatorStore = Object.assign(
-  <T,>(selector?: (state: { uiState: CloudUiState }) => T) =>
-    selector ? selector({ uiState: mockCloudSyncUiState }) : ({ uiState: mockCloudSyncUiState } as T),
+  <T,>(selector?: (state: { uiState: CloudUiState }) => T) => {
+    const store = resolveActiveEntryStore(React.useContext(MockEntryStoreContext));
+    const uiState = cloudSyncUiStates.get(store) ?? 'hidden';
+
+    return selector ? selector({ uiState }) : ({ uiState } as T);
+  },
   {
     getState: () => ({
       refresh: mockRefreshCloudSyncIndicator,
@@ -373,7 +485,7 @@ jest.mock('@/src/services/voiceService', () => ({
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
     cancelRecording: jest.fn().mockResolvedValue(undefined),
     getRecordingDuration: jest.fn().mockResolvedValue(0),
-    startRecording: jest.fn().mockResolvedValue(undefined),
+    startRecording: mockVoiceStartRecording,
     stopRecording: jest.fn().mockResolvedValue({
       uri: 'file:///recording.m4a',
       duration: 0,
@@ -382,7 +494,7 @@ jest.mock('@/src/services/voiceService', () => ({
     }),
     saveVoiceToStorage: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
     saveVoiceToCache: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
-    preloadAudio: jest.fn().mockResolvedValue(undefined),
+    preloadAudio: mockVoicePreloadAudio,
   },
 }));
 
@@ -409,7 +521,7 @@ jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
 }));
 
 jest.mock('@/src/utils/logger', () => ({
-  logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+  logger: { log: jest.fn(), warn: jest.fn(), error: mockLoggerError, debug: jest.fn() },
 }));
 
 jest.mock('@/src/utils/fileSystem', () => ({
@@ -432,15 +544,20 @@ const HomeScreen = require('../../../../app/(tabs)/index').default;
 
 export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   const entries = options.entries ?? [];
+  const renderState: RenderHomeScreenState = {
+    sourceEntries: entries,
+    allTags: options.allTags ?? deriveAllTags(entries),
+    derivesAllTagsFromEntries: options.allTags == null,
+  };
 
-  mockSourceEntries = entries;
-  mockAllTags = options.allTags ?? Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
-  mockCloudSyncUiState = options.cloudSyncUiState ?? 'hidden';
-  mockEntryStoreState = createEntryStoreState(
+  const entryStore = createMockEntryStore(
     entries,
     options.initialFilters,
-    options.loadEntriesImplementation
+    options.loadEntriesImplementation,
+    renderState
   );
+  cloudSyncUiStates.set(entryStore, options.cloudSyncUiState ?? 'hidden');
+  defaultMockEntryStore = entryStore;
 
   Object.assign(mockSettingsState, {
     loadSettings: jest.fn().mockResolvedValue(undefined),
@@ -459,19 +576,28 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   mockShowCloudSyncStatusAlert.mockClear();
 
   return {
-    screen: render(<HomeScreen />),
+    screen: activeEntryStore.run(entryStore, () => render(
+      <MockEntryStoreContext.Provider value={entryStore}>
+        <HomeScreen />
+      </MockEntryStoreContext.Provider>
+    )),
     controls: {
-      setEntries: setSourceEntries,
-      setPagination: setPaginationState,
+      setEntries: createSetSourceEntries(entryStore, renderState),
+      setPagination: createSetPaginationState(entryStore),
     },
     spies: {
-      loadEntries: mockEntryStoreState.loadEntries,
-      loadMore: mockEntryStoreState.loadMore,
+      loadEntries: entryStore.state.loadEntries,
+      addEntry: entryStore.state.addEntry,
+      loadMore: entryStore.state.loadMore,
       loadSettings: mockSettingsState.loadSettings,
       loadCommonTags: mockCommonTagsState.loadCommonTags,
       refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
-      applySearchFilters: mockEntryStoreState.applySearchFilters,
-      getAllTags: mockEntryStoreState.getAllTags,
+      applySearchFilters: entryStore.state.applySearchFilters,
+      getAllTags: entryStore.state.getAllTags,
+      startRecording: mockVoiceStartRecording,
+      preloadAudio: mockVoicePreloadAudio,
+      triggerQuickAddVoice: runWithActiveEntryStore(entryStore, () => fabSelectHandlers.get(entryStore)?.('voice')),
+      loggerError: mockLoggerError,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
     },
   };
