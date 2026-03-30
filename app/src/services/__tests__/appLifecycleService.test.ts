@@ -2,8 +2,12 @@ import { waitFor } from '@testing-library/react-native';
 
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
+const mockCloudSyncNow = jest.fn(async () => undefined);
 const mockRunCloudRecoveryFlow = jest.fn(
-  async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+  async (deps: {
+    syncNow: () => Promise<void>;
+    refreshCloudSyncIndicator: () => Promise<void>;
+  }) => {
     await deps.refreshCloudSyncIndicator();
     return {
       syncError: null,
@@ -32,13 +36,19 @@ jest.mock('@/src/services/backupService', () => ({
 
 jest.mock('@/src/services/cloudRecoveryFlowService', () => ({
   createCloudRecoveryFlowService: (deps: unknown) => ({
-    run: () => mockRunCloudRecoveryFlow(deps as { refreshCloudSyncIndicator: () => Promise<void> }),
+    run: () =>
+      mockRunCloudRecoveryFlow(
+        deps as {
+          syncNow: () => Promise<void>;
+          refreshCloudSyncIndicator: () => Promise<void>;
+        }
+      ),
   }),
 }));
 
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: () => ({
-    syncNow: jest.fn(async () => undefined),
+    syncNow: (...args: unknown[]) => mockCloudSyncNow(...args),
   }),
 }));
 
@@ -98,8 +108,12 @@ describe('appLifecycleService', () => {
     mockEntries = [];
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
+    mockCloudSyncNow.mockResolvedValue(undefined);
     mockRunCloudRecoveryFlow.mockImplementation(
-      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+      async (deps: {
+        syncNow: () => Promise<void>;
+        refreshCloudSyncIndicator: () => Promise<void>;
+      }) => {
         await deps.refreshCloudSyncIndicator();
         return {
           syncError: null,
@@ -123,6 +137,52 @@ describe('appLifecycleService', () => {
     await runRecovery('网络恢复时');
 
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes a gated syncNow closure into the shared flow so cloud sync is skipped without auth and cloud mode', async () => {
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: {
+        syncNow: () => Promise<void>;
+        refreshCloudSyncIndicator: () => Promise<void>;
+      }) => {
+        await deps.syncNow();
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError: null,
+        };
+      }
+    );
+
+    const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
+
+    await runRecovery('回到前台时');
+
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
+    expect(mockCloudSyncNow).not.toHaveBeenCalled();
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('回到前台时后');
+  });
+
+  it('rethrows refreshError from the shared flow result', async () => {
+    const refreshError = new Error('refresh failed');
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: {
+        syncNow: () => Promise<void>;
+        refreshCloudSyncIndicator: () => Promise<void>;
+      }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError,
+        };
+      }
+    );
+
+    const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
+
+    await expect(runRecovery('回到前台时')).rejects.toBe(refreshError);
   });
 
   it('reuses the in-flight recovery promise so concurrent triggers only run once', async () => {
@@ -230,7 +290,10 @@ describe('appLifecycleService', () => {
     const voiceError = new Error('voice queue failed');
     const photoError = new Error('photo queue failed');
     mockRunCloudRecoveryFlow.mockImplementationOnce(
-      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+      async (deps: {
+        syncNow: () => Promise<void>;
+        refreshCloudSyncIndicator: () => Promise<void>;
+      }) => {
         await deps.refreshCloudSyncIndicator();
         return {
           syncError: null,
