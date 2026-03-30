@@ -727,6 +727,87 @@ describe('database/operations', () => {
       const rows = await getAllEntries();
       expect(rows[0].localReadyState).toBe('processing');
     });
+
+    it('media_json 不可用时应把首个媒体写入 legacy 列并保留 metadata 序列化', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_thumbnail' },
+        { name: 'media_metadata' },
+      ]);
+
+      await addEntry({
+        type: 'photo',
+        content: '',
+        media: [
+          {
+            uri: 'file:///cache/photo-1.jpg',
+            thumbnail: 'file:///cache/thumb-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+            metadata: {
+              createdAt: 1700000000000,
+              modifiedAt: 1700000001000,
+              width: 1200,
+            },
+          },
+          {
+            uri: 'file:///cache/photo-2.jpg',
+            thumbnail: 'file:///cache/thumb-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 200,
+          },
+        ],
+      });
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(params[5]).toBe('file:///cache/photo-1.jpg');
+      expect(params[6]).toBe('image/jpeg');
+      expect(params[7]).toBeNull();
+      expect(params[8]).toBe('file:///cache/thumb-1.jpg');
+      expect(params[9]).toBe(JSON.stringify({
+        createdAt: 1700000000000,
+        modifiedAt: 1700000001000,
+        width: 1200,
+      }));
+    });
+
+    it('media_json 与扩展 legacy 列都不可用时应把首个媒体写入旧版 legacy 列', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+      ]);
+
+      await addEntry({
+        type: 'voice',
+        content: '',
+        media: [
+          {
+            uri: 'file:///cache/voice-1.m4a',
+            mimeType: 'audio/m4a',
+            size: 100,
+            duration: 12000,
+          },
+          {
+            uri: 'file:///cache/voice-2.m4a',
+            mimeType: 'audio/m4a',
+            size: 200,
+            duration: 24000,
+          },
+        ],
+      });
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(params[5]).toBe('file:///cache/voice-1.m4a');
+      expect(params[6]).toBe('audio/m4a');
+      expect(params[7]).toBe(12000);
+    });
   });
 
   // ─── updateEntry ───────────────────────────────────────────────────────────
@@ -764,6 +845,87 @@ describe('database/operations', () => {
       expect(params).toContain(1700000000000);
       expect(params).toContain('user-1');
       expect(params).toContain(1);
+    });
+
+    it('media_json 不可用时应把首个媒体更新到 legacy 列并保留 metadata 序列化', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_thumbnail' },
+        { name: 'media_metadata' },
+      ]);
+
+      await updateEntry('entry-1', {
+        media: [
+          {
+            uri: 'file:///cache/photo-1.jpg',
+            thumbnail: 'file:///cache/thumb-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+            metadata: {
+              createdAt: 1700000000000,
+              modifiedAt: 1700000001000,
+              width: 1200,
+            },
+          },
+          {
+            uri: 'file:///cache/photo-2.jpg',
+            thumbnail: 'file:///cache/thumb-2.jpg',
+            mimeType: 'image/jpeg',
+            size: 200,
+          },
+        ],
+      });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('media_uri = ?, media_type = ?, media_duration = ?, media_thumbnail = ?, media_metadata = ?');
+      expect(params[0]).toBe('file:///cache/photo-1.jpg');
+      expect(params[1]).toBe('image/jpeg');
+      expect(params[2]).toBeNull();
+      expect(params[3]).toBe('file:///cache/thumb-1.jpg');
+      expect(params[4]).toBe(JSON.stringify({
+        createdAt: 1700000000000,
+        modifiedAt: 1700000001000,
+        width: 1200,
+      }));
+    });
+
+    it('media_json 与扩展 legacy 列都不可用时应把首个媒体更新到旧版 legacy 列', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+      ]);
+
+      await updateEntry('entry-1', {
+        media: [
+          {
+            uri: 'file:///cache/voice-1.m4a',
+            mimeType: 'audio/m4a',
+            size: 100,
+            duration: 12000,
+          },
+          {
+            uri: 'file:///cache/voice-2.m4a',
+            mimeType: 'audio/m4a',
+            size: 200,
+            duration: 24000,
+          },
+        ],
+      });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('media_uri = ?, media_type = ?, media_duration = ?');
+      expect(sql).not.toContain('media_thumbnail = ?');
+      expect(sql).not.toContain('media_metadata = ?');
+      expect(params[0]).toBe('file:///cache/voice-1.m4a');
+      expect(params[1]).toBe('audio/m4a');
+      expect(params[2]).toBe(12000);
     });
   });
 
