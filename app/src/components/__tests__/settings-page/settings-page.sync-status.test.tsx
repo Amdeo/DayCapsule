@@ -38,6 +38,19 @@ describe('SettingsPage sync status', () => {
     expect(await screen.findByTestId('settings-show-sync-status')).toBeTruthy();
   });
 
+  it('opens sync status even before cloud mode is enabled', async () => {
+    const { screen, mocks } = await renderSettingsPage({
+      authenticated: true,
+      cloudMode: false,
+    });
+
+    fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
+
+    await waitFor(() => {
+      expect(mocks.showCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("keeps the sync status entry visible while cloud mode is switching", async () => {
     const { screen } = await renderSettingsPage({
       authenticated: true,
