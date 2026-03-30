@@ -16,14 +16,16 @@ export function EntryCardDefaultMeta({
   isExpanded,
   syncStatusMeta,
 }: EntryCardDefaultMetaProps) {
+  const syncStatusIconName = syncStatusMeta.iconName;
+
   return (
     <>
-      {syncStatusMeta.iconName ? (
+      {syncStatusIconName ? (
         <View style={styles.syncStatusBadge}>
           {entry.syncStatus === 'uploading' ? (
             <ActivityIndicator size="small" color={syncStatusMeta.iconColor} />
           ) : (
-            <Ionicons name={syncStatusMeta.iconName as any} size={16} color={syncStatusMeta.iconColor} />
+            <Ionicons name={syncStatusIconName} size={16} color={syncStatusMeta.iconColor} />
           )}
         </View>
       ) : null}

@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import React from 'react';
 import type { GestureResponderHandlers } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,12 +9,14 @@ import { FanOptionButton } from './FanOptionButton';
 import { fabMenuStyles as styles } from './FABMenu.styles';
 import { FAN_OPTIONS } from './fabMenuConfig';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 interface FABMenuViewProps {
   isExpanded: boolean;
   fanProgress: any;
   hoveredIndex: any;
   panHandlers: GestureResponderHandlers;
-  fabIcon: string;
+  fabIcon: IoniconName;
   fabBgColor: string;
   lastAddType: LastAddType | null;
   backdropAnimatedStyle: any;
@@ -61,7 +64,7 @@ export function FABMenuView({
             {...panHandlers}
             style={[styles.mainButton, { backgroundColor: fabBgColor }]}
           >
-            <Ionicons name={fabIcon as any} size={28} color="#FFFFFF" />
+            <Ionicons name={fabIcon} size={28} color="#FFFFFF" />
           </View>
 
           {lastAddType === null && !isExpanded ? (

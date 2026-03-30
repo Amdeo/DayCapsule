@@ -1,10 +1,13 @@
+import type { ComponentProps } from 'react';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { settingsPageStyles as styles } from './SettingsPage.styles';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 interface SettingItemProps {
-  icon: string;
+  icon: IoniconName;
   title: string;
   subtitle: string;
   rightComponent?: React.ReactNode;
@@ -19,7 +22,7 @@ export function SettingItem({
   return (
     <View style={styles.settingItem}>
       <View style={styles.settingIcon}>
-        <Ionicons name={icon as any} size={20} color="#6A89CC" />
+        <Ionicons name={icon} size={20} color="#6A89CC" />
       </View>
       <View style={styles.settingContent}>
         <Text style={styles.settingTitle}>{title}</Text>
@@ -31,7 +34,7 @@ export function SettingItem({
 }
 
 interface SettingButtonProps {
-  icon: string;
+  icon: IoniconName;
   title: string;
   subtitle: string;
   onPress: () => void;
@@ -50,7 +53,7 @@ export function SettingButton({
   return (
     <Pressable testID={testID} style={styles.settingItem} onPress={onPress}>
       <View style={[styles.settingIcon, danger && styles.dangerIcon]}>
-        <Ionicons name={icon as any} size={20} color={danger ? '#EF4444' : '#6A89CC'} />
+        <Ionicons name={icon} size={20} color={danger ? '#EF4444' : '#6A89CC'} />
       </View>
       <View style={styles.settingContent}>
         <Text style={[styles.settingTitle, danger && styles.dangerText]}>{title}</Text>

@@ -129,6 +129,18 @@ export function assertCanStartVoiceRecordingForTest(currentRecordingId: string |
   throw error;
 }
 
+function getErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object' || !("code" in error)) {
+    return undefined;
+  }
+
+  return typeof error.code === 'string' ? error.code : undefined;
+}
+
+export function readErrorCodeForTest(error: unknown): string | undefined {
+  return getErrorCode(error);
+}
+
 function toDisplayedRecordingDuration(duration: number): number {
   return Math.max(0, Math.floor(duration));
 }
@@ -441,7 +453,9 @@ export default function HomeScreen() {
             }
           }
         } catch (error) {
-          if ((error as any)?.code === 'ACTIVE_RECORDING_IN_PROGRESS') {
+          const errorCode = getErrorCode(error);
+
+          if (errorCode === 'ACTIVE_RECORDING_IN_PROGRESS') {
             Alert.alert('录音进行中', '请先完成当前录音，再开始新的录音。');
             return;
           }
@@ -463,7 +477,7 @@ export default function HomeScreen() {
             currentRecordingIdRef.current = null;
           }
           // 权限被拒绝时引导用户去设置
-          if ((error as any)?.code === 'PERMISSION_DENIED') {
+          if (errorCode === 'PERMISSION_DENIED') {
             Alert.alert(
               '需要麦克风权限',
               '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
