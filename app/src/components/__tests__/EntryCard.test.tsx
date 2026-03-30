@@ -367,7 +367,6 @@ describe('EntryCard swipe actions', () => {
 
     await act(async () => {
       fireEvent.press(getByTestId('voice-processing-button-voice-processing-1'));
-      await Promise.resolve();
     });
 
     expect(getByText('准备中')).toBeTruthy();
