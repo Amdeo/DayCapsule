@@ -166,6 +166,7 @@ import * as ReanimatedModule from 'react-native-reanimated';
 import { logger } from '@/src/utils/logger';
 import { VoiceService } from '@/src/services/voiceService';
 import { EntryCard } from '../EntryCard';
+import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
 import { Entry } from '@/src/types/entry';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -558,6 +559,32 @@ describe('EntryCard swipe actions', () => {
     fireEvent.press(getByTestId('action-sheet-cancel'));
 
     expect(queryByTestId('entry-action-sheet')).toBeNull();
+  });
+
+  it('allows reopening the action sheet after it fully closes', () => {
+    const { getByTestId, queryByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+
+    fireEvent.press(getByTestId('action-sheet-cancel'));
+
+    act(() => {
+      jest.advanceTimersByTime(ENTRY_ACTION_SHEET_EXIT_DURATION);
+    });
+
+    expect(queryByTestId('entry-action-sheet')).toBeNull();
+
+    act(() => {
+      getByTestId('swipeable').props.onSwipeableOpen('right');
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('entry-action-sheet')).toBeTruthy();
   });
 
   it('applies FadeInRight entering with the provided delay and no exiting animation', () => {

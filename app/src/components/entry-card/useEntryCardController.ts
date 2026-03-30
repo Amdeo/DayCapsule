@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Swipeable } from 'react-native-gesture-handler';
 import type { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
-import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
 import { isEntryMediaPendingHydration } from '@/src/utils/mediaAvailability';
-
-const ACTION_SHEET_OPEN_DELAY = 100;
-
-type CardInteractionState = 'idle' | 'pendingSheet' | 'sheetOpen' | 'closing';
+import { useEntryCardActionSheetState } from './useEntryCardActionSheetState';
 
 interface UseEntryCardControllerOptions {
   entry: Entry;
@@ -37,14 +32,8 @@ export function useEntryCardController({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showActionSheet, setShowActionSheet] = useState(false);
-  const [interactionState, setInteractionState] = useState<CardInteractionState>('idle');
-  const interactionStateRef = useRef<CardInteractionState>('idle');
 
   const stopRequestInFlightRef = useRef(false);
-  const swipeableRef = useRef<Swipeable>(null);
-  const openSheetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resetCardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopRecordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const needsExpansion = useMemo(
@@ -52,113 +41,28 @@ export function useEntryCardController({
     [entry.content, entry.tags],
   );
 
-  const clearOpenSheetTimeout = useCallback(() => {
-    if (openSheetTimeoutRef.current) {
-      clearTimeout(openSheetTimeoutRef.current);
-      openSheetTimeoutRef.current = null;
-    }
-  }, []);
-
-  const clearResetCardTimeout = useCallback(() => {
-    if (resetCardTimeoutRef.current) {
-      clearTimeout(resetCardTimeoutRef.current);
-      resetCardTimeoutRef.current = null;
-    }
-  }, []);
-
-  const setInteractionStateSafely = useCallback((nextState: CardInteractionState) => {
-    interactionStateRef.current = nextState;
-    setInteractionState(nextState);
-  }, []);
-
-  const closeActionSheetAndResetCard = useCallback(() => {
-    clearOpenSheetTimeout();
-    clearResetCardTimeout();
-    logger.log(
-      '[EntryCard] closing action sheet and resetting card',
-      entry.id,
-      interactionState,
-    );
-    setInteractionStateSafely('closing');
-    setShowActionSheet(false);
-    resetCardTimeoutRef.current = setTimeout(() => {
-      setInteractionStateSafely('idle');
-      resetCardTimeoutRef.current = null;
-    }, ENTRY_ACTION_SHEET_EXIT_DURATION);
-  }, [clearOpenSheetTimeout, clearResetCardTimeout, entry.id, interactionState, setInteractionStateSafely]);
-
-  useEffect(() => {
-    if (
-      isActionSheetActive === false &&
-      interactionState !== 'idle' &&
-      interactionState !== 'closing'
-    ) {
-      logger.log(
-        '[EntryCard] inactive while non-idle, closing current interaction',
-        entry.id,
-        interactionState,
-      );
-      closeActionSheetAndResetCard();
-    }
-  }, [closeActionSheetAndResetCard, entry.id, interactionState, isActionSheetActive]);
+  const {
+    swipeableRef,
+    showActionSheet,
+    handleSwipeTrigger,
+    closeActionSheetAndResetCard,
+  } = useEntryCardActionSheetState({
+    entryId: entry.id,
+    isActionSheetActive,
+    onActionSheetOpen,
+  });
 
   useEffect(() => {
     return () => {
-      clearOpenSheetTimeout();
-      clearResetCardTimeout();
       if (stopRecordingTimeoutRef.current) {
         clearTimeout(stopRecordingTimeoutRef.current);
       }
     };
-  }, [clearOpenSheetTimeout, clearResetCardTimeout]);
+  }, []);
 
   const handleLongPress = useCallback(() => {
     setIsExpanded(true);
   }, []);
-
-  const handleSwipeTrigger = useCallback(
-    (phase: 'willOpen' | 'open', direction?: 'left' | 'right') => {
-      logger.log('[EntryCard] swipe trigger', {
-        entryId: entry.id,
-        phase,
-        direction,
-        interactionState,
-        showActionSheet,
-      });
-
-      if (direction && direction !== 'right') {
-        logger.log('[EntryCard] ignore non-left swipe direction', entry.id, direction);
-        return;
-      }
-
-      if (interactionStateRef.current !== 'idle' || showActionSheet) {
-        logger.log('[EntryCard] ignore duplicate swipe trigger', entry.id, interactionState);
-        return;
-      }
-
-      clearOpenSheetTimeout();
-      clearResetCardTimeout();
-      swipeableRef.current?.close();
-      onActionSheetOpen?.(entry.id);
-      setInteractionStateSafely('pendingSheet');
-      openSheetTimeoutRef.current = setTimeout(() => {
-        logger.log('[EntryCard] opening action sheet after delay', entry.id);
-        setShowActionSheet(true);
-        setInteractionStateSafely('sheetOpen');
-        openSheetTimeoutRef.current = null;
-      }, ACTION_SHEET_OPEN_DELAY);
-    },
-    [
-      clearOpenSheetTimeout,
-      clearResetCardTimeout,
-      entry.id,
-      interactionState,
-      interactionStateRef,
-      onActionSheetOpen,
-      setInteractionStateSafely,
-      showActionSheet,
-    ],
-  );
 
   const handleImagePress = useCallback((index: number) => {
     logger.log('图片被点击，打开图片查看器，index:', index);
