@@ -6,9 +6,10 @@ import { BackupPage } from '../BackupPage';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '../../services/syncService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import type { Entry } from '@/src/types/entry';
 
-const mockRestoreEntries = jest.fn();
-const mockUpdateEntry = jest.fn();
+const mockRestoreEntries = jest.fn<Promise<string[]>, [Entry[]]>();
+const mockUpdateEntry = jest.fn<Promise<void>, [string, Partial<Entry>]>();
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -56,6 +57,10 @@ jest.mock('../../services/syncService', () => ({
   SyncService: {
     isICloudAvailable: jest.fn(() => false),
     pickAndParseBackup: jest.fn(),
+    normalizeBackupEntries: jest.fn(),
+    getMediaInfoArray: jest.fn((media: unknown) =>
+      Array.isArray(media) ? media : media ? [media] : undefined
+    ),
     extractMediaFromZip: jest.fn(),
   },
 }));
@@ -412,6 +417,68 @@ describe('BackupPage', () => {
     await waitFor(() => {
       expect(mockUpdateEntry).toHaveBeenCalledWith('entry-1', {
         media: [{ uri: 'file:///documents/media/photos/original/photo-1.jpg', mimeType: 'image/jpeg', size: 100 }],
+      });
+    });
+  });
+
+  it('normalizes a legacy single backup media object into a persisted media array after import', async () => {
+    mockRestoreEntries.mockResolvedValueOnce(['entry-1']);
+    (SyncService.pickAndParseBackup as jest.Mock).mockResolvedValueOnce({
+      data: {
+        entries: [
+          {
+            id: 'entry-1',
+            type: 'photo',
+            content: '',
+            timestamp: 1710000000000,
+            media: { relativeUri: 'media/photo-1.jpg', mimeType: 'image/jpeg', size: 100 },
+          },
+        ],
+      },
+      zip: {},
+    });
+    (SyncService.extractMediaFromZip as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'entry-1',
+        media: [
+          {
+            uri: 'file:///documents/media/photos/original/photo-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+          },
+        ],
+      },
+    ]);
+
+    const { getByText } = render(<BackupPage visible onClose={jest.fn()} />);
+
+    fireEvent.press(getByText('导入'));
+
+    await waitFor(() => {
+      expect(SyncService.normalizeBackupEntries).not.toHaveBeenCalled();
+      expect(mockRestoreEntries).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'entry-1',
+          type: 'photo',
+          content: '',
+          timestamp: 1710000000000,
+          media: [
+            {
+              relativeUri: 'media/photo-1.jpg',
+              mimeType: 'image/jpeg',
+              size: 100,
+            },
+          ],
+        }),
+      ]);
+      expect(mockUpdateEntry).toHaveBeenCalledWith('entry-1', {
+        media: [
+          {
+            uri: 'file:///documents/media/photos/original/photo-1.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+          },
+        ],
       });
     });
   });
