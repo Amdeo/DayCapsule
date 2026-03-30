@@ -17,8 +17,16 @@ const mockStorageSetString = jest.fn(async () => undefined);
 const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
-const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingUploads = jest.fn(async () => ({ voiceError: null, photoError: null }));
+const mockRunCloudRecoveryFlow = jest.fn(
+  async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+    await deps.refreshCloudSyncIndicator();
+    return {
+      syncError: null,
+      queueRecovery: { voiceError: null, photoError: null },
+      refreshError: null,
+    };
+  }
+);
 const mockAlert = jest.fn();
 const mockLoggerLog = jest.fn();
 const mockLoggerWarn = jest.fn();
@@ -101,13 +109,19 @@ jest.mock('@/src/services/syncBootstrapService', () => ({
 
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: () => ({
-    syncNow: mockSyncNow,
+    syncNow: jest.fn(async () => undefined),
   }),
 }));
 
 jest.mock('@/src/services/uploadQueueRecoveryService', () => ({
   createUploadQueueRecoveryService: () => ({
-    flushPendingUploads: (...args: unknown[]) => mockFlushPendingUploads(...args),
+    flushPendingUploads: jest.fn(async () => ({ voiceError: null, photoError: null })),
+  }),
+}));
+
+jest.mock('@/src/services/cloudRecoveryFlowService', () => ({
+  createCloudRecoveryFlowService: (deps: unknown) => ({
+    run: () => mockRunCloudRecoveryFlow(deps as { refreshCloudSyncIndicator: () => Promise<void> }),
   }),
 }));
 
@@ -124,7 +138,16 @@ describe('runAppBootstrap', () => {
     mockMigrateFromAsyncStorage.mockResolvedValue({ success: true, migratedCount: 0 });
     mockStorageGetString.mockResolvedValue('false');
     mockBuildInitialFlow.mockReturnValue({ type: 'idle' });
-    mockFlushPendingUploads.mockResolvedValue({ voiceError: null, photoError: null });
+    mockRunCloudRecoveryFlow.mockImplementation(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError: null,
+        };
+      }
+    );
   });
 
   it('runs startup dependencies and recovery steps in order before refreshing the indicator', async () => {
@@ -139,8 +162,7 @@ describe('runAppBootstrap', () => {
     expect(mockCleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(mockLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockLoadSync).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
-    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
     expect(onInitializationFailed).not.toHaveBeenCalled();
 
     expect(mockInitDatabase.mock.invocationCallOrder[0]).toBeGreaterThan(
@@ -156,10 +178,7 @@ describe('runAppBootstrap', () => {
       mockLoadAuth.mock.invocationCallOrder[0]
     );
     expect(mockLoadSync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingUploads.mock.invocationCallOrder[0]
-    );
-    expect(mockFlushPendingUploads.mock.invocationCallOrder[0]).toBeLessThan(
-      refreshCloudSyncIndicator.mock.invocationCallOrder[0]
+      mockRunCloudRecoveryFlow.mock.invocationCallOrder[0]
     );
   });
 
@@ -196,7 +215,7 @@ describe('runAppBootstrap', () => {
       '提示',
       '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。'
     );
-    expect(mockSyncNow).not.toHaveBeenCalled();
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('marks initial sync as needs-decision without triggering cloud sync', async () => {
@@ -212,7 +231,7 @@ describe('runAppBootstrap', () => {
     expect(mockInspectInitialState).toHaveBeenCalledTimes(1);
     expect(mockSetInitialSyncState).toHaveBeenCalledWith('needs-decision');
     expect(mockRunInitialFlow).not.toHaveBeenCalled();
-    expect(mockSyncNow).not.toHaveBeenCalled();
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('reports initialization failure when database initialization fails', async () => {
@@ -230,7 +249,16 @@ describe('runAppBootstrap', () => {
   it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
     const voiceError = new Error('voice queue failed');
     const photoError = new Error('photo queue failed');
-    mockFlushPendingUploads.mockResolvedValueOnce({ voiceError, photoError });
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError, photoError },
+          refreshError: null,
+        };
+      }
+    );
 
     await runAppBootstrap({
       refreshCloudSyncIndicator,

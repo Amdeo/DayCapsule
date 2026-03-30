@@ -19,6 +19,7 @@ import { Storage } from '@/src/utils/storage';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
+import { createCloudRecoveryFlowService } from '@/src/services/cloudRecoveryFlowService';
 
 export interface AppBootstrapDependencies {
   refreshCloudSyncIndicator: (label: string) => Promise<void>;
@@ -79,7 +80,11 @@ export async function runAppBootstrap(
       logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
       await Storage.setString('settings:cloudMode', 'false');
       Alert.alert('提示', '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。');
-    } else if (cloudModeRaw === 'true' && isAuthenticated) {
+    }
+
+    let shouldSyncCloud = false;
+
+    if (cloudModeRaw === 'true' && isAuthenticated) {
       try {
         logger.log('✅ 恢复云端模式，执行本地优先同步初始化');
         const bootstrap = createSyncBootstrapService();
@@ -93,17 +98,31 @@ export async function runAppBootstrap(
         } else if (flow.type === 'needs-decision') {
           await useSyncStore.getState().setInitialSyncState('needs-decision');
         }
-
-        const cloudSync = createCloudSyncService();
         if (flow.type !== 'needs-decision') {
-          await cloudSync.syncNow();
+          shouldSyncCloud = true;
         }
       } catch (syncError) {
         logger.warn('⚠️ 启动时云同步失败:', syncError);
       }
     }
 
-    const queueRecoveryResult = await createUploadQueueRecoveryService().flushPendingUploads();
+    const recoveryResult = await createCloudRecoveryFlowService({
+      syncNow: async () => {
+        if (!shouldSyncCloud) {
+          return;
+        }
+
+        await createCloudSyncService().syncNow();
+      },
+      flushPendingUploads: () => createUploadQueueRecoveryService().flushPendingUploads(),
+      refreshCloudSyncIndicator: () => deps.refreshCloudSyncIndicator('启动后'),
+    }).run();
+
+    if (recoveryResult.syncError) {
+      logger.warn('⚠️ 启动时云同步失败:', recoveryResult.syncError);
+    }
+
+    const queueRecoveryResult = recoveryResult.queueRecovery;
     if (queueRecoveryResult.voiceError) {
       logger.warn('⚠️ 启动时补传待上传语音失败:', queueRecoveryResult.voiceError);
     }
@@ -111,7 +130,9 @@ export async function runAppBootstrap(
       logger.warn('⚠️ 启动时补传待上传照片失败:', queueRecoveryResult.photoError);
     }
 
-    await deps.refreshCloudSyncIndicator('启动后');
+    if (recoveryResult.refreshError) {
+      throw recoveryResult.refreshError;
+    }
   } catch (error) {
     logger.error('❌ 应用初始化失败:', error);
     deps.onInitializationFailed();
