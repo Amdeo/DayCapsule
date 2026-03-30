@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Easing,
   cancelAnimation,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import type { ImageViewerProps, ImageViewerPhase } from './imageViewerTypes';
 import { useImageViewerActions } from './useImageViewerActions';
+import { useImageViewerCloseTransition } from './useImageViewerCloseTransition';
 import { useImageViewerGestures } from './useImageViewerGestures';
 
 interface UseImageViewerControllerOptions {
@@ -32,10 +31,6 @@ export function useImageViewerController({
 }: UseImageViewerControllerOptions) {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [phase, setPhase] = useState<ImageViewerPhase>('idle');
-  const isMountedRef = useRef(true);
-  const canAnimateBackRef = useRef(Boolean(originLayout));
-  const shouldIgnoreSharedTransitionRef = useRef(false);
-  const prevDimensions = useRef({ width: screenWidth, height: screenHeight });
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -78,95 +73,28 @@ export function useImageViewerController({
     translateY,
   ]);
 
-  const performClose = useCallback(() => {
-    if (isMountedRef.current) {
-      onClose();
-    }
-  }, [onClose]);
-
-  const startFadeClose = useCallback(() => {
-    setShowActionSheet(false);
-    cancelAllAnimations();
-    dismissY.value = 0;
-    dismissScale.value = 1;
-    setPhase('closing-fade');
-    backdropOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-      if (finished) {
-        runOnJS(performClose)();
-      }
-    });
-  }, [backdropOpacity, cancelAllAnimations, dismissScale, dismissY, performClose]);
-
-  const triggerClose = useCallback(
-    (_capturedDismissY: number = 0) => {
-      if (phase === 'idle' || phase === 'closing' || phase === 'closing-fade') {
-        return;
-      }
-
-      setShowActionSheet(false);
-      cancelAllAnimations();
-      dismissY.value = 0;
-      dismissScale.value = 1;
-      startFadeClose();
-    },
-    [cancelAllAnimations, dismissScale, dismissY, phase, startFadeClose],
-  );
-
-  const triggerCloseAnimation = useCallback(() => {
-    if (!canAnimateBackRef.current || !thumbnailRef?.current) {
-      startFadeClose();
-      return;
-    }
-
-    thumbnailRef.current.measureInWindow((x, y, width, height) => {
-      if (!isMountedRef.current || shouldIgnoreSharedTransitionRef.current) {
-        return;
-      }
-
-      const isVisible = y + height > 0 && y < screenHeight;
-      if (!isVisible) {
-        startFadeClose();
-        return;
-      }
-
-      const closingTiming = {
-        duration: 500,
-        easing: Easing.in(Easing.ease),
-      };
-      heroLeft.value = withTiming(x, closingTiming);
-      heroTop.value = withTiming(y, closingTiming);
-      heroWidth.value = withTiming(width, closingTiming);
-      heroHeight.value = withTiming(height, closingTiming, (finished) => {
-        if (finished) {
-          runOnJS(performClose)();
-        }
-      });
-      backdropOpacity.value = withTiming(0, closingTiming);
-    });
-  }, [
+  const { triggerClose, handleRequestClose } = useImageViewerCloseTransition({
+    visible,
+    originLayout,
+    thumbnailRef,
+    screenWidth,
+    screenHeight,
+    phase,
+    setPhase,
+    onClose,
+    setShowActionSheet,
+    cancelAllAnimations,
+    dismissY,
+    dismissScale,
     backdropOpacity,
-    heroHeight,
     heroLeft,
     heroTop,
     heroWidth,
-    performClose,
-    screenHeight,
-    startFadeClose,
-    thumbnailRef,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      shouldIgnoreSharedTransitionRef.current = true;
-      cancelAllAnimations();
-    };
-  }, [cancelAllAnimations]);
+    heroHeight,
+  });
 
   useEffect(() => {
     if (visible) {
-      shouldIgnoreSharedTransitionRef.current = false;
-      canAnimateBackRef.current = Boolean(originLayout);
       cancelAllAnimations();
 
       scale.value = 1;
@@ -218,35 +146,6 @@ export function useImageViewerController({
     screenHeight,
     screenWidth,
   ]);
-
-  useEffect(() => {
-    if (phase !== 'closing') {
-      return;
-    }
-    triggerCloseAnimation();
-  }, [phase, triggerCloseAnimation]);
-
-  useEffect(() => {
-    if (
-      prevDimensions.current.width === screenWidth &&
-      prevDimensions.current.height === screenHeight
-    ) {
-      return;
-    }
-
-    prevDimensions.current = { width: screenWidth, height: screenHeight };
-
-    if (phase === 'opening' || phase === 'closing') {
-      shouldIgnoreSharedTransitionRef.current = true;
-      canAnimateBackRef.current = false;
-      startFadeClose();
-      return;
-    }
-
-    if (phase === 'open') {
-      canAnimateBackRef.current = false;
-    }
-  }, [phase, screenHeight, screenWidth, startFadeClose]);
 
   const closeActionSheet = useCallback(() => {
     setShowActionSheet(false);
@@ -300,7 +199,7 @@ export function useImageViewerController({
     heroAnimatedStyle,
     imageAnimatedStyle,
     composedGesture,
-    handleRequestClose: () => triggerClose(0),
+    handleRequestClose,
     closeActionSheet,
     handleSaveToAlbum,
     handleShare,
