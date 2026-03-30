@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/react-native';
 import { createCloudSyncOverviewService } from '../cloudSyncOverviewService';
 import * as DB from '@/src/database/operations';
 import { createCloudSyncService } from '../cloudSyncService';
@@ -120,14 +121,20 @@ describe('cloudSyncOverviewService', () => {
 
     const service = createCloudSyncOverviewService();
     const snapshotPromise = service.getSnapshot();
-    await Promise.resolve();
+
+    await waitFor(() => {
+      expect(resolvers.length).toBeGreaterThan(0);
+    });
 
     expect(maxActive).toBeLessThanOrEqual(4);
 
     while (resolvedCount < 10) {
+      const previousResolvedCount = resolvedCount;
       const pendingResolvers = resolvers.splice(0);
       pendingResolvers.forEach((resolve) => resolve());
-      await Promise.resolve();
+      await waitFor(() => {
+        expect(resolvedCount).toBeGreaterThan(previousResolvedCount);
+      });
     }
 
     const snapshot = await snapshotPromise;
