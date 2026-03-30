@@ -36,6 +36,25 @@ const DEFAULT_SERVER_SCOPE = 'env_default';
 const getExistingEntrySize = (info: { exists: boolean; size?: number | null }): number =>
   info.exists && typeof info.size === 'number' ? info.size : 0;
 
+const getAvailableDiskSpace = async (): Promise<number> => {
+  try {
+    const getFreeDiskStorageAsync = (
+      FileSystem as typeof FileSystem & {
+        getFreeDiskStorageAsync?: () => Promise<number>;
+      }
+    ).getFreeDiskStorageAsync;
+
+    if (typeof getFreeDiskStorageAsync !== 'function') {
+      return -1;
+    }
+
+    const available = await getFreeDiskStorageAsync();
+    return Number.isFinite(available) ? available : -1;
+  } catch {
+    return -1;
+  }
+};
+
 const getCurrentServerScope = (): string => {
   const serverUrl = getCurrentServerUrlSync();
   return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
@@ -203,7 +222,7 @@ export async function getStorageStats(): Promise<{
 }> {
   try {
     const mediaPaths = getMediaPaths();
-    const [photoOriginalSize, photoDisplaySize, voiceOriginalSize, voiceCompressedSize, databaseSize, tempSize] =
+    const [photoOriginalSize, photoDisplaySize, voiceOriginalSize, voiceCompressedSize, databaseSize, tempSize, available] =
       await Promise.all([
         getDirectorySize(mediaPaths.photoOriginal),
         getDirectorySize(mediaPaths.photoDisplay),
@@ -211,6 +230,7 @@ export async function getStorageStats(): Promise<{
         getDirectorySize(mediaPaths.voiceCompressed),
         getDirectorySize(mediaPaths.database),
         getDirectorySize(mediaPaths.temp),
+        getAvailableDiskSpace(),
       ]);
 
     return {
@@ -225,7 +245,7 @@ export async function getStorageStats(): Promise<{
         voiceCompressedSize +
         databaseSize +
         tempSize,
-      available: -1, // TODO: 实现可用空间查询
+      available,
     };
   } catch (error) {
     logger.error('Failed to get storage stats:', error);

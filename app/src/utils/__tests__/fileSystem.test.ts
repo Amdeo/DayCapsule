@@ -1,5 +1,6 @@
 jest.mock('expo-file-system/legacy', () => ({
   deleteAsync: jest.fn().mockResolvedValue(undefined),
+  getFreeDiskStorageAsync: jest.fn(),
   getInfoAsync: jest.fn(),
   readDirectoryAsync: jest.fn(),
   documentDirectory: 'file:///documents/',
@@ -21,7 +22,7 @@ jest.mock('@/src/utils/logger', () => ({
 
 import * as FileSystem from 'expo-file-system/legacy';
 import { getCurrentServerUrlSync } from '@/src/services/backendEnvironmentService';
-import { deleteFile, getDirectorySize, getFileInfo, getMediaPaths } from '../fileSystem';
+import { deleteFile, getDirectorySize, getFileInfo, getMediaPaths, getStorageStats } from '../fileSystem';
 
 describe('deleteFile', () => {
   beforeEach(() => {
@@ -85,5 +86,39 @@ describe('deleteFile', () => {
     expect(getMediaPaths().voiceCompressed).toBe(
       'file:///cache/environments/env_https_server_b_example_com/media/voice/compressed/'
     );
+  });
+});
+
+describe('getStorageStats', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
+  });
+
+  it('returns available disk bytes when Expo reports free storage', async () => {
+    (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue([]);
+    (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(4096);
+
+    await expect(getStorageStats()).resolves.toMatchObject({
+      available: 4096,
+    });
+  });
+
+  it('falls back to -1 when Expo cannot report free storage', async () => {
+    (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue([]);
+    (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockRejectedValue(new Error('unsupported'));
+
+    await expect(getStorageStats()).resolves.toMatchObject({
+      available: -1,
+    });
+  });
+
+  it('falls back to -1 when Expo does not expose the free-storage API', async () => {
+    (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue([]);
+    delete (FileSystem as typeof FileSystem & { getFreeDiskStorageAsync?: unknown }).getFreeDiskStorageAsync;
+
+    await expect(getStorageStats()).resolves.toMatchObject({
+      available: -1,
+    });
   });
 });
