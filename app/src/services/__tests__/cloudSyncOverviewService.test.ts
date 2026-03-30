@@ -369,6 +369,55 @@ describe('cloudSyncOverviewService', () => {
     expect(FileSystem.getInfoAsync).toHaveBeenCalledTimes(3);
   });
 
+  it('ignores relative /api/media paths when counting local media bytes', async () => {
+    mockGetStatus.mockResolvedValueOnce({
+      lastSyncAt: null,
+      lastSyncError: null,
+      initialSyncState: 'idle',
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+      conflictCopies: 0,
+    });
+    (DB.getLocalSyncOverviewCounts as jest.Mock).mockResolvedValueOnce({
+      entryCount: 1,
+      photoCount: 1,
+      voiceCount: 0,
+    });
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'e1',
+        type: 'photo',
+        content: '',
+        timestamp: 1,
+        syncStatus: 'synced',
+        media: [
+          {
+            uri: '/api/media/library/photo.jpg',
+            thumbnail: '/api/media/library/photo-thumb.jpg',
+            mimeType: 'image/jpeg',
+            size: 1,
+          },
+        ],
+      },
+    ]);
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true, size: 999 });
+    mockGet.mockResolvedValueOnce({
+      entryCount: 0,
+      photoCount: 0,
+      voiceCount: 0,
+      mediaCount: 0,
+      mediaBytes: 0,
+    });
+
+    const service = createCloudSyncOverviewService();
+    const snapshot = await service.getSnapshot();
+
+    expect(snapshot.local.mediaBytes).toBe(0);
+    expect(FileSystem.getInfoAsync).not.toHaveBeenCalled();
+  });
+
   it('falls back to zeroed local counts when local overview queries fail', async () => {
     mockGetStatus.mockResolvedValueOnce({
       lastSyncAt: 1700000000000,
