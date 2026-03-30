@@ -77,13 +77,9 @@ jobs:
         working-directory: app
         run: npm ci
 
-      - name: Typecheck
+      - name: Run verify
         working-directory: app
-        run: npm run typecheck
-
-      - name: Run tests
-        working-directory: app
-        run: npm test -- --runInBand
+        run: npm run verify
 
       - name: Generate Android project
         working-directory: app
