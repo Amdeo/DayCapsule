@@ -21,37 +21,27 @@ const travelEntry = {
 } as Entry;
 
 describe('renderHomeScreen stability contract', () => {
-  it('keeps an earlier home render visible state stable after a later render mounts', async () => {
+  it('keeps a helper trigger bound to its own render after a later render mounts', async () => {
     const firstRender = renderHomeScreen({
       entries: [workEntry],
-      cloudMode: true,
-      cloudSyncUiState: 'pending',
     });
-
-    expect(firstRender.screen.getByTestId('timeline-entry-entry-work-1')).toBeTruthy();
-    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
-
     const secondRender = renderHomeScreen({
       entries: [travelEntry],
-      cloudMode: false,
     });
-
-    await act(async () => {
-      await firstRender.spies.applySearchFilters({
-        query: '',
-        type: 'all',
-        dateRange: 'all',
-        tags: [],
-      });
-    });
-
-    expect(firstRender.screen.getByTestId('timeline-entry-entry-work-1')).toBeTruthy();
-    expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
-    expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
 
     expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
-    expect(secondRender.screen.queryByTestId('cloud-sync-button')).toBeNull();
+
+    firstRender.spies.startRecording.mockClear();
+
+    await act(async () => {
+      await firstRender.spies.triggerQuickAddVoice?.();
+    });
+
+    expect(firstRender.spies.loggerError).not.toHaveBeenCalled();
+    expect(firstRender.spies.startRecording).toHaveBeenCalledTimes(1);
+    expect(firstRender.screen.getByTestId('timeline-entry-mock-entry-2')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-entry-mock-entry-2')).toBeNull();
 
     firstRender.screen.unmount();
     secondRender.screen.unmount();
