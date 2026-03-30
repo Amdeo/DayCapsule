@@ -7,18 +7,10 @@ import type {
   PhotoHeightPreset,
 } from '@/src/store/settingsStore';
 import type { Entry } from '@/src/types/entry';
-import { getStorageStats } from '@/src/utils/fileSystem';
 import { NotificationService } from '@/src/services/notificationService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
-import {
-  getCurrentServerUrl,
-  getRecentServerUrls,
-  normalizeServerUrl,
-} from '@/src/services/backendEnvironmentService';
-import { testBackendConnection } from '@/src/services/backendConnectionService';
-import { switchBackendEnvironment } from '@/src/services/localEnvironmentDataManager';
-import { clearLocalAppData } from '@/src/services/localAppDataService';
-import { useEntryStore } from '@/src/store/entryStore';
+import { useSettingsPageStorage } from './useSettingsPageStorage';
+import { useSettingsPageBackendServer } from './useSettingsPageBackendServer';
 
 interface UseSettingsPageControllerOptions {
   visible: boolean;
@@ -34,11 +26,6 @@ interface UseSettingsPageControllerOptions {
   resetSettings: () => void | Promise<void>;
 }
 
-function formatUsedSpace(totalSize: number) {
-  const mb = totalSize / (1024 * 1024);
-  return mb < 0.1 ? '< 0.1 MB' : `${mb.toFixed(1)} MB`;
-}
-
 export function useSettingsPageController({
   visible,
   entries,
@@ -52,38 +39,21 @@ export function useSettingsPageController({
   saveCalendarDensity,
   resetSettings,
 }: UseSettingsPageControllerOptions) {
-  const [usedSpace, setUsedSpace] = useState('计算中...');
   const [showTagMgmt, setShowTagMgmt] = useState(false);
-  const [currentServerUrl, setCurrentServerUrl] = useState('');
-  const [backendDraftUrl, setBackendDraftUrl] = useState('');
-  const [recentServerUrls, setRecentServerUrls] = useState<string[]>([]);
-  const [backendTestStatus, setBackendTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [backendTestedUrl, setBackendTestedUrl] = useState<string | null>(null);
-  const [backendTestErrorMessage, setBackendTestErrorMessage] = useState<string | null>(null);
-  const [isSavingBackendServer, setIsSavingBackendServer] = useState(false);
-
-  const loadBackendState = useCallback(async () => {
-    const [nextCurrentServerUrl, nextRecentServerUrls] = await Promise.all([
-      getCurrentServerUrl(),
-      getRecentServerUrls(),
-    ]);
-
-    setCurrentServerUrl(nextCurrentServerUrl);
-    setBackendDraftUrl(nextCurrentServerUrl);
-    setRecentServerUrls(nextRecentServerUrls);
-    setBackendTestStatus('idle');
-    setBackendTestedUrl(null);
-    setBackendTestErrorMessage(null);
-  }, []);
-
-  const refreshStorageStats = useCallback(async () => {
-    try {
-      const stats = await getStorageStats();
-      setUsedSpace(formatUsedSpace(stats.totalSize));
-    } catch {
-      setUsedSpace('未知');
-    }
-  }, []);
+  const { usedSpace, refreshStorageStats, handleClearCache } = useSettingsPageStorage();
+  const {
+    currentServerUrl,
+    backendDraftUrl,
+    recentServerUrls,
+    backendTestStatus,
+    backendTestErrorMessage,
+    isSavingBackendServer,
+    canSaveBackendServer,
+    handleBackendDraftUrlChange,
+    handleTestBackendServer,
+    handleSaveBackendServer: saveBackendServer,
+    handleSelectRecentBackendServer,
+  } = useSettingsPageBackendServer({ visible });
 
   useEffect(() => {
     if (!isLoaded) {
@@ -118,8 +88,7 @@ export function useSettingsPageController({
       return;
     }
     void refreshStorageStats();
-    void loadBackendState();
-  }, [loadBackendState, refreshStorageStats, visible]);
+  }, [refreshStorageStats, visible]);
 
   const handleNotifications = useCallback(
     async (value: boolean) => {
@@ -175,28 +144,6 @@ export function useSettingsPageController({
     [entries],
   );
 
-  const handleClearCache = useCallback(() => {
-    Alert.alert('清除缓存', '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '清除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setUsedSpace('计算中...');
-            await clearLocalAppData();
-            await useEntryStore.getState().loadEntries();
-            await refreshStorageStats();
-            Alert.alert('成功', '本地数据已清除');
-          } catch {
-            await refreshStorageStats();
-            Alert.alert('清除失败', '清理本地数据时发生错误');
-          }
-        },
-      },
-    ]);
-  }, [refreshStorageStats]);
-
   const handleResetSettings = useCallback(() => {
     Alert.alert('重置设置', '确定要重置所有设置为默认值吗？', [
       { text: '取消', style: 'cancel' },
@@ -219,71 +166,21 @@ export function useSettingsPageController({
     setShowTagMgmt(false);
   }, []);
 
-  const handleBackendDraftUrlChange = useCallback((value: string) => {
-    setBackendDraftUrl(value);
-    setBackendTestStatus('idle');
-    setBackendTestedUrl(null);
-    setBackendTestErrorMessage(null);
-  }, []);
-
-  const handleSelectRecentBackendServer = useCallback((url: string) => {
-    setBackendDraftUrl(url);
-    setBackendTestStatus('idle');
-    setBackendTestedUrl(null);
-    setBackendTestErrorMessage(null);
-  }, []);
-
-  const handleTestBackendServer = useCallback(async () => {
-    setBackendTestStatus('testing');
-    setBackendTestErrorMessage(null);
-
-    const result = await testBackendConnection(backendDraftUrl);
-    if (!result.success) {
-      setBackendTestStatus('error');
-      setBackendTestedUrl(null);
-      setBackendTestErrorMessage(result.message ?? '连接失败，请检查地址或网络');
-      return;
-    }
-
-    setBackendTestStatus('success');
-    setBackendTestedUrl(normalizeServerUrl(backendDraftUrl));
-  }, [backendDraftUrl]);
-
-  const canSaveBackendServer = useMemo(() => {
-    if (backendTestStatus !== 'success' || !backendTestedUrl) {
-      return false;
-    }
-
-    try {
-      return normalizeServerUrl(backendDraftUrl) === backendTestedUrl;
-    } catch {
-      return false;
-    }
-  }, [backendDraftUrl, backendTestStatus, backendTestedUrl]);
-
   const handleSaveBackendServer = useCallback(async () => {
-    if (!canSaveBackendServer) {
-      return;
-    }
-
-    setIsSavingBackendServer(true);
     try {
-      const result = await switchBackendEnvironment(backendDraftUrl);
-      await loadBackendState();
-      setBackendTestStatus('success');
-      setBackendTestedUrl(result.currentServerUrl);
+      const result = await saveBackendServer();
+      if (!result) {
+        return;
+      }
+
       Alert.alert(
         result.switched ? '切换成功' : '保存成功',
         result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
       );
     } catch (error) {
-      setBackendTestStatus('error');
-      setBackendTestErrorMessage((error as Error).message ?? '切换失败');
       Alert.alert('切换失败', (error as Error).message ?? '切换后端失败');
-    } finally {
-      setIsSavingBackendServer(false);
     }
-  }, [backendDraftUrl, canSaveBackendServer, loadBackendState]);
+  }, [saveBackendServer]);
 
   return {
     usedSpace,
