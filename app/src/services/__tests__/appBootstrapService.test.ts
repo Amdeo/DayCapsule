@@ -18,8 +18,7 @@ const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingVoiceUploads = jest.fn(async () => undefined);
-const mockFlushPendingPhotoUploads = jest.fn(async () => undefined);
+const mockFlushPendingUploads = jest.fn(async () => ({ voiceError: null, photoError: null }));
 const mockAlert = jest.fn();
 const mockLoggerLog = jest.fn();
 const mockLoggerWarn = jest.fn();
@@ -106,12 +105,10 @@ jest.mock('@/src/services/cloudSyncService', () => ({
   }),
 }));
 
-jest.mock('@/src/services/voiceUploadQueue', () => ({
-  flushPendingVoiceUploads: (...args: unknown[]) => mockFlushPendingVoiceUploads(...args),
-}));
-
-jest.mock('@/src/services/photoUploadQueue', () => ({
-  flushPendingPhotoUploads: (...args: unknown[]) => mockFlushPendingPhotoUploads(...args),
+jest.mock('@/src/services/uploadQueueRecoveryService', () => ({
+  createUploadQueueRecoveryService: () => ({
+    flushPendingUploads: (...args: unknown[]) => mockFlushPendingUploads(...args),
+  }),
 }));
 
 import { runAppBootstrap } from '../appBootstrapService';
@@ -127,6 +124,7 @@ describe('runAppBootstrap', () => {
     mockMigrateFromAsyncStorage.mockResolvedValue({ success: true, migratedCount: 0 });
     mockStorageGetString.mockResolvedValue('false');
     mockBuildInitialFlow.mockReturnValue({ type: 'idle' });
+    mockFlushPendingUploads.mockResolvedValue({ voiceError: null, photoError: null });
   });
 
   it('runs startup dependencies and recovery steps in order before refreshing the indicator', async () => {
@@ -141,8 +139,7 @@ describe('runAppBootstrap', () => {
     expect(mockCleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(mockLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockLoadSync).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingVoiceUploads).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
     expect(onInitializationFailed).not.toHaveBeenCalled();
 
@@ -159,12 +156,9 @@ describe('runAppBootstrap', () => {
       mockLoadAuth.mock.invocationCallOrder[0]
     );
     expect(mockLoadSync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]
+      mockFlushPendingUploads.mock.invocationCallOrder[0]
     );
-    expect(mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]
-    );
-    expect(mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockFlushPendingUploads.mock.invocationCallOrder[0]).toBeLessThan(
       refreshCloudSyncIndicator.mock.invocationCallOrder[0]
     );
   });
@@ -231,5 +225,20 @@ describe('runAppBootstrap', () => {
 
     expect(onInitializationFailed).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).not.toHaveBeenCalled();
+  });
+
+  it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
+    const voiceError = new Error('voice queue failed');
+    const photoError = new Error('photo queue failed');
+    mockFlushPendingUploads.mockResolvedValueOnce({ voiceError, photoError });
+
+    await runAppBootstrap({
+      refreshCloudSyncIndicator,
+      onInitializationFailed,
+    });
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传语音失败:', voiceError);
+    expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传照片失败:', photoError);
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
   });
 });

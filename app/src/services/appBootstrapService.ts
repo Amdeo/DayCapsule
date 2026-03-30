@@ -18,8 +18,7 @@ import { useSyncStore } from '@/src/store/syncStore';
 import { Storage } from '@/src/utils/storage';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
-import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
-import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
+import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
 
 export interface AppBootstrapDependencies {
   refreshCloudSyncIndicator: (label: string) => Promise<void>;
@@ -104,12 +103,13 @@ export async function runAppBootstrap(
       }
     }
 
-    await flushPendingVoiceUploads().catch((queueError) => {
-      logger.warn('⚠️ 启动时补传待上传语音失败:', queueError);
-    });
-    await flushPendingPhotoUploads().catch((queueError) => {
-      logger.warn('⚠️ 启动时补传待上传照片失败:', queueError);
-    });
+    const queueRecoveryResult = await createUploadQueueRecoveryService().flushPendingUploads();
+    if (queueRecoveryResult.voiceError) {
+      logger.warn('⚠️ 启动时补传待上传语音失败:', queueRecoveryResult.voiceError);
+    }
+    if (queueRecoveryResult.photoError) {
+      logger.warn('⚠️ 启动时补传待上传照片失败:', queueRecoveryResult.photoError);
+    }
 
     await deps.refreshCloudSyncIndicator('启动后');
   } catch (error) {

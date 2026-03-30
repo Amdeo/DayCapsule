@@ -2,8 +2,7 @@ import type { AppStateStatus } from 'react-native';
 import * as Network from 'expo-network';
 import { BackupService } from '@/src/services/backupService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
-import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
-import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
+import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
 import { useEntryStore } from '@/src/store/entryStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
@@ -46,12 +45,13 @@ export function createCloudRecoveryRunner(
         );
       }
 
-      await flushPendingVoiceUploads().catch((queueError) =>
-        logger.warn(`⚠️ ${label}补传待上传语音失败:`, queueError)
-      );
-      await flushPendingPhotoUploads().catch((queueError) =>
-        logger.warn(`⚠️ ${label}补传待上传照片失败:`, queueError)
-      );
+      const queueRecoveryResult = await createUploadQueueRecoveryService().flushPendingUploads();
+      if (queueRecoveryResult.voiceError) {
+        logger.warn(`⚠️ ${label}补传待上传语音失败:`, queueRecoveryResult.voiceError);
+      }
+      if (queueRecoveryResult.photoError) {
+        logger.warn(`⚠️ ${label}补传待上传照片失败:`, queueRecoveryResult.photoError);
+      }
       await deps.refreshCloudSyncIndicator(`${label}后`);
     })().finally(() => {
       pendingRecovery = null;
