@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { render, waitFor, within } from '@testing-library/react-native';
 
 type SettingsPageProps = {
   visible: boolean;
@@ -401,12 +401,10 @@ export function getLatestLoginPageProps() {
   return latestLoginPageProps;
 }
 
-async function flushSettingsPageEffects(cycles = 3) {
-  for (let index = 0; index < cycles; index += 1) {
-    await act(async () => {
-      await Promise.resolve();
-    });
-  }
+async function waitForSettingsPageToSettle(screen: ReturnType<typeof render>) {
+  await waitFor(() => {
+    expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
+  });
 }
 
 export async function renderSettingsPage(options: RenderSettingsPageOptions = {}) {
@@ -456,7 +454,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
 
   const { SettingsPage } = require('../../SettingsPage');
   const rendered = render(<SettingsPage {...finalProps} />);
-  await flushSettingsPageEffects();
+  await waitForSettingsPageToSettle(rendered);
 
   return {
     ...rendered,

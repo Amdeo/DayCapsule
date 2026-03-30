@@ -1,9 +1,11 @@
 import React from 'react';
-import { act } from '@testing-library/react-native';
+import { within } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
 } from './renderSettingsPage';
+
+const { getStorageStats } = require('@/src/utils/fileSystem');
 
 describe('renderSettingsPage stability', () => {
   beforeEach(() => {
@@ -12,12 +14,29 @@ describe('renderSettingsPage stability', () => {
 
   it('does not emit act warnings after the initial settings page render settles', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    let resolveStorageStats: ((value: { totalSize: number }) => void) | null = null;
+    getStorageStats.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveStorageStats = resolve;
+    }));
 
-    await renderSettingsPage({ authenticated: true, cloudMode: true });
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+    const renderPromise = renderSettingsPage({ authenticated: true, cloudMode: true });
+    let renderResult:
+      | Awaited<ReturnType<typeof renderSettingsPage>>
+      | null = null;
+    void renderPromise.then((value) => {
+      renderResult = value;
     });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(renderResult).toBeNull();
+
+    resolveStorageStats?.({ totalSize: 1024 });
+
+    const { screen } = await renderPromise;
+
+    expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
 
     const actWarnings = consoleErrorSpy.mock.calls
       .map((args) => args.map(String).join(' '))
