@@ -177,4 +177,5 @@ describe('useTimelineController', () => {
 
     expect(result.current.editingEntry).toBe(entry);
   });
+
 });
