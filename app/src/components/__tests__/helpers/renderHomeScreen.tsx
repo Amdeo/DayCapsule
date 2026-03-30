@@ -56,14 +56,18 @@ export interface RenderHomeScreenOptions {
   };
 }
 
+type RenderHomeScreenState = {
+  sourceEntries: Entry[];
+  allTags: string[];
+  derivesAllTagsFromEntries: boolean;
+};
+
 const mockEntryStoreListeners = new Set<() => void>();
 const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockShowCloudSyncStatusAlert = jest.fn();
 
-let mockSourceEntries: Entry[] = [];
-let mockAllTags: string[] = [];
 let mockCloudSyncUiState: CloudUiState = 'hidden';
 let mockEntryStoreState: MockEntryStoreState;
 
@@ -84,9 +88,14 @@ const setEntryStoreState = (
   emitEntryStore();
 };
 
-const setSourceEntries = (entries: Entry[]) => {
+const deriveAllTags = (entries: Entry[]) => Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
+
+const createSetSourceEntries = (renderState: RenderHomeScreenState) => (entries: Entry[]) => {
   act(() => {
-    mockSourceEntries = entries;
+    renderState.sourceEntries = entries;
+    if (renderState.derivesAllTagsFromEntries) {
+      renderState.allTags = deriveAllTags(entries);
+    }
     setEntryStoreState({ entries });
   });
 };
@@ -121,7 +130,8 @@ const applyFilters = (
 const createEntryStoreState = (
   entries: Entry[],
   initialFilters: NonNullable<RenderHomeScreenOptions['initialFilters']> = {},
-  loadEntriesImplementation?: () => Promise<void>
+  loadEntriesImplementation: (() => Promise<void>) | undefined,
+  renderState: RenderHomeScreenState
 ): MockEntryStoreState => ({
   entries,
   searchQuery: initialFilters.searchQuery ?? '',
@@ -163,14 +173,14 @@ const createEntryStoreState = (
   clearTags: jest.fn(() => {
     setEntryStoreState({ selectedTags: [] });
   }),
-  getAllTags: jest.fn(async () => mockAllTags),
+  getAllTags: jest.fn(async () => renderState.allTags),
   applySearchFilters: jest.fn(async (filters) => {
     setEntryStoreState({
       searchQuery: filters.query ?? '',
       filterType: filters.type ?? 'all',
       filterDateRange: filters.dateRange ?? 'all',
       selectedTags: filters.tags ?? [],
-      entries: applyFilters(mockSourceEntries, filters),
+      entries: applyFilters(renderState.sourceEntries, filters),
     });
   }),
   loadMore: jest.fn(),
@@ -432,14 +442,18 @@ const HomeScreen = require('../../../../app/(tabs)/index').default;
 
 export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   const entries = options.entries ?? [];
+  const renderState: RenderHomeScreenState = {
+    sourceEntries: entries,
+    allTags: options.allTags ?? deriveAllTags(entries),
+    derivesAllTagsFromEntries: options.allTags == null,
+  };
 
-  mockSourceEntries = entries;
-  mockAllTags = options.allTags ?? Array.from(new Set(entries.flatMap((entry) => entry.tags ?? [])));
   mockCloudSyncUiState = options.cloudSyncUiState ?? 'hidden';
   mockEntryStoreState = createEntryStoreState(
     entries,
     options.initialFilters,
-    options.loadEntriesImplementation
+    options.loadEntriesImplementation,
+    renderState
   );
 
   Object.assign(mockSettingsState, {
@@ -461,7 +475,7 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   return {
     screen: render(<HomeScreen />),
     controls: {
-      setEntries: setSourceEntries,
+      setEntries: createSetSourceEntries(renderState),
       setPagination: setPaginationState,
     },
     spies: {
