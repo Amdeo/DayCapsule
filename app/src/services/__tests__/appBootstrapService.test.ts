@@ -17,8 +17,9 @@ const mockStorageSetString = jest.fn(async () => undefined);
 const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
+const mockCloudSyncNow = jest.fn(async () => undefined);
 const mockRunCloudRecoveryFlow = jest.fn(
-  async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+  async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
     await deps.refreshCloudSyncIndicator();
     return {
       syncError: null,
@@ -109,7 +110,7 @@ jest.mock('@/src/services/syncBootstrapService', () => ({
 
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: () => ({
-    syncNow: jest.fn(async () => undefined),
+    syncNow: (...args: unknown[]) => mockCloudSyncNow(...args),
   }),
 }));
 
@@ -139,7 +140,7 @@ describe('runAppBootstrap', () => {
     mockStorageGetString.mockResolvedValue('false');
     mockBuildInitialFlow.mockReturnValue({ type: 'idle' });
     mockRunCloudRecoveryFlow.mockImplementation(
-      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
         await deps.refreshCloudSyncIndicator();
         return {
           syncError: null,
@@ -234,6 +235,37 @@ describe('runAppBootstrap', () => {
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
+  it('passes a syncNow caller that becomes a no-op when bootstrap reaches needs-decision', async () => {
+    mockIsAuthenticated = true;
+    mockStorageGetString.mockResolvedValueOnce('true');
+    mockBuildInitialFlow.mockReturnValueOnce({ type: 'needs-decision' });
+
+    let capturedSyncNow: (() => Promise<void>) | undefined;
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
+        capturedSyncNow = deps.syncNow;
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError: null,
+        };
+      }
+    );
+
+    await runAppBootstrap({
+      refreshCloudSyncIndicator,
+      onInitializationFailed,
+    });
+
+    expect(capturedSyncNow).toBeDefined();
+    await capturedSyncNow?.();
+
+    expect(mockSetInitialSyncState).toHaveBeenCalledWith('needs-decision');
+    expect(mockCloudSyncNow).not.toHaveBeenCalled();
+    expect(onInitializationFailed).not.toHaveBeenCalled();
+  });
+
   it('reports initialization failure when database initialization fails', async () => {
     mockInitDatabase.mockResolvedValueOnce(false);
 
@@ -246,11 +278,34 @@ describe('runAppBootstrap', () => {
     expect(refreshCloudSyncIndicator).not.toHaveBeenCalled();
   });
 
+  it('reports initialization failure when recovery flow returns a refresh error', async () => {
+    const refreshError = new Error('refresh failed');
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError,
+        };
+      }
+    );
+
+    await runAppBootstrap({
+      refreshCloudSyncIndicator,
+      onInitializationFailed,
+    });
+
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
+    expect(onInitializationFailed).toHaveBeenCalledTimes(1);
+    expect(mockLoggerError).toHaveBeenCalledWith('❌ 应用初始化失败:', refreshError);
+  });
+
   it('logs queue-specific warnings when pending upload recovery reports queue failures', async () => {
     const voiceError = new Error('voice queue failed');
     const photoError = new Error('photo queue failed');
     mockRunCloudRecoveryFlow.mockImplementationOnce(
-      async (deps: { refreshCloudSyncIndicator: () => Promise<void> }) => {
+      async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
         await deps.refreshCloudSyncIndicator();
         return {
           syncError: null,
