@@ -21,17 +21,15 @@ const travelEntry = {
 } as Entry;
 
 describe('renderHomeScreen helper state isolation', () => {
-  it('keeps one render\'s source entries and derived tags from becoming the next render baseline', async () => {
+  it('does not let one render\'s source entries and derived tags become the default baseline for the next render', async () => {
     const firstRender = renderHomeScreen({
       entries: [workEntry],
     });
 
-    const secondRender = renderHomeScreen({
-      entries: [travelEntry],
-    });
+    const secondRender = renderHomeScreen();
 
     await expect(firstRender.spies.getAllTags()).resolves.toEqual(['工作']);
-    await expect(secondRender.spies.getAllTags()).resolves.toEqual(['旅行']);
+    await expect(secondRender.spies.getAllTags()).resolves.toEqual([]);
 
     await act(async () => {
       await firstRender.spies.applySearchFilters({
@@ -43,7 +41,9 @@ describe('renderHomeScreen helper state isolation', () => {
     });
 
     expect(firstRender.screen.getByTestId('timeline-entry-entry-work-1')).toBeTruthy();
-    expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
+    expect(firstRender.screen.queryByTestId('timeline-empty-state')).toBeNull();
+    expect(secondRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-entry-entry-work-1')).toBeNull();
 
     firstRender.screen.unmount();
     secondRender.screen.unmount();
