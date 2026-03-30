@@ -1,4 +1,5 @@
 import React from 'react';
+import { AsyncLocalStorage } from 'async_hooks';
 import { act, render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
@@ -71,14 +72,48 @@ const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockVoiceStartRecording = jest.fn().mockResolvedValue(undefined);
+const mockVoicePreloadAudio = jest.fn().mockResolvedValue(undefined);
+const mockLoggerError = jest.fn();
 
 let mockCloudSyncUiState: CloudUiState = 'hidden';
 let defaultMockEntryStore: MockEntryStoreContainer;
+const activeEntryStore = new AsyncLocalStorage<MockEntryStoreContainer>();
+const fabSelectHandlers = new WeakMap<MockEntryStoreContainer, (type: 'text' | 'photo' | 'voice') => void>();
 
 const MockEntryStoreContext = React.createContext<MockEntryStoreContainer | null>(null);
 
+const resolveActiveEntryStore = (contextStore: MockEntryStoreContainer | null = null) => (
+  contextStore ?? activeEntryStore.getStore() ?? defaultMockEntryStore
+);
+
 const emitEntryStore = (store: MockEntryStoreContainer) => {
   store.listeners.forEach((listener) => listener());
+};
+
+const runWithActiveEntryStore = <Args extends unknown[], Result>(
+  store: MockEntryStoreContainer,
+  callback: (...args: Args) => Result
+) => (...args: Args) => {
+  const previousStore = defaultMockEntryStore;
+  defaultMockEntryStore = store;
+
+  return activeEntryStore.run(store, () => {
+    const result = callback(...args);
+    if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+      return (result as PromiseLike<unknown>).finally(() => {
+        if (defaultMockEntryStore === store) {
+          defaultMockEntryStore = previousStore;
+        }
+      }) as Result;
+    }
+
+    if (defaultMockEntryStore === store) {
+      defaultMockEntryStore = previousStore;
+    }
+
+    return result;
+  });
 };
 
 const setEntryStoreState = (
@@ -151,7 +186,16 @@ const createEntryStoreState = (
   filterDateRange: initialFilters.filterDateRange ?? 'all',
   selectedTags: initialFilters.selectedTags ?? [],
   loadEntries: jest.fn(loadEntriesImplementation ?? (async () => undefined)),
-  addEntry: jest.fn().mockResolvedValue(undefined),
+  addEntry: jest.fn(async (entry: Omit<Entry, 'id' | 'timestamp'>) => {
+    const createdEntry = {
+      ...entry,
+      id: `mock-entry-${renderState.sourceEntries.length + 1}`,
+      timestamp: Date.now(),
+    } as Entry;
+
+    renderState.sourceEntries = [createdEntry, ...renderState.sourceEntries];
+    setState({ entries: renderState.sourceEntries });
+  }),
   addLocalEntry: jest.fn().mockResolvedValue({
     id: 'local-entry',
     type: 'text',
@@ -235,6 +279,7 @@ const mockTimelineContentModule = {
     isLoadingMore: boolean;
   }) => {
     const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
 
     if (!hasEntries) {
       return (
@@ -250,7 +295,7 @@ const mockTimelineContentModule = {
           <Pressable
             key={entry.id}
             testID={`timeline-entry-card-${entry.id}`}
-            onPress={() => onViewEntry(entry)}
+            onPress={runWithActiveEntryStore(store, () => onViewEntry(entry))}
           >
             <View testID={`timeline-entry-${entry.id}`}>
               <Text>{entry.content}</Text>
@@ -258,7 +303,7 @@ const mockTimelineContentModule = {
           </Pressable>
         ))}
         {hasMore && !isLoadingMore ? (
-          <Pressable testID="timeline-load-more-trigger" onPress={loadMore}>
+          <Pressable testID="timeline-load-more-trigger" onPress={runWithActiveEntryStore(store, loadMore)}>
             <Text>加载更多</Text>
           </Pressable>
         ) : null}
@@ -283,6 +328,7 @@ const mockTimelineDialogsModule = {
     onCloseEditing: () => void;
   }) => {
     const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
 
     return (
       <>
@@ -291,11 +337,11 @@ const mockTimelineDialogsModule = {
             <Text>{viewingEntry.content}</Text>
             <Pressable
               testID="timeline-text-detail-edit"
-              onPress={() => onDetailEdit(viewingEntry)}
+              onPress={runWithActiveEntryStore(store, () => onDetailEdit(viewingEntry))}
             >
               <Text>编辑</Text>
             </Pressable>
-            <Pressable testID="timeline-text-detail-close" onPress={onCloseViewing}>
+            <Pressable testID="timeline-text-detail-close" onPress={runWithActiveEntryStore(store, onCloseViewing)}>
               <Text>关闭</Text>
             </Pressable>
           </View>
@@ -303,7 +349,7 @@ const mockTimelineDialogsModule = {
         {editingEntry ? (
           <View testID="timeline-entry-editor">
             <Text>{editingEntry.content}</Text>
-            <Pressable testID="timeline-entry-editor-close" onPress={onCloseEditing}>
+            <Pressable testID="timeline-entry-editor-close" onPress={runWithActiveEntryStore(store, onCloseEditing)}>
               <Text>关闭编辑</Text>
             </Pressable>
           </View>
@@ -318,7 +364,24 @@ const mockTimelineScrollTopButtonModule = {
 };
 
 const mockFabMenuModule = {
-  FABMenu: () => null,
+  FABMenu: ({
+    onSelect,
+  }: {
+    onSelect: (type: 'text' | 'photo' | 'voice') => void;
+  }) => {
+    const { Pressable } = require('react-native');
+    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
+    fabSelectHandlers.set(store, onSelect);
+
+    return (
+      <Pressable
+        testID="home-quick-add-voice"
+        onPress={runWithActiveEntryStore(store, () => onSelect('voice'))}
+      >
+        <Text>录音</Text>
+      </Pressable>
+    );
+  },
 };
 
 const mockSidebarModule = {
@@ -331,7 +394,7 @@ const mockTextEditorModule = {
 
 const mockUseEntryStore = Object.assign(
   <T,>(selector?: (state: MockEntryStoreState) => T) => {
-    const store = React.useContext(MockEntryStoreContext) ?? defaultMockEntryStore;
+    const store = resolveActiveEntryStore(React.useContext(MockEntryStoreContext));
     const snapshot = React.useSyncExternalStore(
       (listener) => {
         store.listeners.add(listener);
@@ -344,12 +407,12 @@ const mockUseEntryStore = Object.assign(
     return selector ? selector(snapshot) : snapshot;
   },
   {
-    getState: () => defaultMockEntryStore.state,
+    getState: () => resolveActiveEntryStore().state,
     setState: (
       update:
         | Partial<MockEntryStoreState>
         | ((state: MockEntryStoreState) => Partial<MockEntryStoreState>)
-    ) => setEntryStoreState(defaultMockEntryStore, update),
+    ) => setEntryStoreState(resolveActiveEntryStore(), update),
   }
 );
 
@@ -418,7 +481,7 @@ jest.mock('@/src/services/voiceService', () => ({
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),
     cancelRecording: jest.fn().mockResolvedValue(undefined),
     getRecordingDuration: jest.fn().mockResolvedValue(0),
-    startRecording: jest.fn().mockResolvedValue(undefined),
+    startRecording: mockVoiceStartRecording,
     stopRecording: jest.fn().mockResolvedValue({
       uri: 'file:///recording.m4a',
       duration: 0,
@@ -427,7 +490,7 @@ jest.mock('@/src/services/voiceService', () => ({
     }),
     saveVoiceToStorage: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
     saveVoiceToCache: jest.fn().mockResolvedValue('file:///saved-recording.m4a'),
-    preloadAudio: jest.fn().mockResolvedValue(undefined),
+    preloadAudio: mockVoicePreloadAudio,
   },
 }));
 
@@ -454,7 +517,7 @@ jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
 }));
 
 jest.mock('@/src/utils/logger', () => ({
-  logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+  logger: { log: jest.fn(), warn: jest.fn(), error: mockLoggerError, debug: jest.fn() },
 }));
 
 jest.mock('@/src/utils/fileSystem', () => ({
@@ -509,23 +572,28 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   mockShowCloudSyncStatusAlert.mockClear();
 
   return {
-    screen: render(
+    screen: activeEntryStore.run(entryStore, () => render(
       <MockEntryStoreContext.Provider value={entryStore}>
         <HomeScreen />
       </MockEntryStoreContext.Provider>
-    ),
+    )),
     controls: {
       setEntries: createSetSourceEntries(entryStore, renderState),
       setPagination: createSetPaginationState(entryStore),
     },
     spies: {
       loadEntries: entryStore.state.loadEntries,
+      addEntry: entryStore.state.addEntry,
       loadMore: entryStore.state.loadMore,
       loadSettings: mockSettingsState.loadSettings,
       loadCommonTags: mockCommonTagsState.loadCommonTags,
       refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
       applySearchFilters: entryStore.state.applySearchFilters,
       getAllTags: entryStore.state.getAllTags,
+      startRecording: mockVoiceStartRecording,
+      preloadAudio: mockVoicePreloadAudio,
+      triggerQuickAddVoice: () => fabSelectHandlers.get(entryStore)?.('voice'),
+      loggerError: mockLoggerError,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
     },
   };

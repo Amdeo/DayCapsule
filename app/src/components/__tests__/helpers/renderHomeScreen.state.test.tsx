@@ -1,5 +1,5 @@
 import type { Entry } from '@/src/types/entry';
-import { act } from '@testing-library/react-native';
+import { act, waitFor } from '@testing-library/react-native';
 import { renderHomeScreen } from './renderHomeScreen';
 
 const workEntry = {
@@ -75,6 +75,28 @@ describe('renderHomeScreen helper state isolation', () => {
     expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
     expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
     expect(secondRender.screen.queryByTestId('timeline-empty-state')).toBeNull();
+
+    firstRender.screen.unmount();
+    secondRender.screen.unmount();
+  });
+
+  it('keeps imperative store reads triggered from one rendered home screen bound to that render', async () => {
+    const firstRender = renderHomeScreen();
+    const secondRender = renderHomeScreen({
+      entries: [travelEntry],
+    });
+
+    firstRender.spies.startRecording.mockClear();
+
+    await act(async () => {
+      await firstRender.spies.triggerQuickAddVoice?.();
+    });
+
+    expect(firstRender.spies.loggerError).not.toHaveBeenCalled();
+    expect(firstRender.spies.addEntry).toHaveBeenCalledTimes(1);
+    expect(firstRender.spies.startRecording).toHaveBeenCalledTimes(1);
+    expect(firstRender.screen.getByTestId('timeline-entry-mock-entry-1')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-entry-mock-entry-1')).toBeNull();
 
     firstRender.screen.unmount();
     secondRender.screen.unmount();
