@@ -9,7 +9,7 @@ export default function NotFoundScreen() {
       <View testID="not-found-root" className="flex-1 items-center justify-center p-5">
         <Text className="text-[20px] font-bold">This screen doesn't exist.</Text>
 
-        <Link href="/" className="mt-[15px] py-[15px]">
+        <Link href="./(tabs)" className="mt-[15px] py-[15px]">
           <Text className="text-sm text-[#2e78b7]">Go to home screen!</Text>
         </Link>
       </View>
