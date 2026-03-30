@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent } from '@testing-library/react-native';
 import { within } from '@testing-library/react-native';
 import {
+  getLatestLoginPageProps,
   renderSettingsPage,
   resetRenderSettingsPageMocks,
 } from './renderSettingsPage';
@@ -52,12 +53,14 @@ describe('renderSettingsPage stability', () => {
 
     fireEvent.press(firstRender.screen.getByTestId('settings-open-login'));
     expect(await firstRender.screen.findByTestId('settings-login-dialog')).toBeTruthy();
+    expect(getLatestLoginPageProps()).not.toBeNull();
 
     firstRender.unmount();
 
     const secondRender = await renderSettingsPage({ authenticated: false });
 
     expect(secondRender.screen.queryByTestId('settings-login-dialog')).toBeNull();
+    expect(getLatestLoginPageProps()).toBeNull();
 
     fireEvent.press(secondRender.screen.getByTestId('settings-open-login'));
     expect(await secondRender.screen.findByTestId('settings-login-dialog')).toBeTruthy();
