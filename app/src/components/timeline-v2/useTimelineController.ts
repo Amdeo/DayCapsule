@@ -7,8 +7,7 @@ import type {
 } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import type { TimeSection, ViewMode } from './timelineTypes';
-
-const DETAIL_PAGE_EXIT_DURATION_MS = 300;
+import { useTimelineEntryDetailState } from './useTimelineEntryDetailState';
 
 interface UseTimelineControllerOptions {
   updateEntry: (id: string, updates: Partial<Entry>) => void;
@@ -17,10 +16,15 @@ interface UseTimelineControllerOptions {
 export function useTimelineController({
   updateEntry,
 }: UseTimelineControllerOptions) {
-  const [viewingEntry, setViewingEntry] = useState<Entry | null>(null);
-  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
-  const pendingEditingEntryRef = useRef<Entry | null>(null);
-  const detailToEditorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    viewingEntry,
+    editingEntry,
+    handleViewEntry,
+    handleEditEntry,
+    closeViewingEntry,
+    closeEditingEntry,
+    handleDetailEdit,
+  } = useTimelineEntryDetailState();
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -54,19 +58,12 @@ export function useTimelineController({
     return () => clearTimeout(timer);
   }, [viewMode]);
 
-  useEffect(() => () => {
-    if (detailToEditorTimerRef.current) {
-      clearTimeout(detailToEditorTimerRef.current);
-      detailToEditorTimerRef.current = null;
-    }
-  }, []);
-
   const handleSaveEdit = useCallback(
     (id: string, content: string, tags: string[]) => {
       updateEntry(id, { content, tags });
-      setEditingEntry(null);
+      closeEditingEntry();
     },
-    [updateEntry],
+    [closeEditingEntry, updateEntry],
   );
 
   const handleSearchFocus = useCallback(() => {
@@ -86,22 +83,6 @@ export function useTimelineController({
 
     setShowViewToggle((value) => !value);
   }, [showViewToggle, viewMode]);
-
-  const handleViewEntry = useCallback((entry: Entry) => {
-    if (entry.type !== 'text') {
-      return;
-    }
-    setViewingEntry(entry);
-  }, []);
-
-  const handleEditEntry = useCallback((entry: Entry) => {
-    if (detailToEditorTimerRef.current) {
-      clearTimeout(detailToEditorTimerRef.current);
-      detailToEditorTimerRef.current = null;
-    }
-    pendingEditingEntryRef.current = null;
-    setEditingEntry(entry);
-  }, []);
 
   const handleActionSheetOpen = useCallback((id: string) => {
     setActiveActionSheetId(id);
@@ -160,37 +141,6 @@ export function useTimelineController({
       useNativeDriver: true,
     }).start();
   }, [scrollTopScale]);
-
-  const closeViewingEntry = useCallback(() => {
-    pendingEditingEntryRef.current = null;
-    if (detailToEditorTimerRef.current) {
-      clearTimeout(detailToEditorTimerRef.current);
-      detailToEditorTimerRef.current = null;
-    }
-    setViewingEntry(null);
-  }, []);
-
-  const closeEditingEntry = useCallback(() => {
-    pendingEditingEntryRef.current = null;
-    if (detailToEditorTimerRef.current) {
-      clearTimeout(detailToEditorTimerRef.current);
-      detailToEditorTimerRef.current = null;
-    }
-    setEditingEntry(null);
-  }, []);
-
-  const handleDetailEdit = useCallback((entry: Entry) => {
-    pendingEditingEntryRef.current = entry;
-    setViewingEntry(null);
-    if (detailToEditorTimerRef.current) {
-      clearTimeout(detailToEditorTimerRef.current);
-    }
-    detailToEditorTimerRef.current = setTimeout(() => {
-      setEditingEntry(pendingEditingEntryRef.current);
-      pendingEditingEntryRef.current = null;
-      detailToEditorTimerRef.current = null;
-    }, DETAIL_PAGE_EXIT_DURATION_MS);
-  }, []);
 
   const revealFab = useCallback(() => {
     setFabShouldHide(false);

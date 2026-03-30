@@ -126,6 +126,15 @@ jest.mock('../../TextEntryDetailPage', () => ({
         <Pressable testID="timeline-text-detail-edit" onPress={() => onEdit(entry)}>
           <Text>编辑</Text>
         </Pressable>
+        <Pressable
+          testID="timeline-text-detail-edit-and-close"
+          onPress={() => {
+            onEdit(entry);
+            onClose();
+          }}
+        >
+          <Text>编辑并关闭</Text>
+        </Pressable>
         <Pressable testID="timeline-text-detail-close" onPress={onClose}>
           <Text>关闭</Text>
         </Pressable>
@@ -265,5 +274,23 @@ describe('Timeline home navigation', () => {
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
 
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
+  });
+
+  it('does not open the editor after closing detail during the delayed detail-to-editor handoff', () => {
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
+    fireEvent.press(screen.getByTestId('timeline-text-detail-edit-and-close'));
+
+    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
+    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
+    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+    expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
   });
 });
