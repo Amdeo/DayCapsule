@@ -189,4 +189,38 @@ describe('ImageViewer lifecycle', () => {
     expect(modalAfterClose.props.visible).toBe(false);
     expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0);
   });
+
+  it('falls back to fade close when the shared-transition thumbnail is offscreen', async () => {
+    const onClose = jest.fn();
+    const thumbnailRef = {
+      current: {
+        measureInWindow: (callback: (x: number, y: number, width: number, height: number) => void) => {
+          callback(0, 2000, 120, 160);
+        },
+      },
+    } as any;
+    let tree: renderer.ReactTestRenderer;
+
+    await act(async () => {
+      tree = renderer.create(
+        <ImageViewer
+          visible
+          imageUri='file:///image-a.jpg'
+          onClose={onClose}
+          originLayout={{ x: 12, y: 34, width: 120, height: 160 }}
+          thumbnailRef={thumbnailRef}
+        />
+      );
+    });
+
+    findOpenPhaseImageByUri(tree, 'file:///image-a.jpg');
+
+    await act(async () => {
+      const modal = tree.root.findByType(Modal);
+      modal.props.onRequestClose();
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(() => findOpenPhaseImageByUri(tree, 'file:///image-a.jpg')).toThrow();
+  });
 });
