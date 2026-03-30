@@ -21,27 +21,42 @@ const travelEntry = {
 } as Entry;
 
 describe('renderHomeScreen stability contract', () => {
-  it('keeps a helper trigger bound to its own render after a later render mounts', async () => {
-    const firstRender = renderHomeScreen({
-      entries: [workEntry],
-    });
+  it('keeps a default empty render empty and cloud-hidden after another populated render updates itself', async () => {
+    const firstRender = renderHomeScreen();
     const secondRender = renderHomeScreen({
       entries: [travelEntry],
+      cloudMode: true,
+      cloudSyncUiState: 'pending',
     });
 
-    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
+    expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-button')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
 
-    firstRender.spies.startRecording.mockClear();
+    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
 
     await act(async () => {
-      await firstRender.spies.triggerQuickAddVoice?.();
+      await secondRender.spies.applySearchFilters({
+        query: 'not-found',
+        type: 'all',
+        dateRange: 'all',
+        tags: [],
+      });
     });
 
-    expect(firstRender.spies.loggerError).not.toHaveBeenCalled();
-    expect(firstRender.spies.startRecording).toHaveBeenCalledTimes(1);
-    expect(firstRender.screen.getByTestId('timeline-entry-mock-entry-2')).toBeTruthy();
-    expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
-    expect(secondRender.screen.queryByTestId('timeline-entry-mock-entry-2')).toBeNull();
+    expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(firstRender.screen.queryByTestId('timeline-data-state')).toBeNull();
+    expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-button')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
+
+    expect(secondRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
+    expect(secondRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
+    expect(secondRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
 
     firstRender.screen.unmount();
     secondRender.screen.unmount();
