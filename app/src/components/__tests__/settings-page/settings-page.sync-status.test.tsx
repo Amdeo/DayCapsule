@@ -50,4 +50,17 @@ describe('SettingsPage sync status', () => {
       expect(mocks.showCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("does not trigger sync status while cloud mode is switching", async () => {
+    const { screen, mocks } = await renderSettingsPage({
+      cloudMode: 'switching',
+      authenticated: true,
+    });
+
+    fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
+
+    await waitFor(() => {
+      expect(mocks.showCloudSyncStatusAlert).not.toHaveBeenCalled();
+    });
+  });
 });
