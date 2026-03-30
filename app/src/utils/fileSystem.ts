@@ -33,6 +33,9 @@ export interface MediaPaths {
 
 const DEFAULT_SERVER_SCOPE = 'env_default';
 
+const getExistingEntrySize = (info: { exists: boolean; size?: number | null }): number =>
+  info.exists && typeof info.size === 'number' ? info.size : 0;
+
 const getCurrentServerScope = (): string => {
   const serverUrl = getCurrentServerUrlSync();
   return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
@@ -87,7 +90,7 @@ export async function getFileInfo(
     const info = await FileSystem.getInfoAsync(uri);
     return {
       exists: info.exists,
-      size: info.exists ? (info as any).size || 0 : 0,
+      size: getExistingEntrySize(info),
     };
   } catch (error) {
     logger.error('Failed to get file info:', error);
@@ -161,7 +164,7 @@ export async function getDirectorySize(dirUri: string): Promise<number> {
         const fileUri = `${dirUri}${file}`;
         const info = await FileSystem.getInfoAsync(fileUri);
         if (info.isDirectory) return getDirectorySize(fileUri);
-        return info.exists ? (info as any).size || 0 : 0;
+        return getExistingEntrySize(info);
       })
     );
     return sizes.reduce((sum, s) => sum + s, 0);

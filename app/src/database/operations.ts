@@ -441,7 +441,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       );
     } else if (hasMediaColumns) {
       // 序列化媒体元数据
-      const firstMedia = Array.isArray(entry.media) ? entry.media[0] : entry.media as any;
+      const firstMedia = entry.media?.[0];
       const mediaMetadata = firstMedia?.metadata
         ? JSON.stringify(firstMedia.metadata)
         : null;
@@ -476,7 +476,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       );
     } else {
       // 兼容更旧的表结构：未启用 media_json/media_metadata 时退回 legacy 媒体列写入
-      const firstMedia = Array.isArray(entry.media) ? entry.media[0] : entry.media as any;
+      const firstMedia = entry.media?.[0];
       await db.runAsync(
         `INSERT INTO entries (
           id, type, content, timestamp, tags,
@@ -560,7 +560,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
         fields.push('media_json = ?');
         values.push(JSON.stringify(updates.media));
       } else if (hasMediaColumns) {
-        const m = Array.isArray(updates.media) ? updates.media[0] : updates.media as any;
+        const m = updates.media?.[0];
         fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?', 'media_thumbnail = ?', 'media_metadata = ?');
         values.push(
           m?.uri ?? null,
@@ -570,7 +570,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
           m?.metadata ? JSON.stringify(m.metadata) : null
         );
       } else {
-        const m = Array.isArray(updates.media) ? updates.media[0] : updates.media as any;
+        const m = updates.media?.[0];
         fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
         values.push(m?.uri ?? null, m?.mimeType ?? null, m?.duration ?? null);
       }
