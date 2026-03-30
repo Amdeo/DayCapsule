@@ -112,6 +112,7 @@ import type { Entry } from '@/src/types/entry';
 import {
   clearRecordingTimerForTest,
   assertCanStartVoiceRecordingForTest,
+  readErrorCodeForTest,
   startCloudVoiceRecordingForTest,
   finalizeCloudVoiceRecordingForTest,
   type VoiceCloudStartDeps,
@@ -321,5 +322,12 @@ describe('cloud voice recording helpers', () => {
     } catch (error) {
       expect((error as { code?: string }).code).toBe('ACTIVE_RECORDING_IN_PROGRESS');
     }
+  });
+
+  it('reads string error codes from unknown values only when present', () => {
+    expect(readErrorCodeForTest({ code: 'PERMISSION_DENIED' })).toBe('PERMISSION_DENIED');
+    expect(readErrorCodeForTest({ code: 123 })).toBeUndefined();
+    expect(readErrorCodeForTest(new Error('no code'))).toBeUndefined();
+    expect(readErrorCodeForTest(null)).toBeUndefined();
   });
 });

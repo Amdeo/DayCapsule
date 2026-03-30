@@ -1,10 +1,13 @@
+import type { ComponentProps } from 'react';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ViewMode } from './timelineTypes';
 import { viewModeToggleStyles as styles } from './Timeline.v2.styles';
 
-const VIEW_MODES: { mode: ViewMode; icon: string; label: string }[] = [
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+const VIEW_MODES: { mode: ViewMode; icon: IoniconName; label: string }[] = [
   { mode: 'list', icon: 'list', label: '列表' },
   { mode: 'calendar', icon: 'calendar', label: '日历' },
 ];
@@ -30,7 +33,7 @@ export function TimelineViewModeToggle({
             activeOpacity={0.7}
           >
             <Ionicons
-              name={icon as any}
+              name={icon}
               size={16}
               color={active ? '#6A89CC' : '#A3A3A3'}
             />
