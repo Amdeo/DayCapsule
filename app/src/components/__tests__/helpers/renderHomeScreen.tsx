@@ -76,10 +76,10 @@ const mockVoiceStartRecording = jest.fn().mockResolvedValue(undefined);
 const mockVoicePreloadAudio = jest.fn().mockResolvedValue(undefined);
 const mockLoggerError = jest.fn();
 
-let mockCloudSyncUiState: CloudUiState = 'hidden';
 let defaultMockEntryStore: MockEntryStoreContainer;
 const activeEntryStore = new AsyncLocalStorage<MockEntryStoreContainer>();
 const fabSelectHandlers = new WeakMap<MockEntryStoreContainer, (type: 'text' | 'photo' | 'voice') => void>();
+const cloudSyncUiStates = new WeakMap<MockEntryStoreContainer, CloudUiState>();
 
 const MockEntryStoreContext = React.createContext<MockEntryStoreContainer | null>(null);
 
@@ -443,8 +443,12 @@ const mockUseCommonTagsStore = Object.assign(
 );
 
 const mockUseCloudSyncIndicatorStore = Object.assign(
-  <T,>(selector?: (state: { uiState: CloudUiState }) => T) =>
-    selector ? selector({ uiState: mockCloudSyncUiState }) : ({ uiState: mockCloudSyncUiState } as T),
+  <T,>(selector?: (state: { uiState: CloudUiState }) => T) => {
+    const store = resolveActiveEntryStore(React.useContext(MockEntryStoreContext));
+    const uiState = cloudSyncUiStates.get(store) ?? 'hidden';
+
+    return selector ? selector({ uiState }) : ({ uiState } as T);
+  },
   {
     getState: () => ({
       refresh: mockRefreshCloudSyncIndicator,
@@ -546,13 +550,13 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
     derivesAllTagsFromEntries: options.allTags == null,
   };
 
-  mockCloudSyncUiState = options.cloudSyncUiState ?? 'hidden';
   const entryStore = createMockEntryStore(
     entries,
     options.initialFilters,
     options.loadEntriesImplementation,
     renderState
   );
+  cloudSyncUiStates.set(entryStore, options.cloudSyncUiState ?? 'hidden');
   defaultMockEntryStore = entryStore;
 
   Object.assign(mockSettingsState, {

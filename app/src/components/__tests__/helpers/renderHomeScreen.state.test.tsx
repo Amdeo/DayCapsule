@@ -21,6 +21,37 @@ const travelEntry = {
 } as Entry;
 
 describe('renderHomeScreen helper state isolation', () => {
+  it('does not let a later render reset an earlier render\'s cloud sync ui state on rerender', async () => {
+    const firstRender = renderHomeScreen({
+      cloudMode: true,
+      cloudSyncUiState: 'pending',
+    });
+
+    expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+
+    const secondRender = renderHomeScreen();
+
+    expect(secondRender.screen.queryByTestId('cloud-sync-button')).toBeNull();
+
+    await act(async () => {
+      await firstRender.spies.applySearchFilters({
+        query: '',
+        type: 'all',
+        dateRange: 'all',
+        tags: [],
+      });
+    });
+
+    expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
+    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(firstRender.screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-spinner')).toBeNull();
+
+    firstRender.screen.unmount();
+    secondRender.screen.unmount();
+  });
+
   it('does not let one render\'s source entries and derived tags become the default baseline for the next render', async () => {
     const firstRender = renderHomeScreen({
       entries: [workEntry],
