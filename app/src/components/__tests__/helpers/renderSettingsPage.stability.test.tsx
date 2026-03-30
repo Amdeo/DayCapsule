@@ -14,7 +14,7 @@ describe('renderSettingsPage stability', () => {
     resetRenderSettingsPageMocks();
   });
 
-  it('does not emit act warnings after the initial settings page render settles', async () => {
+  it('waits for the initial storage value before settling without act warnings', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     let resolveStorageStats: ((value: { totalSize: number }) => void) | null = null;
     getStorageStats.mockImplementationOnce(() => new Promise((resolve) => {
@@ -30,8 +30,6 @@ describe('renderSettingsPage stability', () => {
         }),
       ]);
 
-      // The legacy helper used a fixed flush loop and returned early while
-      // storage stats were still pending. The current helper must keep waiting.
       expect(settleState).toBe('timeout');
 
       resolveStorageStats?.({ totalSize: 1024 });
