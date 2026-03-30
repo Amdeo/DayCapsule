@@ -52,7 +52,10 @@ const EMPTY_LOCAL_COUNTS: LocalOverviewCounts = {
   voiceCount: 0,
 };
 
-const isRemoteUrl = (uri: string): boolean => /^https?:\/\//i.test(uri.trim());
+const isRemoteUrl = (uri: string): boolean => {
+  const normalizedUri = uri.trim();
+  return /^https?:\/\//i.test(normalizedUri) || normalizedUri.startsWith('/api/media/');
+};
 
 const collectLocalMediaPaths = (entries: Entry[]): string[] => {
   const paths = new Set<string>();
