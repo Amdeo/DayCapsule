@@ -322,7 +322,7 @@ jest.mock('../../LoginPage', () => ({
   LoginPage: (props: LoginPageProps) => {
     const React = require('react');
     const { Text } = require('react-native');
-    latestLoginPageProps = props;
+    latestLoginPageProps = props.visible ? props : null;
     return props.visible ? <Text testID="settings-login-dialog">login</Text> : null;
   },
 }));
@@ -452,6 +452,8 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
     entries,
     loadEntries: jest.fn(async () => undefined),
   });
+
+  latestLoginPageProps = null;
 
   const finalProps: SettingsPageProps = {
     visible,

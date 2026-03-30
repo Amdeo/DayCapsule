@@ -1,6 +1,8 @@
 import React from 'react';
+import { fireEvent } from '@testing-library/react-native';
 import { within } from '@testing-library/react-native';
 import {
+  getLatestLoginPageProps,
   renderSettingsPage,
   resetRenderSettingsPageMocks,
 } from './renderSettingsPage';
@@ -46,5 +48,19 @@ describe('renderSettingsPage stability', () => {
     } finally {
       consoleErrorSpy.mockRestore();
     }
+  });
+
+  it('re-initializes the captured login props for each render', async () => {
+    const firstRender = await renderSettingsPage({ authenticated: false });
+
+    fireEvent.press(firstRender.screen.getByTestId('settings-open-login'));
+    expect(await firstRender.screen.findByTestId('settings-login-dialog')).toBeTruthy();
+    expect(getLatestLoginPageProps()?.visible).toBe(true);
+
+    firstRender.unmount();
+
+    await renderSettingsPage({ authenticated: true });
+
+    expect(getLatestLoginPageProps()).toBeNull();
   });
 });
