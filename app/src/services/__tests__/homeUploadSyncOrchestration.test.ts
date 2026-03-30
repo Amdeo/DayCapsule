@@ -45,6 +45,24 @@ describe('homeUploadSyncOrchestration', () => {
     mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
   });
 
+  it('returns enqueue decisions for cloud-mode voice and photo flows', () => {
+    const orchestration = createHomeUploadSyncOrchestration({
+      setEntryState: mockSetState,
+      refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
+    });
+
+    expect(orchestration.shouldEnqueueVoiceUpload(true)).toBe(true);
+    expect(orchestration.shouldEnqueueVoiceUpload(false)).toBe(false);
+    expect(orchestration.getPhotoCreationPolicy(true)).toEqual({
+      shouldEnqueueUpload: true,
+      initialSyncStatus: 'pending_upload',
+    });
+    expect(orchestration.getPhotoCreationPolicy(false)).toEqual({
+      shouldEnqueueUpload: false,
+      initialSyncStatus: 'synced',
+    });
+  });
+
   it('updates entry sync state and refreshes cloud sync indicator for voice and photo queue callbacks', async () => {
     const orchestration = createHomeUploadSyncOrchestration({
       setEntryState: mockSetState,

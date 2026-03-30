@@ -30,6 +30,11 @@ function updateEntryState(
 }
 
 export interface HomeUploadSyncOrchestration {
+  shouldEnqueueVoiceUpload: (isCloudModeEnabled: boolean) => boolean;
+  getPhotoCreationPolicy: (isCloudModeEnabled: boolean) => {
+    shouldEnqueueUpload: boolean;
+    initialSyncStatus: Entry['syncStatus'];
+  };
   voiceCallbacks: Pick<VoiceUploadQueueDeps, 'onEntryUploading' | 'onEntryPending' | 'onEntryPendingSync'>;
   photoCallbacks: Pick<PhotoUploadQueueDeps, 'onEntryUploading' | 'onEntryPendingUpload' | 'onEntryPendingSync'>;
 }
@@ -43,6 +48,11 @@ export function createHomeUploadSyncOrchestration(
   };
 
   return {
+    shouldEnqueueVoiceUpload: (isCloudModeEnabled) => isCloudModeEnabled,
+    getPhotoCreationPolicy: (isCloudModeEnabled) => ({
+      shouldEnqueueUpload: isCloudModeEnabled,
+      initialSyncStatus: isCloudModeEnabled ? 'pending_upload' : 'synced',
+    }),
     voiceCallbacks: {
       onEntryUploading: (id) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'uploading' }), resolvedDeps);

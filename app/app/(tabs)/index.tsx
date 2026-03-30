@@ -317,6 +317,7 @@ export default function HomeScreen() {
   const [showTextEditor, setShowTextEditor] = useState(false);
   const drawerProgress = useSharedValue(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const uploadSyncOrchestration = useRef(createHomeUploadSyncOrchestration());
 
   // 使用 ref 存储计时器和录音 ID，避免触发不必要的重渲染
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -367,7 +368,7 @@ export default function HomeScreen() {
   }, [loadEntries, refreshCloudSyncIndicator]);
 
   useEffect(() => {
-    const orchestration = createHomeUploadSyncOrchestration();
+    const orchestration = uploadSyncOrchestration.current;
     configureVoiceUploadQueueCallbacks(orchestration.voiceCallbacks);
     configurePhotoUploadQueueCallbacks(orchestration.photoCallbacks);
   }, []);
@@ -484,6 +485,9 @@ export default function HomeScreen() {
     clearRecordingTimerForTest(recordingTimerRef);
     try {
       if (isCloudModeEnabled()) {
+        const shouldEnqueueUpload = uploadSyncOrchestration.current.shouldEnqueueVoiceUpload(
+          isCloudModeEnabled()
+        );
         await finalizeCloudVoiceRecordingForTest(id, {
           stopRecording: VoiceService.stopRecording.bind(VoiceService),
           prepareVoiceEntryMedia: (entryId, audioFile) => prepareVoiceEntryMediaService(entryId, audioFile, {
@@ -492,7 +496,7 @@ export default function HomeScreen() {
           updateLocalEntry,
           deleteEntry,
           deleteLocalFile: deleteFile,
-          enqueueUpload: enqueueVoiceUpload,
+          enqueueUpload: shouldEnqueueUpload ? enqueueVoiceUpload : () => {},
           preloadAudio: VoiceService.preloadAudio.bind(VoiceService),
         });
       } else {
@@ -525,6 +529,9 @@ export default function HomeScreen() {
 
   const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
+      const photoCreationPolicy = uploadSyncOrchestration.current.getPhotoCreationPolicy(
+        isCloudModeEnabled()
+      );
       await handlePhotoSelectForTest(results, {
         addLocalEntry,
         updateLocalEntry,
@@ -537,8 +544,8 @@ export default function HomeScreen() {
           deleteLocalFile: deleteFile,
         }),
         deleteLocalFile: deleteFile,
-        enqueueUpload: isCloudModeEnabled() ? enqueuePhotoUpload : undefined,
-        initialSyncStatus: isCloudModeEnabled() ? 'pending_upload' : 'synced',
+        enqueueUpload: photoCreationPolicy.shouldEnqueueUpload ? enqueuePhotoUpload : undefined,
+        initialSyncStatus: photoCreationPolicy.initialSyncStatus,
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
