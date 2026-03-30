@@ -192,11 +192,12 @@ describe('ImageViewer lifecycle', () => {
 
   it('falls back to fade close when the shared-transition thumbnail is offscreen', async () => {
     const onClose = jest.fn();
+    const measureInWindow = jest.fn((callback: (x: number, y: number, width: number, height: number) => void) => {
+      callback(0, 2000, 120, 160);
+    });
     const thumbnailRef = {
       current: {
-        measureInWindow: (callback: (x: number, y: number, width: number, height: number) => void) => {
-          callback(0, 2000, 120, 160);
-        },
+        measureInWindow,
       },
     } as any;
     let tree: renderer.ReactTestRenderer;
@@ -220,6 +221,7 @@ describe('ImageViewer lifecycle', () => {
       modal.props.onRequestClose();
     });
 
+    expect(measureInWindow).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(() => findOpenPhaseImageByUri(tree, 'file:///image-a.jpg')).toThrow();
   });
