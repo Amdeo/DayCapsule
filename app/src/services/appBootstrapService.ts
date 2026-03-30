@@ -18,8 +18,7 @@ import { useSyncStore } from '@/src/store/syncStore';
 import { Storage } from '@/src/utils/storage';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
-import { flushPendingVoiceUploads } from '@/src/services/voiceUploadQueue';
-import { flushPendingPhotoUploads } from '@/src/services/photoUploadQueue';
+import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
 
 export interface AppBootstrapDependencies {
   refreshCloudSyncIndicator: (label: string) => Promise<void>;
@@ -104,11 +103,8 @@ export async function runAppBootstrap(
       }
     }
 
-    await flushPendingVoiceUploads().catch((queueError) => {
-      logger.warn('⚠️ 启动时补传待上传语音失败:', queueError);
-    });
-    await flushPendingPhotoUploads().catch((queueError) => {
-      logger.warn('⚠️ 启动时补传待上传照片失败:', queueError);
+    await createUploadQueueRecoveryService().flushPendingUploads().catch((queueError) => {
+      logger.warn('⚠️ 启动时补传待上传内容失败:', queueError);
     });
 
     await deps.refreshCloudSyncIndicator('启动后');

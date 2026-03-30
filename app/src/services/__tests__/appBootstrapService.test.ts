@@ -18,8 +18,7 @@ const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingVoiceUploads = jest.fn(async () => undefined);
-const mockFlushPendingPhotoUploads = jest.fn(async () => undefined);
+const mockFlushPendingUploads = jest.fn(async () => undefined);
 const mockAlert = jest.fn();
 const mockLoggerLog = jest.fn();
 const mockLoggerWarn = jest.fn();
@@ -106,12 +105,10 @@ jest.mock('@/src/services/cloudSyncService', () => ({
   }),
 }));
 
-jest.mock('@/src/services/voiceUploadQueue', () => ({
-  flushPendingVoiceUploads: (...args: unknown[]) => mockFlushPendingVoiceUploads(...args),
-}));
-
-jest.mock('@/src/services/photoUploadQueue', () => ({
-  flushPendingPhotoUploads: (...args: unknown[]) => mockFlushPendingPhotoUploads(...args),
+jest.mock('@/src/services/uploadQueueRecoveryService', () => ({
+  createUploadQueueRecoveryService: () => ({
+    flushPendingUploads: (...args: unknown[]) => mockFlushPendingUploads(...args),
+  }),
 }));
 
 import { runAppBootstrap } from '../appBootstrapService';
@@ -141,8 +138,7 @@ describe('runAppBootstrap', () => {
     expect(mockCleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(mockLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockLoadSync).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingVoiceUploads).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
     expect(onInitializationFailed).not.toHaveBeenCalled();
 
@@ -159,12 +155,9 @@ describe('runAppBootstrap', () => {
       mockLoadAuth.mock.invocationCallOrder[0]
     );
     expect(mockLoadSync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]
+      mockFlushPendingUploads.mock.invocationCallOrder[0]
     );
-    expect(mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]
-    );
-    expect(mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockFlushPendingUploads.mock.invocationCallOrder[0]).toBeLessThan(
       refreshCloudSyncIndicator.mock.invocationCallOrder[0]
     );
   });

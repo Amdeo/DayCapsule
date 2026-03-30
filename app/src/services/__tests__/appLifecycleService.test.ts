@@ -3,8 +3,7 @@ import { waitFor } from '@testing-library/react-native';
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
 const mockSyncNow = jest.fn(async () => undefined);
-const mockFlushPendingVoiceUploads = jest.fn(async () => undefined);
-const mockFlushPendingPhotoUploads = jest.fn(async () => undefined);
+const mockFlushPendingUploads = jest.fn(async () => undefined);
 const mockGetNetworkStateAsync = jest.fn(async () => ({
   isConnected: true,
   isInternetReachable: true,
@@ -29,12 +28,10 @@ jest.mock('@/src/services/cloudSyncService', () => ({
   }),
 }));
 
-jest.mock('@/src/services/voiceUploadQueue', () => ({
-  flushPendingVoiceUploads: (...args: unknown[]) => mockFlushPendingVoiceUploads(...args),
-}));
-
-jest.mock('@/src/services/photoUploadQueue', () => ({
-  flushPendingPhotoUploads: (...args: unknown[]) => mockFlushPendingPhotoUploads(...args),
+jest.mock('@/src/services/uploadQueueRecoveryService', () => ({
+  createUploadQueueRecoveryService: () => ({
+    flushPendingUploads: (...args: unknown[]) => mockFlushPendingUploads(...args),
+  }),
 }));
 
 jest.mock('expo-network', () => ({
@@ -88,8 +85,7 @@ describe('appLifecycleService', () => {
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
     mockSyncNow.mockResolvedValue(undefined);
-    mockFlushPendingVoiceUploads.mockResolvedValue(undefined);
-    mockFlushPendingPhotoUploads.mockResolvedValue(undefined);
+    mockFlushPendingUploads.mockResolvedValue(undefined);
     mockGetNetworkStateAsync.mockResolvedValue({
       isConnected: true,
       isInternetReachable: true,
@@ -105,16 +101,12 @@ describe('appLifecycleService', () => {
     await runRecovery('网络恢复时');
 
     expect(mockSyncNow).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingVoiceUploads).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('网络恢复时后');
     expect(mockSyncNow.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]
+      mockFlushPendingUploads.mock.invocationCallOrder[0]
     );
-    expect(mockFlushPendingVoiceUploads.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]
-    );
-    expect(mockFlushPendingPhotoUploads.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockFlushPendingUploads.mock.invocationCallOrder[0]).toBeLessThan(
       refreshCloudSyncIndicator.mock.invocationCallOrder[0]
     );
   });
@@ -141,8 +133,7 @@ describe('appLifecycleService', () => {
     resolveSync?.();
     await Promise.all([first, second]);
 
-    expect(mockFlushPendingVoiceUploads).toHaveBeenCalledTimes(1);
-    expect(mockFlushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+    expect(mockFlushPendingUploads).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).toHaveBeenCalledTimes(1);
   });
 
