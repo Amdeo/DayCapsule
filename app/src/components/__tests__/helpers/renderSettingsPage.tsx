@@ -446,7 +446,6 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
     cloudMode: cloudMode ?? mockPersistedSettings.cloudMode,
     isLoaded: true,
   });
-  mockPersistedSettings.cloudMode = mockSettingsState.cloudMode;
 
   Object.assign(mockEntryStoreState, {
     entries,
