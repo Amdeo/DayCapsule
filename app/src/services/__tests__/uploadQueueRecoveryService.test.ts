@@ -45,4 +45,22 @@ describe('uploadQueueRecoveryService', () => {
     expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
     expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
   });
+
+  it('still attempts the photo queue when voice flushing throws synchronously', async () => {
+    const voiceError = new Error('voice queue failed');
+    const flushPendingVoiceUploads = jest.fn(() => {
+      throw voiceError;
+    });
+    const flushPendingPhotoUploads = jest.fn(async () => undefined);
+
+    const service = createUploadQueueRecoveryService({
+      flushPendingVoiceUploads,
+      flushPendingPhotoUploads,
+    });
+
+    await expect(service.flushPendingUploads()).rejects.toThrow(voiceError);
+
+    expect(flushPendingVoiceUploads).toHaveBeenCalledTimes(1);
+    expect(flushPendingPhotoUploads).toHaveBeenCalledTimes(1);
+  });
 });

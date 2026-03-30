@@ -14,15 +14,26 @@ const defaultDeps: UploadQueueRecoveryServiceDeps = {
 export function createUploadQueueRecoveryService(
   deps: UploadQueueRecoveryServiceDeps = defaultDeps
 ) {
+  const captureFirstError = async (
+    operation: () => Promise<void>,
+    onError: (error: unknown) => void
+  ) => {
+    try {
+      await operation();
+    } catch (error) {
+      onError(error);
+    }
+  };
+
   return {
     async flushPendingUploads(): Promise<void> {
       let firstError: unknown = null;
 
-      await deps.flushPendingVoiceUploads().catch((error) => {
+      await captureFirstError(deps.flushPendingVoiceUploads, (error) => {
         firstError = firstError ?? error;
       });
 
-      await deps.flushPendingPhotoUploads().catch((error) => {
+      await captureFirstError(deps.flushPendingPhotoUploads, (error) => {
         firstError = firstError ?? error;
       });
 
