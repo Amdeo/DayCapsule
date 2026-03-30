@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
 import { Share, Platform } from 'react-native';
-import { Entry } from '@/src/types/entry';
+import { Entry, MediaInfo } from '@/src/types/entry';
 import { getMediaPaths } from '@/src/utils/fileSystem';
 import { BackupService, BackupManifest } from './backupService';
 import { logger } from '@/src/utils/logger';
@@ -26,7 +26,19 @@ export interface BackupData {
   exportedAt: string;
   appVersion: string;
   totalEntries: number;
-  entries: Partial<Entry & { media: any }>[];
+  entries: BackupEntryInput[];
+}
+
+export interface BackupMediaInput extends MediaInfo {
+  relativeUri?: string;
+}
+
+export interface BackupEntryInput extends Omit<Entry, 'media'> {
+  media?: BackupMediaInput | BackupMediaInput[];
+}
+
+export interface ExtractedBackupEntry extends Omit<BackupEntryInput, 'media'> {
+  media?: MediaInfo[];
 }
 
 /** 解析后的备份数据（包含 ZIP 引用，用于延迟提取媒体） */
@@ -36,6 +48,16 @@ interface ParsedBackup {
 }
 
 export class SyncService {
+  static getMediaInfoArray(
+    media: BackupEntryInput['media']
+  ): MediaInfo[] | undefined {
+    if (!media) {
+      return undefined;
+    }
+
+    return (Array.isArray(media) ? media : [media]).map(({ relativeUri, ...mediaInfo }) => mediaInfo);
+  }
+
   /**
    * 导出所有记录为 ZIP 并调起系统分享
    */
@@ -145,34 +167,39 @@ export class SyncService {
   static async extractMediaFromZip(
     zip: JSZip,
     entries: BackupData['entries']
-  ): Promise<BackupData['entries']> {
+  ): Promise<ExtractedBackupEntry[]> {
     return Promise.all(
       entries.map(async (e) => {
-        // 兼容旧格式（单对象）和新格式（数组）
-        const mediaArray: any[] = Array.isArray(e.media)
-          ? e.media
-          : e.media
-          ? [e.media]
-          : [];
+        const mediaArray = Array.isArray(e.media) ? e.media : e.media ? [e.media] : [];
 
-        if (mediaArray.length === 0) return e;
+        if (mediaArray.length === 0) {
+          return {
+            ...e,
+            media: undefined,
+          };
+        }
 
         const processedMedia = await Promise.all(
-          mediaArray.map(async (mediaItem: any) => {
+          mediaArray.map(async (mediaItem) => {
             if (!mediaItem?.relativeUri) {
               // 无本地文件可提取（remoteUri 仍可用于显示）
-              return mediaItem;
+              const { relativeUri, ...mediaInfo } = mediaItem;
+              return mediaInfo;
             }
 
-            const zipFile = zip.file(mediaItem.relativeUri as string);
+            const zipFile = zip.file(mediaItem.relativeUri);
             if (!zipFile) {
               logger.warn(`[restore] ZIP 中找不到媒体文件: ${mediaItem.relativeUri}`);
-              return { ...mediaItem, uri: mediaItem.remoteUri ?? mediaItem.uri };
+              const { relativeUri, ...mediaInfo } = {
+                ...mediaItem,
+                uri: mediaItem.remoteUri ?? mediaItem.uri,
+              };
+              return mediaInfo;
             }
 
             try {
               const base64 = await zipFile.async('base64');
-              const filename = (mediaItem.relativeUri as string).split('/').pop()!;
+              const filename = mediaItem.relativeUri.split('/').pop()!;
               const mediaPaths = getMediaPaths();
               const targetDir =
                 e.type === 'voice' ? mediaPaths.voiceOriginal : mediaPaths.photoOriginal;
@@ -188,15 +215,23 @@ export class SyncService {
               });
 
               logger.log(`[restore] 媒体文件已恢复: ${filename}`);
-              return { ...mediaItem, uri: targetUri };
+              const { relativeUri, ...mediaInfo } = { ...mediaItem, uri: targetUri };
+              return mediaInfo;
             } catch (err) {
               logger.warn(`[restore] 无法恢复媒体文件 ${mediaItem.relativeUri}:`, err);
-              return { ...mediaItem, uri: mediaItem.remoteUri ?? mediaItem.uri };
+              const { relativeUri, ...mediaInfo } = {
+                ...mediaItem,
+                uri: mediaItem.remoteUri ?? mediaItem.uri,
+              };
+              return mediaInfo;
             }
           })
         );
 
-        return { ...e, media: processedMedia };
+        return {
+          ...e,
+          media: processedMedia.length > 0 ? processedMedia : undefined,
+        };
       })
     );
   }

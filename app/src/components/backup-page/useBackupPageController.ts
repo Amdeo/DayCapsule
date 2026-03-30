@@ -13,12 +13,20 @@ import { logger } from '@/src/utils/logger';
 import type { Entry } from '@/src/types/entry';
 import { getFileNameFromUri } from './backupPageHelpers';
 import type { BackupFile, ExportTarget } from './backupPageTypes';
+import type { BackupEntryInput } from '@/src/services/syncService';
 
 interface UseBackupPageControllerOptions {
   visible: boolean;
   entries: Entry[];
-  restoreEntries: (entries: any) => Promise<string[]>;
-  updateEntry: (id: string, updates: any) => Promise<void> | void;
+  restoreEntries: (entries: Entry[]) => Promise<string[]>;
+  updateEntry: (id: string, updates: Partial<Entry>) => Promise<void> | void;
+}
+
+function toRestorableEntries(entries: BackupEntryInput[]): Entry[] {
+  return entries.map((entry) => ({
+    ...entry,
+    media: SyncService.getMediaInfoArray(entry.media),
+  }));
 }
 
 function formatUsedSpace(totalSize: number) {
@@ -133,7 +141,7 @@ export function useBackupPageController({
       }
 
       const { data, zip } = parsedBackup;
-      const insertedIds = await restoreEntries(data.entries as any);
+      const insertedIds = await restoreEntries(toRestorableEntries(data.entries));
 
       if (insertedIds.length > 0) {
         try {
@@ -149,8 +157,8 @@ export function useBackupPageController({
               : Boolean(entry.media);
 
             if (entry.id && insertedIdSet.has(entry.id) && hasRestoredMedia) {
-              await updateEntry(entry.id as string, {
-                media: entry.media as any,
+              await updateEntry(entry.id, {
+                media: entry.media,
               });
             }
           }
