@@ -35,12 +35,12 @@ export interface PhotoRepairService {
 }
 
 function buildRepairUploadMetadata(
-  issue: MediaRepairIssue,
+  repairLocalMediaId: string | undefined,
   fingerprint: PhotoFileFingerprint
 ): NonNullable<UploadFileOptions['metadata']> {
   return {
-    traceId: issue.localMediaId,
-    localMediaId: issue.localMediaId,
+    traceId: repairLocalMediaId,
+    localMediaId: repairLocalMediaId,
     persistedHash: fingerprint.sha256,
     sourceHash: fingerprint.sha256,
     size: fingerprint.size,
@@ -101,6 +101,7 @@ function buildRepairedMedia(
 
 function buildRepairLogPayload(
   issue: MediaRepairIssue,
+  repairLocalMediaId?: string,
   fingerprint?: PhotoFileFingerprint,
   remoteUri?: string,
   remoteHash?: string,
@@ -109,7 +110,7 @@ function buildRepairLogPayload(
 ) {
   return buildPhotoLogPayload({
     entryId: issue.entryId,
-    localMediaId: issue.localMediaId,
+    localMediaId: repairLocalMediaId ?? issue.localMediaId,
     localUri: issue.localUri,
     remoteUri: remoteUri ?? issue.remoteUri,
     size: fingerprint?.size,
@@ -141,6 +142,7 @@ export function createPhotoRepairService(
 
     let fingerprint: PhotoFileFingerprint | undefined;
     let upload: UploadFileResponse | undefined;
+    let repairLocalMediaId = issue.localMediaId;
 
     try {
       fingerprint = await resolvedDeps.fingerprintPhotoFile(issue.localUri);
@@ -152,12 +154,13 @@ export function createPhotoRepairService(
         await resolvedDeps.getEntryById(issue.entryId),
         issue,
       );
+      repairLocalMediaId = issue.localMediaId ?? entry.media[issue.mediaIndex]?.metadata?.localMediaId;
       upload = await resolvedDeps.uploadFile(
         '/media/upload',
         issue.localUri,
         'file',
         {
-          metadata: buildRepairUploadMetadata(issue, fingerprint),
+          metadata: buildRepairUploadMetadata(repairLocalMediaId, fingerprint),
         },
       );
 
@@ -174,6 +177,7 @@ export function createPhotoRepairService(
 
       logger.log('photo.repair.completed', buildRepairLogPayload(
         issue,
+        repairLocalMediaId,
         fingerprint,
         upload.url,
         upload.remoteHash,
@@ -183,6 +187,7 @@ export function createPhotoRepairService(
     } catch (error) {
       logger.log('photo.repair.failed', buildRepairLogPayload(
         issue,
+        repairLocalMediaId,
         fingerprint,
         upload?.url,
         upload?.remoteHash,
