@@ -644,6 +644,26 @@ describe('database/operations', () => {
       expect(JSON.parse(params[5])).toHaveLength(2);
     });
 
+    it('addEntry 应继续使用普通 INSERT INTO entries', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+
+      await addEntry({
+        type: 'text' as const,
+        content: 'insert form lock',
+      });
+
+      const [sql] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('INSERT INTO entries');
+      expect(sql).not.toContain('INSERT OR IGNORE INTO entries');
+    });
+
     it('新环境中写入两张图片后重新读取仍应保留两张', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },
@@ -870,6 +890,40 @@ describe('database/operations', () => {
         modifiedAt: 1700000001000,
         width: 1200,
       }));
+    });
+
+    it('legacy 扩展媒体列分支遇到 stopping 时 recording_status 应写入 null', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_thumbnail' },
+        { name: 'media_metadata' },
+      ]);
+
+      await addEntry({
+        type: 'voice',
+        content: '',
+        recordingStatus: 'stopping',
+        media: [
+          {
+            uri: 'file:///cache/voice-1.m4a',
+            mimeType: 'audio/m4a',
+            size: 100,
+            duration: 12000,
+            thumbnail: 'file:///cache/thumb-1.jpg',
+            metadata: {
+              createdAt: 1700000000000,
+              modifiedAt: 1700000001000,
+            },
+          },
+        ],
+      });
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(params[10]).toBeNull();
     });
 
     it('media_json 与扩展 legacy 列都不可用时应把首个媒体写入旧版 legacy 列', async () => {
@@ -1273,6 +1327,52 @@ describe('database/operations', () => {
       expect(params.at(-2)).toBe(1000);
     });
 
+    it('没有 media_json 但存在扩展 legacy 媒体列时应恢复 thumbnail 与 metadata', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_thumbnail' },
+        { name: 'media_metadata' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'restore-legacy-media-1',
+          type: 'photo',
+          content: 'restore legacy media',
+          timestamp: 1,
+          media: [
+            {
+              uri: 'file:///cache/photo-1.jpg',
+              thumbnail: 'file:///cache/thumb-1.jpg',
+              mimeType: 'image/jpeg',
+              size: 100,
+              metadata: {
+                createdAt: 1700000000000,
+                modifiedAt: 1700000001000,
+                width: 1200,
+              },
+            },
+          ],
+        },
+      ]);
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('media_thumbnail');
+      expect(sql).toContain('media_metadata');
+      expect(params[8]).toBe('file:///cache/thumb-1.jpg');
+      expect(params[9]).toBe(JSON.stringify({
+        createdAt: 1700000000000,
+        modifiedAt: 1700000001000,
+        width: 1200,
+      }));
+    });
+
     it('恢复带 tags 的记录时应继续写入规范化标签关联', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },
@@ -1340,6 +1440,32 @@ describe('database/operations', () => {
       expect(insertSql).toContain('INSERT OR IGNORE INTO entries');
       expect(insertParams[4]).toBe(JSON.stringify(['恢复', '批量']));
       expect(entryTagInsert?.params).toEqual(['restore-dedupe-tags-1', '恢复', '批量']);
+    });
+
+    it('restoreEntries 应继续使用 INSERT OR IGNORE INTO entries', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'restore-insert-form-1',
+          type: 'text',
+          content: 'restore insert form lock',
+          timestamp: 1,
+        },
+      ]);
+
+      const [sql] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('INSERT OR IGNORE INTO entries');
+      expect(sql).not.toContain('INSERT INTO entries\n');
     });
 
     it('恢复空 tags 时只应清旧关联而不再写 tags 或 entry_tags', async () => {

@@ -6,6 +6,7 @@
 import { getDatabase } from './sqlite';
 import { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
+import type { SQLiteBindValue } from 'expo-sqlite';
 
 type EntryMediaInfo = import('@/src/types/entry').MediaInfo;
 type EntryMediaMetadata = NonNullable<EntryMediaInfo['metadata']>;
@@ -32,6 +33,24 @@ type EntryRow = {
   deleted?: number | null;
   local_ready_state?: string | null;
   updated_at?: number | null;
+};
+
+type EntryInsertSchemaCapabilities = {
+  hasMediaJson: boolean;
+  hasMediaColumns: boolean;
+  hasSyncStatus: boolean;
+  hasSyncOp: boolean;
+  hasConflictedCopyOf: boolean;
+  hasBaseUpdatedAt: boolean;
+  hasUserID: boolean;
+  hasDeleted: boolean;
+  hasLocalReadyState: boolean;
+};
+
+type EntryInsertParts = {
+  columnsSql: string;
+  placeholdersSql: string;
+  values: SQLiteBindValue[];
 };
 
 const ENTRY_TYPES: Entry['type'][] = ['text', 'photo', 'voice'];
@@ -207,6 +226,103 @@ const normalizeEntryTags = (tags: string[] | undefined): string[] | undefined =>
   }
 
   return [...new Set(tags)];
+};
+
+const buildEntryInsertParts = (
+  entry: Pick<
+    Entry,
+    | 'id'
+    | 'type'
+    | 'content'
+    | 'timestamp'
+    | 'tags'
+    | 'media'
+    | 'recordingStatus'
+    | 'recordingDuration'
+    | 'syncStatus'
+    | 'syncOp'
+    | 'conflictedCopyOf'
+    | 'baseUpdatedAt'
+    | 'userId'
+    | 'deleted'
+    | 'localReadyState'
+    | 'updatedAt'
+    | 'editedAt'
+  >,
+  schema: EntryInsertSchemaCapabilities,
+  options: { includeCreatedAtUpdatedAt: boolean }
+): EntryInsertParts => {
+  const columns = ['id', 'type', 'content', 'timestamp', 'tags'];
+  const values: SQLiteBindValue[] = [
+    entry.id,
+    entry.type,
+    entry.content,
+    entry.timestamp,
+    entry.tags ? JSON.stringify(entry.tags) : null,
+  ];
+
+  if (schema.hasMediaJson) {
+    columns.push('media_json');
+    values.push(entry.media ? JSON.stringify(entry.media) : null);
+  } else {
+    const firstMedia = entry.media?.[0];
+    columns.push('media_uri', 'media_type', 'media_duration');
+    values.push(firstMedia?.uri || null, firstMedia?.mimeType || null, firstMedia?.duration || null);
+
+    if (schema.hasMediaColumns) {
+      columns.push('media_thumbnail', 'media_metadata');
+      values.push(
+        firstMedia?.thumbnail || null,
+        firstMedia?.metadata ? JSON.stringify(firstMedia.metadata) : null
+      );
+    }
+  }
+
+  columns.push('recording_status', 'recording_duration');
+  values.push(
+    entry.recordingStatus === 'stopping' ? null : entry.recordingStatus || null,
+    entry.recordingDuration || null
+  );
+
+  if (schema.hasSyncStatus) {
+    columns.push('sync_status');
+    values.push(entry.syncStatus ?? 'synced');
+  }
+  if (schema.hasSyncOp) {
+    columns.push('sync_op');
+    values.push(entry.syncOp ?? 'update');
+  }
+  if (schema.hasConflictedCopyOf) {
+    columns.push('conflicted_copy_of');
+    values.push(entry.conflictedCopyOf ?? null);
+  }
+  if (schema.hasBaseUpdatedAt) {
+    columns.push('base_updated_at');
+    values.push(entry.baseUpdatedAt ?? null);
+  }
+  if (schema.hasUserID) {
+    columns.push('user_id');
+    values.push(entry.userId ?? null);
+  }
+  if (schema.hasDeleted) {
+    columns.push('deleted');
+    values.push(entry.deleted ? 1 : 0);
+  }
+  if (schema.hasLocalReadyState) {
+    columns.push('local_ready_state');
+    values.push(entry.localReadyState ?? 'ready');
+  }
+
+  if (options.includeCreatedAtUpdatedAt) {
+    columns.push('created_at', 'updated_at');
+    values.push(entry.timestamp, entry.updatedAt ?? entry.editedAt ?? entry.timestamp);
+  }
+
+  return {
+    columnsSql: columns.join(', '),
+    placeholdersSql: columns.map(() => '?').join(', '),
+    values,
+  };
 };
 
 /**
@@ -503,92 +619,64 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     const hasUserID = columns.has('user_id');
     const hasDeleted = columns.has('deleted');
     const hasLocalReadyState = columns.has('local_ready_state');
+    const schemaCapabilities: EntryInsertSchemaCapabilities = {
+      hasMediaJson,
+      hasMediaColumns,
+      hasSyncStatus,
+      hasSyncOp,
+      hasConflictedCopyOf,
+      hasBaseUpdatedAt,
+      hasUserID,
+      hasDeleted,
+      hasLocalReadyState,
+    };
 
     if (hasMediaJson) {
-      const mediaJson = entry.media ? JSON.stringify(entry.media) : null;
+      const parts = buildEntryInsertParts(
+        {
+          ...entry,
+          id,
+          timestamp,
+          tags: normalizedTags,
+          recordingStatus: entry.recordingStatus === 'stopping' ? undefined : entry.recordingStatus,
+        },
+        schemaCapabilities,
+        { includeCreatedAtUpdatedAt: false }
+      );
       await db.runAsync(
-        `INSERT INTO entries (
-          id, type, content, timestamp, tags,
-          media_json,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
-        [
-          id, entry.type, entry.content, timestamp,
-          normalizedTags ? JSON.stringify(normalizedTags) : null,
-          mediaJson,
-          (entry.recordingStatus === 'stopping' ? null : entry.recordingStatus) || null, entry.recordingDuration || null,
-          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced'] : []),
-          ...(hasSyncOp ? [entry.syncOp ?? 'update'] : []),
-          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
-          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
-          ...(hasUserID ? [entry.userId ?? null] : []),
-          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
-          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
-        ]
+        `INSERT INTO entries (${parts.columnsSql}) VALUES (${parts.placeholdersSql})`,
+        parts.values
       );
     } else if (hasMediaColumns) {
-      // 序列化媒体元数据
-      const firstMedia = entry.media?.[0];
-      const mediaMetadata = firstMedia?.metadata
-        ? JSON.stringify(firstMedia.metadata)
-        : null;
+      const parts = buildEntryInsertParts(
+        {
+          ...entry,
+          id,
+          timestamp,
+          tags: normalizedTags,
+        },
+        schemaCapabilities,
+        { includeCreatedAtUpdatedAt: false }
+      );
 
       await db.runAsync(
-        `INSERT INTO entries (
-          id, type, content, timestamp, tags,
-          media_uri, media_type, media_duration, media_thumbnail, media_metadata,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
-        [
-          id,
-          entry.type,
-          entry.content,
-          timestamp,
-          normalizedTags ? JSON.stringify(normalizedTags) : null,
-          firstMedia?.uri || null,
-          firstMedia?.mimeType || null,
-          firstMedia?.duration || null,
-          firstMedia?.thumbnail || null,
-          mediaMetadata,
-          entry.recordingStatus || null,
-          entry.recordingDuration || null,
-          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced'] : []),
-          ...(hasSyncOp ? [entry.syncOp ?? 'update'] : []),
-          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
-          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
-          ...(hasUserID ? [entry.userId ?? null] : []),
-          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
-          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
-        ]
+        `INSERT INTO entries (${parts.columnsSql}) VALUES (${parts.placeholdersSql})`,
+        parts.values
       );
     } else {
-      // 兼容更旧的表结构：未启用 media_json/media_metadata 时退回 legacy 媒体列写入
-      const firstMedia = entry.media?.[0];
-      await db.runAsync(
-        `INSERT INTO entries (
-          id, type, content, timestamp, tags,
-          media_uri, media_type, media_duration,
-          recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}${hasLocalReadyState ? ', local_ready_state' : ''}
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
-        [
+      const parts = buildEntryInsertParts(
+        {
+          ...entry,
           id,
-          entry.type,
-          entry.content,
           timestamp,
-          normalizedTags ? JSON.stringify(normalizedTags) : null,
-          firstMedia?.uri || null,
-          firstMedia?.mimeType || null,
-          firstMedia?.duration || null,
-          entry.recordingStatus || null,
-          entry.recordingDuration || null,
-          ...(hasSyncStatus ? [entry.syncStatus ?? 'synced'] : []),
-          ...(hasSyncOp ? [entry.syncOp ?? 'update'] : []),
-          ...(hasConflictedCopyOf ? [entry.conflictedCopyOf ?? null] : []),
-          ...(hasBaseUpdatedAt ? [entry.baseUpdatedAt ?? null] : []),
-          ...(hasUserID ? [entry.userId ?? null] : []),
-          ...(hasDeleted ? [entry.deleted ? 1 : 0] : []),
-          ...(hasLocalReadyState ? [entry.localReadyState ?? 'ready'] : []),
-        ]
+          tags: normalizedTags,
+        },
+        schemaCapabilities,
+        { includeCreatedAtUpdatedAt: false }
+      );
+      await db.runAsync(
+        `INSERT INTO entries (${parts.columnsSql}) VALUES (${parts.placeholdersSql})`,
+        parts.values
       );
     }
 
@@ -950,55 +1038,40 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   // 在循环外获取列信息，避免重复查询
   const columns = await getTableColumns(db);
   const hasMediaJson = columns.has('media_json');
+  const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
   const hasSyncStatus = columns.has('sync_status');
   const hasSyncOp = columns.has('sync_op');
   const hasConflictedCopyOf = columns.has('conflicted_copy_of');
   const hasBaseUpdatedAt = columns.has('base_updated_at');
   const hasUserID = columns.has('user_id');
   const hasDeleted = columns.has('deleted');
+  const schemaCapabilities: EntryInsertSchemaCapabilities = {
+    hasMediaJson,
+    hasMediaColumns,
+    hasSyncStatus,
+    hasSyncOp,
+    hasConflictedCopyOf,
+    hasBaseUpdatedAt,
+    hasUserID,
+    hasDeleted,
+    hasLocalReadyState: false,
+  };
 
   await db.withTransactionAsync(async () => {
     for (const e of entries) {
       try {
         const normalizedTags = normalizeEntryTags(e.tags);
+        const parts = buildEntryInsertParts(
+          {
+            ...e,
+            tags: normalizedTags,
+          },
+          schemaCapabilities,
+          { includeCreatedAtUpdatedAt: true }
+        );
         await db.runAsync(
-          hasMediaJson
-            ? `INSERT OR IGNORE INTO entries
-                 (id, type, content, timestamp, tags, media_json,
-                  recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}, ?, ?)`
-            : `INSERT OR IGNORE INTO entries
-                 (id, type, content, timestamp, tags, media_uri, media_type,
-                  media_duration, recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}, ?, ?)`,
-          hasMediaJson
-              ? [
-                  e.id, e.type, e.content, e.timestamp,
-                  normalizedTags ? JSON.stringify(normalizedTags) : null,
-                  e.media ? JSON.stringify(e.media) : null,
-                e.recordingStatus ?? null, e.recordingDuration ?? null,
-                ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
-                ...(hasSyncOp ? [e.syncOp ?? 'update'] : []),
-                ...(hasConflictedCopyOf ? [e.conflictedCopyOf ?? null] : []),
-                ...(hasBaseUpdatedAt ? [e.baseUpdatedAt ?? null] : []),
-                ...(hasUserID ? [e.userId ?? null] : []),
-                ...(hasDeleted ? [e.deleted ? 1 : 0] : []),
-                e.timestamp, e.updatedAt ?? e.editedAt ?? e.timestamp,
-              ]
-              : [
-                  e.id, e.type, e.content, e.timestamp,
-                  normalizedTags ? JSON.stringify(normalizedTags) : null,
-                  e.media?.[0]?.uri ?? null, e.media?.[0]?.mimeType ?? null,
-                e.media?.[0]?.duration ?? null,
-                e.recordingStatus ?? null, e.recordingDuration ?? null,
-                ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
-                ...(hasSyncOp ? [e.syncOp ?? 'update'] : []),
-                ...(hasConflictedCopyOf ? [e.conflictedCopyOf ?? null] : []),
-                ...(hasBaseUpdatedAt ? [e.baseUpdatedAt ?? null] : []),
-                ...(hasUserID ? [e.userId ?? null] : []),
-                ...(hasDeleted ? [e.deleted ? 1 : 0] : []),
-                e.timestamp, e.updatedAt ?? e.editedAt ?? e.timestamp,
-              ]
+          `INSERT OR IGNORE INTO entries (${parts.columnsSql}) VALUES (${parts.placeholdersSql})`,
+          parts.values
         );
 
         // 检查实际插入的行数
