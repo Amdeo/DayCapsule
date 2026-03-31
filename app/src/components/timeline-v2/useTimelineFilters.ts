@@ -8,6 +8,7 @@ interface UseTimelineFiltersOptions {
   setFilterDateRange: (value: 'all' | 'today' | 'week' | 'month') => void;
   toggleTag: (tag: string) => void;
   clearTags: () => void;
+  applyFilters: () => Promise<void>;
 }
 
 export function useTimelineFilters({
@@ -20,6 +21,7 @@ export function useTimelineFilters({
   setFilterDateRange,
   toggleTag,
   clearTags,
+  applyFilters,
 }: UseTimelineFiltersOptions) {
   const hasFilters = Boolean(
     searchQuery.trim() ||
@@ -28,15 +30,28 @@ export function useTimelineFilters({
       selectedTags.length > 0,
   );
 
-  const clearQuery = () => setSearchQuery('');
-  const clearType = () => setFilterType('all');
-  const clearDate = () => setFilterDateRange('all');
-  const clearTag = (tag: string) => toggleTag(tag);
+  const clearQuery = () => {
+    setSearchQuery('');
+    void applyFilters();
+  };
+  const clearType = () => {
+    setFilterType('all');
+    void applyFilters();
+  };
+  const clearDate = () => {
+    setFilterDateRange('all');
+    void applyFilters();
+  };
+  const clearTag = (tag: string) => {
+    toggleTag(tag);
+    void applyFilters();
+  };
   const clearAll = () => {
     setSearchQuery('');
     setFilterType('all');
     setFilterDateRange('all');
     clearTags();
+    void applyFilters();
   };
 
   return {

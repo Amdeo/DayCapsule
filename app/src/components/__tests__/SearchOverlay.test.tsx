@@ -5,20 +5,33 @@ import { SearchOverlay } from '../SearchOverlay';
 const mockApplySearchFilters = jest.fn();
 const mockGetAllTags = jest.fn(async () => ['旅行', '工作']);
 const mockLoadCommonTags = jest.fn();
+let mockFilterUiState = {
+  searchQuery: '',
+  filterType: 'all' as const,
+  filterDateRange: 'all' as const,
+  selectedTags: [] as string[],
+  setSearchQuery: jest.fn(),
+  setFilterType: jest.fn(),
+  setFilterDateRange: jest.fn(),
+  toggleTag: jest.fn(),
+  clearTags: jest.fn(),
+};
 let mockCommonTagsState = {
   tags: ['灵感'],
   isLoaded: true,
 };
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    searchQuery: '',
-    filterType: 'all',
-    filterDateRange: 'all',
-    selectedTags: [],
-    getAllTags: mockGetAllTags,
-    applySearchFilters: mockApplySearchFilters,
-  }),
+  useEntryStore: (selector: (state: { getAllTags: typeof mockGetAllTags; applySearchFilters: typeof mockApplySearchFilters }) => unknown) =>
+    selector({
+      getAllTags: mockGetAllTags,
+      applySearchFilters: mockApplySearchFilters,
+    }),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector?: (state: typeof mockFilterUiState) => unknown) =>
+    selector ? selector(mockFilterUiState) : mockFilterUiState,
 }));
 
 jest.mock('@/src/store/commonTagsStore', () => ({
@@ -39,6 +52,17 @@ jest.mock('@expo/vector-icons', () => {
 describe('SearchOverlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFilterUiState = {
+      searchQuery: '',
+      filterType: 'all',
+      filterDateRange: 'all',
+      selectedTags: [],
+      setSearchQuery: jest.fn(),
+      setFilterType: jest.fn(),
+      setFilterDateRange: jest.fn(),
+      toggleTag: jest.fn(),
+      clearTags: jest.fn(),
+    };
     mockCommonTagsState = {
       tags: ['灵感'],
       isLoaded: true,

@@ -91,6 +91,7 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import { useEntryStore } from '../entryStore';
+import { useEntryFilterUIStore } from '../entryFilterUIStore';
 import { useSettingsStore } from '../settingsStore';
 import * as DB from '@/src/database/operations';
 import { deleteFile } from '@/src/utils/fileSystem';
@@ -127,10 +128,6 @@ const resetStore = () =>
     isLoadingMore: false,
     cursor: null,
     hasMore: true,
-    searchQuery: '',
-    filterType: 'all',
-    filterDateRange: 'all',
-    selectedTags: [],
     loadRetryCount: 0,
     activeQueryKey: '',
   });
@@ -138,6 +135,12 @@ const resetStore = () =>
 describe('entryStore', () => {
   beforeEach(() => {
     resetStore();
+    useEntryFilterUIStore.setState({
+      searchQuery: '',
+      filterType: 'all',
+      filterDateRange: 'all',
+      selectedTags: [],
+    });
     jest.resetAllMocks();
     mockCloudMode = false;
     mockDataSource.getEntriesPage.mockResolvedValue([]);
@@ -174,6 +177,20 @@ describe('entryStore', () => {
 
     expect(state).not.toHaveProperty('currentPlayingId');
     expect(state).not.toHaveProperty('setCurrentPlayingId');
+  });
+
+  it('不再暴露 filter UI 状态字段', () => {
+    const state = useEntryStore.getState() as Record<string, unknown>;
+
+    expect(state).not.toHaveProperty('searchQuery');
+    expect(state).not.toHaveProperty('filterType');
+    expect(state).not.toHaveProperty('filterDateRange');
+    expect(state).not.toHaveProperty('selectedTags');
+    expect(state).not.toHaveProperty('setSearchQuery');
+    expect(state).not.toHaveProperty('setFilterType');
+    expect(state).not.toHaveProperty('setFilterDateRange');
+    expect(state).not.toHaveProperty('toggleTag');
+    expect(state).not.toHaveProperty('clearTags');
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────
@@ -261,7 +278,7 @@ describe('entryStore', () => {
       first.resolve([{ id: 'old', type: 'text', content: 'old', timestamp: 1, syncStatus: 'synced' }]);
       await firstLoad;
 
-      expect(useEntryStore.getState().searchQuery).toBe('second');
+      expect(useEntryFilterUIStore.getState().searchQuery).toBe('second');
       expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['new']);
     });
 
@@ -278,7 +295,7 @@ describe('entryStore', () => {
         tags: ['b', 'a'],
       });
 
-      expect(useEntryStore.getState().searchQuery).toBe('hit');
+      expect(useEntryFilterUIStore.getState().searchQuery).toBe('hit');
       expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['1']);
       expect(useEntryStore.getState().isLoadingMore).toBe(false);
     });
@@ -296,7 +313,7 @@ describe('entryStore', () => {
         await useEntryStore.getState().applySearchFilters({ query: 'fresh' });
 
         await waitFor(() => {
-          expect(useEntryStore.getState().searchQuery).toBe('fresh');
+          expect(useEntryFilterUIStore.getState().searchQuery).toBe('fresh');
           expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
         });
 
@@ -441,7 +458,7 @@ describe('entryStore', () => {
       expect(ids).not.toContain('stale-more');
     });
 
-    it('setFilterType 开启新筛选会话后首个 loadMore 不应沿用旧查询的分页锁', async () => {
+    it('切换 filterType 开启新筛选会话后首个 loadMore 不应沿用旧查询的分页锁', async () => {
       const firstPage = makeFullPage('first', 5000);
       const voicePage = makeFullPage('voice', 4000);
 
@@ -457,13 +474,13 @@ describe('entryStore', () => {
         hasMore: true,
       });
 
-      useEntryStore.getState().setFilterType('voice');
+      useEntryFilterUIStore.getState().setFilterType('voice');
+      await useEntryStore.getState().applyFilters();
 
       await waitFor(() => {
-        const state = useEntryStore.getState();
-        expect(state.filterType).toBe('voice');
-        expect(state.isLoadingMore).toBe(false);
-        expect(state.entries.map((entry) => entry.id)).toEqual(voicePage.map((entry) => entry.id));
+        expect(useEntryFilterUIStore.getState().filterType).toBe('voice');
+        expect(useEntryStore.getState().isLoadingMore).toBe(false);
+        expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(voicePage.map((entry) => entry.id));
       });
 
       useEntryStore.setState({ cursor: voicePage.at(-1)?.timestamp ?? null, hasMore: true });
@@ -697,23 +714,23 @@ describe('entryStore', () => {
 
   // ─── filters ────────────────────────────────────────────────────────────────
 
-  describe('setFilterType', () => {
+  describe('entryFilterUIStore.setFilterType', () => {
     it('应该更新过滤类型', () => {
-      useEntryStore.getState().setFilterType('photo');
-      expect(useEntryStore.getState().filterType).toBe('photo');
+      useEntryFilterUIStore.getState().setFilterType('photo');
+      expect(useEntryFilterUIStore.getState().filterType).toBe('photo');
     });
   });
 
-  describe('toggleTag', () => {
+  describe('entryFilterUIStore.toggleTag', () => {
     it('应该添加未选中的标签', () => {
-      useEntryStore.getState().toggleTag('旅行');
-      expect(useEntryStore.getState().selectedTags).toContain('旅行');
+      useEntryFilterUIStore.getState().toggleTag('旅行');
+      expect(useEntryFilterUIStore.getState().selectedTags).toContain('旅行');
     });
 
     it('应该移除已选中的标签', () => {
-      useEntryStore.setState({ selectedTags: ['旅行'] });
-      useEntryStore.getState().toggleTag('旅行');
-      expect(useEntryStore.getState().selectedTags).not.toContain('旅行');
+      useEntryFilterUIStore.setState({ selectedTags: ['旅行'] });
+      useEntryFilterUIStore.getState().toggleTag('旅行');
+      expect(useEntryFilterUIStore.getState().selectedTags).not.toContain('旅行');
     });
   });
 

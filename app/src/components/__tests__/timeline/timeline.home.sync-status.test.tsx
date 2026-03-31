@@ -4,19 +4,21 @@ import { Timeline } from '../../Timeline.v2';
 
 let mockUiState: 'hidden' | 'synced' | 'pending' | 'failed' | 'syncing' = 'hidden';
 const mockShowCloudSyncStatusAlert = jest.fn();
-const mockEntryStoreState = {
-  entries: [],
+const mockFilterUiState = {
   searchQuery: '',
-  filterType: 'all',
-  filterDateRange: 'all',
-  selectedTags: [],
-  deleteEntry: jest.fn(),
-  updateEntry: jest.fn(),
+  filterType: 'all' as const,
+  filterDateRange: 'all' as const,
+  selectedTags: [] as string[],
   setSearchQuery: jest.fn(),
   setFilterType: jest.fn(),
   setFilterDateRange: jest.fn(),
   toggleTag: jest.fn(),
   clearTags: jest.fn(),
+};
+const mockEntryStoreState = {
+  entries: [],
+  deleteEntry: jest.fn(),
+  updateEntry: jest.fn(),
   loadMore: jest.fn(),
   isLoadingMore: false,
   hasMore: false,
@@ -25,6 +27,11 @@ const mockEntryStoreState = {
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: (selector: (state: typeof mockEntryStoreState) => unknown) =>
     selector(mockEntryStoreState),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector: (state: typeof mockFilterUiState) => unknown) =>
+    selector(mockFilterUiState),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({

@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import { useEntryStore } from '../store/entryStore';
+import { useEntryFilterUIStore } from '../store/entryFilterUIStore';
 import {
   FilterBarDateSection,
   FilterBarHeader,
@@ -23,17 +24,15 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ isVisible, onClose }: FilterBarProps) {
-  const {
-    entries,
-    filterType,
-    filterDateRange,
-    selectedTags,
-    setFilterType,
-    setFilterDateRange,
-    getAllTags,
-    toggleTag,
-    clearTags,
-  } = useEntryStore();
+  const entries = useEntryStore((state) => state.entries);
+  const getAllTags = useEntryStore((state) => state.getAllTags);
+  const filterType = useEntryFilterUIStore((state) => state.filterType);
+  const filterDateRange = useEntryFilterUIStore((state) => state.filterDateRange);
+  const selectedTags = useEntryFilterUIStore((state) => state.selectedTags);
+  const setFilterType = useEntryFilterUIStore((state) => state.setFilterType);
+  const setFilterDateRange = useEntryFilterUIStore((state) => state.setFilterDateRange);
+  const toggleTag = useEntryFilterUIStore((state) => state.toggleTag);
+  const clearTags = useEntryFilterUIStore((state) => state.clearTags);
 
   const [showTagModal, setShowTagModal] = useState(false);
   const [allTagsList, setAllTagsList] = useState<string[]>([]);

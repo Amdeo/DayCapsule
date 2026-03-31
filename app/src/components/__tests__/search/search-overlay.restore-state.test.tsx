@@ -2,11 +2,16 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SearchOverlay } from '../../SearchOverlay';
 
-let mockSearchState = {
+let mockFilterUiState = {
   searchQuery: '初始关键词',
   filterType: 'text' as 'all' | 'text' | 'photo' | 'voice',
   filterDateRange: 'today' as 'all' | 'today' | 'week' | 'month',
   selectedTags: ['旅行'] as string[],
+  setSearchQuery: jest.fn(),
+  setFilterType: jest.fn(),
+  setFilterDateRange: jest.fn(),
+  toggleTag: jest.fn(),
+  clearTags: jest.fn(),
 };
 
 const mockApplySearchFilters = jest.fn(async () => undefined);
@@ -14,11 +19,16 @@ const mockGetAllTags = jest.fn(async () => ['旅行', '工作']);
 const mockLoadCommonTags = jest.fn();
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    ...mockSearchState,
-    getAllTags: mockGetAllTags,
-    applySearchFilters: mockApplySearchFilters,
-  }),
+  useEntryStore: (selector: (state: { getAllTags: typeof mockGetAllTags; applySearchFilters: typeof mockApplySearchFilters }) => unknown) =>
+    selector({
+      getAllTags: mockGetAllTags,
+      applySearchFilters: mockApplySearchFilters,
+    }),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector?: (state: typeof mockFilterUiState) => unknown) =>
+    selector ? selector(mockFilterUiState) : mockFilterUiState,
 }));
 
 jest.mock('@/src/store/commonTagsStore', () => ({
@@ -40,11 +50,16 @@ jest.mock('@expo/vector-icons', () => {
 describe('SearchOverlay restore state', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearchState = {
+    mockFilterUiState = {
       searchQuery: '初始关键词',
       filterType: 'text',
       filterDateRange: 'today',
       selectedTags: ['旅行'],
+      setSearchQuery: jest.fn(),
+      setFilterType: jest.fn(),
+      setFilterDateRange: jest.fn(),
+      toggleTag: jest.fn(),
+      clearTags: jest.fn(),
     };
   });
 
@@ -73,11 +88,16 @@ describe('SearchOverlay restore state', () => {
 
     await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
 
-    mockSearchState = {
+    mockFilterUiState = {
       searchQuery: '新的关键词',
       filterType: 'photo',
       filterDateRange: 'month',
       selectedTags: ['工作'],
+      setSearchQuery: jest.fn(),
+      setFilterType: jest.fn(),
+      setFilterDateRange: jest.fn(),
+      toggleTag: jest.fn(),
+      clearTags: jest.fn(),
     };
 
     screen.rerender(<SearchOverlay visible={false} onClose={jest.fn()} onSearch={jest.fn()} />);

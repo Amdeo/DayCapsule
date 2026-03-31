@@ -47,6 +47,11 @@ describe('renderHomeScreen stability contract', () => {
       });
     });
 
+    expect(secondRender.stores.filterUiStore.state.searchQuery).toBe('not-found');
+    expect(secondRender.stores.filterUiStore.state.filterType).toBe('all');
+    expect(secondRender.stores.filterUiStore.state.filterDateRange).toBe('all');
+    expect(secondRender.stores.filterUiStore.state.selectedTags).toEqual([]);
+
     expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
     expect(firstRender.screen.queryByTestId('timeline-data-state')).toBeNull();
     expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();

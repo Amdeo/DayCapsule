@@ -2,11 +2,16 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SearchOverlay } from '../../SearchOverlay';
 
-let mockSearchState = {
+let mockFilterUiState = {
   searchQuery: '',
   filterType: 'all' as 'all' | 'text' | 'photo' | 'voice',
   filterDateRange: 'all' as 'all' | 'today' | 'week' | 'month',
   selectedTags: [] as string[],
+  setSearchQuery: jest.fn(),
+  setFilterType: jest.fn(),
+  setFilterDateRange: jest.fn(),
+  toggleTag: jest.fn(),
+  clearTags: jest.fn(),
 };
 
 const mockApplySearchFilters = jest.fn(async () => undefined);
@@ -18,11 +23,16 @@ let mockCommonTagsState = {
 };
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    ...mockSearchState,
-    getAllTags: mockGetAllTags,
-    applySearchFilters: mockApplySearchFilters,
-  }),
+  useEntryStore: (selector: (state: { getAllTags: typeof mockGetAllTags; applySearchFilters: typeof mockApplySearchFilters }) => unknown) =>
+    selector({
+      getAllTags: mockGetAllTags,
+      applySearchFilters: mockApplySearchFilters,
+    }),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector?: (state: typeof mockFilterUiState) => unknown) =>
+    selector ? selector(mockFilterUiState) : mockFilterUiState,
 }));
 
 jest.mock('@/src/store/commonTagsStore', () => ({
@@ -43,11 +53,16 @@ jest.mock('@expo/vector-icons', () => {
 describe('SearchOverlay filters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearchState = {
+    mockFilterUiState = {
       searchQuery: '',
       filterType: 'all',
       filterDateRange: 'all',
       selectedTags: [],
+      setSearchQuery: jest.fn(),
+      setFilterType: jest.fn(),
+      setFilterDateRange: jest.fn(),
+      toggleTag: jest.fn(),
+      clearTags: jest.fn(),
     };
     mockCommonTagsState = {
       tags: ['旅行', '工作'],
@@ -92,11 +107,16 @@ describe('SearchOverlay filters', () => {
   });
 
   it('clears selected tags from the dedicated clear action before submit', async () => {
-    mockSearchState = {
+    mockFilterUiState = {
       searchQuery: '',
       filterType: 'all',
       filterDateRange: 'all',
       selectedTags: ['旅行'],
+      setSearchQuery: jest.fn(),
+      setFilterType: jest.fn(),
+      setFilterDateRange: jest.fn(),
+      toggleTag: jest.fn(),
+      clearTags: jest.fn(),
     };
 
     const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);

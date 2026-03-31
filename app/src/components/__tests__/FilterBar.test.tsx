@@ -22,32 +22,42 @@ const mockToggleTag = jest.fn();
 const mockClearTags = jest.fn();
 const mockGetAllTags = jest.fn();
 
+const mockFilterUiState = {
+  filterType: 'all' as 'all' | 'text' | 'photo' | 'voice',
+  filterDateRange: 'all' as 'all' | 'today' | 'week' | 'month',
+  selectedTags: [] as string[],
+  searchQuery: '',
+  setSearchQuery: jest.fn(),
+  setFilterType: mockSetFilterType,
+  setFilterDateRange: mockSetFilterDateRange,
+  toggleTag: mockToggleTag,
+  clearTags: mockClearTags,
+};
+
 const mockStoreState = {
   entries: [
     { id: '1', type: 'text' },
     { id: '2', type: 'photo' },
     { id: '3', type: 'voice' },
   ],
-  filterType: 'all' as 'all' | 'text' | 'photo' | 'voice',
-  filterDateRange: 'all' as 'all' | 'today' | 'week' | 'month',
-  selectedTags: [] as string[],
-  setFilterType: mockSetFilterType,
-  setFilterDateRange: mockSetFilterDateRange,
   getAllTags: mockGetAllTags,
-  toggleTag: mockToggleTag,
-  clearTags: mockClearTags,
 };
 
 jest.mock('../../store/entryStore', () => ({
-  useEntryStore: () => mockStoreState,
+  useEntryStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
+}));
+
+jest.mock('../../store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector?: (state: typeof mockFilterUiState) => unknown) =>
+    selector ? selector(mockFilterUiState) : mockFilterUiState,
 }));
 
 describe('FilterBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStoreState.filterType = 'all';
-    mockStoreState.filterDateRange = 'all';
-    mockStoreState.selectedTags = [];
+    mockFilterUiState.filterType = 'all';
+    mockFilterUiState.filterDateRange = 'all';
+    mockFilterUiState.selectedTags = [];
     mockGetAllTags.mockResolvedValue(['工作', '灵感']);
   });
 
@@ -81,7 +91,7 @@ describe('FilterBar', () => {
   });
 
   it('shows reset button when there are active filters', async () => {
-    mockStoreState.filterType = 'photo';
+    mockFilterUiState.filterType = 'photo';
 
     const screen = render(<FilterBar isVisible onClose={jest.fn()} />);
 
@@ -93,9 +103,9 @@ describe('FilterBar', () => {
   });
 
   it('resets active type, date and tag filters from the reset action', async () => {
-    mockStoreState.filterType = 'photo';
-    mockStoreState.filterDateRange = 'week';
-    mockStoreState.selectedTags = ['工作'];
+    mockFilterUiState.filterType = 'photo';
+    mockFilterUiState.filterDateRange = 'week';
+    mockFilterUiState.selectedTags = ['工作'];
 
     const screen = render(<FilterBar isVisible onClose={jest.fn()} />);
 

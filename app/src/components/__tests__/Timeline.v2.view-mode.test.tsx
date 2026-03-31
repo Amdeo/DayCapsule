@@ -40,25 +40,30 @@ let mockFilterDateRange = 'all';
 const mockDeleteEntry = jest.fn();
 const mockUpdateEntry = jest.fn();
 const mockLoadMore = jest.fn();
+const mockApplyFilters = jest.fn().mockResolvedValue(undefined);
 const mockCalendarView = jest.fn(() => null);
 const mockEntryEditor = jest.fn(() => null);
 const mockTextEntryDetailPage = jest.fn(() => null);
 const mockEntryCard = jest.fn(() => null);
 const mockShowCloudSyncStatusAlert = jest.fn();
 
-const mockEntryStoreState = () => ({
-  entries: mockEntries,
+const mockFilterUiState = () => ({
   searchQuery: mockSearchQuery,
   filterType: mockFilterType,
   filterDateRange: mockFilterDateRange,
   selectedTags: mockSelectedTags,
-  deleteEntry: mockDeleteEntry,
-  updateEntry: mockUpdateEntry,
   setSearchQuery: mockSetSearchQuery,
   setFilterType: mockSetFilterType,
   setFilterDateRange: mockSetFilterDateRange,
   toggleTag: mockToggleTag,
   clearTags: mockClearTags,
+});
+
+const mockEntryStoreState = () => ({
+  entries: mockEntries,
+  deleteEntry: mockDeleteEntry,
+  updateEntry: mockUpdateEntry,
+  applyFilters: mockApplyFilters,
   loadMore: mockLoadMore,
   isLoadingMore: false,
   hasMore: false,
@@ -66,6 +71,10 @@ const mockEntryStoreState = () => ({
 
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: (selector: (state: any) => any) => selector(mockEntryStoreState()),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector: (state: any) => any) => selector(mockFilterUiState()),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -159,6 +168,7 @@ describe('Timeline view mode switching', () => {
     mockEntryEditor.mockImplementation(() => null);
     mockTextEntryDetailPage.mockImplementation(() => null);
     mockEntryCard.mockClear();
+    mockApplyFilters.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -213,6 +223,7 @@ describe('Timeline view mode switching', () => {
 
     expect(mockToggleTag).toHaveBeenCalledWith('旅行');
     expect(mockClearTags).not.toHaveBeenCalled();
+    expect(mockApplyFilters).toHaveBeenCalledTimes(1);
   });
 
   it('passes full record interactions into CalendarView', () => {

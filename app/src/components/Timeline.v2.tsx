@@ -6,6 +6,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useEntryStore } from '../store/entryStore';
+import { useEntryFilterUIStore } from '../store/entryFilterUIStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 import { FABMenu } from './FABMenu';
@@ -31,19 +32,20 @@ interface TimelineProps {
 export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineProps) {
   const entries = useEntryStore((state) => state.entries);
   const deleteEntry = useEntryStore((state) => state.deleteEntry);
-  const searchQuery = useEntryStore((state) => state.searchQuery);
   const updateEntry = useEntryStore((state) => state.updateEntry);
-  const filterType = useEntryStore((state) => state.filterType);
-  const filterDateRange = useEntryStore((state) => state.filterDateRange);
-  const selectedTags = useEntryStore((state) => state.selectedTags);
-  const setSearchQuery = useEntryStore((state) => state.setSearchQuery);
-  const setFilterType = useEntryStore((state) => state.setFilterType);
-  const setFilterDateRange = useEntryStore((state) => state.setFilterDateRange);
-  const toggleTag = useEntryStore((state) => state.toggleTag);
-  const clearTags = useEntryStore((state) => state.clearTags);
+  const applyFilters = useEntryStore((state) => state.applyFilters);
   const loadMore = useEntryStore((state) => state.loadMore);
   const isLoadingMore = useEntryStore((state) => state.isLoadingMore);
   const hasMore = useEntryStore((state) => state.hasMore);
+  const searchQuery = useEntryFilterUIStore((state) => state.searchQuery);
+  const filterType = useEntryFilterUIStore((state) => state.filterType);
+  const filterDateRange = useEntryFilterUIStore((state) => state.filterDateRange);
+  const selectedTags = useEntryFilterUIStore((state) => state.selectedTags);
+  const setSearchQuery = useEntryFilterUIStore((state) => state.setSearchQuery);
+  const setFilterType = useEntryFilterUIStore((state) => state.setFilterType);
+  const setFilterDateRange = useEntryFilterUIStore((state) => state.setFilterDateRange);
+  const toggleTag = useEntryFilterUIStore((state) => state.toggleTag);
+  const clearTags = useEntryFilterUIStore((state) => state.clearTags);
   const insets = useSafeAreaInsets();
   const {
     viewingEntry,
@@ -100,6 +102,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
     setFilterDateRange,
     toggleTag,
     clearTags,
+    applyFilters,
   });
 
   const {

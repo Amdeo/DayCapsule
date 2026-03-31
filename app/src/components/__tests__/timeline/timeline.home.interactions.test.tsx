@@ -68,10 +68,11 @@ describe('HomeScreen timeline interactions', () => {
   });
 
   it('updates the home timeline results when search filters are applied through the shared store state', async () => {
-    const { screen, spies } = renderHomeScreen({
+    const renderHome = renderHomeScreen({
       entries: [textEntry, photoEntry],
       allTags: ['旅行', '工作'],
     });
+    const { screen, spies } = renderHome;
 
     await act(async () => {
       await spies.applySearchFilters({
@@ -81,6 +82,11 @@ describe('HomeScreen timeline interactions', () => {
         tags: ['旅行'],
       });
     });
+
+    expect(renderHome.stores.filterUiStore.state.searchQuery).toBe('旅行');
+    expect(renderHome.stores.filterUiStore.state.filterType).toBe('photo');
+    expect(renderHome.stores.filterUiStore.state.filterDateRange).toBe('all');
+    expect(renderHome.stores.filterUiStore.state.selectedTags).toEqual(['旅行']);
 
     expect(screen.getByTestId('timeline-entry-entry-photo-1')).toBeTruthy();
     expect(screen.queryByTestId('timeline-entry-entry-text-1')).toBeNull();

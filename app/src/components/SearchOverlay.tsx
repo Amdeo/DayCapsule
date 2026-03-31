@@ -17,6 +17,7 @@ import {
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useEntryStore } from '@/src/store/entryStore';
+import { useEntryFilterUIStore } from '@/src/store/entryFilterUIStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 import {
   SearchOverlayDateSection,
@@ -34,14 +35,12 @@ interface SearchOverlayProps {
 }
 
 export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps) {
-  const {
-    searchQuery,
-    filterType,
-    filterDateRange,
-    selectedTags,
-    getAllTags,
-    applySearchFilters,
-  } = useEntryStore();
+  const searchQuery = useEntryFilterUIStore((state) => state.searchQuery);
+  const filterType = useEntryFilterUIStore((state) => state.filterType);
+  const filterDateRange = useEntryFilterUIStore((state) => state.filterDateRange);
+  const selectedTags = useEntryFilterUIStore((state) => state.selectedTags);
+  const getAllTags = useEntryStore((state) => state.getAllTags);
+  const applySearchFilters = useEntryStore((state) => state.applySearchFilters);
 
   const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
   const {

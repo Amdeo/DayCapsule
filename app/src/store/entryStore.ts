@@ -14,17 +14,13 @@ import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
 import { cancelPhotoUpload } from '@/src/services/photoUploadQueue';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { useEntryFilterUIStore, type EntryFilterState } from '@/src/store/entryFilterUIStore';
 
 const PAGE_SIZE = 20;
 const MAX_LOAD_RETRIES = 5;
 
 /** 从当前过滤状态构建 DB 查询参数 */
-const buildFilters = (state: {
-  filterType: string;
-  filterDateRange: string;
-  searchQuery: string;
-  selectedTags: string[];
-}): EntryFilters => {
+const buildFilters = (state: EntryFilterState): EntryFilters => {
   const filters: EntryFilters = {};
   if (state.filterType !== 'all') {
     filters.type = state.filterType as EntryFilters['type'];
@@ -47,12 +43,7 @@ const buildFilters = (state: {
   return filters;
 };
 
-const buildQueryKey = (state: {
-  searchQuery: string;
-  filterType: string;
-  filterDateRange: string;
-  selectedTags: string[];
-}) =>
+const buildQueryKey = (state: EntryFilterState) =>
   JSON.stringify({
     query: state.searchQuery,
     type: state.filterType,
@@ -169,12 +160,6 @@ interface EntryStore {
   cursor: number | null;    // 最后一条的 timestamp，用于下一页查询
   hasMore: boolean;
 
-  // 过滤状态
-  searchQuery: string;
-  filterType: 'all' | 'text' | 'photo' | 'voice';
-  filterDateRange: 'all' | 'today' | 'week' | 'month';
-  selectedTags: string[];
-
   // 重试计数
   loadRetryCount: number;
 
@@ -201,12 +186,6 @@ interface EntryStore {
   updateRecordingDuration: (id: string, duration: number) => void;
   completeRecording: (id: string, uri: string, duration: number) => Promise<void>;
 
-  // 过滤器
-  setSearchQuery: (query: string) => void;
-  setFilterType: (type: 'all' | 'text' | 'photo' | 'voice') => void;
-  setFilterDateRange: (range: 'all' | 'today' | 'week' | 'month') => void;
-  toggleTag: (tag: string) => void;
-  clearTags: () => void;
   applyFilters: () => Promise<void>;
   applySearchFilters: (filters: {
     query?: string;
@@ -224,7 +203,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     options: { allowRetry: boolean; logLabel: string }
   ): Promise<void> => {
     try {
-      const filters = buildFilters(get());
+      const filters = buildFilters(useEntryFilterUIStore.getState());
       const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE);
       const pendingVoiceEntries = await DB.getVoiceEntriesBySyncStatus(['pending_upload', 'uploading']);
       const pendingPhotoEntries = await DB.getPhotoEntriesBySyncStatus(['pending_upload', 'uploading']);
@@ -282,10 +261,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   isLoadingMore: false,
   cursor: null,
   hasMore: true,
-  searchQuery: '',
-  filterType: 'all',
-  filterDateRange: 'all',
-  selectedTags: [],
   loadRetryCount: 0,
 
   /**
@@ -293,7 +268,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   loadEntries: async () => {
     const state = get();
-    const queryKey = buildQueryKey(state);
+    const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
     set({
       activeQueryKey: queryKey,
       isLoading: true,
@@ -316,7 +291,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
     set({ isLoadingMore: true });
     try {
-      const filters = buildFilters(get());
+      const filters = buildFilters(useEntryFilterUIStore.getState());
       const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE, cursor ?? undefined);
 
       if (get().activeQueryKey !== activeQueryKey) {
@@ -463,7 +438,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     [...get().entries].sort((a, b) => b.timestamp - a.timestamp).slice(0, limit),
 
   searchEntries: async (query) => {
-    set({ searchQuery: query });
+    useEntryFilterUIStore.getState().setSearchQuery(query);
     await get().applyFilters();
   },
 
@@ -485,45 +460,11 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       media: [{ uri, mimeType: 'audio/m4a', size: 0, duration }],
     }),
 
-  setSearchQuery: (query) => {
-    set({ searchQuery: query });
-    get().applyFilters();
-  },
-
-  setFilterType: (type) => {
-    set({ filterType: type });
-    get().applyFilters();
-  },
-
-  setFilterDateRange: (range) => {
-    set({ filterDateRange: range });
-    get().applyFilters();
-  },
-
-  toggleTag: (tag) => {
-    const { selectedTags } = get();
-    const newTags = selectedTags.includes(tag)
-      ? selectedTags.filter((t) => t !== tag)
-      : [...selectedTags, tag];
-    set({ selectedTags: newTags });
-    get().applyFilters();
-  },
-
-  clearTags: () => {
-    set({ selectedTags: [] });
-    get().applyFilters();
-  },
-
   /**
    * 批量应用搜索筛选条件，只触发一次数据库查询
    */
   applySearchFilters: async (filters) => {
-    set({
-      searchQuery: filters.query ?? get().searchQuery,
-      filterType: filters.type ?? get().filterType,
-      filterDateRange: filters.dateRange ?? get().filterDateRange,
-      selectedTags: filters.tags ?? get().selectedTags,
-    });
+    useEntryFilterUIStore.getState().applySearchFilters(filters);
     await get().applyFilters();
   },
 
@@ -542,7 +483,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   applyFilters: async () => {
     const state = get();
-    const queryKey = buildQueryKey(state);
+    const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
     set({
       activeQueryKey: queryKey,
       isLoading: true,

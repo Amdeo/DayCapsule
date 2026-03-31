@@ -43,6 +43,11 @@ describe('renderHomeScreen helper state isolation', () => {
       });
     });
 
+    expect(firstRender.stores.filterUiStore.state.searchQuery).toBe('');
+    expect(firstRender.stores.filterUiStore.state.filterType).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.filterDateRange).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.selectedTags).toEqual([]);
+
     expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
     expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
     expect(firstRender.screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
@@ -70,6 +75,11 @@ describe('renderHomeScreen helper state isolation', () => {
         tags: ['工作'],
       });
     });
+
+    expect(firstRender.stores.filterUiStore.state.searchQuery).toBe('工作');
+    expect(firstRender.stores.filterUiStore.state.filterType).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.filterDateRange).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.selectedTags).toEqual(['工作']);
 
     expect(firstRender.screen.getByTestId('timeline-entry-entry-work-1')).toBeTruthy();
     expect(firstRender.screen.queryByTestId('timeline-empty-state')).toBeNull();
@@ -102,6 +112,11 @@ describe('renderHomeScreen helper state isolation', () => {
         tags: [],
       });
     });
+
+    expect(firstRender.stores.filterUiStore.state.searchQuery).toBe('not-found');
+    expect(firstRender.stores.filterUiStore.state.filterType).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.filterDateRange).toBe('all');
+    expect(firstRender.stores.filterUiStore.state.selectedTags).toEqual([]);
 
     expect(firstRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
     expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();

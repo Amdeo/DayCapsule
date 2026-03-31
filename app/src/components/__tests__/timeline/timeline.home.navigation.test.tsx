@@ -31,25 +31,22 @@ const mockEntries: Entry[] = [
 ];
 
 const mockUpdateEntry = jest.fn();
-const mockSetSearchQuery = jest.fn();
-const mockSetFilterType = jest.fn();
-const mockSetFilterDateRange = jest.fn();
-const mockToggleTag = jest.fn();
-const mockClearTags = jest.fn();
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockFilterUiState = {
+  searchQuery: '',
+  filterType: 'all' as const,
+  filterDateRange: 'all' as const,
+  selectedTags: [] as string[],
+  setSearchQuery: jest.fn(),
+  setFilterType: jest.fn(),
+  setFilterDateRange: jest.fn(),
+  toggleTag: jest.fn(),
+  clearTags: jest.fn(),
+};
 const mockEntryStoreState = {
   entries: mockEntries,
-  searchQuery: '',
-  filterType: 'all',
-  filterDateRange: 'all',
-  selectedTags: [],
   deleteEntry: jest.fn(),
   updateEntry: mockUpdateEntry,
-  setSearchQuery: mockSetSearchQuery,
-  setFilterType: mockSetFilterType,
-  setFilterDateRange: mockSetFilterDateRange,
-  toggleTag: mockToggleTag,
-  clearTags: mockClearTags,
   loadMore: jest.fn(),
   isLoadingMore: false,
   hasMore: false,
@@ -58,6 +55,11 @@ const mockEntryStoreState = {
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: (selector: (state: typeof mockEntryStoreState) => unknown) =>
     selector(mockEntryStoreState),
+}));
+
+jest.mock('@/src/store/entryFilterUIStore', () => ({
+  useEntryFilterUIStore: (selector: (state: typeof mockFilterUiState) => unknown) =>
+    selector(mockFilterUiState),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
