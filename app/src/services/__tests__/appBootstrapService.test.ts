@@ -5,6 +5,7 @@ const mockMigrateFromAsyncStorage = jest.fn(async () => ({ success: true, migrat
 const mockMigrateTagsToNormalized = jest.fn(async () => undefined);
 const mockMigrateMediaMetadataColumns = jest.fn(async () => undefined);
 const mockMigrateToMediaJson = jest.fn(async () => undefined);
+const mockMigrateEntriesContentToFts = jest.fn(async () => undefined);
 const mockMigrateSyncStatusColumn = jest.fn(async () => undefined);
 const mockMigrateCloudSyncCoreColumns = jest.fn(async () => undefined);
 const mockMigrateLocalReadyStateColumn = jest.fn(async () => undefined);
@@ -66,6 +67,7 @@ jest.mock('@/src/database/migration', () => ({
   migrateTagsToNormalized: (...args: unknown[]) => mockMigrateTagsToNormalized(...args),
   migrateMediaMetadataColumns: (...args: unknown[]) => mockMigrateMediaMetadataColumns(...args),
   migrateToMediaJson: (...args: unknown[]) => mockMigrateToMediaJson(...args),
+  migrateEntriesContentToFts: (...args: unknown[]) => mockMigrateEntriesContentToFts(...args),
   migrateSyncStatusColumn: (...args: unknown[]) => mockMigrateSyncStatusColumn(...args),
   migrateCloudSyncCoreColumns: (...args: unknown[]) => mockMigrateCloudSyncCoreColumns(...args),
   migrateLocalReadyStateColumn: (...args: unknown[]) => mockMigrateLocalReadyStateColumn(...args),
@@ -163,6 +165,7 @@ describe('runAppBootstrap', () => {
     expect(mockCleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(mockLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockLoadSync).toHaveBeenCalledTimes(1);
+    expect(mockMigrateEntriesContentToFts).toHaveBeenCalledTimes(1);
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
     expect(onInitializationFailed).not.toHaveBeenCalled();
 
@@ -174,6 +177,12 @@ describe('runAppBootstrap', () => {
     );
     expect(mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]).toBeLessThan(
       mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateToMediaJson.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateSyncStatusColumn.mock.invocationCallOrder[0]
     );
     expect(mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]).toBeLessThan(
       mockLoadAuth.mock.invocationCallOrder[0]

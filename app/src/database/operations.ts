@@ -352,8 +352,38 @@ const upsertEntryTags = async (
   await db.runAsync(
     `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
      SELECT ?, id FROM tags WHERE name IN (${inPlaceholders})`,
-    [entryId, ...normalizedTags]
+     [entryId, ...normalizedTags]
   );
+};
+
+const upsertEntryContentFts = async (
+  db: ReturnType<typeof getDatabase>,
+  entryId: string,
+  content: string
+): Promise<void> => {
+  await db.runAsync('DELETE FROM entries_fts WHERE entry_id = ?', [entryId]);
+  await db.runAsync('INSERT INTO entries_fts (entry_id, content) VALUES (?, ?)', [entryId, content]);
+};
+
+const deleteEntryContentFts = async (
+  db: ReturnType<typeof getDatabase>,
+  entryId: string
+): Promise<void> => {
+  await db.runAsync('DELETE FROM entries_fts WHERE entry_id = ?', [entryId]);
+};
+
+const buildFtsContentMatchQuery = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const terms = trimmed
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => `"${term.replace(/"/g, '""')}"*`);
+
+  return terms.length > 0 ? terms.join(' AND ') : null;
 };
 
 /**
@@ -680,6 +710,8 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
       );
     }
 
+    await upsertEntryContentFts(db, id, entry.content);
+
     // 同步规范化 tags
     if (normalizedTags !== undefined) {
       await upsertEntryTags(db, id, normalizedTags);
@@ -799,6 +831,10 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
       values
     );
 
+    if (updates.content !== undefined) {
+      await upsertEntryContentFts(db, id, updates.content);
+    }
+
     // 同步规范化 tags
     if (normalizedTags !== undefined) {
       await upsertEntryTags(db, id, normalizedTags);
@@ -816,6 +852,7 @@ export const deleteEntry = async (id: string): Promise<void> => {
   try {
     const db = getDatabase();
     await db.runAsync('DELETE FROM entries WHERE id = ?', [id]);
+    await deleteEntryContentFts(db, id);
   } catch (error) {
     logger.error('Failed to delete entry:', error);
     throw error;
@@ -828,12 +865,18 @@ export const deleteEntry = async (id: string): Promise<void> => {
 export const searchEntries = async (query: string, limit = 100): Promise<Entry[]> => {
   try {
     const db = getDatabase();
+    const normalizedQuery = buildFtsContentMatchQuery(query);
+    if (!normalizedQuery) {
+      return [];
+    }
+
     const result = await db.getAllAsync<EntryRow>(
-      `SELECT * FROM entries
-       WHERE content LIKE ? OR tags LIKE ?
-       ORDER BY timestamp DESC
+      `SELECT e.* FROM entries e
+       JOIN entries_fts f ON f.entry_id = e.id
+       WHERE f.content MATCH ?
+       ORDER BY e.timestamp DESC
        LIMIT ?`,
-      [`%${query}%`, `%${query}%`, limit]
+      [normalizedQuery, limit]
     );
     return result.map(rowToEntry);
   } catch (error) {
@@ -945,9 +988,10 @@ export const getEntriesPage = async (
       conditions.push('e.timestamp >= ?');
       params.push(filters.startTime);
     }
-    if (filters.search?.trim()) {
-      conditions.push('(e.content LIKE ? OR e.tags LIKE ?)');
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
+    const normalizedSearch = filters.search ? buildFtsContentMatchQuery(filters.search) : null;
+    if (normalizedSearch) {
+      conditions.push('e.id IN (SELECT f.entry_id FROM entries_fts f WHERE f.content MATCH ?)');
+      params.push(normalizedSearch);
     }
     if (filters.tags?.length) {
       // 使用规范化表 JOIN，每个 tag 一个子查询（AND 语义）
@@ -1082,6 +1126,7 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
 
         // 只有实际插入成功后才同步标签并记录 ID
         if (wasInserted) {
+          await upsertEntryContentFts(db, e.id, e.content);
           await upsertEntryTags(db, e.id, normalizedTags ?? []);
           insertedIds.push(e.id);
         }

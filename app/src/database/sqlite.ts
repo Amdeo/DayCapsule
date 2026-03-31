@@ -92,6 +92,13 @@ export const initDatabase = async () => {
       );
     `);
 
+    await db.execAsync(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+        entry_id UNINDEXED,
+        content
+      );
+    `);
+
     // 创建索引以提高查询性能
     await db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_entries_timestamp ON entries(timestamp DESC);

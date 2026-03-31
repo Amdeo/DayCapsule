@@ -1,6 +1,7 @@
 const mockDb = {
   getAllAsync: jest.fn(),
   runAsync: jest.fn(),
+  withTransactionAsync: jest.fn(),
 };
 const mockGetAllAsync = mockDb.getAllAsync;
 const mockRunAsync = mockDb.runAsync;
@@ -48,6 +49,7 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import {
+  migrateEntriesContentToFts,
   migrateCloudSyncCoreColumns,
   migrateLocalReadyStateColumn,
   migrateSyncStatusColumn,
@@ -60,9 +62,11 @@ describe('database/migration', () => {
     mockMmkvState.clear();
     mockDb.getAllAsync.mockReset();
     mockDb.runAsync.mockReset();
+    mockDb.withTransactionAsync.mockReset();
     mockInvalidateColumnCache.mockReset();
     mockDb.getAllAsync.mockResolvedValue([]);
     mockDb.runAsync.mockResolvedValue(undefined);
+    mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
   });
 
   it('应该在标记已迁移时仍补齐缺失的 media_json 列', async () => {
@@ -192,5 +196,59 @@ describe('database/migration', () => {
     expect(mockRunAsync).toHaveBeenCalledWith(
       `UPDATE entries SET local_ready_state = 'ready' WHERE local_ready_state IS NULL`
     );
+  });
+
+  it('creates entries_fts and backfills existing entry content', async () => {
+    await migrateEntriesContentToFts();
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5')
+    );
+    expect(mockDb.runAsync).toHaveBeenCalledWith(`DELETE FROM entries_fts`);
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      `INSERT INTO entries_fts (entry_id, content) SELECT id, content FROM entries`
+    );
+  });
+
+  it('runs entries_fts delete and backfill inside one transaction', async () => {
+    const transactionQueries: string[] = [];
+    let inTransaction = false;
+
+    mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => {
+      inTransaction = true;
+      try {
+        await callback();
+      } finally {
+        inTransaction = false;
+      }
+    });
+
+    mockDb.runAsync.mockImplementation(async (sql: string) => {
+      if (inTransaction) {
+        transactionQueries.push(sql);
+      }
+      return undefined;
+    });
+
+    await migrateEntriesContentToFts();
+
+    expect(mockDb.withTransactionAsync).toHaveBeenCalledTimes(1);
+    expect(transactionQueries).toEqual([
+      'DELETE FROM entries_fts',
+      'INSERT INTO entries_fts (entry_id, content) SELECT id, content FROM entries',
+    ]);
+  });
+
+  it('repeats entries_fts backfill idempotently', async () => {
+    await migrateEntriesContentToFts();
+    await migrateEntriesContentToFts();
+
+    expect(mockDb.runAsync.mock.calls.filter(([sql]) =>
+      String(sql).includes('CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5')
+    )).toHaveLength(2);
+    expect(mockDb.runAsync.mock.calls.filter(([sql]) => sql === 'DELETE FROM entries_fts')).toHaveLength(2);
+    expect(mockDb.runAsync.mock.calls.filter(([sql]) =>
+      sql === 'INSERT INTO entries_fts (entry_id, content) SELECT id, content FROM entries'
+    )).toHaveLength(2);
   });
 });

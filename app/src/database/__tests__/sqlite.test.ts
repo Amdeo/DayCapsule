@@ -100,6 +100,18 @@ describe('sqlite environment isolation', () => {
     );
   });
 
+  it('creates the entries_fts virtual table in the base schema', async () => {
+    await initDatabase();
+
+    const db = openDatabase() as { execAsync: jest.Mock };
+    const createFtsSql = db.execAsync.mock.calls
+      .map(([sql]) => sql as string)
+      .find((sql) => sql.includes('CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5'));
+
+    expect(createFtsSql).toContain('entry_id UNINDEXED');
+    expect(createFtsSql).toContain('content');
+  });
+
   it('does not try to create sync_status index before the column exists on old schemas', async () => {
     await initDatabase();
 
@@ -127,7 +139,7 @@ describe('sqlite environment isolation', () => {
     const initResult = await initDatabase();
 
     expect(initResult).toBe(true);
-    expect(oldSchemaDb.execAsync).toHaveBeenCalledTimes(3);
+    expect(oldSchemaDb.execAsync).toHaveBeenCalledTimes(4);
     expect(oldSchemaDb.execAsync.mock.calls.some(([sql]) =>
       String(sql).includes('idx_entries_sync_status ON entries(sync_status)')
     )).toBe(false);

@@ -9,6 +9,7 @@ import { resetApiClient } from '@/src/services/apiClient';
 import { initDatabase, resetDatabase } from '@/src/database/sqlite';
 import {
   migrateCloudSyncCoreColumns,
+  migrateEntriesContentToFts,
   migrateLocalReadyStateColumn,
   migrateSyncStatusColumn,
   migrateToMediaJson,
@@ -41,6 +42,7 @@ const initializeEnvironmentRuntime = async (): Promise<void> => {
     throw new Error('初始化数据库失败');
   }
   await migrateToMediaJson();
+  await migrateEntriesContentToFts();
   await migrateLocalReadyStateColumn();
   await migrateSyncStatusColumn();
   await migrateCloudSyncCoreColumns();

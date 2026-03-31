@@ -214,6 +214,26 @@ export const migrateTagsToNormalized = async (): Promise<void> => {
   }
 };
 
+export const migrateEntriesContentToFts = async (): Promise<void> => {
+  const db = getDatabase();
+
+  try {
+    await db.runAsync(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+        entry_id UNINDEXED,
+        content
+      )
+    `);
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM entries_fts`);
+      await db.runAsync(`INSERT INTO entries_fts (entry_id, content) SELECT id, content FROM entries`);
+    });
+    logger.log('✅ entries_fts 回填完成');
+  } catch (error) {
+    logger.error('❌ entries_fts 迁移失败:', error);
+  }
+};
+
 /**
  * 迁移数据库表结构，添加新的媒体元数据列
  * 幂等：已存在则跳过

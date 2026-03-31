@@ -19,11 +19,13 @@ jest.mock('@/src/database/sqlite', () => ({
 }));
 
 const mockMigrateToMediaJson = jest.fn().mockResolvedValue(undefined);
+const mockMigrateEntriesContentToFts = jest.fn().mockResolvedValue(undefined);
 const mockMigrateLocalReadyStateColumn = jest.fn().mockResolvedValue(undefined);
 const mockMigrateSyncStatusColumn = jest.fn().mockResolvedValue(undefined);
 const mockMigrateCloudSyncCoreColumns = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/src/database/migration', () => ({
   migrateToMediaJson: () => mockMigrateToMediaJson(),
+  migrateEntriesContentToFts: () => mockMigrateEntriesContentToFts(),
   migrateLocalReadyStateColumn: () => mockMigrateLocalReadyStateColumn(),
   migrateSyncStatusColumn: () => mockMigrateSyncStatusColumn(),
   migrateCloudSyncCoreColumns: () => mockMigrateCloudSyncCoreColumns(),
@@ -96,11 +98,15 @@ describe('localEnvironmentDataManager', () => {
     expect(mockResetDatabase).toHaveBeenCalledTimes(1);
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
+    expect(mockMigrateEntriesContentToFts).toHaveBeenCalledTimes(1);
     expect(mockMigrateLocalReadyStateColumn).toHaveBeenCalledTimes(1);
     expect(mockMigrateSyncStatusColumn).toHaveBeenCalledTimes(1);
     expect(mockMigrateCloudSyncCoreColumns).toHaveBeenCalledTimes(1);
     expect(mockEnsureDirectories).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]).toBeLessThan(
       mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]
     );
     expect(mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]).toBeLessThan(

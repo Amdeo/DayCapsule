@@ -334,14 +334,26 @@ describe('database/operations', () => {
       expect(params).toContain('photo');
     });
 
-    it('传入 search 时应该添加 LIKE 条件', async () => {
+    it('传入 search 时应该添加 FTS content 过滤条件', async () => {
       mockDb.getAllAsync.mockResolvedValue([]);
 
       await getEntriesPage({ search: '旅行' }, 20);
 
       const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
-      expect(sql).toContain('LIKE ?');
-      expect(params).toContain('%旅行%');
+      expect(sql).toContain('e.id IN (SELECT f.entry_id FROM entries_fts f WHERE f.content MATCH ?)');
+      expect(sql).not.toContain('e.tags LIKE ?');
+      expect(params).toContain('"旅行"*');
+    });
+
+    it('search 与 tags 组合时应保持参数顺序并安全规范化 FTS 查询', async () => {
+      mockDb.getAllAsync.mockResolvedValue([]);
+
+      await getEntriesPage({ search: 'foo"bar', tags: ['工作'] }, 20);
+
+      const [sql, params] = mockDb.getAllAsync.mock.calls.at(-1) ?? [];
+      expect(sql).toContain('e.id IN (SELECT f.entry_id FROM entries_fts f WHERE f.content MATCH ?)');
+      expect(sql).toContain('e.id IN (SELECT et.entry_id FROM entry_tags et JOIN tags t ON et.tag_id = t.id WHERE t.name = ?)');
+      expect(params).toEqual(['"foo""bar"*', '工作', 20]);
     });
 
     it('传入 tags 时应该使用 JOIN 子查询（AND 语义）', async () => {
@@ -475,15 +487,17 @@ describe('database/operations', () => {
   // ─── searchEntries ──────────────────────────────────────────────────────────
 
   describe('searchEntries', () => {
-    it('应该使用 LIMIT 限制结果数量', async () => {
+    it('应该使用 FTS content lookup 并限制结果数量', async () => {
       mockDb.getAllAsync.mockResolvedValue([]);
 
       await searchEntries('测试');
 
       expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-        expect.stringContaining('LIMIT ?'),
-        ['%测试%', '%测试%', 100]
+        expect.stringContaining('JOIN entries_fts f ON f.entry_id = e.id'),
+        ['"测试"*', 100]
       );
+      expect(mockDb.getAllAsync.mock.calls[0][0]).toContain('f.content MATCH ?');
+      expect(mockDb.getAllAsync.mock.calls[0][0]).toContain('LIMIT ?');
     });
 
     it('应该支持自定义 limit', async () => {
@@ -492,7 +506,23 @@ describe('database/operations', () => {
       await searchEntries('测试', 50);
 
       const callArgs = mockDb.getAllAsync.mock.calls[0];
-      expect(callArgs[1]).toEqual(['%测试%', '%测试%', 50]);
+      expect(callArgs[1]).toEqual(['"测试"*', 50]);
+    });
+
+    it('空白 search 应返回空数组且不查询数据库', async () => {
+      const result = await searchEntries('   ');
+
+      expect(result).toEqual([]);
+      expect(mockDb.getAllAsync).not.toHaveBeenCalled();
+    });
+
+    it('应将多词和特殊字符安全规范化后传给 MATCH', async () => {
+      mockDb.getAllAsync.mockResolvedValue([]);
+
+      await searchEntries('C++ note');
+
+      const callArgs = mockDb.getAllAsync.mock.calls[0];
+      expect(callArgs[1]).toEqual(['"C++"* AND "note"*', 100]);
     });
   });
 
@@ -662,6 +692,15 @@ describe('database/operations', () => {
       const [sql] = mockDb.runAsync.mock.calls[0];
       expect(sql).toContain('INSERT INTO entries');
       expect(sql).not.toContain('INSERT OR IGNORE INTO entries');
+    });
+
+    it('addEntry 应同步写入 entries_fts content 索引', async () => {
+      const result = await addEntry({ type: 'text' as const, content: 'FTS 新记录' });
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'INSERT INTO entries_fts (entry_id, content) VALUES (?, ?)',
+        [result.id, 'FTS 新记录']
+      );
     });
 
     it('新环境中写入两张图片后重新读取仍应保留两张', async () => {
@@ -964,6 +1003,19 @@ describe('database/operations', () => {
   // ─── updateEntry ───────────────────────────────────────────────────────────
 
   describe('updateEntry', () => {
+    it('updateEntry 更新 content 时应同步刷新 entries_fts', async () => {
+      await updateEntry('entry-1', { content: 'FTS 更新内容' });
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM entries_fts WHERE entry_id = ?',
+        ['entry-1']
+      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'INSERT INTO entries_fts (entry_id, content) VALUES (?, ?)',
+        ['entry-1', 'FTS 更新内容']
+      );
+    });
+
     it('列存在时应该更新 baseUpdatedAt userId deleted 与 conflictedCopyOf', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },
@@ -1163,6 +1215,15 @@ describe('database/operations', () => {
       );
     });
 
+    it('deleteEntry 应删除对应的 entries_fts 记录', async () => {
+      await deleteEntry('entry-1');
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'DELETE FROM entries_fts WHERE entry_id = ?',
+        ['entry-1']
+      );
+    });
+
     it('删除失败时应该抛出错误', async () => {
       mockDb.runAsync.mockRejectedValue(new Error('DB Error'));
 
@@ -1215,6 +1276,27 @@ describe('database/operations', () => {
   // ─── restoreEntries ─────────────────────────────────────────────────────────
 
   describe('restoreEntries', () => {
+    it('restoreEntries 应回填恢复记录的 entries_fts content', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        { id: 'restore-fts-1', type: 'text', content: '恢复全文索引', timestamp: 1, syncStatus: 'synced' },
+      ]);
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'INSERT INTO entries_fts (entry_id, content) VALUES (?, ?)',
+        ['restore-fts-1', '恢复全文索引']
+      );
+    });
+
     it('应该在单个事务中恢复多条记录，并在单条失败后继续处理后续记录', async () => {
       mockDb.getAllAsync.mockResolvedValue([
         { name: 'id' },

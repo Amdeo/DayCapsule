@@ -8,6 +8,7 @@ import {
   migrateTagsToNormalized,
   migrateMediaMetadataColumns,
   migrateToMediaJson,
+  migrateEntriesContentToFts,
   migrateSyncStatusColumn,
   migrateCloudSyncCoreColumns,
   migrateLocalReadyStateColumn,
@@ -57,6 +58,9 @@ export async function runAppBootstrap(
 
     await migrateToMediaJson();
     logger.log('✅ media_json 列迁移完成');
+
+    await migrateEntriesContentToFts();
+    logger.log('✅ entries_fts 回填完成');
 
     await migrateSyncStatusColumn();
     logger.log('✅ sync_status 列迁移完成');
