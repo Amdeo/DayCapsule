@@ -178,10 +178,6 @@ interface EntryStore {
   // 重试计数
   loadRetryCount: number;
 
-  // 播放状态
-  currentPlayingId: string | null;
-  setCurrentPlayingId: (id: string | null) => void;
-
   // 数据加载
   loadEntries: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -291,8 +287,6 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   filterDateRange: 'all',
   selectedTags: [],
   loadRetryCount: 0,
-  currentPlayingId: null,
-  setCurrentPlayingId: (id) => set({ currentPlayingId: id }),
 
   /**
    * 首次加载（重置游标，加载第一页）

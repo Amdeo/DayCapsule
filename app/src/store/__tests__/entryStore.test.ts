@@ -133,7 +133,6 @@ const resetStore = () =>
     selectedTags: [],
     loadRetryCount: 0,
     activeQueryKey: '',
-    currentPlayingId: null,
   });
 
 describe('entryStore', () => {
@@ -168,6 +167,13 @@ describe('entryStore', () => {
     (deleteFile as jest.Mock).mockResolvedValue(undefined);
     mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
     useSettingsStore.setState({ cloudMode: false });
+  });
+
+  it('不再暴露 playback-only 状态 currentPlayingId', () => {
+    const state = useEntryStore.getState() as Record<string, unknown>;
+
+    expect(state).not.toHaveProperty('currentPlayingId');
+    expect(state).not.toHaveProperty('setCurrentPlayingId');
   });
 
   // ─── loadEntries ────────────────────────────────────────────────────────────

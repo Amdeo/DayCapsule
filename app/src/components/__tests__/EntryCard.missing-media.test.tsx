@@ -4,13 +4,18 @@
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
-const mockSetCurrentPlayingId = jest.fn();
+const mockPlaybackStoreState = {
+  currentPlayingId: null as string | null,
+  setCurrentPlayingId: jest.fn(),
+};
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: (selector: (state: any) => any) => selector({
-    currentPlayingId: null,
-    setCurrentPlayingId: mockSetCurrentPlayingId,
-  }),
+  useEntryStore: () => ({}),
+}));
+
+jest.mock('@/src/store/entryPlaybackUIStore', () => ({
+  useEntryPlaybackUIStore: (selector: (state: typeof mockPlaybackStoreState) => unknown) =>
+    selector(mockPlaybackStoreState),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({

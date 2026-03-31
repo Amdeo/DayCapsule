@@ -8,7 +8,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInRight, Layout } from 'react-native-reanimated';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Entry } from '@/src/types/entry';
-import { useEntryStore } from '@/src/store/entryStore';
+import { useEntryPlaybackUIStore } from '@/src/store/entryPlaybackUIStore';
 import { CalendarDensity, PHOTO_HEIGHT_VALUES, useSettingsStore } from '@/src/store/settingsStore';
 import { EntryCardCalendarContent } from './entry-card/EntryCardCalendarContent';
 import { EntryCardDialogs } from './entry-card/EntryCardDialogs';
@@ -52,8 +52,8 @@ function EntryCard({
   variant = 'default',
   calendarDensity = 'default',
 }: EntryCardProps) {
-  const currentPlayingId = useEntryStore((state) => state.currentPlayingId);
-  const setCurrentPlayingId = useEntryStore((state) => state.setCurrentPlayingId);
+  const currentPlayingId = useEntryPlaybackUIStore((state) => state.currentPlayingId);
+  const setCurrentPlayingId = useEntryPlaybackUIStore((state) => state.setCurrentPlayingId);
   const photoHeight = useSettingsStore((s) => s.photoHeight);
   const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
   const resolvedPhotoHeight = getEntryCardResolvedPhotoHeight(
