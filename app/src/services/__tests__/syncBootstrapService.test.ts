@@ -265,6 +265,58 @@ describe('syncBootstrapService', () => {
     );
   });
 
+  it('does not show the repair prompt when validation issues do not require a repair prompt', async () => {
+    mockApiGet.mockResolvedValueOnce([
+      {
+        id: 'photo-restore-no-prompt',
+        type: 'photo',
+        content: '云端恢复图片',
+        timestamp: 1700000002000,
+        media: [
+          {
+            uri: 'https://cdn.example.com/photo-restore-no-prompt.jpg',
+            remoteUri: 'https://cdn.example.com/photo-restore-no-prompt.jpg',
+            thumbnail: 'https://cdn.example.com/photo-restore-no-prompt-thumb.jpg',
+            remoteThumbnail: 'https://cdn.example.com/photo-restore-no-prompt-thumb.jpg',
+            mimeType: 'image/jpeg',
+            size: 1024,
+          },
+        ],
+      },
+    ]);
+    const mediaSummary = {
+      summary: {
+        status: 'partial' as const,
+        total: 1,
+        downloaded: 1,
+        missing: 0,
+        failed: 0,
+        suspect: 1,
+        repairable: 0,
+        lastError: null,
+        lastValidatedAt: 1700000003001,
+      },
+      issues: [
+        {
+          entryId: 'photo-restore-no-prompt',
+          mediaIndex: 0,
+          localMediaId: 'local-restore-no-prompt',
+          localUri: 'file:///documents/media/photos/original/photo-restore-no-prompt.jpg',
+          integrityStatus: 'repair_failed' as const,
+          integrityReason: 'repair already failed',
+        },
+      ],
+    };
+    mockValidateEntries.mockResolvedValueOnce(mediaSummary);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('cloud');
+
+    expect(mockSetMediaValidationSummary).toHaveBeenCalledWith(mediaSummary.summary);
+    expect(mockReplaceIssues).toHaveBeenCalledWith(mediaSummary.issues);
+    expect(mockShowPhotoRepairPrompt).not.toHaveBeenCalled();
+  });
+
   it('marks media validation failed and still finishes cloud restore when validation rejects', async () => {
     mockApiGet.mockResolvedValueOnce([
       {
@@ -496,6 +548,50 @@ describe('syncBootstrapService', () => {
       expect.objectContaining({
         syncStatus: 'pending',
         syncOp: 'create',
+      }),
+    );
+  });
+
+  it('skips media pre-upload for entries already marked pending delete during first cloud backup', async () => {
+    (DB.getAllEntries as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'photo-local-delete',
+        type: 'photo',
+        content: '待删除图片',
+        timestamp: 1700000002100,
+        syncStatus: 'pending_delete',
+        syncOp: 'delete',
+        deleted: true,
+        media: [
+          {
+            uri: 'file:///data/user/0/com.memorycapsule.app/cache/photo-delete.jpg',
+            mimeType: 'image/jpeg',
+            size: 4096,
+            metadata: {
+              localMediaId: 'bootstrap-local-media-delete',
+              sourceHash: 'source-hash-delete',
+              persistedHash: 'persisted-hash-delete',
+              width: 1200,
+              height: 900,
+              createdAt: 1700000002100,
+              modifiedAt: 1700000002100,
+            },
+          },
+        ],
+      },
+    ]);
+
+    const service = createSyncBootstrapService();
+    await service.runInitialFlow('local');
+
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(DB.updateEntry).toHaveBeenCalledTimes(1);
+    expect(DB.updateEntry).toHaveBeenCalledWith(
+      'photo-local-delete',
+      expect.objectContaining({
+        syncStatus: 'pending_delete',
+        syncOp: 'delete',
+        deleted: true,
       }),
     );
   });
