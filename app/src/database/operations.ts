@@ -201,6 +201,14 @@ const summarizePhotoMediaForDebug = (entry: Entry) => ({
   })),
 });
 
+const normalizeEntryTags = (tags: string[] | undefined): string[] | undefined => {
+  if (tags === undefined) {
+    return undefined;
+  }
+
+  return [...new Set(tags)];
+};
+
 /**
  * 同步 entry 的规范化 tags（双写：JSON 列 + entry_tags 表）
  * 先清除旧关联，再插入新关联
@@ -210,16 +218,25 @@ const upsertEntryTags = async (
   entryId: string,
   tags: string[]
 ): Promise<void> => {
+  const normalizedTags = normalizeEntryTags(tags) ?? [];
+
   await db.runAsync(`DELETE FROM entry_tags WHERE entry_id = ?`, [entryId]);
-  await Promise.all(
-    tags.map(async (name) => {
-      await db.runAsync(`INSERT OR IGNORE INTO tags (name) VALUES (?)`, [name]);
-      await db.runAsync(
-        `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
-         SELECT ?, id FROM tags WHERE name = ?`,
-        [entryId, name]
-      );
-    })
+
+  if (normalizedTags.length === 0) {
+    return;
+  }
+
+  const valuesPlaceholders = normalizedTags.map(() => '(?)').join(', ');
+  await db.runAsync(
+    `INSERT OR IGNORE INTO tags (name) VALUES ${valuesPlaceholders}`,
+    normalizedTags
+  );
+
+  const inPlaceholders = normalizedTags.map(() => '?').join(', ');
+  await db.runAsync(
+    `INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)
+     SELECT ?, id FROM tags WHERE name IN (${inPlaceholders})`,
+    [entryId, ...normalizedTags]
   );
 };
 
@@ -473,6 +490,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     const db = getDatabase();
     const timestamp = Date.now();
     const id = `${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+    const normalizedTags = normalizeEntryTags(entry.tags);
 
     // 获取表列信息
     const columns = await getTableColumns(db);
@@ -496,7 +514,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}${hasLocalReadyState ? ', ?' : ''})`,
         [
           id, entry.type, entry.content, timestamp,
-          entry.tags ? JSON.stringify(entry.tags) : null,
+          normalizedTags ? JSON.stringify(normalizedTags) : null,
           mediaJson,
           (entry.recordingStatus === 'stopping' ? null : entry.recordingStatus) || null, entry.recordingDuration || null,
           ...(hasSyncStatus ? [entry.syncStatus ?? 'synced'] : []),
@@ -526,7 +544,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           entry.type,
           entry.content,
           timestamp,
-          entry.tags ? JSON.stringify(entry.tags) : null,
+          normalizedTags ? JSON.stringify(normalizedTags) : null,
           firstMedia?.uri || null,
           firstMedia?.mimeType || null,
           firstMedia?.duration || null,
@@ -557,7 +575,7 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
           entry.type,
           entry.content,
           timestamp,
-          entry.tags ? JSON.stringify(entry.tags) : null,
+          normalizedTags ? JSON.stringify(normalizedTags) : null,
           firstMedia?.uri || null,
           firstMedia?.mimeType || null,
           firstMedia?.duration || null,
@@ -575,12 +593,13 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
     }
 
     // 同步规范化 tags
-    if (entry.tags?.length) {
-      await upsertEntryTags(db, id, entry.tags);
+    if (normalizedTags !== undefined) {
+      await upsertEntryTags(db, id, normalizedTags);
     }
 
     return {
       ...entry,
+      tags: normalizedTags,
       id,
       timestamp,
       syncStatus: entry.syncStatus ?? 'synced',
@@ -606,6 +625,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     const db = getDatabase();
     const fields: string[] = [];
     const values: any[] = [];
+    const normalizedTags = normalizeEntryTags(updates.tags);
 
     // 获取表列信息
     const columns = await getTableColumns(db);
@@ -620,9 +640,9 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
       fields.push('content = ?');
       values.push(updates.content);
     }
-    if (updates.tags !== undefined) {
+    if (normalizedTags !== undefined) {
       fields.push('tags = ?');
-      values.push(JSON.stringify(updates.tags));
+      values.push(JSON.stringify(normalizedTags));
     }
     if (updates.media !== undefined) {
       if (columns.has('media_json')) {
@@ -692,8 +712,8 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     );
 
     // 同步规范化 tags
-    if (updates.tags !== undefined) {
-      await upsertEntryTags(db, id, updates.tags);
+    if (normalizedTags !== undefined) {
+      await upsertEntryTags(db, id, normalizedTags);
     }
   } catch (error) {
     logger.error('Failed to update entry:', error);
@@ -940,6 +960,7 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
   await db.withTransactionAsync(async () => {
     for (const e of entries) {
       try {
+        const normalizedTags = normalizeEntryTags(e.tags);
         await db.runAsync(
           hasMediaJson
             ? `INSERT OR IGNORE INTO entries
@@ -951,10 +972,10 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
                   media_duration, recording_status, recording_duration${hasSyncStatus ? ', sync_status' : ''}${hasSyncOp ? ', sync_op' : ''}${hasConflictedCopyOf ? ', conflicted_copy_of' : ''}${hasBaseUpdatedAt ? ', base_updated_at' : ''}${hasUserID ? ', user_id' : ''}${hasDeleted ? ', deleted' : ''}, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSyncStatus ? ', ?' : ''}${hasSyncOp ? ', ?' : ''}${hasConflictedCopyOf ? ', ?' : ''}${hasBaseUpdatedAt ? ', ?' : ''}${hasUserID ? ', ?' : ''}${hasDeleted ? ', ?' : ''}, ?, ?)`,
           hasMediaJson
-            ? [
-                e.id, e.type, e.content, e.timestamp,
-                e.tags ? JSON.stringify(e.tags) : null,
-                e.media ? JSON.stringify(e.media) : null,
+              ? [
+                  e.id, e.type, e.content, e.timestamp,
+                  normalizedTags ? JSON.stringify(normalizedTags) : null,
+                  e.media ? JSON.stringify(e.media) : null,
                 e.recordingStatus ?? null, e.recordingDuration ?? null,
                 ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
                 ...(hasSyncOp ? [e.syncOp ?? 'update'] : []),
@@ -964,10 +985,10 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
                 ...(hasDeleted ? [e.deleted ? 1 : 0] : []),
                 e.timestamp, e.updatedAt ?? e.editedAt ?? e.timestamp,
               ]
-            : [
-                e.id, e.type, e.content, e.timestamp,
-                e.tags ? JSON.stringify(e.tags) : null,
-                e.media?.[0]?.uri ?? null, e.media?.[0]?.mimeType ?? null,
+              : [
+                  e.id, e.type, e.content, e.timestamp,
+                  normalizedTags ? JSON.stringify(normalizedTags) : null,
+                  e.media?.[0]?.uri ?? null, e.media?.[0]?.mimeType ?? null,
                 e.media?.[0]?.duration ?? null,
                 e.recordingStatus ?? null, e.recordingDuration ?? null,
                 ...(hasSyncStatus ? [e.syncStatus ?? 'synced'] : []),
@@ -988,7 +1009,7 @@ export const restoreEntries = async (entries: Entry[]): Promise<string[]> => {
 
         // 只有实际插入成功后才同步标签并记录 ID
         if (wasInserted) {
-          await upsertEntryTags(db, e.id, e.tags ?? []);
+          await upsertEntryTags(db, e.id, normalizedTags ?? []);
           insertedIds.push(e.id);
         }
       } catch (error) {

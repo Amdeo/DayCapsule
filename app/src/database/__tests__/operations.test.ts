@@ -523,43 +523,90 @@ describe('database/operations', () => {
       expect(sqls.some((s) => s.includes('entry_tags'))).toBe(true);
     });
 
-    it('有多个 tags 时应并发发起每个 tag 的首个 SQL，再继续关联写入', async () => {
-      const pendingTagWrites: Array<{ sql: string; resolve: () => void }> = [];
+    it('有多个 tags 时应批量写入 tags 和 entry_tags', async () => {
+      mockDb.runAsync.mockResolvedValue(undefined);
 
-      mockDb.getAllAsync.mockResolvedValue([{ name: 'id' }, { name: 'type' }, { name: 'content' }, { name: 'timestamp' }, { name: 'tags' }]);
-      mockDb.runAsync.mockImplementation((sql: string) => {
-        if (sql.includes('INSERT OR IGNORE INTO tags') || sql.includes('INSERT OR IGNORE INTO entry_tags')) {
-          return new Promise<void>((resolve) => {
-            pendingTagWrites.push({ sql, resolve });
-          });
-        }
-        return Promise.resolve(undefined);
-      });
-
-      const addEntryPromise = addEntry({
+      await addEntry({
         type: 'text' as const,
-        content: '并发标签',
+        content: '批量标签',
         tags: ['工作', '重要'],
       });
 
-      await new Promise((resolve) => setImmediate(resolve));
-      await new Promise((resolve) => setImmediate(resolve));
+      const sqlCalls = mockDb.runAsync.mock.calls.map(([sql, params]) => ({
+        sql: sql as string,
+        params: params as unknown[],
+      }));
 
-      expect(pendingTagWrites).toHaveLength(2);
-      expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO tags'))).toBe(true);
+      const tagInsert = sqlCalls.find(({ sql }) =>
+        sql.includes('INSERT OR IGNORE INTO tags (name) VALUES (?), (?)')
+      );
+      const entryTagInsert = sqlCalls.find(({ sql }) =>
+        sql.includes('INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)')
+      );
 
-      pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
-      await waitFor(() => {
-        expect(
-          pendingTagWrites.some(({ sql }) => sql.includes('entry_tags'))
-        ).toBe(true);
+      expect(tagInsert?.params).toEqual(['工作', '重要']);
+      expect(entryTagInsert?.sql).toContain('WHERE name IN (?, ?)');
+      expect(entryTagInsert?.params).toEqual([expect.any(String), '工作', '重要']);
+    });
+
+    it('单条记录的重复 tags 应在批量写入前去重', async () => {
+      mockDb.runAsync.mockResolvedValue(undefined);
+
+      await addEntry({
+        type: 'text' as const,
+        content: '去重标签',
+        tags: ['工作', '工作', '重要'],
       });
 
-      expect(pendingTagWrites).toHaveLength(2);
-      expect(pendingTagWrites.every(({ sql }) => sql.includes('INSERT OR IGNORE INTO entry_tags'))).toBe(true);
+      const sqlCalls = mockDb.runAsync.mock.calls.map(([sql, params]) => ({
+        sql: sql as string,
+        params: params as unknown[],
+      }));
 
-      pendingTagWrites.splice(0).forEach(({ resolve }) => resolve());
-      await addEntryPromise;
+      const tagInsert = sqlCalls.find(({ sql }) =>
+        sql.includes('INSERT OR IGNORE INTO tags (name) VALUES (?), (?)')
+      );
+      const entryTagInsert = sqlCalls.find(({ sql }) =>
+        sql.includes('INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)')
+      );
+
+      expect(tagInsert?.params).toEqual(['工作', '重要']);
+      expect(entryTagInsert?.sql).toContain('WHERE name IN (?, ?)');
+      expect(entryTagInsert?.params).toEqual([expect.any(String), '工作', '重要']);
+    });
+
+    it('重复 tags 写入 entries.tags JSON 列时也应按原顺序去重', async () => {
+      mockDb.runAsync.mockResolvedValue(undefined);
+
+      await addEntry({
+        type: 'text' as const,
+        content: 'JSON 去重标签',
+        tags: ['工作', '工作', '重要'],
+      });
+
+      const [, params] = mockDb.runAsync.mock.calls[0];
+      expect(params[4]).toBe(JSON.stringify(['工作', '重要']));
+    });
+
+    it('空 tags 时只应清旧关联而不再写 tags 或 entry_tags', async () => {
+      mockDb.runAsync.mockResolvedValue(undefined);
+
+      await addEntry({
+        type: 'text' as const,
+        content: '空标签',
+        tags: [],
+      });
+
+      const tagSqlCalls = mockDb.runAsync.mock.calls
+        .map(([sql, params]) => ({ sql: sql as string, params: params as unknown[] }))
+        .filter(({ sql }) => sql.includes('entry_tags') || sql.includes('INSERT OR IGNORE INTO tags'));
+
+      expect(tagSqlCalls).toEqual([
+        {
+          sql: 'DELETE FROM entry_tags WHERE entry_id = ?',
+          params: [expect.any(String)],
+        },
+      ]);
     });
 
     it('写入 media_json 时应该保留两张图片而不是只写首图', async () => {
@@ -977,6 +1024,45 @@ describe('database/operations', () => {
       expect(params[1]).toBe('audio/m4a');
       expect(params[2]).toBe(12000);
     });
+
+    it('更新空 tags 时只应清旧关联而不再写 tags 或 entry_tags', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+      ]);
+
+      await updateEntry('entry-empty-tags', { tags: [] });
+
+      const tagSqlCalls = mockDb.runAsync.mock.calls
+        .map(([sql, params]) => ({ sql: sql as string, params: params as unknown[] }))
+        .filter(({ sql }) => sql.includes('entry_tags') || sql.includes('INSERT OR IGNORE INTO tags'));
+
+      expect(tagSqlCalls).toEqual([
+        {
+          sql: 'DELETE FROM entry_tags WHERE entry_id = ?',
+          params: ['entry-empty-tags'],
+        },
+      ]);
+    });
+
+    it('更新重复 tags 时 entries.tags JSON 列也应按原顺序去重', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+      ]);
+
+      await updateEntry('entry-dedupe-tags', { tags: ['工作', '工作', '重要'] });
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0];
+      expect(sql).toContain('tags = ?');
+      expect(params[0]).toBe(JSON.stringify(['工作', '重要']));
+    });
   });
 
   describe('getEntriesByLocalReadyState', () => {
@@ -1185,6 +1271,109 @@ describe('database/operations', () => {
       const [, params] = mockDb.runAsync.mock.calls[0];
       expect(params.at(-1)).toBe(3000);
       expect(params.at(-2)).toBe(1000);
+    });
+
+    it('恢复带 tags 的记录时应继续写入规范化标签关联', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'tagged-restore-1',
+          type: 'text',
+          content: 'restore tags',
+          timestamp: 1,
+          tags: ['恢复', '批量'],
+        },
+      ]);
+
+      const sqlCalls = mockDb.runAsync.mock.calls.map(([sql, params]) => ({
+        sql: sql as string,
+        params: params as unknown[],
+      }));
+      const entryTagInsert = sqlCalls.find(({ sql }) =>
+        sql.includes('INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)')
+      );
+
+      expect(sqlCalls.some(({ sql }) => sql.includes('DELETE FROM entry_tags'))).toBe(true);
+      expect(sqlCalls.some(({ sql }) => sql.includes('INSERT OR IGNORE INTO tags (name) VALUES (?), (?)'))).toBe(true);
+      expect(entryTagInsert?.sql).toContain('WHERE name IN (?, ?)');
+      expect(entryTagInsert?.params).toEqual(['tagged-restore-1', '恢复', '批量']);
+      expect((entryTagInsert?.sql.match(/\?/g) ?? []).length).toBe(entryTagInsert?.params?.length);
+    });
+
+    it('恢复重复 tags 时 JSON tags 与规范化表都应使用同一去重顺序', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'restore-dedupe-tags-1',
+          type: 'text',
+          content: 'restore dedupe tags',
+          timestamp: 1,
+          tags: ['恢复', '恢复', '批量'],
+        },
+      ]);
+
+      const [insertSql, insertParams] = mockDb.runAsync.mock.calls[0];
+      const entryTagInsert = mockDb.runAsync.mock.calls
+        .map(([sql, params]) => ({ sql: sql as string, params: params as unknown[] }))
+        .find(({ sql }) => sql.includes('INSERT OR IGNORE INTO entry_tags (entry_id, tag_id)'));
+
+      expect(insertSql).toContain('INSERT OR IGNORE INTO entries');
+      expect(insertParams[4]).toBe(JSON.stringify(['恢复', '批量']));
+      expect(entryTagInsert?.params).toEqual(['restore-dedupe-tags-1', '恢复', '批量']);
+    });
+
+    it('恢复空 tags 时只应清旧关联而不再写 tags 或 entry_tags', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_json' },
+      ]);
+      mockDb.withTransactionAsync.mockImplementation(async (callback: () => Promise<void>) => callback());
+      mockDb.getFirstAsync.mockResolvedValueOnce({ changes: 1 });
+
+      await restoreEntries([
+        {
+          id: 'restore-empty-tags-1',
+          type: 'text',
+          content: 'restore empty tags',
+          timestamp: 1,
+          tags: [],
+        },
+      ]);
+
+      const tagSqlCalls = mockDb.runAsync.mock.calls
+        .map(([sql, params]) => ({ sql: sql as string, params: params as unknown[] }))
+        .filter(({ sql }) => sql.includes('entry_tags') || sql.includes('INSERT OR IGNORE INTO tags'));
+
+      expect(tagSqlCalls).toEqual([
+        {
+          sql: 'DELETE FROM entry_tags WHERE entry_id = ?',
+          params: ['restore-empty-tags-1'],
+        },
+      ]);
     });
   });
 
