@@ -20,9 +20,13 @@ jest.mock('@/src/database/sqlite', () => ({
 
 const mockMigrateToMediaJson = jest.fn().mockResolvedValue(undefined);
 const mockMigrateLocalReadyStateColumn = jest.fn().mockResolvedValue(undefined);
+const mockMigrateSyncStatusColumn = jest.fn().mockResolvedValue(undefined);
+const mockMigrateCloudSyncCoreColumns = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/src/database/migration', () => ({
   migrateToMediaJson: () => mockMigrateToMediaJson(),
   migrateLocalReadyStateColumn: () => mockMigrateLocalReadyStateColumn(),
+  migrateSyncStatusColumn: () => mockMigrateSyncStatusColumn(),
+  migrateCloudSyncCoreColumns: () => mockMigrateCloudSyncCoreColumns(),
 }));
 
 const mockEnsureDirectories = jest.fn().mockResolvedValue(undefined);
@@ -93,11 +97,19 @@ describe('localEnvironmentDataManager', () => {
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
     expect(mockMigrateLocalReadyStateColumn).toHaveBeenCalledTimes(1);
+    expect(mockMigrateSyncStatusColumn).toHaveBeenCalledTimes(1);
+    expect(mockMigrateCloudSyncCoreColumns).toHaveBeenCalledTimes(1);
     expect(mockEnsureDirectories).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson.mock.invocationCallOrder[0]).toBeLessThan(
       mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]
     );
     expect(mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateSyncStatusColumn.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateSyncStatusColumn.mock.invocationCallOrder[0]).toBeLessThan(
+      mockMigrateCloudSyncCoreColumns.mock.invocationCallOrder[0]
+    );
+    expect(mockMigrateCloudSyncCoreColumns.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureDirectories.mock.invocationCallOrder[0]
     );
     expect(mockAuthLoadAuth).toHaveBeenCalledTimes(1);

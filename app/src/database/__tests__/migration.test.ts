@@ -140,6 +140,22 @@ describe('database/migration', () => {
     expect(mockMmkvState.get('sync_status_column_added')).toBe('true');
   });
 
+  it('应该在 sync_status 列存在后创建 sync_status 索引', async () => {
+    mockDb.getAllAsync.mockResolvedValue([
+      { name: 'id' },
+      { name: 'type' },
+      { name: 'sync_status' },
+      { name: 'sync_op' },
+      { name: 'conflicted_copy_of' },
+    ]);
+
+    await migrateSyncStatusColumn();
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      `CREATE INDEX IF NOT EXISTS idx_entries_sync_status ON entries(sync_status)`
+    );
+  });
+
   it('应该在标记已迁移时仍补齐缺失的 cloud sync core 列', async () => {
     mockMmkvState.set('cloud_sync_core_columns_added', 'true');
     mockDb.getAllAsync.mockResolvedValue([

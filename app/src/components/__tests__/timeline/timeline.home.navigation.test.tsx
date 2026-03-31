@@ -37,27 +37,27 @@ const mockSetFilterDateRange = jest.fn();
 const mockToggleTag = jest.fn();
 const mockClearTags = jest.fn();
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockEntryStoreState = {
+  entries: mockEntries,
+  searchQuery: '',
+  filterType: 'all',
+  filterDateRange: 'all',
+  selectedTags: [],
+  deleteEntry: jest.fn(),
+  updateEntry: mockUpdateEntry,
+  setSearchQuery: mockSetSearchQuery,
+  setFilterType: mockSetFilterType,
+  setFilterDateRange: mockSetFilterDateRange,
+  toggleTag: mockToggleTag,
+  clearTags: mockClearTags,
+  loadMore: jest.fn(),
+  isLoadingMore: false,
+  hasMore: false,
+};
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    entries: mockEntries,
-    searchQuery: '',
-    filterType: 'all',
-    filterDateRange: 'all',
-    selectedTags: [],
-    deleteEntry: jest.fn(),
-    updateEntry: mockUpdateEntry,
-    setSearchQuery: mockSetSearchQuery,
-    setFilterType: mockSetFilterType,
-    setFilterDateRange: mockSetFilterDateRange,
-    toggleTag: mockToggleTag,
-    clearTags: mockClearTags,
-    getAllTags: jest.fn(async () => ['产品']),
-    applySearchFilters: jest.fn(async () => undefined),
-    loadMore: jest.fn(),
-    isLoadingMore: false,
-    hasMore: false,
-  }),
+  useEntryStore: (selector: (state: typeof mockEntryStoreState) => unknown) =>
+    selector(mockEntryStoreState),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -173,6 +173,10 @@ jest.mock('../../EntryEditor', () => ({
       </View>
     );
   },
+}));
+
+jest.mock('../../SearchOverlay', () => ({
+  SearchOverlay: () => null,
 }));
 
 jest.mock('../../CalendarView', () => ({

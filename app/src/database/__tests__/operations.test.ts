@@ -231,6 +231,56 @@ describe('database/operations', () => {
         }),
       ]);
     });
+
+    it('应该把数据库脏枚举值收敛为安全的 Entry 字段', async () => {
+      mockDb.getAllAsync.mockResolvedValue([
+        {
+          id: 'dirty-row-1',
+          type: 'weird',
+          content: '脏数据',
+          timestamp: 1700000004000,
+          tags: null,
+          media_json: null,
+          recording_status: 'broken',
+          recording_duration: 12,
+          sync_status: 'mystery',
+          sync_op: 'noop',
+          local_ready_state: 'later',
+        },
+        {
+          id: 'dirty-row-2',
+          type: 'voice',
+          content: '合法状态',
+          timestamp: 1700000005000,
+          tags: null,
+          media_json: null,
+          recording_status: 'stopping',
+          recording_duration: 8,
+          sync_status: 'synced',
+          sync_op: 'update',
+          local_ready_state: 'ready',
+        },
+      ]);
+
+      const result = await getAllEntries();
+
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: 'dirty-row-1',
+          type: 'text',
+          recordingStatus: undefined,
+          syncStatus: 'synced',
+          syncOp: 'update',
+          localReadyState: 'ready',
+        })
+      );
+      expect(result[1]).toEqual(
+        expect.objectContaining({
+          id: 'dirty-row-2',
+          recordingStatus: 'stopping',
+        })
+      );
+    });
   });
 
   // ─── getEntriesPage ─────────────────────────────────────────────────────────

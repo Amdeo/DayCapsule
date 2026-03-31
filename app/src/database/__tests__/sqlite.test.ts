@@ -28,6 +28,30 @@ describe('sqlite environment isolation', () => {
     mockOpenDatabaseSync.mockImplementation((name: string) => ({
       name,
       execAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        { name: 'id' },
+        { name: 'type' },
+        { name: 'content' },
+        { name: 'timestamp' },
+        { name: 'tags' },
+        { name: 'media_uri' },
+        { name: 'media_type' },
+        { name: 'media_duration' },
+        { name: 'media_thumbnail' },
+        { name: 'media_metadata' },
+        { name: 'media_json' },
+        { name: 'recording_status' },
+        { name: 'recording_duration' },
+        { name: 'sync_status' },
+        { name: 'sync_op' },
+        { name: 'conflicted_copy_of' },
+        { name: 'base_updated_at' },
+        { name: 'user_id' },
+        { name: 'deleted' },
+        { name: 'local_ready_state' },
+        { name: 'created_at' },
+        { name: 'updated_at' },
+      ]),
     }));
     resetDatabase();
   });
@@ -61,5 +85,51 @@ describe('sqlite environment isolation', () => {
     const db = openDatabase() as { execAsync: jest.Mock };
     const createEntriesSql = db.execAsync.mock.calls[0][0] as string;
     expect(createEntriesSql).toContain('local_ready_state TEXT DEFAULT \'ready\'');
+  });
+
+  it('creates an index for sync_status in the base schema', async () => {
+    await initDatabase();
+
+    const db = openDatabase() as { execAsync: jest.Mock };
+    const createIndexSql = db.execAsync.mock.calls
+      .map(([sql]) => sql as string)
+      .find((sql) => sql.includes('idx_entries_sync_status ON entries(sync_status)'));
+
+    expect(createIndexSql).toContain(
+      'CREATE INDEX IF NOT EXISTS idx_entries_sync_status ON entries(sync_status);'
+    );
+  });
+
+  it('does not try to create sync_status index before the column exists on old schemas', async () => {
+    await initDatabase();
+
+    const oldSchemaDb = openDatabase() as {
+      execAsync: jest.Mock;
+      getAllAsync: jest.Mock;
+    };
+    oldSchemaDb.getAllAsync.mockResolvedValueOnce([
+      { name: 'id' },
+      { name: 'type' },
+      { name: 'content' },
+      { name: 'timestamp' },
+      { name: 'tags' },
+      { name: 'media_uri' },
+      { name: 'media_type' },
+      { name: 'media_duration' },
+      { name: 'media_thumbnail' },
+      { name: 'media_metadata' },
+      { name: 'media_json' },
+      { name: 'recording_status' },
+      { name: 'recording_duration' },
+    ]);
+
+    oldSchemaDb.execAsync.mockClear();
+    const initResult = await initDatabase();
+
+    expect(initResult).toBe(true);
+    expect(oldSchemaDb.execAsync).toHaveBeenCalledTimes(3);
+    expect(oldSchemaDb.execAsync.mock.calls.some(([sql]) =>
+      String(sql).includes('idx_entries_sync_status ON entries(sync_status)')
+    )).toBe(false);
   });
 });

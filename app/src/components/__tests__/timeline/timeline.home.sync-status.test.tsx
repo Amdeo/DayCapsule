@@ -4,27 +4,27 @@ import { Timeline } from '../../Timeline.v2';
 
 let mockUiState: 'hidden' | 'synced' | 'pending' | 'failed' | 'syncing' = 'hidden';
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockEntryStoreState = {
+  entries: [],
+  searchQuery: '',
+  filterType: 'all',
+  filterDateRange: 'all',
+  selectedTags: [],
+  deleteEntry: jest.fn(),
+  updateEntry: jest.fn(),
+  setSearchQuery: jest.fn(),
+  setFilterType: jest.fn(),
+  setFilterDateRange: jest.fn(),
+  toggleTag: jest.fn(),
+  clearTags: jest.fn(),
+  loadMore: jest.fn(),
+  isLoadingMore: false,
+  hasMore: false,
+};
 
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    entries: [],
-    searchQuery: '',
-    filterType: 'all',
-    filterDateRange: 'all',
-    selectedTags: [],
-    deleteEntry: jest.fn(),
-    updateEntry: jest.fn(),
-    setSearchQuery: jest.fn(),
-    setFilterType: jest.fn(),
-    setFilterDateRange: jest.fn(),
-    toggleTag: jest.fn(),
-    clearTags: jest.fn(),
-    getAllTags: jest.fn(async () => []),
-    applySearchFilters: jest.fn(async () => undefined),
-    loadMore: jest.fn(),
-    isLoadingMore: false,
-    hasMore: false,
-  }),
+  useEntryStore: (selector: (state: typeof mockEntryStoreState) => unknown) =>
+    selector(mockEntryStoreState),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({
@@ -75,6 +75,10 @@ jest.mock('../../TextEntryDetailPage', () => ({
 
 jest.mock('../../EntryEditor', () => ({
   EntryEditor: () => null,
+}));
+
+jest.mock('../../SearchOverlay', () => ({
+  SearchOverlay: () => null,
 }));
 
 jest.mock('../../FABMenu', () => ({

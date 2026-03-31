@@ -46,24 +46,26 @@ const mockTextEntryDetailPage = jest.fn(() => null);
 const mockEntryCard = jest.fn(() => null);
 const mockShowCloudSyncStatusAlert = jest.fn();
 
+const mockEntryStoreState = () => ({
+  entries: mockEntries,
+  searchQuery: mockSearchQuery,
+  filterType: mockFilterType,
+  filterDateRange: mockFilterDateRange,
+  selectedTags: mockSelectedTags,
+  deleteEntry: mockDeleteEntry,
+  updateEntry: mockUpdateEntry,
+  setSearchQuery: mockSetSearchQuery,
+  setFilterType: mockSetFilterType,
+  setFilterDateRange: mockSetFilterDateRange,
+  toggleTag: mockToggleTag,
+  clearTags: mockClearTags,
+  loadMore: mockLoadMore,
+  isLoadingMore: false,
+  hasMore: false,
+});
+
 jest.mock('@/src/store/entryStore', () => ({
-  useEntryStore: () => ({
-    entries: mockEntries,
-    searchQuery: mockSearchQuery,
-    filterType: mockFilterType,
-    filterDateRange: mockFilterDateRange,
-    selectedTags: mockSelectedTags,
-    deleteEntry: mockDeleteEntry,
-    updateEntry: mockUpdateEntry,
-    setSearchQuery: mockSetSearchQuery,
-    setFilterType: mockSetFilterType,
-    setFilterDateRange: mockSetFilterDateRange,
-    toggleTag: mockToggleTag,
-    clearTags: mockClearTags,
-    loadMore: mockLoadMore,
-    isLoadingMore: false,
-    hasMore: false,
-  }),
+  useEntryStore: (selector: (state: any) => any) => selector(mockEntryStoreState()),
 }));
 
 jest.mock('@/src/store/settingsStore', () => ({

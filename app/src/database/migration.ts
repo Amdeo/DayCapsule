@@ -332,6 +332,7 @@ export const migrateSyncStatusColumn = async (): Promise<void> => {
 
     await db.runAsync(`UPDATE entries SET sync_status = 'synced' WHERE sync_status IS NULL`);
     await db.runAsync(`UPDATE entries SET sync_op = 'update' WHERE sync_op IS NULL`);
+    await db.runAsync(`CREATE INDEX IF NOT EXISTS idx_entries_sync_status ON entries(sync_status)`);
     invalidateColumnCache();
     migrationStore.set('sync_status_column_added', 'true');
     logger.log('✅ sync_status / sync_op / conflicted_copy_of 列迁移完成');

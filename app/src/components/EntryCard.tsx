@@ -52,7 +52,8 @@ function EntryCard({
   variant = 'default',
   calendarDensity = 'default',
 }: EntryCardProps) {
-  const { currentPlayingId, setCurrentPlayingId } = useEntryStore();
+  const currentPlayingId = useEntryStore((state) => state.currentPlayingId);
+  const setCurrentPlayingId = useEntryStore((state) => state.setCurrentPlayingId);
   const photoHeight = useSettingsStore((s) => s.photoHeight);
   const maxPhotoHeight = PHOTO_HEIGHT_VALUES[photoHeight];
   const resolvedPhotoHeight = getEntryCardResolvedPhotoHeight(

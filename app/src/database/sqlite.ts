@@ -101,6 +101,15 @@ export const initDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags(entry_id);
     `);
 
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    const columnNames = new Set(tableInfo.map((column) => column.name));
+
+    if (columnNames.has('sync_status')) {
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_entries_sync_status ON entries(sync_status);
+      `);
+    }
+
     logger.log('✅ SQLite 数据库初始化成功');
     return true;
   } catch (error) {

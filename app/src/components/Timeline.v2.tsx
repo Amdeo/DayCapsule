@@ -29,12 +29,21 @@ interface TimelineProps {
 }
 
 export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineProps) {
-  const {
-    entries, deleteEntry, searchQuery, updateEntry,
-    filterType, filterDateRange, selectedTags,
-    setSearchQuery, setFilterType, setFilterDateRange, toggleTag, clearTags,
-    loadMore, isLoadingMore, hasMore,
-  } = useEntryStore();
+  const entries = useEntryStore((state) => state.entries);
+  const deleteEntry = useEntryStore((state) => state.deleteEntry);
+  const searchQuery = useEntryStore((state) => state.searchQuery);
+  const updateEntry = useEntryStore((state) => state.updateEntry);
+  const filterType = useEntryStore((state) => state.filterType);
+  const filterDateRange = useEntryStore((state) => state.filterDateRange);
+  const selectedTags = useEntryStore((state) => state.selectedTags);
+  const setSearchQuery = useEntryStore((state) => state.setSearchQuery);
+  const setFilterType = useEntryStore((state) => state.setFilterType);
+  const setFilterDateRange = useEntryStore((state) => state.setFilterDateRange);
+  const toggleTag = useEntryStore((state) => state.toggleTag);
+  const clearTags = useEntryStore((state) => state.clearTags);
+  const loadMore = useEntryStore((state) => state.loadMore);
+  const isLoadingMore = useEntryStore((state) => state.isLoadingMore);
+  const hasMore = useEntryStore((state) => state.hasMore);
   const insets = useSafeAreaInsets();
   const {
     viewingEntry,

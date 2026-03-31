@@ -10,6 +10,75 @@ import { logger } from '@/src/utils/logger';
 type EntryMediaInfo = import('@/src/types/entry').MediaInfo;
 type EntryMediaMetadata = NonNullable<EntryMediaInfo['metadata']>;
 
+type EntryRow = {
+  id: string;
+  type: string;
+  content: string;
+  timestamp: number;
+  tags: string | null;
+  media_uri?: string | null;
+  media_type?: string | null;
+  media_duration?: number | null;
+  media_thumbnail?: string | null;
+  media_metadata?: string | null;
+  media_json?: string | null;
+  recording_status?: string | null;
+  recording_duration?: number | null;
+  sync_status?: string | null;
+  sync_op?: string | null;
+  conflicted_copy_of?: string | null;
+  base_updated_at?: number | null;
+  user_id?: string | null;
+  deleted?: number | null;
+  local_ready_state?: string | null;
+  updated_at?: number | null;
+};
+
+const ENTRY_TYPES: Entry['type'][] = ['text', 'photo', 'voice'];
+const RECORDING_STATUSES: NonNullable<Entry['recordingStatus']>[] = [
+  'recording',
+  'paused',
+  'completed',
+  'uploading',
+  'stopping',
+];
+const SYNC_STATUSES: NonNullable<Entry['syncStatus']>[] = [
+  'synced',
+  'pending',
+  'uploading',
+  'pending_upload',
+  'failed',
+  'conflict-local-copy',
+  'pending_delete',
+];
+const SYNC_OPS: NonNullable<Entry['syncOp']>[] = ['create', 'update', 'delete'];
+const LOCAL_READY_STATES: NonNullable<Entry['localReadyState']>[] = ['ready', 'processing'];
+
+const normalizeEntryType = (value: string): Entry['type'] =>
+  ENTRY_TYPES.includes(value as Entry['type']) ? (value as Entry['type']) : 'text';
+
+const normalizeRecordingStatus = (value: string | null | undefined): Entry['recordingStatus'] =>
+  value && RECORDING_STATUSES.includes(value as NonNullable<Entry['recordingStatus']>)
+    ? (value as NonNullable<Entry['recordingStatus']>)
+    : undefined;
+
+const normalizeSyncStatus = (value: string | null | undefined): NonNullable<Entry['syncStatus']> =>
+  value && SYNC_STATUSES.includes(value as NonNullable<Entry['syncStatus']>)
+    ? (value as NonNullable<Entry['syncStatus']>)
+    : 'synced';
+
+const normalizeSyncOp = (value: string | null | undefined): NonNullable<Entry['syncOp']> =>
+  value && SYNC_OPS.includes(value as NonNullable<Entry['syncOp']>)
+    ? (value as NonNullable<Entry['syncOp']>)
+    : 'update';
+
+const normalizeLocalReadyState = (
+  value: string | null | undefined
+): NonNullable<Entry['localReadyState']> =>
+  value && LOCAL_READY_STATES.includes(value as NonNullable<Entry['localReadyState']>)
+    ? (value as NonNullable<Entry['localReadyState']>)
+    : 'ready';
+
 const normalizeEntryMedia = (media: unknown): EntryMediaInfo[] | undefined => {
   if (Array.isArray(media)) {
     return media as EntryMediaInfo[];
@@ -58,7 +127,7 @@ const normalizeLegacyMediaMetadata = (metadata: unknown): EntryMediaMetadata | u
   };
 };
 
-const getLegacyEntryMedia = (row: any): EntryMediaInfo[] | undefined => {
+const getLegacyEntryMedia = (row: EntryRow): EntryMediaInfo[] | undefined => {
   if (!row.media_uri) {
     return undefined;
   }
@@ -87,7 +156,7 @@ const getLegacyEntryMedia = (row: any): EntryMediaInfo[] | undefined => {
 /**
  * 将数据库行转换为 Entry 对象
  */
-const rowToEntry = (row: any): Entry => {
+const rowToEntry = (row: EntryRow): Entry => {
   let media: EntryMediaInfo[] | undefined = undefined;
   if (row.media_json) {
     try {
@@ -103,22 +172,22 @@ const rowToEntry = (row: any): Entry => {
 
   return {
     id: row.id,
-    type: row.type,
+    type: normalizeEntryType(row.type),
     content: row.content,
     timestamp: row.timestamp,
     tags: row.tags ? JSON.parse(row.tags) : undefined,
     media,
-    recordingStatus: row.recording_status,
-    recordingDuration: row.recording_duration,
-    syncStatus: row.sync_status ?? 'synced',
-    syncOp: row.sync_op ?? 'update',
+    recordingStatus: normalizeRecordingStatus(row.recording_status),
+    recordingDuration: row.recording_duration ?? undefined,
+    syncStatus: normalizeSyncStatus(row.sync_status),
+    syncOp: normalizeSyncOp(row.sync_op),
     conflictedCopyOf: row.conflicted_copy_of ?? undefined,
     baseUpdatedAt: row.base_updated_at ?? undefined,
     userId: row.user_id ?? undefined,
     deleted: row.deleted == null ? undefined : Boolean(row.deleted),
     updatedAt: row.updated_at ?? row.timestamp,
-    localReadyState: row.local_ready_state ?? 'ready',
-  } as Entry;
+    localReadyState: normalizeLocalReadyState(row.local_ready_state),
+  };
 };
 
 const summarizePhotoMediaForDebug = (entry: Entry) => ({
@@ -165,8 +234,8 @@ export const getAllEntries = async (limit?: number): Promise<Entry[]> => {
       : `SELECT * FROM entries ORDER BY timestamp DESC`;
 
     const result = limit
-      ? await db.getAllAsync(query, [limit])
-      : await db.getAllAsync(query);
+      ? await db.getAllAsync<EntryRow>(query, [limit])
+      : await db.getAllAsync<EntryRow>(query);
     return result.map(rowToEntry);
   } catch (error) {
     logger.error('Failed to get all entries:', error);
@@ -180,7 +249,7 @@ export const getAllEntries = async (limit?: number): Promise<Entry[]> => {
 export const getEntryById = async (id: string): Promise<Entry | null> => {
   try {
     const db = getDatabase();
-    const result = await db.getFirstAsync(
+    const result = await db.getFirstAsync<EntryRow>(
       'SELECT * FROM entries WHERE id = ?',
       [id]
     );
@@ -202,7 +271,7 @@ export const getEntriesBySyncStatus = async (
     if (!columns.has('sync_status')) return [];
 
     const placeholders = statuses.map(() => '?').join(', ');
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT * FROM entries
        WHERE sync_status IN (${placeholders})
        ORDER BY timestamp DESC`,
@@ -226,7 +295,7 @@ export const getEntriesByLocalReadyState = async (
     if (!columns.has('local_ready_state')) return [];
 
     const placeholders = states.map(() => '?').join(', ');
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT * FROM entries
        WHERE local_ready_state IN (${placeholders})
        ORDER BY timestamp DESC`,
@@ -250,7 +319,7 @@ export const getVoiceEntriesBySyncStatus = async (
     if (!columns.has('sync_status')) return [];
 
     const placeholders = statuses.map(() => '?').join(', ');
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT * FROM entries
        WHERE type = 'voice' AND sync_status IN (${placeholders})
        ORDER BY timestamp DESC`,
@@ -274,7 +343,7 @@ export const getPhotoEntriesBySyncStatus = async (
     if (!columns.has('sync_status')) return [];
 
     const placeholders = statuses.map(() => '?').join(', ');
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT * FROM entries
        WHERE type = 'photo' AND sync_status IN (${placeholders})
        ORDER BY timestamp DESC`,
@@ -651,7 +720,7 @@ export const deleteEntry = async (id: string): Promise<void> => {
 export const searchEntries = async (query: string, limit = 100): Promise<Entry[]> => {
   try {
     const db = getDatabase();
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT * FROM entries
        WHERE content LIKE ? OR tags LIKE ?
        ORDER BY timestamp DESC
@@ -671,7 +740,7 @@ export const searchEntries = async (query: string, limit = 100): Promise<Entry[]
 export const getEntriesByType = async (type: string): Promise<Entry[]> => {
   try {
     const db = getDatabase();
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       'SELECT * FROM entries WHERE type = ? ORDER BY timestamp DESC',
       [type]
     );
@@ -693,7 +762,7 @@ export const getEntriesByDateRange = async (startTime: number, endTime?: number)
       : 'SELECT * FROM entries WHERE timestamp >= ? ORDER BY timestamp DESC';
 
     const params = endTime ? [startTime, endTime] : [startTime];
-    const result = await db.getAllAsync(query, params);
+    const result = await db.getAllAsync<EntryRow>(query, params);
     return result.map(rowToEntry);
   } catch (error) {
     logger.error('Failed to get entries by date range:', error);
@@ -783,7 +852,7 @@ export const getEntriesPage = async (
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await db.getAllAsync(
+    const result = await db.getAllAsync<EntryRow>(
       `SELECT e.* FROM entries e ${where} ORDER BY e.timestamp DESC LIMIT ?`,
       [...params, limit]
     );
