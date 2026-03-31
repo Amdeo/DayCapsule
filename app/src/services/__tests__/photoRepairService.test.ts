@@ -144,6 +144,84 @@ describe('photoRepairService', () => {
     expect(mockSyncNow).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the entry localMediaId as fallback in upload metadata and completion logs when the issue omits it', async () => {
+    const fallbackLocalMediaId = 'local-from-entry';
+    const issueWithoutLocalMediaId: MediaRepairIssue = {
+      ...issue,
+      localMediaId: undefined,
+    };
+    const mockGetEntryById = jest.fn().mockResolvedValue({
+      id: 'entry-1',
+      type: 'photo',
+      content: '',
+      timestamp: 1,
+      updatedAt: 2,
+      syncStatus: 'synced',
+      media: [
+        {
+          uri: issue.localUri,
+          remoteUri: issue.remoteUri,
+          mimeType: 'image/jpeg',
+          size: 2048,
+          metadata: {
+            localMediaId: fallbackLocalMediaId,
+            persistedHash: 'local-good',
+            remoteHash: 'remote-bad',
+            integrityStatus: 'repair_prompt_required',
+            repairable: true,
+            createdAt: 1,
+            modifiedAt: 1,
+          },
+        },
+      ],
+    });
+    const mockUploadFile = jest.fn().mockResolvedValue({
+      id: 'media-new',
+      url: '/api/media/media-new',
+      remoteHash: 'sha256-new',
+      validationStatus: 'healthy',
+      validationError: null,
+    });
+    const mockFingerprintPhotoFile = jest.fn().mockResolvedValue({
+      uri: issue.localUri,
+      sha256: 'local-good',
+      size: 2048,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    });
+
+    await createPhotoRepairService({
+      getEntryById: mockGetEntryById,
+      updateEntry: jest.fn().mockResolvedValue(undefined),
+      uploadFile: mockUploadFile,
+      syncNow: jest.fn().mockResolvedValue(undefined),
+      fingerprintPhotoFile: mockFingerprintPhotoFile,
+      now: () => 1234,
+    }).repair(issueWithoutLocalMediaId);
+
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      '/media/upload',
+      issue.localUri,
+      'file',
+      {
+        metadata: expect.objectContaining({
+          traceId: fallbackLocalMediaId,
+          localMediaId: fallbackLocalMediaId,
+        }),
+      },
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.repair.completed',
+      expect.objectContaining({
+        localMediaId: fallbackLocalMediaId,
+        remoteUri: '/api/media/media-new',
+        remoteHash: 'sha256-new',
+        integrityStatus: 'repair_pending',
+      }),
+    );
+  });
+
   it('rejects repair when the healthy local source no longer matches the persisted hash', async () => {
     const mockUploadFile = jest.fn();
     const mockUpdateEntry = jest.fn();
@@ -237,6 +315,101 @@ describe('photoRepairService', () => {
         remoteHash: 'sha256-new',
         integrityStatus: 'repair_failed',
         integrityReason: 'sync unavailable',
+      }),
+    );
+  });
+
+  it('uses the entry localMediaId as fallback in failure logs when the issue omits it', async () => {
+    const fallbackLocalMediaId = 'local-from-entry';
+    const issueWithoutLocalMediaId: MediaRepairIssue = {
+      ...issue,
+      localMediaId: undefined,
+    };
+    const mockGetEntryById = jest.fn().mockResolvedValue({
+      id: 'entry-1',
+      type: 'photo',
+      content: '',
+      timestamp: 1,
+      updatedAt: 2,
+      syncStatus: 'synced',
+      media: [
+        {
+          uri: issue.localUri,
+          remoteUri: issue.remoteUri,
+          mimeType: 'image/jpeg',
+          size: 2048,
+          metadata: {
+            localMediaId: fallbackLocalMediaId,
+            persistedHash: 'local-good',
+            remoteHash: 'remote-bad',
+            integrityStatus: 'repair_prompt_required',
+            repairable: true,
+            createdAt: 1,
+            modifiedAt: 1,
+          },
+        },
+      ],
+    });
+    const mockUploadFile = jest.fn().mockResolvedValue({
+      id: 'media-new',
+      url: '/api/media/media-new',
+      remoteHash: 'sha256-new',
+      validationStatus: 'healthy',
+      validationError: null,
+    });
+    const mockFingerprintPhotoFile = jest.fn().mockResolvedValue({
+      uri: issue.localUri,
+      sha256: 'local-good',
+      size: 2048,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    });
+
+    await expect(createPhotoRepairService({
+      getEntryById: mockGetEntryById,
+      updateEntry: jest.fn().mockResolvedValue(undefined),
+      uploadFile: mockUploadFile,
+      syncNow: jest.fn().mockRejectedValue(new Error('sync unavailable')),
+      fingerprintPhotoFile: mockFingerprintPhotoFile,
+      now: () => 1234,
+    }).repair(issueWithoutLocalMediaId)).rejects.toThrow('sync unavailable');
+
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.repair.failed',
+      expect.objectContaining({
+        localMediaId: fallbackLocalMediaId,
+        remoteUri: '/api/media/media-new',
+        remoteHash: 'sha256-new',
+        integrityStatus: 'repair_failed',
+        integrityReason: 'sync unavailable',
+      }),
+    );
+  });
+
+  it('logs photo.repair.confirmed before resolving the repair target entry', async () => {
+    const mockFingerprintPhotoFile = jest.fn().mockResolvedValue({
+      uri: issue.localUri,
+      sha256: 'local-good',
+      size: 2048,
+      width: 1200,
+      height: 900,
+      mimeType: 'image/jpeg',
+    });
+
+    await expect(createPhotoRepairService({
+      getEntryById: jest.fn().mockResolvedValue(null),
+      updateEntry: jest.fn(),
+      uploadFile: jest.fn(),
+      syncNow: jest.fn(),
+      fingerprintPhotoFile: mockFingerprintPhotoFile,
+    }).repair(issue)).rejects.toThrow('Repair target entry is missing');
+
+    expect(logger.log).toHaveBeenCalledWith(
+      'photo.repair.confirmed',
+      expect.objectContaining({
+        localMediaId: issue.localMediaId,
+        remoteUri: issue.remoteUri,
       }),
     );
   });
