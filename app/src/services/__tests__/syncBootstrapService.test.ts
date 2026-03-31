@@ -265,7 +265,7 @@ describe('syncBootstrapService', () => {
     );
   });
 
-  it('does not show the repair prompt when validation issues do not require a repair prompt', async () => {
+  it('writes validation summary and issues without showing a repair prompt during cloud restore', async () => {
     mockApiGet.mockResolvedValueOnce([
       {
         id: 'photo-restore-no-prompt',
