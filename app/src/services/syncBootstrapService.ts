@@ -225,7 +225,11 @@ export function createSyncBootstrapService(): SyncBootstrapServiceApi {
         });
         await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
         useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
-        if (mediaValidationRun.issues.length > 0) {
+        if (
+          mediaValidationRun.issues.some(
+            (issue) => issue.integrityStatus === 'repair_prompt_required'
+          )
+        ) {
           showPhotoRepairPrompt();
         }
       } finally {
