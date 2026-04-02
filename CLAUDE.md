@@ -7,7 +7,7 @@
 
 ## 项目概览
 
-**DayCapsule** — 现代化生活记录应用（文字 / 照片 / 语音）
+`MemoryCapsule` 是仓库名，当前移动端应用名为 `DayCapsule`。
 
 | 项目 | 值 |
 |------|----|
@@ -24,25 +24,20 @@
 
 ## ⚠️ 重要提示
 
-1. **所有命令必须在 `app/` 目录中执行**
-2. **不能在 Expo Go 中运行** — MMKV 需要原生模块，必须 EAS Build
+1. **应用开发命令在 `app/` 目录执行**
+2. **不能在 Expo Go 中运行** — 项目依赖原生模块，需使用原生运行方式或 custom dev client
 3. **使用路径别名** — `@/src/...` 代替相对路径
-4. **样式使用 NativeWind** — 用 `className`，避免 `StyleSheet`
-5. **状态管理用 Zustand** — 避免 Redux 或过度使用 Context API
-6. **MMKV v4 API** — `createMMKV()` 工厂函数，删除用 `remove(key)`
-7. **分页加载** — `loadEntries()` 重置首页，`loadMore()` 追加下一页
-8. **双写策略** — 写入 entry 时同时写 `entries.tags`（JSON）和 `entry_tags` 表
+4. **样式默认遵循 NativeWind / `className` 方案**
+5. **状态管理以 Zustand store 为主**
 ---
 
 ## 当前功能
 
 - ✅ 文字 / 照片 / 语音 三种记录类型
-- ✅ SQLite 结构化存储（游标分页，每页 20 条）
-- ✅ 无限滚动 Timeline + 标签系统（AND 过滤）
-- ✅ 全文搜索 + 按类型 / 日期过滤
-- ✅ MMKV 设置存储 + 自动备份
-- ✅ 数据迁移（AsyncStorage → SQLite，幂等）
-- ✅ TypeScript 严格类型（零 tsc 错误）+ 单元测试（35 个用例）
+- ✅ 本地数据存储、内容浏览、搜索与筛选
+- ✅ 媒体处理、上传队列、恢复与校验
+- ✅ 账户状态、云同步与后端接入能力
+- ✅ 本地备份、手测入口与分场景测试脚本
 
 ---
 
@@ -50,6 +45,7 @@
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md) | API 用法、项目结构、开发命令、FAQ |
-| [`docs/IMPLEMENTATION_SUMMARY.md`](docs/IMPLEMENTATION_SUMMARY.md) | 存储架构、设计决策、三阶段重构详情 |
-| [`docs/MANUAL_TEST_PLAN.md`](docs/MANUAL_TEST_PLAN.md) | 28 个手动测试用例 |
+| [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md) | 开发命令、测试入口、关键模块入口 |
+| [`docs/IMPLEMENTATION_SUMMARY.md`](docs/IMPLEMENTATION_SUMMARY.md) | 当前实现概览 |
+| [`docs/MANUAL_TEST_PLAN.md`](docs/MANUAL_TEST_PLAN.md) | 当前手动测试入口 |
+| [`docs/BACKEND_DEPLOYMENT.md`](docs/BACKEND_DEPLOYMENT.md) | 当前后端部署事实与相关文件 |
