@@ -10,7 +10,7 @@ import type { TimeSection, ViewMode } from './timelineTypes';
 import { useTimelineEntryDetailState } from './useTimelineEntryDetailState';
 
 interface UseTimelineControllerOptions {
-  updateEntry: (id: string, updates: Partial<Entry>) => void;
+  updateEntry: (id: string, updates: Partial<Entry>) => void | Promise<void>;
 }
 
 export function useTimelineController({
@@ -59,8 +59,8 @@ export function useTimelineController({
   }, [viewMode]);
 
   const handleSaveEdit = useCallback(
-    (id: string, content: string, tags: string[]) => {
-      updateEntry(id, { content, tags });
+    async (id: string, content: string, tags: string[]) => {
+      await updateEntry(id, { content, tags });
       closeEditingEntry();
     },
     [closeEditingEntry, updateEntry],

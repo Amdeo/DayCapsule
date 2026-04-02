@@ -114,4 +114,23 @@ describe('useImageViewerActions', () => {
     expect(Share.share).toHaveBeenCalledWith({ message: 'file:///image.jpg' });
     expect(showErrorFeedback).not.toHaveBeenCalled();
   });
+
+  it('shows branded feedback when sharing fails for a real error', async () => {
+    (Share.share as jest.Mock).mockRejectedValueOnce(new Error('share service unavailable'));
+
+    const { handleShare } = useImageViewerActions({
+      imageUri: 'file:///image.jpg',
+      onHideActionSheet: mockOnHideActionSheet,
+    });
+
+    await expect(handleShare()).resolves.toBeUndefined();
+
+    expect(mockOnHideActionSheet).toHaveBeenCalledTimes(1);
+    expect(Share.share).toHaveBeenCalledWith({ message: 'file:///image.jpg' });
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '分享失败',
+      message: '暂时无法分享图片，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  });
 });

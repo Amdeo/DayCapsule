@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SearchOverlay } from '../SearchOverlay';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockApplySearchFilters = jest.fn();
 const mockGetAllTags = jest.fn(async () => ['旅行', '工作']);
@@ -39,6 +40,10 @@ jest.mock('@/src/store/commonTagsStore', () => ({
     ...mockCommonTagsState,
     loadCommonTags: mockLoadCommonTags,
   }),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -102,6 +107,22 @@ describe('SearchOverlay', () => {
     });
   });
 
+  it('shows branded feedback when loading tags for the overlay fails', async () => {
+    mockGetAllTags.mockRejectedValueOnce(new Error('tag index unavailable'));
+
+    const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '加载失败',
+        message: '标签加载失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
+
+    expect(screen.getByTestId('search-overlay-root')).toBeTruthy();
+  });
+
   it('renders a stable cancel button testID for dismiss flows', async () => {
     const screen = render(<SearchOverlay visible onClose={jest.fn()} onSearch={jest.fn()} />);
 
@@ -143,5 +164,29 @@ describe('SearchOverlay', () => {
     });
     expect(onSearch).toHaveBeenCalledWith('旅行');
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows branded feedback and keeps the overlay open when submitting search filters fails', async () => {
+    const onClose = jest.fn();
+    const onSearch = jest.fn();
+    mockApplySearchFilters.mockRejectedValueOnce(new Error('search index unavailable'));
+    const screen = render(<SearchOverlay visible onClose={onClose} onSearch={onSearch} />);
+
+    await waitFor(() => expect(mockGetAllTags).toHaveBeenCalledTimes(1));
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜索记忆...'), '旅行');
+    fireEvent.press(screen.getByTestId('search-overlay-submit-button'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '搜索失败',
+        message: '搜索结果加载失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
+
+    expect(onSearch).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('search-overlay-root')).toBeTruthy();
   });
 });

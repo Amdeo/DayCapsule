@@ -50,8 +50,16 @@ export function useImageViewerActions({
       await Share.share(
         Platform.OS === 'ios' ? { url: imageUri } : { message: imageUri },
       );
-    } catch {
-      // User cancelled — no error needed
+    } catch (error) {
+      if (error instanceof Error && error.message === 'cancelled') {
+        return;
+      }
+
+      showErrorFeedback({
+        title: '分享失败',
+        message: '暂时无法分享图片，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   };
 

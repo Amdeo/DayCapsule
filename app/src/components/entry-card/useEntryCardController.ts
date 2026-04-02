@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Entry } from '@/src/types/entry';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
 import { isEntryMediaPendingHydration } from '@/src/utils/mediaAvailability';
 import { useEntryCardActionSheetState } from './useEntryCardActionSheetState';
 
 interface UseEntryCardControllerOptions {
   entry: Entry;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
   onView?: (entry: Entry) => void;
   onEdit?: (entry: Entry) => void;
   onStopRecording?: (id: string) => void;
@@ -122,6 +123,11 @@ export function useEntryCardController({
         await onStopRecording?.(entryId);
       } catch (error) {
         logger.error('Failed to stop recording:', error);
+        showErrorFeedback({
+          title: '停止失败',
+          message: '结束录音失败，请重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
       } finally {
         stopRecordingTimeoutRef.current = setTimeout(() => {
           stopRequestInFlightRef.current = false;
@@ -137,8 +143,8 @@ export function useEntryCardController({
     closeActionSheetAndResetCard();
   }, [closeActionSheetAndResetCard, entry, onEdit]);
 
-  const handleActionSheetDelete = useCallback(() => {
-    onDelete(entry.id);
+  const handleActionSheetDelete = useCallback(async () => {
+    await onDelete(entry.id);
     closeActionSheetAndResetCard();
   }, [closeActionSheetAndResetCard, entry.id, onDelete]);
 

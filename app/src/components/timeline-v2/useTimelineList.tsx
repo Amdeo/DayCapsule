@@ -9,7 +9,7 @@ interface UseTimelineListOptions {
   entries: Entry[];
   displayMode: ViewMode;
   cardSpacing: number;
-  deleteEntry: (id: string) => void;
+  deleteEntry: (id: string) => void | Promise<void>;
   onViewEntry: (entry: Entry) => void;
   onEditEntry: (entry: Entry) => void;
   onStopRecording?: (id: string) => void;

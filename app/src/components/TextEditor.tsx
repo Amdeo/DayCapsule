@@ -15,7 +15,7 @@ import { useTextEditorController } from './text-editor/useTextEditorController';
 
 interface TextEditorProps {
   visible: boolean;
-  onSave: (content: string, tags: string[]) => void;
+  onSave: (content: string, tags: string[]) => void | Promise<void>;
   onCancel: () => void;
 }
 

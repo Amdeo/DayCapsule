@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import { PanResponder } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 import { PhotoService, type PhotoResult } from '@/src/services/photoService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useSettingsStore, type LastAddType } from '@/src/store/settingsStore';
 import {
   FAN_OPTIONS,
@@ -86,7 +87,17 @@ export function useFABMenuController({
       try {
         const photo = await PhotoService.takePhoto();
         if (photo) onSelectRef.current('photo', [photo]);
-      } catch {}
+      } catch (error) {
+        if (error instanceof Error && error.message === 'User cancelled camera') {
+          return;
+        }
+
+        showErrorFeedback({
+          title: '拍照失败',
+          message: error instanceof Error ? error.message : '拍照失败，请重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
+      }
       return;
     }
 
@@ -94,7 +105,17 @@ export function useFABMenuController({
       try {
         const result = await PhotoService.pickPhotoFromLibrary();
         if (result.length > 0) onSelectRef.current('photo', result);
-      } catch {}
+      } catch (error) {
+        if (error instanceof Error && error.message === 'User cancelled photo library') {
+          return;
+        }
+
+        showErrorFeedback({
+          title: '选取失败',
+          message: error instanceof Error ? error.message : '选取图片失败，请重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
+      }
       return;
     }
 

@@ -50,11 +50,25 @@ export function useSettingsPageStorage() {
             }
 
             if (clearSucceeded) {
+              let reloadEntriesFailed = false;
+
               try {
                 await useEntryStore.getState().loadEntries();
-              } catch {}
+              } catch {
+                reloadEntriesFailed = true;
+              }
 
               await refreshStorageStats();
+
+              if (reloadEntriesFailed) {
+                showErrorFeedback({
+                  title: '同步未完成',
+                  message: '本地数据已清除，但列表刷新失败，请稍后重试。',
+                  tone: 'error',
+                  actions: [{ label: '知道了', role: 'primary' }],
+                });
+                return;
+              }
 
               showErrorFeedback({
                 title: '成功',

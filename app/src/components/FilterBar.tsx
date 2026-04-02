@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import { useEntryStore } from '../store/entryStore';
 import { useEntryFilterUIStore } from '../store/entryFilterUIStore';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import {
   FilterBarDateSection,
   FilterBarHeader,
@@ -39,8 +40,19 @@ export function FilterBar({ isVisible, onClose }: FilterBarProps) {
 
   // 仅在 FilterBar 变为可见时加载标签，避免 entries 变化（录音计时器）触发高频查询
   useEffect(() => {
-    if (isVisible) getAllTags().then(setAllTagsList);
-  }, [isVisible]);
+    if (isVisible) {
+      void getAllTags()
+        .then(setAllTagsList)
+        .catch(() => {
+          setAllTagsList([]);
+          showErrorFeedback({
+            title: '加载失败',
+            message: '筛选标签加载失败，请稍后重试',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
+        });
+    }
+  }, [getAllTags, isVisible]);
 
   // 用 useMemo 缓存类型统计，避免每次渲染重新遍历
   const typeStats = useMemo<FilterBarTypeStats>(

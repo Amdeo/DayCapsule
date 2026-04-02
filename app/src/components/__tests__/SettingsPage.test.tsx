@@ -284,6 +284,25 @@ describe('SettingsPage assembly', () => {
     }));
   });
 
+  it('shows branded feedback when resetting settings fails after confirmation', async () => {
+    const { screen, mocks } = await renderSettingsPage();
+
+    mocks.settings.resetSettings.mockRejectedValueOnce(new Error('mmkv locked'));
+
+    fireEvent.press(screen.getByText('重置设置'));
+
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    const confirm = actions.find((action) => action.label === '重置');
+
+    await confirm?.onPress?.();
+
+    expect(mocks.settings.resetSettings).toHaveBeenCalledTimes(1);
+    expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+      title: '重置失败',
+      message: 'mmkv locked',
+    }));
+  });
+
   it('shows backend save success feedback for save and switch results', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
@@ -344,6 +363,22 @@ describe('SettingsPage assembly', () => {
       expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
         title: '切换失败',
         message: 'backend offline',
+      }));
+    });
+  });
+
+  it('shows branded feedback when saving card spacing fails', async () => {
+    const { screen, mocks } = await renderSettingsPage();
+    const displaySection = screen.getByTestId('settings-section-display');
+
+    mocks.settings.setCardSpacing.mockRejectedValueOnce(new Error('mmkv locked'));
+
+    fireEvent.press(within(displaySection).getAllByText('宽松')[0]);
+
+    await waitFor(() => {
+      expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '保存失败',
+        message: 'mmkv locked',
       }));
     });
   });

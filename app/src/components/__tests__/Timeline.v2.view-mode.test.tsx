@@ -3,9 +3,10 @@
  */
 
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import { Timeline } from '../Timeline.v2';
 import { Entry } from '@/src/types/entry';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockToggleTag = jest.fn();
 const mockClearTags = jest.fn();
@@ -46,6 +47,23 @@ const mockEntryEditor = jest.fn(() => null);
 const mockTextEntryDetailPage = jest.fn(() => null);
 const mockEntryCard = jest.fn(() => null);
 const mockShowCloudSyncStatusAlert = jest.fn();
+const actualEntryEditorModule = jest.requireActual('../EntryEditor');
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
+jest.mock('@/src/services/tagSuggestionService', () => ({
+  suggestTags: () => ['复盘'],
+}));
+
+jest.mock('@/src/store/commonTagsStore', () => ({
+  useCommonTagsStore: () => ({
+    tags: ['产品', '想法', '复盘'],
+    isLoaded: true,
+    loadCommonTags: jest.fn(),
+  }),
+}));
 
 const mockFilterUiState = () => ({
   searchQuery: mockSearchQuery,
@@ -241,13 +259,38 @@ describe('Timeline view mode switching', () => {
     const latestProps = mockCalendarView.mock.calls.at(-1)?.[0] as Record<string, unknown>;
 
     expect(latestProps.entries).toBe(mockEntries);
-    expect(latestProps.onDeleteEntry).toBe(mockDeleteEntry);
+    expect(latestProps.onDeleteEntry).toBeInstanceOf(Function);
     expect(latestProps.onEditEntry).toBeInstanceOf(Function);
     expect(latestProps.onPauseRecording).toBeUndefined();
     expect(latestProps.onResumeRecording).toBeUndefined();
     expect(latestProps.onStopRecording).toBeUndefined();
     expect(latestProps.activeActionSheetId).toBeNull();
     expect(latestProps.onActionSheetOpen).toBeInstanceOf(Function);
+  });
+
+  it('shows branded feedback when calendar-mode delete rejects', async () => {
+    mockDeleteEntry.mockRejectedValueOnce(new Error('delete failed'));
+
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('searchbar-view-mode-toggle'));
+    fireEvent.press(screen.getByText('日历'));
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    const latestProps = mockCalendarView.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+
+    await act(async () => {
+      await (latestProps.onDeleteEntry as (id: string) => Promise<void>)('entry-1');
+    });
+
+    expect(mockDeleteEntry).toHaveBeenCalledWith('entry-1');
+    expect(showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+      title: '删除失败',
+      message: '删除这条记录失败，请重试',
+    }));
   });
 
   it('opens text entries in a detail page instead of the editor on card press', () => {
@@ -287,5 +330,36 @@ describe('Timeline view mode switching', () => {
     const latestEditorProps = mockEntryEditor.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(latestEditorProps.visible).toBe(true);
     expect(latestEditorProps.entry).toMatchObject({ id: 'entry-1' });
+  });
+
+  it('keeps the editor open and shows save feedback when timeline edit save rejects through the real dialog chain', async () => {
+    mockEntryEditor.mockImplementation((props: any) => React.createElement(actualEntryEditorModule.EntryEditor, props));
+    mockUpdateEntry.mockRejectedValueOnce(new Error('db failed'));
+
+    const screen = render(<Timeline />);
+
+    fireEvent.press(screen.getByTestId('mock-entry-card-entry-1'));
+
+    const latestDetailProps = mockTextEntryDetailPage.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    act(() => {
+      (latestDetailProps.onEdit as (entry: Entry) => void)(latestDetailProps.entry as Entry);
+      jest.advanceTimersByTime(300);
+    });
+
+    fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '新的时间轴正文');
+    fireEvent.press(screen.getByTestId('entry-editor-save-button'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '保存失败',
+        message: '保存内容失败，请重试',
+      }));
+    });
+
+    expect(mockUpdateEntry).toHaveBeenCalledWith('entry-1', {
+      content: '新的时间轴正文',
+      tags: ['旅行'],
+    });
+    expect(screen.getByTestId('entry-editor-save-button').props.accessibilityState.disabled).toBe(false);
   });
 });

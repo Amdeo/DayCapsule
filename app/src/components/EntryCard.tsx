@@ -27,7 +27,7 @@ import { useEntryCardController } from './entry-card/useEntryCardController';
 
 interface EntryCardProps {
   entry: Entry;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
   onView?: (entry: Entry) => void;
   onEdit?: (entry: Entry) => void;
   onStopRecording?: (id: string) => void;

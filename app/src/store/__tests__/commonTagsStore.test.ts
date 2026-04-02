@@ -9,7 +9,12 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 import { useCommonTagsStore } from '../commonTagsStore';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const { Storage } = require('@/src/utils/storage');
 
@@ -42,6 +47,18 @@ describe('loadCommonTags', () => {
     expect(useCommonTagsStore.getState().tags).toEqual(DEFAULTS);
     expect(useCommonTagsStore.getState().isLoaded).toBe(true);
   });
+
+  it('shows branded feedback when loading persisted tags fails', async () => {
+    Storage.getObject.mockRejectedValueOnce(new Error('storage error'));
+
+    await useCommonTagsStore.getState().loadCommonTags();
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '加载失败',
+      message: '预制标签加载失败，已回退到默认标签。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  });
 });
 
 describe('addCommonTag', () => {
@@ -65,6 +82,20 @@ describe('addCommonTag', () => {
     useCommonTagsStore.setState({ tags: twentyTags, isLoaded: true });
     await useCommonTagsStore.getState().addCommonTag('extra');
     expect(useCommonTagsStore.getState().tags).toHaveLength(20);
+  });
+
+  it('shows branded feedback when persisting a new tag fails', async () => {
+    Storage.setObject.mockRejectedValueOnce(new Error('disk full'));
+    useCommonTagsStore.setState({ tags: ['工作'], isLoaded: true });
+
+    await useCommonTagsStore.getState().addCommonTag('学习');
+
+    expect(useCommonTagsStore.getState().tags).toEqual(['工作', '学习']);
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '保存失败',
+      message: '预制标签已更新，但保存失败，请稍后重试。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 });
 
@@ -95,5 +126,19 @@ describe('reorderCommonTags', () => {
 
     expect(useCommonTagsStore.getState().tags).toEqual(['学习', '旅行', '工作']);
     expect(Storage.setObject).toHaveBeenCalledWith('common_tags', ['学习', '旅行', '工作']);
+  });
+
+  it('shows branded feedback when persisting a reordered tag list fails', async () => {
+    Storage.setObject.mockRejectedValueOnce(new Error('disk full'));
+    useCommonTagsStore.setState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
+
+    await useCommonTagsStore.getState().reorderCommonTags(0, 2);
+
+    expect(useCommonTagsStore.getState().tags).toEqual(['学习', '旅行', '工作']);
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '保存失败',
+      message: '预制标签顺序已更新，但保存失败，请稍后重试。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 });

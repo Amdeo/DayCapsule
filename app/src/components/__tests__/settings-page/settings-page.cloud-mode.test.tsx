@@ -67,4 +67,30 @@ describe('SettingsPage cloud mode', () => {
 
     expect(mocks.settings.setCloudMode).toHaveBeenCalledWith(false);
   });
+
+  it('shows branded feedback when enabling cloud mode succeeds but the initial sync refresh fails', async () => {
+    const { screen, mocks } = await renderSettingsPage({
+      authenticated: true,
+      cloudMode: false,
+    });
+
+    mocks.cloudSync.syncNow.mockRejectedValueOnce(new Error('sync refresh failed'));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('tester@example.com').length).toBeGreaterThan(0);
+    });
+
+    fireEvent(screen.getByTestId('settings-switch-cloud-mode'), 'valueChange', true);
+
+    await waitFor(() => {
+      expect(mocks.settings.setCloudMode).toHaveBeenCalledWith(true);
+    });
+
+    await waitFor(() => {
+      expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '同步未完成',
+        message: '云同步已开启，但首次同步失败，请稍后重试。',
+      }));
+    });
+  });
 });

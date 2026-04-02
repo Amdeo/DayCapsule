@@ -473,7 +473,11 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   restoreEntries: async (entries: Entry[]): Promise<string[]> => {
     const insertedIds = await localDataSource.restoreEntries(entries);
-    await get().loadEntries();
+    try {
+      await get().loadEntries();
+    } catch (error) {
+      logger.warn('[entryStore] restoreEntries refresh failed after restore succeeded:', error);
+    }
     refreshCloudSyncIndicator();
     return insertedIds;
   },

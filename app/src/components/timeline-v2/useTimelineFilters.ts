@@ -1,3 +1,5 @@
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+
 interface UseTimelineFiltersOptions {
   searchQuery: string;
   filterType: 'all' | 'text' | 'photo' | 'voice';
@@ -23,6 +25,16 @@ export function useTimelineFilters({
   clearTags,
   applyFilters,
 }: UseTimelineFiltersOptions) {
+  const applyFiltersWithFeedback = () => {
+    void applyFilters().catch(() => {
+      showErrorFeedback({
+        title: '筛选失败',
+        message: '筛选结果刷新失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
+  };
+
   const hasFilters = Boolean(
     searchQuery.trim() ||
       filterType !== 'all' ||
@@ -32,26 +44,26 @@ export function useTimelineFilters({
 
   const clearQuery = () => {
     setSearchQuery('');
-    void applyFilters();
+    applyFiltersWithFeedback();
   };
   const clearType = () => {
     setFilterType('all');
-    void applyFilters();
+    applyFiltersWithFeedback();
   };
   const clearDate = () => {
     setFilterDateRange('all');
-    void applyFilters();
+    applyFiltersWithFeedback();
   };
   const clearTag = (tag: string) => {
     toggleTag(tag);
-    void applyFilters();
+    applyFiltersWithFeedback();
   };
   const clearAll = () => {
     setSearchQuery('');
     setFilterType('all');
     setFilterDateRange('all');
     clearTags();
-    void applyFilters();
+    applyFiltersWithFeedback();
   };
 
   return {

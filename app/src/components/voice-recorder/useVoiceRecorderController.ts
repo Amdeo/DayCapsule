@@ -139,6 +139,11 @@ export function useVoiceRecorderController({
       }
 
       logger.error('Failed to pause recording:', error);
+      showErrorFeedback({
+        title: '暂停失败',
+        message: '暂停录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   }, []);
 
@@ -159,6 +164,11 @@ export function useVoiceRecorderController({
       }
 
       logger.error('Failed to resume recording:', error);
+      showErrorFeedback({
+        title: '继续失败',
+        message: '继续录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   }, []);
 
@@ -215,6 +225,11 @@ export function useVoiceRecorderController({
       }
     } catch (error) {
       logger.error('Failed to cancel recording:', error);
+      showErrorFeedback({
+        title: '取消失败',
+        message: '取消录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
 
     onCancel();

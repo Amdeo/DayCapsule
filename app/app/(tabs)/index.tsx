@@ -393,11 +393,22 @@ export default function HomeScreen() {
   // 初始化：加载设置 + 数据 + 预热音频
   useEffect(() => {
     // 并行加载设置和条目数据
-    Promise.all([
+    void Promise.allSettled([
       useSettingsStore.getState().loadSettings(),
       useCommonTagsStore.getState().loadCommonTags(),
       loadEntries(),
-    ]).catch(() => {})
+    ]).then((results) => {
+      const entryLoadResult = results[2];
+
+      if (entryLoadResult?.status === 'rejected') {
+        logger.error('[HomeScreen] Failed to initialize home timeline:', entryLoadResult.reason);
+        showErrorFeedback({
+          title: '加载失败',
+          message: '首页记录加载失败，请稍后重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
+      }
+    })
       .finally(() => {
         refreshCloudSyncIndicator();
       });
@@ -508,6 +519,11 @@ export default function HomeScreen() {
           }
 
           logger.error('[HomeScreen] Failed to start recording:', error);
+          showErrorFeedback({
+            title: '录音失败',
+            message: '开始录音失败，请重试',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
           if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
             currentRecordingIdRef.current = null;
           }
@@ -545,13 +561,11 @@ export default function HomeScreen() {
       }
     } catch (error) {
       logger.error('[HomeScreen] Failed to stop recording:', error);
-      if (isCloudModeEnabled()) {
-        showErrorFeedback({
-          title: '录音保存失败',
-          message: '录音文件保存失败，请重试。',
-          actions: [{ label: '知道了', role: 'primary' }],
-        });
-      }
+      showErrorFeedback({
+        title: '录音保存失败',
+        message: '录音文件保存失败，请重试。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } finally {
       currentRecordingIdRef.current = null;
     }
@@ -563,6 +577,7 @@ export default function HomeScreen() {
       setShowTextEditor(false);
     } catch (error) {
       logger.error('[HomeScreen] Failed to save text entry:', error);
+      throw error;
     }
   }, [addEntry]);
 

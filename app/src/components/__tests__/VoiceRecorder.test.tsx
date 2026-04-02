@@ -133,6 +133,32 @@ describe('VoiceRecorder', () => {
     });
   });
 
+  it('shows branded feedback and still closes when dismissing while recording fails to cancel', async () => {
+    const onCancel = jest.fn();
+    (VoiceService.cancelRecording as jest.Mock).mockRejectedValueOnce(new Error('cancel failed'));
+    const screen = render(
+      <VoiceRecorder visible onSave={jest.fn()} onCancel={onCancel} />
+    );
+
+    fireEvent.press(screen.getByText('开始录音'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('voice-recorder-recording')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('close'));
+
+    await waitFor(() => {
+      expect(VoiceService.cancelRecording).toHaveBeenCalledTimes(1);
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '取消失败',
+        message: '取消录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('cancels only once when dismissing triggers parent visibility change', async () => {
     const onCancel = jest.fn();
     const screen = render(
@@ -479,6 +505,35 @@ describe('VoiceRecorder', () => {
     expect(screen.getByTestId('mock-waveform-recording')).toBeTruthy();
   });
 
+  it('shows branded feedback when pausing the recorder fails in the active session', async () => {
+    (VoiceService.pauseRecording as jest.Mock).mockRejectedValueOnce(new Error('pause failed'));
+
+    const screen = render(
+      <VoiceRecorder visible onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('开始录音'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('voice-recorder-recording')).toBeTruthy();
+      expect(screen.getByText('暂停')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('暂停'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '暂停失败',
+        message: '暂停录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
+
+    expect(screen.queryByText('继续')).toBeNull();
+    expect(screen.getByText('暂停')).toBeTruthy();
+    expect(screen.getByTestId('mock-waveform-recording')).toBeTruthy();
+  });
+
   it('ignores resume results from a previous session after the modal is closed and reopened', async () => {
     let resolveResume: (() => void) | undefined;
     (VoiceService.resumeRecording as jest.Mock).mockImplementationOnce(
@@ -595,6 +650,41 @@ describe('VoiceRecorder', () => {
     expect(screen.queryByText('继续')).toBeNull();
     expect(screen.getByText('暂停')).toBeTruthy();
     expect(screen.getByTestId('mock-waveform-recording')).toBeTruthy();
+  });
+
+  it('shows branded feedback when resuming the recorder fails in the active session', async () => {
+    (VoiceService.resumeRecording as jest.Mock).mockRejectedValueOnce(new Error('resume failed'));
+
+    const screen = render(
+      <VoiceRecorder visible onSave={jest.fn()} onCancel={jest.fn()} />
+    );
+
+    fireEvent.press(screen.getByText('开始录音'));
+
+    await waitFor(() => {
+      expect(screen.getByText('暂停')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('暂停'));
+
+    await waitFor(() => {
+      expect(screen.getByText('继续')).toBeTruthy();
+      expect(screen.getByTestId('mock-waveform-paused')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('继续'));
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '继续失败',
+        message: '继续录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
+
+    expect(screen.getByText('继续')).toBeTruthy();
+    expect(screen.queryByText('暂停')).toBeNull();
+    expect(screen.getByTestId('mock-waveform-paused')).toBeTruthy();
   });
 
   it('returns to the idle state when retrying after a finished recording', async () => {

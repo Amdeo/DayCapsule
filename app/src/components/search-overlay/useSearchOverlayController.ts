@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import type {
   SearchDateRange,
   SearchFilterType,
@@ -56,9 +57,18 @@ export function useSearchOverlayController({
       setLocalType(filterType);
       setLocalDate(filterDateRange);
       setLocalTags([...selectedTags]);
-      void getAllTags().then(setAllTagsList);
+      void getAllTags()
+        .then(setAllTagsList)
+        .catch(() => {
+          setAllTagsList([]);
+          showErrorFeedback({
+            title: '加载失败',
+            message: '标签加载失败，请稍后重试',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
+        });
     }
-  }, [visible]);
+  }, [filterDateRange, filterType, getAllTags, searchQuery, selectedTags, visible]);
 
   const extraCommonTags = useMemo(
     () => commonTags.filter((tag) => !allTagsList.includes(tag)),
@@ -72,14 +82,22 @@ export function useSearchOverlayController({
   }, []);
 
   const handleSearch = useCallback(async () => {
-    await applySearchFilters({
-      query: localQuery,
-      type: localType,
-      dateRange: localDate,
-      tags: localTags,
-    });
-    onSearch(localQuery);
-    onClose();
+    try {
+      await applySearchFilters({
+        query: localQuery,
+        type: localType,
+        dateRange: localDate,
+        tags: localTags,
+      });
+      onSearch(localQuery);
+      onClose();
+    } catch {
+      showErrorFeedback({
+        title: '搜索失败',
+        message: '搜索结果加载失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    }
   }, [applySearchFilters, localDate, localQuery, localTags, localType, onClose, onSearch]);
 
   const handleReset = useCallback(() => {
