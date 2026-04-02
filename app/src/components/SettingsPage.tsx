@@ -20,6 +20,8 @@ import { SettingsPageContent } from './settings-page/SettingsPageContent';
 import { useSettingsPageCloudMode } from './settings-page/useSettingsPageCloudMode';
 import { useSettingsPageController } from './settings-page/useSettingsPageController';
 import { SettingsPageDialogs } from './settings-page/SettingsPageDialogs';
+import { useConfirmDialogStore } from '@/src/store/confirmDialogStore';
+import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -73,6 +75,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const closeLogin = React.useCallback(() => {
     setShowLogin(false);
     setLoginIntent(null);
+    useConfirmDialogStore.getState().dismiss();
+    useErrorFeedbackStore.getState().dismiss();
   }, []);
 
   const {
@@ -135,8 +139,14 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     }
   }, [closeLogin, enableCloudMode, loginIntent]);
 
+  const handleClose = React.useCallback(() => {
+    useConfirmDialogStore.getState().dismiss();
+    useErrorFeedbackStore.getState().dismiss();
+    onClose();
+  }, [onClose]);
+
   return (
-    <DetailPageShell visible={visible} title="设置" onClose={onClose}>
+    <DetailPageShell visible={visible} title="设置" onClose={handleClose}>
       <View testID="settings-page-root">
         <SettingsPageContent
           isAuthenticated={isAuthenticated}
