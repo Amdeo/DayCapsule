@@ -22,8 +22,6 @@ const getCurrentServerScope = (): string => {
 export const getDatabaseName = (): string => `${DB_NAME_PREFIX}-${getCurrentServerScope()}.db`;
 
 export const resetDatabase = (): void => {
-  const maybeClosable = _db as SQLiteDatabase & { closeSync?: () => void };
-  maybeClosable?.closeSync?.();
   _db = null;
   _dbName = null;
 };
@@ -35,8 +33,6 @@ export const openDatabase = (): SQLiteDatabase => {
   const nextDbName = getDatabaseName();
 
   if (!_db || _dbName !== nextDbName) {
-    const maybeClosable = _db as SQLiteDatabase & { closeSync?: () => void };
-    maybeClosable?.closeSync?.();
     _db = openDatabaseSync(nextDbName);
     _dbName = nextDbName;
   }

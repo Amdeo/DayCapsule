@@ -27,6 +27,7 @@ describe('sqlite environment isolation', () => {
     (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
     mockOpenDatabaseSync.mockImplementation((name: string) => ({
       name,
+      closeSync: jest.fn(),
       execAsync: jest.fn().mockResolvedValue(undefined),
       getAllAsync: jest.fn().mockResolvedValue([
         { name: 'id' },
@@ -69,6 +70,23 @@ describe('sqlite environment isolation', () => {
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(1, 'MemoryCapsule-env_https_server_a_example_com.db');
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(2, 'MemoryCapsule-env_https_server_b_example_com.db');
     expect(dbA).not.toBe(dbB);
+  });
+
+  it('switching environment should not synchronously close the previous database handle', () => {
+    const dbA = openDatabase() as { closeSync?: jest.Mock };
+
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-b.example.com');
+    openDatabase();
+
+    expect(dbA.closeSync).not.toHaveBeenCalled();
+  });
+
+  it('resetDatabase should drop the singleton reference without calling closeSync', () => {
+    const db = openDatabase() as { closeSync?: jest.Mock };
+
+    resetDatabase();
+
+    expect(db.closeSync).not.toHaveBeenCalled();
   });
 
   it('creates entries table with media_json in the base schema', async () => {
