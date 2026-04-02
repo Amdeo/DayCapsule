@@ -1,107 +1,106 @@
 # MemoryCapsule 后端部署文档
 
-## 目标
+## 当前部署事实
 
-这份文档只覆盖仓库内 `backend/` 的部署。
+这份文档只描述当前仓库里已经存在、且可直接核对的后端部署方式。
 
-当前后端技术栈与运行方式：
+当前仓库可核对的部署相关文件：
 
-- Go + Gin
-- SQLite 单文件数据库
-- 本地磁盘存储上传文件
-- `docker compose` 编排
-- 内置 Nginx 反向代理到 API 容器
+- 根目录 `docker-compose.yml`
+- 根目录 `nginx.conf`
+- `backend/internal/config/config.go`
+- `deploy/backend/docker-compose.template.yml`
+- `deploy/backend/README.template.md`
 
-## 推荐方案
+当前默认链路：
 
-当前仓库最适合的上线方式是：
-
-`单台 Linux VPS + Docker Compose + 挂载本地磁盘`
-
-原因很直接：
-
-- 仓库已经提供了 [`docker-compose.yml`](/Users/cooper/Documents/code/MemoryCapsule/docker-compose.yml)、[`nginx.conf`](/Users/cooper/Documents/code/MemoryCapsule/nginx.conf) 和 [`backend/Dockerfile`](/Users/cooper/Documents/code/MemoryCapsule/backend/Dockerfile)
-- 数据库是 SQLite，天然更适合单机部署
-- 上传文件也落在本地磁盘，和 SQLite 一起备份最简单
-- 不需要先引入 Kubernetes、对象存储、外部数据库这些额外复杂度
-
-如果只是内测或小规模使用，这个方案已经够用。
-
-## 部署前提
-
-建议环境：
-
-- Ubuntu 22.04 / Debian 12
-- 1 vCPU / 1 GB RAM 起步
-- 20 GB 以上磁盘
-- 已安装 Docker 和 Docker Compose Plugin
-
-安装 Docker:
-
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
-docker --version
-docker compose version
+```text
+客户端 -> 宿主机:${PORT:-8080} -> nginx:80 -> api:3000
 ```
 
-## 需要的环境变量
+当前 `docker-compose.yml` 中的两个服务：
 
-后端实际读取的关键环境变量定义在 [`backend/internal/config/config.go`](/Users/cooper/Documents/code/MemoryCapsule/backend/internal/config/config.go)。
+- `api`
+  - 从 `backend/Dockerfile` 构建
+  - 容器名为 `daycapsule-api`
+  - 容器内监听 `3000`
+  - 使用 `/app/data` 保存数据库和上传文件
+  - 使用 `/app/logs` 保存日志
+- `nginx`
+  - 使用 `nginx:alpine`
+  - 容器名为 `daycapsule-nginx`
+  - 读取根目录 `nginx.conf`
+  - 对外暴露 `${PORT:-8080}`
 
-最少需要配置：
+`nginx.conf` 当前会：
+
+- 将 `/health` 代理到 `http://api/health`
+- 将其余请求代理到 `http://api`
+- 设置 `client_max_body_size 50M`
+
+## 当前相关文件
+
+仓库根目录部署对应的文件：
+
+- `docker-compose.yml`
+- `nginx.conf`
+- `backend/internal/config/config.go`
+
+发布包模板对应的文件：
+
+- `deploy/backend/docker-compose.template.yml`
+- `deploy/backend/README.template.md`
+
+## 当前配置项
+
+`backend/internal/config/config.go` 当前读取的配置项包括：
+
+- `PORT`，默认 `3000`
+- `DATABASE_PATH`，默认 `./data/daycapsule.db`
+- `JWT_SECRET`，默认空字符串
+- `JWT_EXPIRY`，默认 `168`
+- `REFRESH_EXPIRY`，默认 `720`
+- `UPLOAD_DIR`，默认 `./data/uploads`
+- `BASE_URL`，默认 `http://localhost:3000`
+
+根目录 `docker-compose.yml` 当前传入的关键环境变量包括：
+
+- `DATABASE_PATH=${DATABASE_PATH:-/app/data/daycapsule.db}`
+- `JWT_SECRET=${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}`
+- `ENV=production`
+- `PORT=3000`
+- `UPLOAD_DIR=/app/data/uploads`
+- `BASE_URL=${BASE_URL:-http://localhost:8080}`
+
+当前部署相关关键变量：
 
 - `JWT_SECRET`
 - `BASE_URL`
+- `PORT`
+- `DATABASE_PATH`
+- `UPLOAD_DIR`
 
-常用变量说明：
+## 最小部署路径
 
-| 变量 | 是否必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `JWT_SECRET` | 是 | 无 | JWT 签名密钥，必须至少 32 位随机字符串 |
-| `BASE_URL` | 强烈建议 | `http://localhost:8080` | 后端对外访问地址，用于拼接媒体 URL |
-| `PORT` | 否 | `8080` | 宿主机暴露端口，由 `docker-compose.yml` 使用 |
-| `DATABASE_PATH` | 否 | `/app/data/daycapsule.db` | SQLite 文件路径 |
-| `JWT_EXPIRY` | 否 | `168` | Access Token 过期时间，单位小时 |
-| `REFRESH_EXPIRY` | 否 | `720` | Refresh Token 过期时间，单位小时 |
+当前仓库根目录部署路径由根目录 `docker-compose.yml` 与根目录 `nginx.conf` 组成。
 
-## 5 分钟快速部署
-
-### 1. 拉代码
+示例：
 
 ```bash
-git clone <your-repo-url> MemoryCapsule
-cd MemoryCapsule
-```
-
-### 2. 复制根目录环境变量模板
-
-`docker compose` 会自动读取仓库根目录的 `.env`。
-
-```bash
-cp .env.example .env
-```
-
-然后编辑 `.env`，至少确认这几个值：
-
-```env
-PORT=8080
-JWT_SECRET=replace-with-a-long-random-string-at-least-32-chars
-BASE_URL=http://YOUR_SERVER_IP:8080
-DATABASE_PATH=/app/data/daycapsule.db
-```
-
-如果你已经有域名，并且外层已经接了 HTTPS 反代，把 `BASE_URL` 改成正式地址，例如 `https://api.example.com`。
-
-### 3. 启动服务
-
-```bash
+export JWT_SECRET='replace-with-a-long-random-string-at-least-32-chars'
+export BASE_URL='http://YOUR_SERVER_IP:8080'
 mkdir -p logs backend/data
 docker compose up -d --build
 ```
 
-### 4. 检查状态
+说明：
+
+- `logs` 会挂载到容器内 `/app/logs`
+- `backend/data` 会挂载到容器内 `/app/data`
+- SQLite 数据库文件默认会落在 `/app/data/daycapsule.db`
+- 上传文件默认会落在 `/app/data/uploads`
+
+启动后的常见检查命令：
 
 ```bash
 docker compose ps
@@ -109,329 +108,40 @@ docker compose logs api --tail=100
 curl http://127.0.0.1:8080/health
 ```
 
-健康检查成功时，接口会返回 `status=healthy`。对应处理逻辑在 [`backend/internal/handlers/health.go`](/Users/cooper/Documents/code/MemoryCapsule/backend/internal/handlers/health.go)。
+## 数据目录与日志目录
 
-### 5. 客户端接入
+当前根目录 compose 使用的持久化目录是：
 
-App 端需要把 API 地址指向后端：
+- 数据目录：`backend/data`
+- 日志目录：`logs`
 
-```env
-EXPO_PUBLIC_API_URL=http://YOUR_SERVER_IP:8080/api
-```
+其中数据目录会映射到容器内 `/app/data`，当前包括：
 
-对应读取逻辑在 [`app/src/services/apiClient.ts`](/Users/cooper/Documents/code/MemoryCapsule/app/src/services/apiClient.ts)。
+- SQLite 数据库文件
+- 上传文件目录
 
-## 当前 Compose 架构
+发布包模板中的 `deploy/backend/docker-compose.template.yml` 当前使用：
 
-请求链路如下：
+- `./data:/app/data`
+- `./logs:/app/logs`
 
-```text
-Client -> Host:8080 -> nginx container:80 -> api container:3000
-```
+## 发布包模板相关文件
 
-容器职责：
+- `deploy/backend/docker-compose.template.yml`：发布包模板 compose 文件
+- `deploy/backend/README.template.md`：发布包模板说明文件
 
-- `api`
-  - 构建自 `backend/Dockerfile`
-  - 运行 Go 服务
-  - 挂载 `./backend/data:/app/data`
-  - 挂载 `./logs:/app/logs`
-- `nginx`
-  - 对外暴露端口
-  - 把 `/` 和 `/health` 转发给 `api`
+发布包方式对应的模板文件包括 compose 与说明文件。
 
-相关文件：
+## 相关文件
 
-- [`docker-compose.yml`](/Users/cooper/Documents/code/MemoryCapsule/docker-compose.yml)
-- [`nginx.conf`](/Users/cooper/Documents/code/MemoryCapsule/nginx.conf)
-- [`backend/Dockerfile`](/Users/cooper/Documents/code/MemoryCapsule/backend/Dockerfile)
+仓库入口与常用命令相关文档：
 
-## 使用 Gitea Actions 部署制品
+- `README.md`
+- `docs/QUICK_REFERENCE.md`
 
-如果你不想在服务器上 checkout 仓库，而是希望直接下载“可运行部署包”，可以使用 Gitea Actions 生成的后端部署制品。
+部署相关文件：
 
-新增的 workflow 会做两件事：
-
-- 运行 `backend/` 测试
-- 构建并推送后端镜像到 Gitea Container Registry
-- 生成一个 `zip` 制品，里面包含：
-  - `docker-compose.yml`
-  - `.env.example`
-  - `nginx.conf`
-  - `README.md`
-
-这个 `docker-compose.yml` 已经固定指向本次发布对应的镜像 tag，不需要你在服务器上再手动改版本号。
-
-### 需要配置的 Gitea Secrets
-
-在 Gitea 仓库里配置以下变量和 secrets：
-
-| 类型 | 名称 | 说明 |
-| --- | --- |
-| Variable | `PACKAGE_REGISTRY` | Gitea 包仓库地址，例如 `gitea.example.com:3000` |
-| Secret | `PKG_TOKEN` | 具备推送包权限的 PAT |
-
-workflow 会参考 Gitea 包仓库方式，使用 `github.actor` + `PKG_TOKEN` 登录并推送镜像。
-
-### 手动触发参数
-
-当前 workflow 只支持手动触发。
-
-可选输入：
-
-| 输入 | 是否必填 | 说明 |
-| --- | --- | --- |
-| `version` | 否 | 留空时自动使用 `sha-<shortsha>`，也可以手动填写版本号 |
-
-### 服务器部署步骤
-
-1. 从 Gitea Actions 下载本次构建产生的 `zip`
-2. 解压到服务器目录
-3. 如镜像仓库为私有，先登录 registry
-4. 按需创建 `.env`
-5. 启动 compose
-
-示例：
-
-```bash
-unzip daycapsule-backend-sha-abcdef0.zip
-cd daycapsule-backend-sha-abcdef0
-
-docker login git.example.com
-
-cp .env.example .env
-# 编辑 .env，至少设置 JWT_SECRET 和 BASE_URL
-
-mkdir -p data logs
-docker compose up -d
-```
-
-### 关于 `.env`
-
-部署制品会携带 `.env.example`，但运行并不强依赖 `.env` 文件必须存在。
-
-当前 compose 中：
-
-- `PORT`、`BASE_URL`、`DATABASE_PATH`、`UPLOAD_DIR` 都有默认值
-- 只有 `JWT_SECRET` 是必填项
-
-因此你也可以不用 `.env`，改为在启动前直接导出变量：
-
-```bash
-export JWT_SECRET=replace-with-a-long-random-string
-export BASE_URL=http://YOUR_SERVER_IP:8080
-docker compose up -d
-```
-
-### 升级
-
-升级流程改为：
-
-1. 下载新的部署 `zip`
-2. 解压到新目录
-3. 将旧目录中的 `.env` 复制到新目录
-4. 在新目录执行 `docker compose up -d`
-
-### 回滚
-
-回滚方式也很直接：
-
-1. 找到旧版本的部署 `zip`
-2. 解压旧版本目录
-3. 使用旧版本目录中的 compose 重新启动
-
-## 生产环境建议
-
-### 1. 优先使用 HTTPS
-
-如果给真实用户使用，不建议直接暴露 `http://IP:8080`。
-
-更稳妥的方式：
-
-- 域名指向服务器
-- 在服务器外层用云负载均衡、Caddy 或宿主机 Nginx 做 TLS 终止
-- 反向代理到 `127.0.0.1:8080`
-- `BASE_URL` 和 `EXPO_PUBLIC_API_URL` 都改成 `https://...`
-
-### 2. 收紧安全组
-
-至少只开放：
-
-- `22` SSH
-- `80/443` 如果你做 HTTPS
-- 如果只是临时内测，才开放 `8080`
-
-### 3. 数据目录单独备份
-
-当前数据库和上传文件都在：
-
-- [`backend/data`](/Users/cooper/Documents/code/MemoryCapsule/backend/data)
-
-其中通常会包含：
-
-- `daycapsule.db`
-- `uploads/`
-
-这是最关键的数据目录。
-
-### 4. 不要做多副本
-
-当前实现基于 SQLite + 本地文件：
-
-- 不适合横向扩容多个 API 副本
-- 不适合多节点共享写入
-
-如果以后要多实例部署，建议再演进到：
-
-- Postgres
-- 对象存储
-- 独立媒体服务或 CDN
-
-## 备份与恢复
-
-### 备份
-
-```bash
-tar czf backup-$(date +%F-%H%M%S).tar.gz backend/data
-```
-
-### 恢复
-
-```bash
-docker compose down
-tar xzf backup-2026-03-23-120000.tar.gz
-docker compose up -d
-```
-
-如果只想备份数据库文件，也可以直接备份：
-
-```bash
-cp backend/data/daycapsule.db backend/data/daycapsule.db.bak
-```
-
-## 升级流程
-
-```bash
-git pull
-docker compose up -d --build
-docker compose logs api --tail=100
-```
-
-因为数据库是挂载目录，正常重建容器不会丢数据。
-
-## 回滚流程
-
-最简单的回滚方式是两步：
-
-1. 回到旧代码版本
-2. 重新 `docker compose up -d --build`
-
-如果升级后数据结构或文件异常，再配合恢复 `backend/data` 备份。
-
-## 常用运维命令
-
-查看容器状态：
-
-```bash
-docker compose ps
-```
-
-查看 API 日志：
-
-```bash
-docker compose logs -f api
-```
-
-查看 Nginx 日志：
-
-```bash
-docker compose logs -f nginx
-```
-
-重启服务：
-
-```bash
-docker compose restart
-```
-
-停止服务：
-
-```bash
-docker compose down
-```
-
-## 手动部署方案（非 Docker）
-
-如果你不想用 Docker，也可以直接在 Linux 上跑二进制，但这不是首选，因为你还需要自己维护进程守护和反向代理。
-
-### 1. 构建后端
-
-```bash
-cd backend
-go build -o server ./cmd/server
-```
-
-### 2. 准备环境变量
-
-```bash
-export PORT=3000
-export JWT_SECRET=replace-with-a-long-random-string-at-least-32-chars
-export DATABASE_PATH=/srv/daycapsule/data/daycapsule.db
-export UPLOAD_DIR=/srv/daycapsule/data/uploads
-export BASE_URL=https://api.example.com
-export ENV=production
-```
-
-### 3. 启动服务
-
-```bash
-./server
-```
-
-### 4. 用 systemd 托管
-
-可以创建 `/etc/systemd/system/daycapsule.service`，再由宿主机 Nginx 代理到 `127.0.0.1:3000`。
-
-这个方案能用，但维护成本高于 Docker Compose。
-
-## 故障排查
-
-### 服务起不来
-
-优先检查：
-
-- `JWT_SECRET` 是否缺失
-- `backend/data` 是否可写
-- `docker compose logs api`
-
-后端在启动时会强校验 `JWT_SECRET`，逻辑见 [`backend/cmd/server/main.go`](/Users/cooper/Documents/code/MemoryCapsule/backend/cmd/server/main.go)。
-
-### `/health` 正常，但接口访问失败
-
-优先检查：
-
-- 客户端是否请求了正确的 `/api` 前缀
-- `EXPO_PUBLIC_API_URL` 是否配置正确
-- 反向代理是否把请求转发到了 `api`
-
-### 媒体文件访问失败
-
-优先检查：
-
-- `BASE_URL` 是否正确
-- `backend/data/uploads` 是否存在文件
-- 上传目录挂载是否正常
-
-媒体 URL 的拼接逻辑在 [`backend/internal/service/entry_service.go`](/Users/cooper/Documents/code/MemoryCapsule/backend/internal/service/entry_service.go)。
-
-## 一句话结论
-
-如果你现在要最快把后端跑起来，直接用仓库自带的 Compose：
-
-```bash
-cp .env.example .env
-# 编辑 .env，至少设置 JWT_SECRET 和 BASE_URL
-docker compose up -d --build
-```
-
-但正式给移动端真机使用时，建议补上域名和 HTTPS，再把客户端 `EXPO_PUBLIC_API_URL` 指到正式地址。
+- `docker-compose.yml`
+- `nginx.conf`
+- `deploy/backend/docker-compose.template.yml`
+- `deploy/backend/README.template.md`
