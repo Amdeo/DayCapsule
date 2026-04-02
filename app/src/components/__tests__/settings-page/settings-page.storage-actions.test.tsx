@@ -144,7 +144,7 @@ describe('useSettingsPageStorage', () => {
     });
   });
 
-  it('keeps success feedback when clearing cache succeeds but reloading entries fails', async () => {
+  it('shows branded feedback when clearing cache succeeds but reloading entries fails', async () => {
     mockLoadEntries.mockRejectedValueOnce(new Error('reload failed'));
     mockGetStorageStats.mockResolvedValueOnce({ totalSize: 1024 }).mockResolvedValueOnce({ totalSize: 2 * 1024 * 1024 });
 
@@ -170,22 +170,13 @@ describe('useSettingsPageStorage', () => {
 
     await waitFor(() => {
       expect(mockShowErrorFeedback).toHaveBeenCalledWith({
-        title: '成功',
-        message: '本地数据已清除',
-        tone: 'accent',
+        title: '同步未完成',
+        message: '本地数据已清除，但列表刷新失败，请稍后重试。',
+        tone: 'error',
         actions: [
           expect.objectContaining({ label: '知道了', role: 'primary' }),
         ],
       });
-    });
-
-    expect(mockShowErrorFeedback).not.toHaveBeenCalledWith({
-      title: '清除失败',
-      message: '清理本地数据时发生错误',
-      tone: 'error',
-      actions: [
-        expect.objectContaining({ label: '知道了', role: 'primary' }),
-      ],
     });
   });
 

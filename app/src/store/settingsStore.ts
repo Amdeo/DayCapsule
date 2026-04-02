@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { Storage, withScope } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
 import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 export type CardSpacing = 'compact' | 'default' | 'loose';
 
@@ -140,6 +141,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       });
     } catch (error) {
       logger.error('[SettingsStore] Failed to load settings:', error);
+      showErrorFeedback({
+        title: '加载失败',
+        message: '设置加载失败，已使用默认设置。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       set({ isLoaded: true });
     }
   },

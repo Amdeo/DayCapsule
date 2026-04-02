@@ -14,7 +14,7 @@ interface EntryActionSheetProps {
   visible: boolean;
   entryType: EntryType;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -54,9 +54,13 @@ export function EntryActionSheet({
       onClose={onClose}
       onEdit={onEdit}
       onDeleteRequest={() => setMode('confirm')}
-      onConfirmDelete={() => {
-        onDelete();
-        onClose();
+      onConfirmDelete={async () => {
+        try {
+          await onDelete();
+          onClose();
+        } catch {
+          // Keep the confirm state open so the caller can surface feedback and allow retry.
+        }
       }}
       onCancelDelete={() => setMode('menu')}
     />

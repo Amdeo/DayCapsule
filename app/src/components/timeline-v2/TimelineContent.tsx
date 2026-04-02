@@ -18,7 +18,7 @@ interface TimelineContentProps {
   displayMode: ViewMode;
   displayEntries: Entry[];
   hasEntries: boolean;
-  deleteEntry: (id: string) => void;
+  deleteEntry: (id: string) => void | Promise<void>;
   onViewEntry: (entry: Entry) => void;
   onEditEntry: (entry: Entry) => void;
   onStopRecording?: (id: string) => void;

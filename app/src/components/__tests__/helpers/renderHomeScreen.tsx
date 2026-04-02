@@ -61,6 +61,8 @@ export interface RenderHomeScreenOptions {
   cloudSyncUiState?: CloudUiState;
   cloudMode?: boolean;
   loadEntriesImplementation?: () => Promise<void>;
+  loadSettingsImplementation?: () => Promise<void>;
+  loadCommonTagsImplementation?: () => Promise<void>;
   initialFilters?: {
     searchQuery?: string;
     filterType?: 'all' | 'text' | 'photo' | 'voice';
@@ -89,6 +91,7 @@ const mockRefreshCloudSyncIndicator = jest.fn().mockResolvedValue(undefined);
 const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 const mockShowCloudSyncStatusAlert = jest.fn();
+const mockShowErrorFeedback = jest.fn();
 const mockVoiceStartRecording = jest.fn().mockResolvedValue(undefined);
 const mockVoicePreloadAudio = jest.fn().mockResolvedValue(undefined);
 const mockLoggerError = jest.fn();
@@ -355,14 +358,18 @@ const mockTimelineContentModule = {
   TimelineContent: ({
     hasEntries,
     displayEntries,
+    deleteEntry,
     onViewEntry,
+    onStopRecording,
     hasMore,
     loadMore,
     isLoadingMore,
   }: {
     hasEntries: boolean;
     displayEntries: Entry[];
+    deleteEntry: (id: string) => void | Promise<void>;
     onViewEntry: (entry: Entry) => void;
+    onStopRecording?: (id: string) => void;
     hasMore: boolean;
     loadMore: () => void;
     isLoadingMore: boolean;
@@ -382,15 +389,30 @@ const mockTimelineContentModule = {
     return (
       <View testID="timeline-data-state">
         {displayEntries.map((entry) => (
-          <Pressable
-            key={entry.id}
-            testID={`timeline-entry-card-${entry.id}`}
-            onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onViewEntry(entry))}
-          >
-            <View testID={`timeline-entry-${entry.id}`}>
-              <Text>{entry.content}</Text>
-            </View>
-          </Pressable>
+          <View key={entry.id}>
+            <Pressable
+              testID={`timeline-entry-card-${entry.id}`}
+              onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onViewEntry(entry))}
+            >
+              <View testID={`timeline-entry-${entry.id}`}>
+                <Text>{entry.content}</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              testID={`timeline-entry-delete-${entry.id}`}
+              onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => deleteEntry(entry.id))}
+            >
+              <Text>删除</Text>
+            </Pressable>
+            {onStopRecording ? (
+              <Pressable
+                testID={`timeline-entry-stop-recording-${entry.id}`}
+                onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onStopRecording(entry.id))}
+              >
+                <Text>停止录音</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ))}
         {hasMore && !isLoadingMore ? (
             <Pressable
@@ -475,12 +497,20 @@ const mockFabMenuModule = {
     fabSelectHandlers.set(store, onSelect);
 
     return (
-      <Pressable
-        testID="home-quick-add-voice"
-        onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onSelect('voice'))}
-      >
-        <Text>录音</Text>
-      </Pressable>
+      <>
+        <Pressable
+          testID="home-quick-add-text"
+          onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onSelect('text'))}
+        >
+          <Text>文本</Text>
+        </Pressable>
+        <Pressable
+          testID="home-quick-add-voice"
+          onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onSelect('voice'))}
+        >
+          <Text>录音</Text>
+        </Pressable>
+      </>
     );
   },
 };
@@ -490,7 +520,10 @@ const mockSidebarModule = {
 };
 
 const mockTextEditorModule = {
-  TextEditor: () => null,
+  TextEditor: (props: React.ComponentProps<typeof import('@/src/components/TextEditor').TextEditor>) => {
+    const actualTextEditorModule = jest.requireActual('@/src/components/TextEditor');
+    return React.createElement(actualTextEditorModule.TextEditor, props);
+  },
 };
 
 const mockUseEntryStore = Object.assign(
@@ -561,7 +594,8 @@ const mockCommonTagsState = {
 };
 
 const mockUseCommonTagsStore = Object.assign(
-  () => mockCommonTagsState,
+  <T,>(selector?: (state: typeof mockCommonTagsState) => T) =>
+    selector ? selector(mockCommonTagsState) : (mockCommonTagsState as T),
   {
     getState: () => mockCommonTagsState,
   }
@@ -649,6 +683,10 @@ jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
   showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: mockLoggerError, debug: jest.fn() },
 }));
@@ -691,7 +729,7 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   defaultMockEntryFilterUiStore = filterUiStore;
 
   Object.assign(mockSettingsState, {
-    loadSettings: jest.fn().mockResolvedValue(undefined),
+    loadSettings: jest.fn(options.loadSettingsImplementation ?? (async () => undefined)),
     cloudMode: options.cloudMode ?? false,
     cardSpacing: 'default',
   });
@@ -699,12 +737,13 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   Object.assign(mockCommonTagsState, {
     tags: options.commonTags ?? ['旅行', '工作'],
     isLoaded: true,
-    loadCommonTags: jest.fn().mockResolvedValue(undefined),
+    loadCommonTags: jest.fn(options.loadCommonTagsImplementation ?? (async () => undefined)),
   });
 
   mockRefreshCloudSyncIndicator.mockClear();
   mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
   mockShowCloudSyncStatusAlert.mockClear();
+  mockShowErrorFeedback.mockClear();
 
   const baseApplySearchFilters = entryStore.state.applySearchFilters;
   const applySearchFiltersSpy = jest.fn(
@@ -713,6 +752,9 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   entryStore.state.applySearchFilters = applySearchFiltersSpy;
   const triggerQuickAddVoice = jest.fn(
     runWithActiveRenderStores({ entryStore, filterUiStore }, () => fabSelectHandlers.get(entryStore)?.('voice'))
+  );
+  const triggerQuickAddText = jest.fn(
+    runWithActiveRenderStores({ entryStore, filterUiStore }, () => fabSelectHandlers.get(entryStore)?.('text'))
   );
 
   return {
@@ -730,6 +772,7 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
     spies: {
       loadEntries: entryStore.state.loadEntries,
       addEntry: entryStore.state.addEntry,
+      completeRecording: entryStore.state.completeRecording,
       loadMore: entryStore.state.loadMore,
       loadSettings: mockSettingsState.loadSettings,
       loadCommonTags: mockCommonTagsState.loadCommonTags,
@@ -738,9 +781,11 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
       getAllTags: entryStore.state.getAllTags,
       startRecording: mockVoiceStartRecording,
       preloadAudio: mockVoicePreloadAudio,
+      triggerQuickAddText,
       triggerQuickAddVoice,
       loggerError: mockLoggerError,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
+      showErrorFeedback: mockShowErrorFeedback,
     },
     stores: {
       entryStore,

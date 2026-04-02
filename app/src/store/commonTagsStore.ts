@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
 
@@ -33,6 +34,11 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       set({ tags: stored ?? DEFAULT_COMMON_TAGS, isLoaded: true });
     } catch (error) {
       logger.error('Failed to load common tags:', error);
+      showErrorFeedback({
+        title: '加载失败',
+        message: '预制标签加载失败，已回退到默认标签。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       set({ tags: DEFAULT_COMMON_TAGS, isLoaded: true });
     }
   },
@@ -46,6 +52,11 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       await Storage.setObject(STORAGE_KEY, next);
     } catch (error) {
       logger.error('Failed to save common tags after add:', error);
+      showErrorFeedback({
+        title: '保存失败',
+        message: '预制标签已更新，但保存失败，请稍后重试。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   },
 
@@ -56,6 +67,11 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       await Storage.setObject(STORAGE_KEY, next);
     } catch (error) {
       logger.error('Failed to save common tags after remove:', error);
+      showErrorFeedback({
+        title: '保存失败',
+        message: '预制标签已更新，但保存失败，请稍后重试。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   },
 
@@ -65,6 +81,11 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       await Storage.setObject(STORAGE_KEY, DEFAULT_COMMON_TAGS);
     } catch (error) {
       logger.error('Failed to save common tags after reset:', error);
+      showErrorFeedback({
+        title: '保存失败',
+        message: '预制标签已恢复，但保存失败，请稍后重试。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   },
 
@@ -89,6 +110,11 @@ export const useCommonTagsStore = create<CommonTagsStore>((set, get) => ({
       await Storage.setObject(STORAGE_KEY, next);
     } catch (error) {
       logger.error('Failed to save common tags after reorder:', error);
+      showErrorFeedback({
+        title: '保存失败',
+        message: '预制标签顺序已更新，但保存失败，请稍后重试。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   },
 }));

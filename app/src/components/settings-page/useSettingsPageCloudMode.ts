@@ -34,6 +34,11 @@ export function useSettingsPageCloudMode({
       await setCloudMode(true);
       await createCloudSyncService().syncNow().catch((error) => {
         logger.warn('[Settings] 初次启用云同步后的首轮同步失败:', error);
+        showErrorFeedback({
+          title: '同步未完成',
+          message: '云同步已开启，但首次同步失败，请稍后重试。',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
       });
     } catch (e: any) {
       showErrorFeedback(buildCloudModeToggleFailedFeedback(e, '操作失败'));

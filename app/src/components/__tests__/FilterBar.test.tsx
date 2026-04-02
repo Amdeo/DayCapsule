@@ -15,6 +15,7 @@ jest.mock('@expo/vector-icons', () => {
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { FilterBar } from '../FilterBar';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockSetFilterType = jest.fn();
 const mockSetFilterDateRange = jest.fn();
@@ -52,6 +53,10 @@ jest.mock('../../store/entryFilterUIStore', () => ({
     selector ? selector(mockFilterUiState) : mockFilterUiState,
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 describe('FilterBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -73,6 +78,22 @@ describe('FilterBar', () => {
 
     await waitFor(() => {
       expect(mockGetAllTags).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId('filter-bar-root')).toBeTruthy();
+  });
+
+  it('shows branded feedback when loading filter tags fails', async () => {
+    mockGetAllTags.mockRejectedValueOnce(new Error('tag query failed'));
+
+    const screen = render(<FilterBar isVisible onClose={jest.fn()} />);
+
+    await waitFor(() => {
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '加载失败',
+        message: '筛选标签加载失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     });
 
     expect(screen.getByTestId('filter-bar-root')).toBeTruthy();

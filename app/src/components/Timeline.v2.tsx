@@ -19,6 +19,7 @@ import { TimelineScrollTopButton } from './timeline-v2/TimelineScrollTopButton';
 import { useTimelineController } from './timeline-v2/useTimelineController';
 import { useTimelineFilters } from './timeline-v2/useTimelineFilters';
 import { useTimelineList } from './timeline-v2/useTimelineList';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 /**
  * 时间轴主组件
@@ -85,6 +86,33 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
   const cardSpacing = SPACING_VALUES[cardSpacingKey];
   const displayEntries = entries;
 
+  const handleDeleteEntry = React.useCallback(
+    async (id: string) => {
+      try {
+        await deleteEntry(id);
+      } catch {
+        showErrorFeedback({
+          title: '删除失败',
+          message: '删除这条记录失败，请重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
+      }
+    },
+    [deleteEntry],
+  );
+
+  const handleLoadMore = React.useCallback(() => {
+    try {
+      loadMore();
+    } catch {
+      showErrorFeedback({
+        title: '加载失败',
+        message: '更多记录加载失败，请稍后重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    }
+  }, [loadMore]);
+
   const {
     hasFilters,
     clearQuery,
@@ -115,7 +143,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
     entries: displayEntries,
     displayMode,
     cardSpacing,
-    deleteEntry,
+    deleteEntry: handleDeleteEntry,
     onViewEntry: handleViewEntry,
     onEditEntry: handleEditEntry,
     onStopRecording,
@@ -153,7 +181,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
         displayMode={displayMode}
         displayEntries={displayEntries}
         hasEntries={hasEntries}
-        deleteEntry={deleteEntry}
+        deleteEntry={handleDeleteEntry}
         onViewEntry={handleViewEntry}
         onEditEntry={handleEditEntry}
         onStopRecording={onStopRecording}
@@ -167,7 +195,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
         bottomInset={insets.bottom}
         onScroll={handleScroll}
         hasMore={hasMore}
-        loadMore={loadMore}
+        loadMore={handleLoadMore}
         isLoadingMore={isLoadingMore}
       />
 

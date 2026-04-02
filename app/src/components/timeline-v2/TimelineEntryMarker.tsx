@@ -7,7 +7,7 @@ import { getTimelineEntryAccentColor } from './timelineAppearance';
 
 interface TimelineEntryMarkerProps {
   entry: Entry;
-  onDeleteEntry: (id: string) => void;
+  onDeleteEntry: (id: string) => void | Promise<void>;
   onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
   onStopRecording?: (id: string) => void;

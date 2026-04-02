@@ -90,6 +90,14 @@ export function useSettingsPageController({
     void refreshStorageStats();
   }, [refreshStorageStats, visible]);
 
+  const showSettingsSaveFailedFeedback = useCallback((error: unknown) => {
+    showErrorFeedback({
+      title: '保存失败',
+      message: error instanceof Error ? error.message : '设置保存失败，请稍后重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
+
   const handleNotifications = useCallback(
     async (value: boolean) => {
       if (value) {
@@ -110,30 +118,46 @@ export function useSettingsPageController({
 
   const handleHighQualityPhotos = useCallback(
     async (value: boolean) => {
-      await saveHighQualityPhotos(value);
+      try {
+        await saveHighQualityPhotos(value);
+      } catch (error) {
+        showSettingsSaveFailedFeedback(error);
+      }
     },
-    [saveHighQualityPhotos],
+    [saveHighQualityPhotos, showSettingsSaveFailedFeedback],
   );
 
   const handleCardSpacing = useCallback(
     async (spacing: CardSpacing) => {
-      await saveCardSpacing(spacing);
+      try {
+        await saveCardSpacing(spacing);
+      } catch (error) {
+        showSettingsSaveFailedFeedback(error);
+      }
     },
-    [saveCardSpacing],
+    [saveCardSpacing, showSettingsSaveFailedFeedback],
   );
 
   const handlePhotoHeight = useCallback(
     async (preset: PhotoHeightPreset) => {
-      await savePhotoHeight(preset);
+      try {
+        await savePhotoHeight(preset);
+      } catch (error) {
+        showSettingsSaveFailedFeedback(error);
+      }
     },
-    [savePhotoHeight],
+    [savePhotoHeight, showSettingsSaveFailedFeedback],
   );
 
   const handleCalendarDensity = useCallback(
     async (density: CalendarDensity) => {
-      await saveCalendarDensity(density);
+      try {
+        await saveCalendarDensity(density);
+      } catch (error) {
+        showSettingsSaveFailedFeedback(error);
+      }
     },
-    [saveCalendarDensity],
+    [saveCalendarDensity, showSettingsSaveFailedFeedback],
   );
 
   const { photoCount, voiceCount } = useMemo(
@@ -154,13 +178,21 @@ export function useSettingsPageController({
           label: '重置',
           role: 'danger',
           onPress: async () => {
-            await resetSettings();
-            showErrorFeedback({
-              title: '成功',
-              message: '设置已重置',
-              tone: 'accent',
-              actions: [{ label: '知道了', role: 'primary' }],
-            });
+            try {
+              await resetSettings();
+              showErrorFeedback({
+                title: '成功',
+                message: '设置已重置',
+                tone: 'accent',
+                actions: [{ label: '知道了', role: 'primary' }],
+              });
+            } catch (error) {
+              showErrorFeedback({
+                title: '重置失败',
+                message: (error as Error).message ?? '重置设置失败',
+                actions: [{ label: '知道了', role: 'primary' }],
+              });
+            }
           },
         },
       ],

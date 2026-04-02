@@ -103,7 +103,7 @@ describe('useTimelineController', () => {
     expect(result.current.fabShouldHide).toBe(false);
   });
 
-  it('saves edits through updateEntry and closes the editor state', () => {
+  it('saves edits through updateEntry and closes the editor state', async () => {
     const updateEntry = jest.fn();
     const entry = {
       id: 'entry-1',
@@ -125,8 +125,8 @@ describe('useTimelineController', () => {
 
     expect(result.current.editingEntry).toBe(entry);
 
-    act(() => {
-      result.current.handleSaveEdit('entry-1', '新内容', ['已更新']);
+    await act(async () => {
+      await result.current.handleSaveEdit('entry-1', '新内容', ['已更新']);
     });
 
     expect(updateEntry).toHaveBeenCalledWith('entry-1', {
@@ -134,6 +134,39 @@ describe('useTimelineController', () => {
       tags: ['已更新'],
     });
     expect(result.current.editingEntry).toBeNull();
+  });
+
+  it('rethrows when saving from the timeline rejects so the editor flow can keep handling the failure', async () => {
+    const updateEntry = jest.fn().mockRejectedValueOnce(new Error('db failed'));
+    const entry = {
+      id: 'entry-1',
+      type: 'text',
+      content: '旧内容',
+      timestamp: Date.now(),
+      syncStatus: 'synced',
+    } as any;
+
+    const { result } = renderHook(() =>
+      useTimelineController({
+        updateEntry,
+      })
+    );
+
+    act(() => {
+      result.current.handleEditEntry(entry);
+    });
+
+    await expect(
+      act(async () => {
+        await result.current.handleSaveEdit('entry-1', '新内容', ['已更新']);
+      })
+    ).rejects.toThrow('db failed');
+
+    expect(updateEntry).toHaveBeenCalledWith('entry-1', {
+      content: '新内容',
+      tags: ['已更新'],
+    });
+    expect(result.current.editingEntry).toBe(entry);
   });
 
   it('waits for the detail page to close before opening the editor', () => {

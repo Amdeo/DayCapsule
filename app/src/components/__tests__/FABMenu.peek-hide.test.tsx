@@ -3,6 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import { PanResponder, Text } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 import { render } from '@testing-library/react-native';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 import { FABMenu } from '../FABMenu';
 
@@ -23,6 +24,10 @@ jest.mock('@/src/services/photoService', () => ({
     takePhoto: (...args: unknown[]) => mockTakePhoto(...args),
     pickPhotoFromLibrary: (...args: unknown[]) => mockPickPhotoFromLibrary(...args),
   },
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -188,6 +193,164 @@ describe('FABMenu peek-hide', () => {
     expect(onSelect).toHaveBeenCalledWith('photo', [{ uri: 'file:///photo-1.jpg' }]);
 
     panResponderCreateSpy.mockRestore();
+  });
+
+  it('shows branded feedback when the remembered camera action fails', async () => {
+    mockLastAddType = 'camera';
+    mockTakePhoto.mockRejectedValueOnce(new Error('相机错误，请检查相机权限'));
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      responderView.props.onResponderRelease({}, { dx: 0, dy: 0 });
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '拍照失败',
+      message: '相机错误，请检查相机权限',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    panResponderCreateSpy.mockRestore();
+  });
+
+  it('shows branded feedback when the remembered photo action fails', async () => {
+    mockLastAddType = 'photo';
+    mockPickPhotoFromLibrary.mockRejectedValueOnce(new Error('无效的文件格式'));
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      responderView.props.onResponderRelease({}, { dx: 0, dy: 0 });
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '选取失败',
+      message: '无效的文件格式',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    panResponderCreateSpy.mockRestore();
+  });
+
+  it('shows the same branded camera failure feedback when the fan menu camera option fails', async () => {
+    jest.useFakeTimers();
+    mockTakePhoto.mockRejectedValueOnce(new Error('相机错误，请检查相机权限'));
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      jest.advanceTimersByTime(300);
+      responderView.props.onResponderRelease({}, { dx: 30, dy: -90 });
+      jest.advanceTimersByTime(250);
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '拍照失败',
+      message: '相机错误，请检查相机权限',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    panResponderCreateSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it('shows the same branded photo failure feedback when the fan menu photo option fails', async () => {
+    jest.useFakeTimers();
+    mockPickPhotoFromLibrary.mockRejectedValueOnce(new Error('无效的文件格式'));
+    const onSelect = jest.fn();
+    const panResponderCreateSpy = jest
+      .spyOn(PanResponder, 'create')
+      .mockImplementation((config) => ({
+        panHandlers: {
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      }) as any);
+
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<FABMenu onSelect={onSelect} />);
+    });
+
+    const responderView = findMainResponderView(tree!);
+
+    await act(async () => {
+      responderView.props.onResponderGrant();
+      jest.advanceTimersByTime(300);
+      responderView.props.onResponderRelease({}, { dx: -20, dy: -90 });
+      jest.advanceTimersByTime(250);
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '选取失败',
+      message: '无效的文件格式',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    panResponderCreateSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   it('does not render a label text below the main FAB button when a type is selected', () => {

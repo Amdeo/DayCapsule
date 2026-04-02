@@ -15,6 +15,10 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
   getServerKey: jest.fn((url: string) =>
@@ -26,6 +30,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
 
 import { useSettingsStore } from '../settingsStore';
 import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const { Storage } = require('@/src/utils/storage');
 const SERVER_A_SCOPE = 'env_https_server_a_example_com';
@@ -92,6 +97,19 @@ describe('loadSettings — photoHeight', () => {
     await useSettingsStore.getState().loadSettings();
 
     expect(useSettingsStore.getState().photoHeight).toBe('large');
+  });
+
+  it('shows branded feedback when loading settings fails', async () => {
+    Storage.getString.mockRejectedValueOnce(new Error('mmkv locked'));
+
+    await useSettingsStore.getState().loadSettings();
+
+    expect(useSettingsStore.getState().isLoaded).toBe(true);
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '加载失败',
+      message: '设置加载失败，已使用默认设置。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 });
 

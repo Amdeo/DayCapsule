@@ -712,6 +712,31 @@ describe('entryStore', () => {
     });
   });
 
+  describe('restoreEntries', () => {
+    it('returns inserted ids even when the follow-up refresh fails after restore succeeds', async () => {
+      mockDataSource.restoreEntries.mockResolvedValueOnce(['entry-1']);
+      const loadEntriesSpy = jest
+        .spyOn(useEntryStore.getState(), 'loadEntries')
+        .mockRejectedValueOnce(new Error('refresh failed'));
+
+      await expect(
+        useEntryStore.getState().restoreEntries([
+          {
+            id: 'entry-1',
+            type: 'text',
+            content: 'restored',
+            timestamp: 1700000000000,
+            syncStatus: 'synced',
+          },
+        ])
+      ).resolves.toEqual(['entry-1']);
+
+      expect(mockDataSource.restoreEntries).toHaveBeenCalledTimes(1);
+      expect(loadEntriesSpy).toHaveBeenCalledTimes(1);
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
+    });
+  });
+
   // ─── filters ────────────────────────────────────────────────────────────────
 
   describe('entryFilterUIStore.setFilterType', () => {

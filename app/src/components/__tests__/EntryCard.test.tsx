@@ -6,7 +6,9 @@
 
 const mockPlaybackStoreState = {
   currentPlayingId: null as string | null,
-  setCurrentPlayingId: jest.fn(),
+  setCurrentPlayingId: jest.fn((id: string | null) => {
+    mockPlaybackStoreState.currentPlayingId = id;
+  }),
 };
 
 jest.mock('@/src/store/entryStore', () => ({
@@ -136,7 +138,17 @@ jest.mock('../EntryActionSheet', () => {
           <TouchableOpacity testID="action-sheet-edit" onPress={() => { onEdit(); onClose(); }}>
             <Text>编辑</Text>
           </TouchableOpacity>
-          <TouchableOpacity testID="action-sheet-delete" onPress={() => { onDelete(); onClose(); }}>
+          <TouchableOpacity
+            testID="action-sheet-delete"
+            onPress={async () => {
+              try {
+                await onDelete();
+                onClose();
+              } catch {
+                // Keep the mocked sheet open on delete failure.
+              }
+            }}
+          >
             <Text>删除</Text>
           </TouchableOpacity>
           <TouchableOpacity testID="action-sheet-cancel" onPress={onClose}>
@@ -307,6 +319,7 @@ const conflictCopyEntry: Entry = {
 describe('EntryCard swipe actions', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockPlaybackStoreState.currentPlayingId = null;
     (ReanimatedModule as any).__mockFadeInRight.duration.mockClear();
     (ReanimatedModule as any).__mockFadeInRight.delay.mockClear();
   });
@@ -457,6 +470,41 @@ describe('EntryCard swipe actions', () => {
     });
   });
 
+  it('shows branded feedback and re-enables stopping when stop recording fails', async () => {
+    const onStopRecording = jest.fn().mockRejectedValueOnce(new Error('stop failed'));
+
+    render(
+      <EntryCard
+        entry={recordingVoiceEntry}
+        onDelete={jest.fn()}
+        onStopRecording={onStopRecording}
+      />
+    );
+
+    const stopButton = screen.getByTestId('voice-stop-button-voice-recording-1');
+
+    await act(async () => {
+      fireEvent.press(stopButton);
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '停止失败',
+      message: '结束录音失败，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    const latestStopButton = screen.getByTestId('voice-stop-button-voice-recording-1');
+    expect(
+      latestStopButton.props.accessibilityState?.disabled
+      ?? latestStopButton.props['aria-disabled']
+      ?? false
+    ).toBe(false);
+  });
+
   it('does not render pause or resume controls for recording voice cards', () => {
     const { queryByTestId } = render(
       <EntryCard entry={recordingVoiceEntry} onDelete={jest.fn()} />
@@ -546,7 +594,7 @@ describe('EntryCard swipe actions', () => {
     expect(onEdit).toHaveBeenCalledWith(mockEntry);
   });
 
-  it('calls onDelete when delete is confirmed in action sheet', () => {
+  it('calls onDelete when delete is confirmed in action sheet', async () => {
     const onDelete = jest.fn();
     const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={onDelete} />
@@ -556,7 +604,9 @@ describe('EntryCard swipe actions', () => {
       getByTestId('swipeable').props.onSwipeableOpen('right');
       jest.advanceTimersByTime(100);
     });
-    fireEvent.press(getByTestId('action-sheet-delete'));
+    await act(async () => {
+      fireEvent.press(getByTestId('action-sheet-delete'));
+    });
 
     expect(onDelete).toHaveBeenCalledWith(mockEntry.id);
   });
@@ -650,12 +700,34 @@ describe('EntryCard swipe actions', () => {
     render(<EntryCard entry={playableVoiceEntry} onDelete={jest.fn()} />);
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('entry-card'));
+      fireEvent.press(screen.getByTestId('voice-play-button-voice-playable-1'));
     });
 
     expect(showErrorFeedback).toHaveBeenCalledWith({
       title: '播放失败',
       message: '无法播放此音频，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  });
+
+  it('shows branded feedback when stopping voice playback fails', async () => {
+    (VoiceService.stopPlayback as jest.Mock).mockRejectedValueOnce(new Error('stop playback failed'));
+
+    render(<EntryCard entry={playableVoiceEntry} onDelete={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('entry-card'));
+    });
+
+    showErrorFeedback.mockClear();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('voice-stop-playback-button-voice-playable-1'));
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '停止失败',
+      message: '停止播放失败，请重试',
       actions: [{ label: '知道了', role: 'primary' }],
     });
   });

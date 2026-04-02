@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { TextEditor } from '../TextEditor';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const mockLoadCommonTags = jest.fn();
 let mockCommonTagsState = {
@@ -25,6 +26,10 @@ jest.mock('@/src/store/commonTagsStore', () => ({
     ...mockCommonTagsState,
     loadCommonTags: mockLoadCommonTags,
   }),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
 }));
 
 describe('TextEditor', () => {
@@ -105,17 +110,39 @@ describe('TextEditor', () => {
     expect(screen.getByTestId('text-editor-tags-input')).toHaveProp('value', '');
   });
 
-  it('parses comma-separated tags on save and resets the editor state', () => {
+  it('parses comma-separated tags on save and resets the editor state', async () => {
     const onSave = jest.fn();
     const screen = render(<TextEditor visible onSave={onSave} onCancel={jest.fn()} />);
 
     fireEvent.changeText(screen.getByTestId('text-editor-content-input'), '新的记录');
     fireEvent.changeText(screen.getByTestId('text-editor-tags-input'), '生活, 工作 , 复盘 ');
-    fireEvent.press(screen.getByTestId('text-editor-save-button'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('text-editor-save-button'));
+    });
 
     expect(onSave).toHaveBeenCalledWith('新的记录', ['生活', '工作', '复盘']);
     expect(screen.getByTestId('text-editor-content-input')).toHaveProp('value', '');
     expect(screen.getByTestId('text-editor-tags-input')).toHaveProp('value', '');
+  });
+
+  it('shows branded feedback and keeps draft content when async save fails', async () => {
+    const onSave = jest.fn().mockRejectedValueOnce(new Error('db write failed'));
+    const screen = render(<TextEditor visible onSave={onSave} onCancel={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByTestId('text-editor-content-input'), '新的记录');
+    fireEvent.changeText(screen.getByTestId('text-editor-tags-input'), '生活, 工作');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('text-editor-save-button'));
+    });
+
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '保存失败',
+      message: '文本保存失败，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    expect(screen.getByTestId('text-editor-content-input')).toHaveProp('value', '新的记录');
+    expect(screen.getByTestId('text-editor-tags-input')).toHaveProp('value', '生活, 工作');
   });
 
   it('shows debounced suggestions and appends the selected suggestion only once', async () => {

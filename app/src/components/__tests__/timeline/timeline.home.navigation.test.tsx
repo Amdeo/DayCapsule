@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { act } from 'react-test-renderer';
 import { Timeline } from '../../Timeline.v2';
 import type { Entry } from '@/src/types/entry';
@@ -154,7 +154,7 @@ jest.mock('../../EntryEditor', () => ({
   }: {
     visible: boolean;
     entry: Entry | null;
-    onSave: (id: string, content: string, tags: string[]) => void;
+    onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
     onClose: () => void;
   }) => {
     const React = require('react');
@@ -233,7 +233,7 @@ describe('Timeline home navigation', () => {
     expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
   });
 
-  it('saves edits back through updateEntry and closes the editor', () => {
+  it('saves edits back through updateEntry and closes the editor', async () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
@@ -249,7 +249,10 @@ describe('Timeline home navigation', () => {
       content: '已更新内容',
       tags: ['已更新标签'],
     });
-    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+    });
   });
 
   it('closes the text detail page when the close action is used', () => {

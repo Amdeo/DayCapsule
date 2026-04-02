@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { suggestTags } from '@/src/services/tagSuggestionService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 
 interface UseTextEditorControllerOptions {
-  onSave: (content: string, tags: string[]) => void;
+  onSave: (content: string, tags: string[]) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -66,7 +67,7 @@ export function useTextEditorController({
     setSuggestions([]);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!content.trim()) {
       return;
     }
@@ -76,8 +77,16 @@ export function useTextEditorController({
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    onSave(content, tags);
-    resetEditor();
+    try {
+      await onSave(content, tags);
+      resetEditor();
+    } catch {
+      showErrorFeedback({
+        title: '保存失败',
+        message: '文本保存失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    }
   }, [content, onSave, resetEditor, tagsInput]);
 
   const handleCancel = useCallback(() => {

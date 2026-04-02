@@ -49,6 +49,11 @@ export function useEntryCardAudio({
       await VoiceService.stopPlayback();
     } catch (error) {
       logger.error('Failed to stop audio:', error);
+      showErrorFeedback({
+        title: '停止失败',
+        message: '停止播放失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } finally {
       setIsPlayingAudio(false);
       setPlaybackPosition(0);

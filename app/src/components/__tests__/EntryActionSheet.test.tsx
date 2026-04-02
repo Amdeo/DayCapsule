@@ -135,7 +135,7 @@ describe('EntryActionSheet', () => {
     expect(getByTestId('action-sheet-handle')).toBeTruthy();
   });
 
-  it('calls onDelete and onClose when confirm delete is pressed', () => {
+  it('calls onDelete and onClose when confirm delete is pressed', async () => {
     const onDelete = jest.fn();
     const onClose = jest.fn();
     const { getByTestId } = render(
@@ -143,10 +143,35 @@ describe('EntryActionSheet', () => {
     );
 
     fireEvent.press(getByTestId('action-sheet-delete'));
-    fireEvent.press(getByTestId('action-sheet-confirm-delete'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('action-sheet-confirm-delete'));
+    });
 
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the sheet open when confirm delete rejects', async () => {
+    const onDelete = jest.fn().mockRejectedValueOnce(new Error('delete failed'));
+    const onClose = jest.fn();
+    const { getByTestId, getByText } = render(
+      <EntryActionSheet {...baseProps} visible={true} onDelete={onDelete} onClose={onClose} />
+    );
+
+    fireEvent.press(getByTestId('action-sheet-delete'));
+
+    await act(async () => {
+      try {
+        fireEvent.press(getByTestId('action-sheet-confirm-delete'));
+      } catch {
+        // The component intentionally leaves the sheet open on delete failure.
+      }
+    });
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(getByText('确认删除这条记录？')).toBeTruthy();
   });
 
   it('returns to menu view when cancel is pressed in confirm view', () => {

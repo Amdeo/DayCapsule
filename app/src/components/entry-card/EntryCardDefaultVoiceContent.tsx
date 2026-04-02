@@ -195,6 +195,7 @@ export function EntryCardDefaultVoiceContent({
         ) : (
           <>
             <TouchableOpacity
+              testID={isPlayingAudio ? `voice-stop-playback-button-${entry.id}` : `voice-play-button-${entry.id}`}
               style={styles.voicePlayBtn}
               onPress={isPlayingAudio ? onStopAudio : onPlayAudio}
               activeOpacity={0.8}
