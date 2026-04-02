@@ -1,10 +1,20 @@
 import React from 'react';
+import { act } from 'react-test-renderer';
 import { fireEvent, render } from '@testing-library/react-native';
 import { Sidebar } from '../Sidebar';
 
 const mockSettingsPage = jest.fn(() => null);
 const mockStatsPage = jest.fn(() => null);
 const mockBackupPage = jest.fn(() => null);
+
+function getLatestMockProps<T>(mockFn: jest.Mock): T {
+  const calls = mockFn.mock.calls;
+  if (calls.length === 0) {
+    throw new Error('Expected mock to have been called');
+  }
+
+  return calls[calls.length - 1][0] as T;
+}
 
 jest.mock('../SettingsPage', () => ({
   SettingsPage: (props: unknown) => mockSettingsPage(props),
@@ -46,6 +56,25 @@ function SidebarHarness() {
     <Sidebar
       drawerProgress={{ value: 1 }}
       onClose={jest.fn()}
+      showSettings={showSettings}
+      setShowSettings={setShowSettings}
+      showStats={showStats}
+      setShowStats={setShowStats}
+      showBackup={showBackup}
+      setShowBackup={setShowBackup}
+    />
+  );
+}
+
+function SidebarHarnessWithClosableSettings({ onClose }: { onClose: jest.Mock }) {
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [showStats, setShowStats] = React.useState(false);
+  const [showBackup, setShowBackup] = React.useState(false);
+
+  return (
+    <Sidebar
+      drawerProgress={{ value: 1 }}
+      onClose={onClose}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
       showStats={showStats}
@@ -170,5 +199,19 @@ describe('Sidebar shell', () => {
 
     expect(mockBackupPage).toHaveBeenCalledTimes(1);
     expect(mockSettingsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls parent onClose when closing the opened settings page', () => {
+    const onClose = jest.fn();
+    const screen = render(<SidebarHarnessWithClosableSettings onClose={onClose} />);
+
+    fireEvent.press(screen.getByTestId('sidebar-menu-settings'));
+
+    const settingsPageProps = getLatestMockProps<{ onClose: () => void }>(mockSettingsPage);
+    act(() => {
+      settingsPageProps.onClose();
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });

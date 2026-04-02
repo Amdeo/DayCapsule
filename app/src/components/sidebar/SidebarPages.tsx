@@ -8,6 +8,7 @@ const DETAIL_PAGE_EXIT_DURATION_MS = 300;
 type SidebarPageKey = 'settings' | 'stats' | 'backup';
 
 interface SidebarPagesProps {
+  onClose: () => void;
   showSettings: boolean;
   setShowSettings: (value: boolean) => void;
   showStats: boolean;
@@ -17,6 +18,7 @@ interface SidebarPagesProps {
 }
 
 export function SidebarPages({
+  onClose,
   showSettings,
   setShowSettings,
   showStats,
@@ -66,11 +68,20 @@ export function SidebarPages({
 
   switch (renderedPage) {
     case 'settings':
-      return <SettingsPage visible={activePage === 'settings'} onClose={() => setShowSettings(false)} />;
+      return <SettingsPage visible={activePage === 'settings'} onClose={() => {
+        setShowSettings(false);
+        onClose();
+      }} />;
     case 'stats':
-      return <StatsPage visible={activePage === 'stats'} onClose={() => setShowStats(false)} />;
+      return <StatsPage visible={activePage === 'stats'} onClose={() => {
+        setShowStats(false);
+        onClose();
+      }} />;
     case 'backup':
-      return <BackupPage visible={activePage === 'backup'} onClose={() => setShowBackup(false)} />;
+      return <BackupPage visible={activePage === 'backup'} onClose={() => {
+        setShowBackup(false);
+        onClose();
+      }} />;
     default:
       return null;
   }

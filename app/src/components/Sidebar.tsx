@@ -39,6 +39,7 @@ export function Sidebar({
       </Animated.View>
 
       <SidebarPages
+        onClose={onClose}
         {...pageState}
       />
     </>
