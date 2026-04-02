@@ -1,9 +1,9 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import { VoiceRecorder } from '../VoiceRecorder';
 import { VoiceService } from '@/src/services/voiceService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
 
 jest.mock('@expo/vector-icons', () => {
@@ -34,11 +34,14 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), log: jest.fn() },
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 describe('VoiceRecorder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -243,7 +246,11 @@ describe('VoiceRecorder', () => {
       rejectStart?.(new Error('late start failure'));
     });
 
-    expect(Alert.alert).not.toHaveBeenCalledWith('录音失败', '无法启动录音，请检查麦克风权限');
+    expect(showErrorFeedback).not.toHaveBeenCalledWith({
+      title: '录音失败',
+      message: '无法启动录音，请检查麦克风权限',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(screen.queryByTestId('voice-recorder-recording')).toBeNull();
     expect(screen.queryByText('停止')).toBeNull();
     expect(screen.getByTestId('voice-recorder-idle')).toBeTruthy();
@@ -358,7 +365,11 @@ describe('VoiceRecorder', () => {
       rejectStop?.(new Error('late stop failure'));
     });
 
-    expect(Alert.alert).not.toHaveBeenCalledWith('保存失败', '保存录音失败，请重试');
+    expect(showErrorFeedback).not.toHaveBeenCalledWith({
+      title: '保存失败',
+      message: '保存录音失败，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(screen.queryByTestId('voice-recorder-done')).toBeNull();
     expect(screen.queryByText('录音完成')).toBeNull();
     expect(screen.getByTestId('voice-recorder-idle')).toBeTruthy();
@@ -619,7 +630,11 @@ describe('VoiceRecorder', () => {
     fireEvent.press(screen.getByText('开始录音'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('录音失败', '无法启动录音，请检查麦克风权限');
+      expect(showErrorFeedback).toHaveBeenCalledWith({
+        title: '录音失败',
+        message: '无法启动录音，请检查麦克风权限',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     });
     expect(screen.getByTestId('voice-recorder-idle')).toBeTruthy();
   });

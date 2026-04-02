@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useEntryStore } from '@/src/store/entryStore';
 import { buildPhotoUploadMetadata } from '@/src/services/photoIntegrityService';
 import { getApiClient } from '@/src/services/apiClient';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import * as DB from '@/src/database/operations';
 
 interface UseSettingsPageDisableCloudModeOptions {
@@ -25,25 +26,31 @@ export function useSettingsPageDisableCloudMode({
     };
 
     if (cloudCount === 0 && localCount > 0) {
-      Alert.alert(
-        '切换到离线模式',
-        `云端 0 条记录\n本地 ${localCount} 条记录\n\n云端当前为空，继续“云端 → 本地”会清空本地数据。请选择保留本地数据，或先上传到云端。`,
-        [
+      showConfirmDialog({
+        title: '切换到离线模式',
+        message: `云端 0 条记录\n本地 ${localCount} 条记录\n\n云端当前为空，继续“云端 → 本地”会清空本地数据。请选择保留本地数据，或先上传到云端。`,
+        actions: [
           {
-            text: '保留本地并切回离线',
+            label: '保留本地并切回离线',
+            role: 'primary',
             onPress: () => {
               void (async () => {
                 try {
                   await switchToLocalOnly();
                 } catch (err: any) {
-                  Alert.alert('切换失败', err?.message ?? '操作失败');
+                  showErrorFeedback({
+                    title: '切换失败',
+                    message: err?.message ?? '操作失败',
+                    actions: [{ label: '知道了', role: 'primary' }],
+                  });
                   await setCloudMode(true);
                 }
               })();
             },
           },
           {
-            text: '本地 → 云端',
+            label: '本地 → 云端',
+            role: 'primary',
             onPress: () => {
               void (async () => {
                 try {
@@ -70,30 +77,35 @@ export function useSettingsPageDisableCloudMode({
                   }
                   await switchToLocalOnly();
                 } catch (err: any) {
-                  Alert.alert('同步失败', err?.message);
+                  showErrorFeedback({
+                    title: '同步失败',
+                    message: err?.message,
+                    actions: [{ label: '知道了', role: 'primary' }],
+                  });
                   await setCloudMode(true);
                 }
               })();
             },
           },
           {
-            text: '取消',
-            style: 'cancel',
+            label: '取消',
+            role: 'secondary',
             onPress: () => {
               void setCloudMode(true);
             },
           },
         ],
-      );
+      });
       return;
     }
 
-    Alert.alert(
-      '切换到离线模式',
-      `云端 ${cloudCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
-      [
+    showConfirmDialog({
+      title: '切换到离线模式',
+      message: `云端 ${cloudCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
+      actions: [
         {
-          text: '云端 → 本地',
+          label: '云端 → 本地',
+          role: 'primary',
           onPress: () => {
             void (async () => {
               try {
@@ -103,14 +115,19 @@ export function useSettingsPageDisableCloudMode({
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
-                Alert.alert('同步失败', err?.message);
+                showErrorFeedback({
+                  title: '同步失败',
+                  message: err?.message,
+                  actions: [{ label: '知道了', role: 'primary' }],
+                });
                 await setCloudMode(true);
               }
             })();
           },
         },
         {
-          text: '本地 → 云端',
+          label: '本地 → 云端',
+          role: 'primary',
           onPress: () => {
             void (async () => {
               try {
@@ -138,20 +155,24 @@ export function useSettingsPageDisableCloudMode({
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
               } catch (err: any) {
-                Alert.alert('同步失败', err?.message);
+                showErrorFeedback({
+                  title: '同步失败',
+                  message: err?.message,
+                  actions: [{ label: '知道了', role: 'primary' }],
+                });
                 await setCloudMode(true);
               }
             })();
           },
         },
         {
-          text: '取消',
-          style: 'cancel',
+          label: '取消',
+          role: 'secondary',
           onPress: () => {
             void setCloudMode(true);
           },
         },
       ],
-    );
+    });
   }, [setCloudMode]);
 }

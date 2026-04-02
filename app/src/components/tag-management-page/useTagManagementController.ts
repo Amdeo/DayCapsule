@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated } from 'react-native';
+import { Animated } from 'react-native';
 import {
   useCommonTagsStore,
   DEFAULT_PRESET_TAGS,
 } from '@/src/store/commonTagsStore';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import {
   clamp,
   LONG_PRESS_MS,
@@ -64,7 +66,11 @@ export function useTagManagementController({
     }
 
     if (tags.length >= MAX_TAGS) {
-      Alert.alert('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
+      showErrorFeedback({
+        title: '已达上限',
+        message: `最多 ${MAX_TAGS} 个预制标签`,
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       return;
     }
 
@@ -74,23 +80,27 @@ export function useTagManagementController({
 
   const handleDelete = useCallback(
     (tag: string) => {
-      Alert.alert('删除标签', `确认删除「${tag}」吗？`, [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: () => removeCommonTag(tag) },
-      ]);
+      showConfirmDialog({
+        title: '删除标签',
+        message: `确认删除「${tag}」吗？`,
+        actions: [
+          { label: '取消', role: 'secondary' },
+          { label: '删除', role: 'danger', onPress: () => removeCommonTag(tag) },
+        ],
+      });
     },
     [removeCommonTag],
   );
 
   const handleReset = useCallback(() => {
-    Alert.alert(
-      '恢复初始预制标签',
-      `将恢复为 ${DEFAULT_PRESET_TAGS.length} 个初始预制标签，当前修改将丢失。`,
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '恢复', style: 'destructive', onPress: () => resetToDefaults() },
+    showConfirmDialog({
+      title: '恢复初始预制标签',
+      message: `将恢复为 ${DEFAULT_PRESET_TAGS.length} 个初始预制标签，当前修改将丢失。`,
+      actions: [
+        { label: '取消', role: 'secondary' },
+        { label: '恢复', role: 'danger', onPress: () => resetToDefaults() },
       ],
-    );
+    });
   }, [resetToDefaults]);
 
   const clearLongPressTimer = useCallback(() => {

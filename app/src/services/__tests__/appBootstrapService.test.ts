@@ -29,15 +29,15 @@ const mockRunCloudRecoveryFlow = jest.fn(
     };
   }
 );
-const mockAlert = jest.fn();
+const mockShowErrorFeedback = jest.fn();
 const mockLoggerLog = jest.fn();
 const mockLoggerWarn = jest.fn();
 const mockLoggerError = jest.fn();
 
 let mockIsAuthenticated = false;
 
-jest.mock('react-native', () => ({
-  Alert: { alert: (...args: unknown[]) => mockAlert(...args) },
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -204,10 +204,11 @@ describe('runAppBootstrap', () => {
       onInitializationFailed,
     });
 
-    expect(mockAlert).toHaveBeenCalledWith(
-      '数据迁移警告',
-      '部分数据可能未正确导入，但应用可以正常使用'
-    );
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith({
+      title: '数据迁移警告',
+      message: '部分数据可能未正确导入，但应用可以正常使用',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
     expect(onInitializationFailed).not.toHaveBeenCalled();
   });
@@ -221,10 +222,11 @@ describe('runAppBootstrap', () => {
     });
 
     expect(mockStorageSetString).toHaveBeenCalledWith('settings:cloudMode', 'false');
-    expect(mockAlert).toHaveBeenCalledWith(
-      '提示',
-      '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。'
-    );
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith({
+      title: '提示',
+      message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 

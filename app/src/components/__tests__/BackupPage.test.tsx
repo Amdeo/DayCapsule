@@ -1,10 +1,11 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 import { BackupPage } from '../BackupPage';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '../../services/syncService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import type { Entry } from '@/src/types/entry';
 
@@ -73,11 +74,14 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
 }));
 
+jest.mock('@/src/services/showConfirmDialog', () => ({
+  showConfirmDialog: jest.fn(),
+}));
+
 describe('BackupPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (Platform as { OS: string }).OS = 'android';
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     mockRestoreEntries.mockResolvedValue([]);
     mockUpdateEntry.mockResolvedValue(undefined);
   });
@@ -191,14 +195,17 @@ describe('BackupPage', () => {
     await findByText('保存到文件');
   });
 
-  it('shows a success alert after saving to files', async () => {
+  it('shows success feedback after saving to files', async () => {
     const { getByText, findByTestId } = render(<BackupPage visible onClose={jest.fn()} />);
 
     fireEvent.press(getByText('导出'));
     fireEvent.press(await findByTestId('backup-export-save'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('保存成功', '备份已保存为 latest.zip');
+      expect(showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '保存成功',
+        message: '备份已保存为 latest.zip',
+      }));
     });
   });
 
@@ -234,7 +241,10 @@ describe('BackupPage', () => {
     await saveSettled;
 
     await waitFor(() => {
-      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(showErrorFeedback).not.toHaveBeenCalledWith({
+        title: '保存成功',
+        message: '备份已保存为 latest.zip',
+      });
       expect(showErrorFeedback).not.toHaveBeenCalled();
       expect(queryByTestId('backup-export-sheet')).toBeTruthy();
     });
@@ -353,13 +363,13 @@ describe('BackupPage', () => {
     fireEvent.press(getByText('导入'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        '部分恢复',
-        expect.stringContaining('已恢复 1 条记录，但部分媒体文件未能还原'),
-      );
+      expect(showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '部分恢复',
+        message: expect.stringContaining('已恢复 1 条记录，但部分媒体文件未能还原'),
+      }));
     });
 
-    expect(showErrorFeedback).not.toHaveBeenCalled();
+    expect(showConfirmDialog).not.toHaveBeenCalled();
   });
 
   it('skips media extraction when the import does not restore any new entries', async () => {
@@ -382,7 +392,10 @@ describe('BackupPage', () => {
     fireEvent.press(getByText('导入'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('导入成功', '已恢复 0 / 1 条记录');
+      expect(showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '导入成功',
+        message: '已恢复 0 / 1 条记录',
+      }));
     });
 
     expect(SyncService.extractMediaFromZip).not.toHaveBeenCalled();

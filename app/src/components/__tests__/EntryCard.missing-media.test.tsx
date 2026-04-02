@@ -160,7 +160,6 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as FileSystem from 'expo-file-system';
 import { VoiceService } from '@/src/services/voiceService';
-import { Alert } from 'react-native';
 import { EntryCard } from '../EntryCard';
 import { Entry } from '@/src/types/entry';
 
@@ -202,7 +201,6 @@ describe('EntryCard — 媒体文件丢失', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
   });
 
   afterEach(() => {

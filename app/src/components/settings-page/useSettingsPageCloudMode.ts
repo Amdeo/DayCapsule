@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import { useEntryStore } from '@/src/store/entryStore';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { buildCloudModeToggleFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { logger } from '@/src/utils/logger';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useSettingsPageDisableCloudMode } from './useSettingsPageDisableCloudMode';
 
@@ -50,21 +50,21 @@ export function useSettingsPageCloudMode({
       const flow = bootstrap.buildInitialFlow(inspection);
 
       if (flow.type === 'needs-decision') {
-        Alert.alert(
-          '数据同步',
-          `云端 ${flow.cloudCount} 条记录\n本地 ${flow.localCount} 条记录\n\n请选择数据来源：`,
-          [
-            { text: '使用云端数据', onPress: () => { void finishEnableCloud('cloud'); } },
-            { text: '上传本地数据', onPress: () => { void finishEnableCloud('local'); } },
+        showConfirmDialog({
+          title: '数据同步',
+          message: `云端 ${flow.cloudCount} 条记录\n本地 ${flow.localCount} 条记录\n\n请选择数据来源：`,
+          actions: [
+            { label: '使用云端数据', role: 'primary', onPress: () => { void finishEnableCloud('cloud'); } },
+            { label: '上传本地数据', role: 'primary', onPress: () => { void finishEnableCloud('local'); } },
             {
-              text: '取消',
-              style: 'cancel',
+              label: '取消',
+              role: 'secondary',
               onPress: () => {
                 void setCloudMode(false);
               },
             },
           ],
-        );
+        });
       } else {
         const source = flow.type === 'restoring' ? 'cloud' : 'local';
         await finishEnableCloud(source);
@@ -82,7 +82,11 @@ export function useSettingsPageCloudMode({
     try {
       await runDisableCloudModeFlow();
     } catch (e: any) {
-      Alert.alert('操作失败', e?.message);
+      showErrorFeedback({
+        title: '操作失败',
+        message: e?.message,
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       await setCloudMode(true);
     } finally {
       setIsSwitchingMode(false);
@@ -104,22 +108,26 @@ export function useSettingsPageCloudMode({
   }, [disableCloudMode, enableCloudMode, isAuthenticated, onRequireLogin]);
 
   const handleLogout = useCallback(() => {
-    Alert.alert('退出登录', '确定要退出登录吗？如果当前是云端模式，将自动切换到离线模式。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '退出',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            if (cloudMode === true) {
-              await setCloudMode(false);
-              await useEntryStore.getState().loadEntries();
-            }
-            logout();
-          })();
+    showConfirmDialog({
+      title: '退出登录',
+      message: '确定要退出登录吗？如果当前是云端模式，将自动切换到离线模式。',
+      actions: [
+        { label: '取消', role: 'secondary' },
+        {
+          label: '退出',
+          role: 'danger',
+          onPress: () => {
+            void (async () => {
+              if (cloudMode === true) {
+                await setCloudMode(false);
+                await useEntryStore.getState().loadEntries();
+              }
+              logout();
+            })();
+          },
         },
-      },
-    ]);
+      ],
+    });
   }, [cloudMode, logout, setCloudMode]);
 
   return {

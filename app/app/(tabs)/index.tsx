@@ -1,4 +1,4 @@
-import { View, Alert, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
+import { View, Linking, BackHandler, Pressable, Dimensions } from 'react-native';
 import { memo, useState, useEffect, useCallback, useRef, type ComponentProps } from 'react';
 import Animated, {
   useSharedValue,
@@ -40,6 +40,8 @@ import {
   type VoiceEntryPreparationError,
 } from '@/src/services/voiceEntryPreparationService';
 import { createHomeUploadSyncOrchestration } from '@/src/services/homeUploadSyncOrchestration';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('screen');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -139,6 +141,49 @@ function getErrorCode(error: unknown): string | undefined {
 
 export function readErrorCodeForTest(error: unknown): string | undefined {
   return getErrorCode(error);
+}
+
+export async function handleVoiceRecordingStartErrorForTest(
+  error: unknown,
+  createdEntryId: string | null,
+  deleteEntry: (entryId: string) => Promise<void>
+): Promise<boolean> {
+  const errorCode = getErrorCode(error);
+
+  if (errorCode === 'ACTIVE_RECORDING_IN_PROGRESS') {
+    showErrorFeedback({
+      title: '录音进行中',
+      message: '请先完成当前录音，再开始新的录音。',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+    return true;
+  }
+
+  if (createdEntryId) {
+    try {
+      await deleteEntry(createdEntryId);
+    } catch (e) {
+      logger.error('[HomeScreen] Failed to clean up failed recording entry:', e);
+    }
+  }
+
+  if (errorCode === 'PERMISSION_DENIED') {
+    showConfirmDialog({
+      title: '需要麦克风权限',
+      message: '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
+      actions: [
+        { label: '取消', role: 'secondary' },
+        {
+          label: '去设置',
+          role: 'primary',
+          onPress: () => Linking.openURL('app-settings:'),
+        },
+      ],
+    });
+    return true;
+  }
+
+  return false;
 }
 
 function toDisplayedRecordingDuration(duration: number): number {
@@ -453,42 +498,18 @@ export default function HomeScreen() {
             }
           }
         } catch (error) {
-          const errorCode = getErrorCode(error);
+          const handled = await handleVoiceRecordingStartErrorForTest(error, createdEntryId, deleteEntry);
 
-          if (errorCode === 'ACTIVE_RECORDING_IN_PROGRESS') {
-            Alert.alert('录音进行中', '请先完成当前录音，再开始新的录音。');
+          if (handled) {
+            if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
+              currentRecordingIdRef.current = null;
+            }
             return;
           }
 
           logger.error('[HomeScreen] Failed to start recording:', error);
-          // startRecording 失败时只清理本次尝试创建的 entry，避免误删已有录音
-          if (createdEntryId) {
-            try {
-              if (isCloudModeEnabled()) {
-                await deleteEntry(createdEntryId);
-              } else {
-                await deleteEntry(createdEntryId);
-              }
-            } catch (e) {
-              logger.error('[HomeScreen] Failed to clean up failed recording entry:', e);
-            }
-          }
           if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
             currentRecordingIdRef.current = null;
-          }
-          // 权限被拒绝时引导用户去设置
-          if (errorCode === 'PERMISSION_DENIED') {
-            Alert.alert(
-              '需要麦克风权限',
-              '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
-              [
-                { text: '取消', style: 'cancel' },
-                {
-                  text: '去设置',
-                  onPress: () => Linking.openURL('app-settings:'),
-                },
-              ]
-            );
           }
         }
         break;
@@ -525,7 +546,11 @@ export default function HomeScreen() {
     } catch (error) {
       logger.error('[HomeScreen] Failed to stop recording:', error);
       if (isCloudModeEnabled()) {
-        Alert.alert('录音保存失败', '录音文件保存失败，请重试。');
+        showErrorFeedback({
+          title: '录音保存失败',
+          message: '录音文件保存失败，请重试。',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
       }
     } finally {
       currentRecordingIdRef.current = null;
@@ -563,7 +588,11 @@ export default function HomeScreen() {
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
-      Alert.alert('保存失败', '照片保存失败，请重试');
+      showErrorFeedback({
+        title: '保存失败',
+        message: '照片保存失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   }, [addLocalEntry, deleteEntry, isCloudModeEnabled, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps -- handlePhotoSelectForTest is a stable module-level function
 

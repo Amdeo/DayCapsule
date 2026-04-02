@@ -105,16 +105,29 @@ jest.mock('@/src/services/photoIntegrityService', () => ({
   fingerprintPhotoFile: jest.fn(),
 }));
 
+export const mockShowConfirmDialog = jest.fn();
+export const mockShowErrorFeedback = jest.fn();
+
+jest.mock('@/src/services/showConfirmDialog', () => ({
+  showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
 jest.mock('react-native-css-interop/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.requireActual('react/jsx-runtime'));
 
 import type { Entry } from '@/src/types/entry';
+import { Linking } from 'react-native';
 import {
   clearRecordingTimerForTest,
   assertCanStartVoiceRecordingForTest,
   readErrorCodeForTest,
   startCloudVoiceRecordingForTest,
   finalizeCloudVoiceRecordingForTest,
+  handleVoiceRecordingStartErrorForTest,
   type VoiceCloudStartDeps,
   type VoiceCloudFinalizeDeps,
 } from '../index';
@@ -329,5 +342,29 @@ describe('cloud voice recording helpers', () => {
     expect(readErrorCodeForTest({ code: 123 })).toBeUndefined();
     expect(readErrorCodeForTest(new Error('no code'))).toBeUndefined();
     expect(readErrorCodeForTest(null)).toBeUndefined();
+  });
+
+  it('shows error feedback when a recording is already in progress', async () => {
+    await handleVoiceRecordingStartErrorForTest({ code: 'ACTIVE_RECORDING_IN_PROGRESS' }, null, jest.fn());
+
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+      title: '录音进行中',
+      message: '请先完成当前录音，再开始新的录音。',
+    }));
+  });
+
+  it('shows confirm dialog and opens settings for microphone permission denial', async () => {
+    await handleVoiceRecordingStartErrorForTest({ code: 'PERMISSION_DENIED' }, null, jest.fn());
+
+    expect(mockShowConfirmDialog).toHaveBeenCalledWith(expect.objectContaining({
+      title: '需要麦克风权限',
+      message: '请在系统设置中允许 DayCapsule 访问麦克风，才能录制语音。',
+    }));
+
+    const actions = mockShowConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
+    const openSettings = actions.find((action) => action.label === '去设置');
+    openSettings?.onPress?.();
+
+    expect(Linking.openURL).toHaveBeenCalledWith('app-settings:');
   });
 });

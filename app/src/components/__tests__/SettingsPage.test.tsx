@@ -261,4 +261,90 @@ describe('SettingsPage assembly', () => {
 
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });
+
+  it('confirms reset settings, then resets and shows success feedback', async () => {
+    const { screen, mocks } = await renderSettingsPage();
+
+    fireEvent.press(screen.getByText('重置设置'));
+
+    expect(mocks.showConfirmDialog).toHaveBeenCalledWith(expect.objectContaining({
+      title: '重置设置',
+      message: '确定要重置所有设置为默认值吗？',
+    }));
+
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
+    const confirm = actions.find((action) => action.label === '重置');
+
+    await confirm?.onPress?.();
+
+    expect(mocks.settings.resetSettings).toHaveBeenCalledTimes(1);
+    expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+      title: '成功',
+      message: '设置已重置',
+    }));
+  });
+
+  it('shows backend save success feedback for save and switch results', async () => {
+    const { screen, mocks } = await renderSettingsPage();
+
+    fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-new.example.com');
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    fireEvent.press(screen.getByTestId('settings-backend-save-button'));
+
+    await waitFor(() => {
+      expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '切换成功',
+        message: '后端已切换，请重新登录',
+      }));
+    });
+
+    mocks.showErrorFeedback.mockClear();
+    mocks.switchBackendEnvironment.mockResolvedValueOnce({
+      switched: false,
+      currentServerUrl: 'https://server-keep.example.com',
+    });
+
+    fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-keep.example.com');
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    fireEvent.press(screen.getByTestId('settings-backend-save-button'));
+
+    await waitFor(() => {
+      expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '保存成功',
+        message: '后端地址已更新',
+      }));
+    });
+  });
+
+  it('shows backend save failure feedback when saving backend server throws', async () => {
+    const { screen, mocks } = await renderSettingsPage();
+
+    mocks.switchBackendEnvironment.mockRejectedValueOnce(new Error('backend offline'));
+
+    fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-fail.example.com');
+    fireEvent.press(screen.getByTestId('settings-backend-test-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(false);
+    });
+
+    fireEvent.press(screen.getByTestId('settings-backend-save-button'));
+
+    await waitFor(() => {
+      expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '切换失败',
+        message: 'backend offline',
+      }));
+    });
+  });
 });

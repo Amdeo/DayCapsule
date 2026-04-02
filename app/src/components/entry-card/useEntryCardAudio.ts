@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import type { Entry } from '@/src/types/entry';
 import { VoiceService } from '@/src/services/voiceService';
 import { logger } from '@/src/utils/logger';
@@ -63,11 +63,11 @@ export function useEntryCardAudio({
       const fileInfo = await FileSystem.getInfoAsync(uri);
       if (!fileInfo.exists) {
         setAudioMissing(true);
-        Alert.alert(
-          '文件不存在',
-          '音频文件已丢失或被删除，无法播放。',
-          [{ text: '知道了', style: 'default' }],
-        );
+        showErrorFeedback({
+          title: '文件不存在',
+          message: '音频文件已丢失或被删除，无法播放。',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
         return;
       }
       setAudioMissing(false);
@@ -93,7 +93,11 @@ export function useEntryCardAudio({
       );
     } catch (error) {
       logger.error('Failed to play audio:', error);
-      Alert.alert('播放失败', '无法播放此音频，请重试');
+      showErrorFeedback({
+        title: '播放失败',
+        message: '无法播放此音频，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       setIsPlayingAudio(false);
       setPlaybackPosition(0);
       setCurrentPlayingId(null);

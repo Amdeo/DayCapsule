@@ -13,6 +13,7 @@ jest.mock('@expo/vector-icons', () => {
 
 export const mockSuggestTags = jest.fn(() => ['复盘']);
 export const mockLoadCommonTags = jest.fn();
+export const mockShowErrorFeedback = jest.fn();
 
 jest.mock('@/src/services/tagSuggestionService', () => ({
   suggestTags: (...args: unknown[]) => mockSuggestTags(...args),
@@ -24,6 +25,10 @@ jest.mock('@/src/store/commonTagsStore', () => ({
     isLoaded: true,
     loadCommonTags: mockLoadCommonTags,
   }),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
 }));
 
 type EntryEditorProps = React.ComponentProps<typeof EntryEditor>;

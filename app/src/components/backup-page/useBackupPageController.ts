@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import {
   buildBackupCreateFailedFeedback,
   buildBackupExportFailedFeedback,
@@ -8,6 +8,7 @@ import {
 import { getStorageStats } from '@/src/utils/fileSystem';
 import { BackupService } from '@/src/services/backupService';
 import { SyncService } from '@/src/services/syncService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
 import type { Entry } from '@/src/types/entry';
@@ -119,7 +120,12 @@ export function useBackupPageController({
         return;
       }
       if (result.saved && result.fileName) {
-        Alert.alert('保存成功', `备份已保存为 ${result.fileName}`);
+        showErrorFeedback({
+          title: '保存成功',
+          message: `备份已保存为 ${result.fileName}`,
+          tone: 'accent',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
         closeExportSheet();
         return;
       }
@@ -164,17 +170,24 @@ export function useBackupPageController({
           }
         } catch (mediaError) {
           logger.warn('[BackupPage] 媒体文件提取失败:', mediaError);
-          Alert.alert(
-            '部分恢复',
-            `已恢复 ${insertedIds.length} 条记录，但部分媒体文件未能还原。您可以重新导入备份尝试恢复媒体。`,
-          );
+          showErrorFeedback({
+            title: '部分恢复',
+            message: `已恢复 ${insertedIds.length} 条记录，但部分媒体文件未能还原。您可以重新导入备份尝试恢复媒体。`,
+            tone: 'accent',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
           await refreshBackupInfo();
           return;
         }
       }
 
       await refreshBackupInfo();
-      Alert.alert('导入成功', `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`);
+      showErrorFeedback({
+        title: '导入成功',
+        message: `已恢复 ${insertedIds.length} / ${data.entries.length} 条记录`,
+        tone: 'accent',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } catch (error: any) {
       showErrorFeedback(buildBackupImportFailedFeedback(error));
     } finally {

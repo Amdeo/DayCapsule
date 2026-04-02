@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import { buildLoginFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { logger } from '@/src/utils/logger';
@@ -39,12 +38,20 @@ export function useLoginPageController({ login, onSuccess, register }: UseLoginP
 
   const handleSubmit = useCallback(async () => {
     if (!email.trim() || !password) {
-      Alert.alert('提示', '请填写邮箱和密码');
+      showErrorFeedback({
+        title: '提示',
+        message: '请填写邮箱和密码',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       return;
     }
 
     if (isRegister && password !== confirmPassword) {
-      Alert.alert('提示', '两次输入的密码不一致');
+      showErrorFeedback({
+        title: '提示',
+        message: '两次输入的密码不一致',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
       return;
     }
 

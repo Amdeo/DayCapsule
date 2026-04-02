@@ -6,7 +6,7 @@ interface MediaRepairStoreState {
   issues: MediaRepairIssue[];
   replaceIssues: (issues: MediaRepairIssue[]) => void;
   clearIssues: () => void;
-  dismissIssue: (entryId: string, localMediaId?: string) => void;
+  dismissIssue: (entryId: string, localMediaId?: string, mediaIndex?: number) => void;
 }
 
 export const useMediaRepairStore = create<MediaRepairStoreState>((set) => ({
@@ -20,7 +20,7 @@ export const useMediaRepairStore = create<MediaRepairStoreState>((set) => ({
     set({ issues: [] });
   },
 
-  dismissIssue: (entryId, localMediaId) => {
+  dismissIssue: (entryId, localMediaId, mediaIndex) => {
     set((state) => ({
       issues: state.issues.filter((issue) => {
         if (issue.entryId !== entryId) {
@@ -28,7 +28,11 @@ export const useMediaRepairStore = create<MediaRepairStoreState>((set) => ({
         }
 
         if (localMediaId === undefined) {
-          return issue.localMediaId !== undefined;
+          if (issue.localMediaId !== undefined) {
+            return true;
+          }
+
+          return issue.mediaIndex !== mediaIndex;
         }
 
         return issue.localMediaId !== localMediaId;

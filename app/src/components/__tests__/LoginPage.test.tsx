@@ -17,7 +17,6 @@ jest.mock('../DetailPageShell', () => ({
 }));
 
 import React from 'react';
-import { Alert } from 'react-native';
 import { act, render, fireEvent, waitFor, userEvent } from '@testing-library/react-native';
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
@@ -79,29 +78,39 @@ describe('LoginPage', () => {
   });
 
   it('alerts when email or password is missing and does not call login', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const screen = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
     );
 
     fireEvent.press(screen.getByText('登录'));
 
-    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '提示',
+      message: '请填写邮箱和密码',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(mockLogin).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByPlaceholderText('密码'), 'Password1');
     fireEvent.press(screen.getByText('登录'));
 
-    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '提示',
+      message: '请填写邮箱和密码',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(mockLogin).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByPlaceholderText('邮箱'), 'user@test.com');
     fireEvent.changeText(screen.getByPlaceholderText('密码'), '');
     fireEvent.press(screen.getByText('登录'));
 
-    expect(alertSpy).toHaveBeenCalledWith('提示', '请填写邮箱和密码');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '提示',
+      message: '请填写邮箱和密码',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(mockLogin).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('calls onSuccess and clears inputs after a successful login', async () => {
@@ -202,7 +211,6 @@ describe('LoginPage', () => {
   });
 
   it('alerts when register passwords do not match', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const { getByPlaceholderText, getByText } = render(
       <LoginPage visible={true} onClose={jest.fn()} onSuccess={jest.fn()} />
     );
@@ -213,9 +221,12 @@ describe('LoginPage', () => {
     fireEvent.changeText(getByPlaceholderText('确认密码'), 'Password2');
     fireEvent.press(getByText('注册'));
 
-    expect(alertSpy).toHaveBeenCalledWith('提示', '两次输入的密码不一致');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '提示',
+      message: '两次输入的密码不一致',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
     expect(mockRegister).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('prevents duplicate submits while loading in register mode', async () => {

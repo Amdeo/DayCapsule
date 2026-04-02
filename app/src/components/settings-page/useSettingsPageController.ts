@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 import { buildNotificationPermissionFeedback } from '@/src/services/errorFeedbackPresets';
 import type {
   CalendarDensity,
@@ -8,6 +7,7 @@ import type {
 } from '@/src/store/settingsStore';
 import type { Entry } from '@/src/types/entry';
 import { NotificationService } from '@/src/services/notificationService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useSettingsPageStorage } from './useSettingsPageStorage';
 import { useSettingsPageBackendServer } from './useSettingsPageBackendServer';
@@ -145,17 +145,26 @@ export function useSettingsPageController({
   );
 
   const handleResetSettings = useCallback(() => {
-    Alert.alert('重置设置', '确定要重置所有设置为默认值吗？', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '重置',
-        style: 'destructive',
-        onPress: async () => {
-          await resetSettings();
-          Alert.alert('成功', '设置已重置');
+    showConfirmDialog({
+      title: '重置设置',
+      message: '确定要重置所有设置为默认值吗？',
+      actions: [
+        { label: '取消', role: 'secondary' },
+        {
+          label: '重置',
+          role: 'danger',
+          onPress: async () => {
+            await resetSettings();
+            showErrorFeedback({
+              title: '成功',
+              message: '设置已重置',
+              tone: 'accent',
+              actions: [{ label: '知道了', role: 'primary' }],
+            });
+          },
         },
-      },
-    ]);
+      ],
+    });
   }, [resetSettings]);
 
   const openTagManagement = useCallback(() => {
@@ -173,12 +182,18 @@ export function useSettingsPageController({
         return;
       }
 
-      Alert.alert(
-        result.switched ? '切换成功' : '保存成功',
-        result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
-      );
+      showErrorFeedback({
+        title: result.switched ? '切换成功' : '保存成功',
+        message: result.switched ? '后端已切换，请重新登录' : '后端地址已更新',
+        tone: 'accent',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } catch (error) {
-      Alert.alert('切换失败', (error as Error).message ?? '切换后端失败');
+      showErrorFeedback({
+        title: '切换失败',
+        message: (error as Error).message ?? '切换后端失败',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   }, [saveBackendServer]);
 

@@ -60,6 +60,10 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
 jest.mock('../ImageViewer', () => {
   const { View, Text } = require('react-native');
@@ -169,11 +173,11 @@ jest.mock('react-native-gesture-handler', () => {
 // ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { Alert } from 'react-native';
 import { render, fireEvent, act, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
 import { logger } from '@/src/utils/logger';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { VoiceService } from '@/src/services/voiceService';
 import { EntryCard } from '../EntryCard';
 import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
@@ -641,7 +645,6 @@ describe('EntryCard swipe actions', () => {
   });
 
   it('shows a playback failure alert when voice playback throws', async () => {
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     (VoiceService.playAudio as jest.Mock).mockRejectedValueOnce(new Error('decoder failed'));
 
     render(<EntryCard entry={playableVoiceEntry} onDelete={jest.fn()} />);
@@ -650,7 +653,11 @@ describe('EntryCard swipe actions', () => {
       fireEvent.press(screen.getByTestId('entry-card'));
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith('播放失败', '无法播放此音频，请重试');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '播放失败',
+      message: '无法播放此音频，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 });
 

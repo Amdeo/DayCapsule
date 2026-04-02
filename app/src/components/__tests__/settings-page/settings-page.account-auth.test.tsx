@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderSettingsPage,
@@ -97,22 +96,22 @@ describe('SettingsPage account auth', () => {
   });
 
   it('does not call logout when the user cancels the logout confirmation', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(
-        '退出登录',
-        expect.any(String),
-        expect.any(Array),
+      expect(mocks.showConfirmDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '退出登录',
+          message: expect.any(String),
+        }),
       );
     });
 
-    const actions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const cancel = actions.find((action) => action.text === '取消');
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
+    const cancel = actions.find((action) => action.label === '取消');
     await act(async () => {
       await cancel?.onPress?.();
     });
@@ -121,18 +120,17 @@ describe('SettingsPage account auth', () => {
   });
 
   it('calls logout only when confirmed in offline mode', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalled();
+      expect(mocks.showConfirmDialog).toHaveBeenCalled();
     });
 
-    const actions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const confirm = actions.find((action) => action.text === '退出');
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
+    const confirm = actions.find((action) => action.label === '退出');
 
     await act(async () => {
       await confirm?.onPress?.();
@@ -146,18 +144,17 @@ describe('SettingsPage account auth', () => {
   });
 
   it('in cloud mode, logout confirmation disables cloud mode then reloads entries then logs out', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: true });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalled();
+      expect(mocks.showConfirmDialog).toHaveBeenCalled();
     });
 
-    const actions = alertSpy.mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const confirm = actions.find((action) => action.text === '退出');
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
+    const confirm = actions.find((action) => action.label === '退出');
 
     await act(async () => {
       await confirm?.onPress?.();

@@ -1,8 +1,7 @@
-import { Alert } from 'react-native';
-
 import type { MediaRepairIssue } from '@/src/services/cloudMediaSyncService';
 import { createE2ESyncLabService } from '@/src/services/e2eSyncLabService';
 import { createPhotoRepairService } from '@/src/services/photoRepairService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 
 const activePromptKeys = new Set<string>();
@@ -41,23 +40,25 @@ export function showPhotoRepairPrompt(): void {
   };
 
   const resolveIssue = () => {
-    useMediaRepairStore.getState().dismissIssue(issue.entryId, issue.localMediaId);
+    useMediaRepairStore.getState().dismissIssue(issue.entryId, issue.localMediaId, issue.mediaIndex);
     releasePrompt();
   };
 
-  Alert.alert(
-    '发现云端媒体异常',
-    '检测到云端图片内容异常，可使用本地原图重新上传修复。',
-    [
+  const shown = showConfirmDialog({
+    title: '发现云端媒体异常',
+    message: '检测到云端图片内容异常，可使用本地原图重新上传修复。',
+    dismissible: false,
+    actions: [
       {
-        text: '稍后处理',
-        style: 'cancel',
+        label: '稍后处理',
+        role: 'secondary',
         onPress: () => {
           releasePrompt();
         },
       },
       {
-        text: '立即修复',
+        label: '立即修复',
+        role: 'primary',
         onPress: async () => {
           try {
             if (isE2ESyncLabIssue(issue)) {
@@ -65,16 +66,19 @@ export function showPhotoRepairPrompt(): void {
             } else {
               await createPhotoRepairService().repair(issue);
             }
-          } finally {
             resolveIssue();
+          } catch (error) {
+            releasePrompt();
+            throw error;
           }
         },
       },
     ],
-    {
-      cancelable: false,
-    },
-  );
+  });
+
+  if (!shown) {
+    releasePrompt();
+  }
 }
 
 export function resetPhotoRepairPromptForTests(): void {

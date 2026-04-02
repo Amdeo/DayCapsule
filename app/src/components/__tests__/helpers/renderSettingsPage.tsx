@@ -143,6 +143,7 @@ const mockBackendState = {
   },
 };
 
+export const mockShowConfirmDialog = jest.fn();
 export const mockShowErrorFeedback = jest.fn();
 export const mockShowCloudSyncStatusAlert = jest.fn(async (_snapshot?: unknown) => undefined);
 export const mockShowSyncRepairPrompt = jest.fn();
@@ -228,6 +229,10 @@ jest.mock('@/src/services/apiClient', () => ({
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
+jest.mock('@/src/services/showConfirmDialog', () => ({
+  showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
 }));
 
 jest.mock('@/src/database/operations', () => ({
@@ -476,6 +481,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
       cloudSync: mockCloudSyncService,
       apiClient: mockApiClient,
       backend: mockBackendState,
+      showConfirmDialog: mockShowConfirmDialog,
       showErrorFeedback: mockShowErrorFeedback,
       showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
       showSyncRepairPrompt: mockShowSyncRepairPrompt,

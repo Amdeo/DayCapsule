@@ -1,6 +1,7 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import { useImageViewerActions } from '../../image-viewer/useImageViewerActions';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 jest.mock('expo-media-library', () => ({
   getPermissionsAsync: jest.fn(),
@@ -8,12 +9,15 @@ jest.mock('expo-media-library', () => ({
   saveToLibraryAsync: jest.fn(),
 }));
 
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: jest.fn(),
+}));
+
 describe('useImageViewerActions', () => {
   const mockOnHideActionSheet = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' as any });
     (Platform as { OS: string }).OS = 'android';
     (MediaLibrary.getPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
@@ -37,7 +41,11 @@ describe('useImageViewerActions', () => {
     expect(MediaLibrary.getPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(MediaLibrary.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(MediaLibrary.saveToLibraryAsync).toHaveBeenCalledWith('file:///image.jpg');
-    expect(Alert.alert).toHaveBeenCalledWith('已保存', '图片已保存到相册');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '已保存',
+      message: '图片已保存到相册',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 
   it('shows a permission alert and does not save when permission request is denied', async () => {
@@ -54,7 +62,11 @@ describe('useImageViewerActions', () => {
     expect(mockOnHideActionSheet).toHaveBeenCalledTimes(1);
     expect(MediaLibrary.requestPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(MediaLibrary.saveToLibraryAsync).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('权限不足', '请在设置中允许访问相册');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '权限不足',
+      message: '请在设置中允许访问相册',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 
   it('shows a failure alert when saving to the album throws', async () => {
@@ -67,7 +79,11 @@ describe('useImageViewerActions', () => {
 
     await handleSaveToAlbum();
 
-    expect(Alert.alert).toHaveBeenCalledWith('保存失败', '无法保存图片，请重试');
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '保存失败',
+      message: '无法保存图片，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
   });
 
   it('shares the image URL on iOS', async () => {
@@ -96,6 +112,6 @@ describe('useImageViewerActions', () => {
 
     expect(mockOnHideActionSheet).toHaveBeenCalledTimes(1);
     expect(Share.share).toHaveBeenCalledWith({ message: 'file:///image.jpg' });
-    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(showErrorFeedback).not.toHaveBeenCalled();
   });
 });

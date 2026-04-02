@@ -1,7 +1,8 @@
-import { Alert } from 'react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Entry } from '@/src/types/entry';
 import { suggestTags } from '@/src/services/tagSuggestionService';
+import { showConfirmDialog } from '@/src/services/showConfirmDialog';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 import { getEntryTypeMeta } from './entryEditorAppearance';
 
@@ -118,7 +119,11 @@ export function useEntryEditorController({
       await onSave(entry.id, content, tags);
       onClose();
     } catch {
-      Alert.alert('保存失败', '保存内容失败，请重试');
+      showErrorFeedback({
+        title: '保存失败',
+        message: '保存内容失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } finally {
       setIsSaving(false);
     }
@@ -134,14 +139,18 @@ export function useEntryEditorController({
       return;
     }
 
-    Alert.alert('放弃修改？', '未保存的修改将会丢失。', [
-      { text: '继续编辑', style: 'cancel', onPress: () => {} },
-      {
-        text: '放弃修改',
-        style: 'destructive',
-        onPress: onClose,
-      },
-    ]);
+    showConfirmDialog({
+      title: '放弃修改？',
+      message: '未保存的修改将会丢失。',
+      actions: [
+        { label: '继续编辑', role: 'secondary', onPress: () => {} },
+        {
+          label: '放弃修改',
+          role: 'danger',
+          onPress: onClose,
+        },
+      ],
+    });
   }, [isDirty, isSaving, onClose]);
 
   return {

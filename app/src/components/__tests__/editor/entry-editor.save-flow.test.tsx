@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
+  mockShowErrorFeedback,
   renderEntryEditor,
   resetRenderEntryEditorMocks,
 } from '../helpers/renderEntryEditor';
@@ -9,7 +9,6 @@ import {
 describe('EntryEditor save flow', () => {
   beforeEach(() => {
     resetRenderEntryEditorMocks();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -65,7 +64,10 @@ describe('EntryEditor save flow', () => {
     fireEvent.press(screen.getByTestId('entry-editor-save-button'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('保存失败', '保存内容失败，请重试');
+      expect(mockShowErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+        title: '保存失败',
+        message: '保存内容失败，请重试',
+      }));
     });
 
     expect(onClose).not.toHaveBeenCalled();

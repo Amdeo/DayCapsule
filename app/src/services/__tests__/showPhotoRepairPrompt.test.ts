@@ -1,11 +1,9 @@
-const mockAlert = jest.fn();
-const mockRepair = jest.fn();
+const mockShowConfirmDialog = jest.fn();
+const mockRepair = jest.fn(async () => undefined);
 const mockInjectRepairPending = jest.fn(async () => undefined);
 
-jest.mock('react-native', () => ({
-  Alert: {
-    alert: (...args: unknown[]) => mockAlert(...args),
-  },
+jest.mock('../showConfirmDialog', () => ({
+  showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
 }));
 
 jest.mock('../photoRepairService', () => ({
@@ -26,6 +24,16 @@ import {
   showPhotoRepairPrompt,
 } from '../showPhotoRepairPrompt';
 
+function getActions() {
+  const [request] = mockShowConfirmDialog.mock.calls[0] ?? [];
+  return request?.actions ?? [];
+}
+
+async function pressAction(label: string) {
+  const actions = getActions();
+  await actions.find((action: { label?: string }) => action.label === label)?.onPress?.();
+}
+
 describe('showPhotoRepairPrompt', () => {
   const originalE2ESyncLab = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
   const issue = {
@@ -45,9 +53,22 @@ describe('showPhotoRepairPrompt', () => {
     localMediaId: 'e2e-sync-local-media-1',
     localUri: 'file:///documents/e2e-sync-lab/e2e-sync-entry-1.png',
   };
+  const issueWithoutLocalMediaId = {
+    ...issue,
+    localMediaId: undefined,
+    mediaIndex: 1,
+    localUri: 'file:///documents/media/photos/original/photo-2.jpg',
+  };
+  const siblingIssueWithoutLocalMediaId = {
+    ...issue,
+    localMediaId: undefined,
+    mediaIndex: 2,
+    localUri: 'file:///documents/media/photos/original/photo-3.jpg',
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockShowConfirmDialog.mockReturnValue(true);
     useMediaRepairStore.setState({ issues: [] });
     resetPhotoRepairPromptForTests();
     delete process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
@@ -67,14 +88,17 @@ describe('showPhotoRepairPrompt', () => {
 
     showPhotoRepairPrompt();
 
-    expect(mockAlert).toHaveBeenCalledTimes(1);
-    const [title, message, buttons] = mockAlert.mock.calls[0] ?? [];
-    expect(title).toBe('发现云端媒体异常');
-    expect(message).toEqual(expect.any(String));
-    expect(buttons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ text: '稍后处理' }),
-      expect.objectContaining({ text: '立即修复' }),
-    ]));
+    expect(mockShowConfirmDialog).toHaveBeenCalledTimes(1);
+    const [request] = mockShowConfirmDialog.mock.calls[0] ?? [];
+    expect(request).toEqual(expect.objectContaining({
+      title: '发现云端媒体异常',
+      message: expect.any(String),
+      dismissible: false,
+      actions: expect.arrayContaining([
+        expect.objectContaining({ label: '稍后处理' }),
+        expect.objectContaining({ label: '立即修复' }),
+      ]),
+    }));
   });
 
   it('keeps the issue pending when the user chooses 稍后处理', async () => {
@@ -82,8 +106,7 @@ describe('showPhotoRepairPrompt', () => {
 
     showPhotoRepairPrompt();
 
-    const buttons = mockAlert.mock.calls[0]?.[2] ?? [];
-    await buttons.find((button: { text?: string }) => button.text === '稍后处理')?.onPress?.();
+    await pressAction('稍后处理');
 
     expect(mockRepair).not.toHaveBeenCalled();
     expect(useMediaRepairStore.getState().issues).toEqual([issue]);
@@ -94,12 +117,11 @@ describe('showPhotoRepairPrompt', () => {
 
     showPhotoRepairPrompt();
 
-    const buttons = mockAlert.mock.calls[0]?.[2] ?? [];
-    await buttons.find((button: { text?: string }) => button.text === '稍后处理')?.onPress?.();
+    await pressAction('稍后处理');
 
     showPhotoRepairPrompt();
 
-    expect(mockAlert).toHaveBeenCalledTimes(2);
+    expect(mockShowConfirmDialog).toHaveBeenCalledTimes(2);
   });
 
   it('repairs and dismisses the issue when the user chooses 立即修复', async () => {
@@ -107,11 +129,25 @@ describe('showPhotoRepairPrompt', () => {
 
     showPhotoRepairPrompt();
 
-    const buttons = mockAlert.mock.calls[0]?.[2] ?? [];
-    await buttons.find((button: { text?: string }) => button.text === '立即修复')?.onPress?.();
+    await pressAction('立即修复');
 
     expect(mockRepair).toHaveBeenCalledWith(issue);
     expect(useMediaRepairStore.getState().issues).toEqual([]);
+  });
+
+  it('keeps the issue pending and allows the same prompt again when repair fails', async () => {
+    const repairError = new Error('repair failed');
+    mockRepair.mockRejectedValueOnce(repairError);
+    useMediaRepairStore.getState().replaceIssues([issue]);
+
+    showPhotoRepairPrompt();
+
+    await expect(pressAction('立即修复')).rejects.toThrow('repair failed');
+    expect(useMediaRepairStore.getState().issues).toEqual([issue]);
+
+    showPhotoRepairPrompt();
+
+    expect(mockShowConfirmDialog).toHaveBeenCalledTimes(2);
   });
 
   it('uses the E2E sync lab repair-pending transition for lab fixtures instead of hitting the real repair service', async () => {
@@ -120,12 +156,27 @@ describe('showPhotoRepairPrompt', () => {
 
     showPhotoRepairPrompt();
 
-    const buttons = mockAlert.mock.calls[0]?.[2] ?? [];
-    await buttons.find((button: { text?: string }) => button.text === '立即修复')?.onPress?.();
+    await pressAction('立即修复');
 
     expect(mockInjectRepairPending).toHaveBeenCalledTimes(1);
     expect(mockRepair).not.toHaveBeenCalled();
     expect(useMediaRepairStore.getState().issues).toEqual([]);
+  });
+
+  it('only removes the resolved issue when localMediaId is missing', async () => {
+    useMediaRepairStore.getState().replaceIssues([
+      issueWithoutLocalMediaId,
+      siblingIssueWithoutLocalMediaId,
+    ]);
+
+    showPhotoRepairPrompt();
+
+    await pressAction('立即修复');
+
+    expect(mockRepair).toHaveBeenCalledWith(issueWithoutLocalMediaId);
+    expect(useMediaRepairStore.getState().issues).toEqual([
+      siblingIssueWithoutLocalMediaId,
+    ]);
   });
 
   it('guards against showing the same prompt twice before the first one is handled', () => {
@@ -134,6 +185,16 @@ describe('showPhotoRepairPrompt', () => {
     showPhotoRepairPrompt();
     showPhotoRepairPrompt();
 
-    expect(mockAlert).toHaveBeenCalledTimes(1);
+    expect(mockShowConfirmDialog).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows retrying the same prompt when showConfirmDialog returns false', () => {
+    mockShowConfirmDialog.mockReturnValueOnce(false).mockReturnValueOnce(true);
+    useMediaRepairStore.getState().replaceIssues([issue]);
+
+    showPhotoRepairPrompt();
+    showPhotoRepairPrompt();
+
+    expect(mockShowConfirmDialog).toHaveBeenCalledTimes(2);
   });
 });

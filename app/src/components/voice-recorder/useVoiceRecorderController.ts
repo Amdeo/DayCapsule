@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { VoiceService } from '@/src/services/voiceService';
 import { logger } from '@/src/utils/logger';
 
@@ -108,7 +108,11 @@ export function useVoiceRecorderController({
       }
 
       logger.error('Failed to start recording:', error);
-      Alert.alert('录音失败', '无法启动录音，请检查麦克风权限');
+      showErrorFeedback({
+        title: '录音失败',
+        message: '无法启动录音，请检查麦克风权限',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } finally {
       if (activeSessionIdRef.current !== activeStartSessionId) {
         return;
@@ -178,7 +182,11 @@ export function useVoiceRecorderController({
       }
 
       logger.error('Failed to stop recording:', error);
-      Alert.alert('保存失败', '保存录音失败，请重试');
+      showErrorFeedback({
+        title: '保存失败',
+        message: '保存录音失败，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } finally {
       if (activeSessionIdRef.current !== stopSessionId) {
         return;

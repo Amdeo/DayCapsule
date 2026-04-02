@@ -1,5 +1,6 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 interface UseImageViewerActionsOptions {
   imageUri: string;
@@ -18,15 +19,27 @@ export function useImageViewerActions({
       if (!granted) {
         const { granted: asked } = await MediaLibrary.requestPermissionsAsync();
         if (!asked) {
-          Alert.alert('权限不足', '请在设置中允许访问相册');
+          showErrorFeedback({
+            title: '权限不足',
+            message: '请在设置中允许访问相册',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
           return;
         }
       }
 
       await MediaLibrary.saveToLibraryAsync(imageUri);
-      Alert.alert('已保存', '图片已保存到相册');
+      showErrorFeedback({
+        title: '已保存',
+        message: '图片已保存到相册',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     } catch {
-      Alert.alert('保存失败', '无法保存图片，请重试');
+      showErrorFeedback({
+        title: '保存失败',
+        message: '无法保存图片，请重试',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
   };
 

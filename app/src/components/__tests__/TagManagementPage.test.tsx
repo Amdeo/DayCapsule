@@ -1,8 +1,11 @@
 import React from 'react';
-import { Alert, PanResponder, Text } from 'react-native';
+import { PanResponder, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { TagManagementPage } from '../TagManagementPage';
 import { MAX_TAGS } from '../tag-management-page/tagManagementConfig';
+
+const mockShowConfirmDialog = jest.fn();
+const mockShowErrorFeedback = jest.fn();
 
 const mockLoadCommonTags = jest.fn();
 const mockAddCommonTag = jest.fn();
@@ -22,9 +25,9 @@ function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {
   mockStoreState = { ...defaultStoreState, ...overrides };
 }
 
-function pressLatestAlertButton(text: string) {
-  const buttons = (Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] ?? [];
-  buttons.find((button: { text?: string }) => button.text === text)?.onPress?.();
+function pressLatestConfirmButton(text: string) {
+  const actions = mockShowConfirmDialog.mock.calls.at(-1)?.[0]?.actions ?? [];
+  actions.find((button: { label?: string }) => button.label === text)?.onPress?.();
 }
 
 function resetTagManagementMocks() {
@@ -43,6 +46,14 @@ jest.mock('@/src/store/commonTagsStore', () => ({
     resetToDefaults: mockResetToDefaults,
     reorderCommonTags: mockReorderCommonTags,
   }),
+}));
+
+jest.mock('@/src/services/showConfirmDialog', () => ({
+  showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -69,7 +80,6 @@ describe('TagManagementPage preset tags', () => {
     resetTagManagementMocks();
     jest.useFakeTimers();
     setMockCommonTagsState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
-    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     jest.spyOn(PanResponder, 'create').mockImplementation((config: any) => {
       responderConfigs.push(config);
       return {
@@ -178,7 +188,7 @@ describe('TagManagementPage preset tags', () => {
     expect(screen.getByPlaceholderText(`最多 ${MAX_TAGS} 个预制标签`)).toBeTruthy();
   });
 
-  it('shows an alert and does not add tags when preset tags already reach MAX_TAGS', async () => {
+  it('shows error feedback and does not add tags when preset tags already reach MAX_TAGS', async () => {
     setMockCommonTagsState({ tags: Array.from({ length: MAX_TAGS }, (_, index) => `标签${index}`) });
     const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
     const input = screen.getByTestId('tag-management-add-input');
@@ -192,30 +202,33 @@ describe('TagManagementPage preset tags', () => {
     });
 
     expect(mockAddCommonTag).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledWith('已达上限', `最多 ${MAX_TAGS} 个预制标签`);
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
+      title: '已达上限',
+      message: `最多 ${MAX_TAGS} 个预制标签`,
+    }));
   });
 
-  it('cancels and confirms delete through alert actions', () => {
+  it('cancels and confirms delete through confirm dialog actions', () => {
     const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
 
     fireEvent.press(screen.getByTestId('preset-tag-delete-0'));
-    pressLatestAlertButton('取消');
+    pressLatestConfirmButton('取消');
     expect(mockRemoveCommonTag).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('preset-tag-delete-0'));
-    pressLatestAlertButton('删除');
+    pressLatestConfirmButton('删除');
     expect(mockRemoveCommonTag).toHaveBeenCalledWith('工作');
   });
 
-  it('cancels and confirms reset to default preset tags through alert actions', () => {
+  it('cancels and confirms reset to default preset tags through confirm dialog actions', () => {
     const screen = render(<TagManagementPage visible onClose={jest.fn()} />);
 
     fireEvent.press(screen.getByTestId('tag-management-reset-button'));
-    pressLatestAlertButton('取消');
+    pressLatestConfirmButton('取消');
     expect(mockResetToDefaults).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('tag-management-reset-button'));
-    pressLatestAlertButton('恢复');
+    pressLatestConfirmButton('恢复');
     expect(mockResetToDefaults).toHaveBeenCalledTimes(1);
   });
 

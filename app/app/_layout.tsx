@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Network from 'expo-network';
 import { useEffect, useRef } from 'react';
-import { Alert, AppState, AppStateStatus, LogBox } from 'react-native';
+import { AppState, AppStateStatus, LogBox } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
@@ -19,6 +19,7 @@ import { logger } from '@/src/utils/logger';
 import { useSyncStore } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { FeedbackHost } from '@/src/components/FeedbackHost';
+import { ConfirmDialogHost } from '@/src/components/ConfirmDialogHost';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { runAppBootstrap } from '@/src/services/appBootstrapService';
@@ -146,6 +147,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
               </Stack>
               <FeedbackHost />
+              <ConfirmDialogHost />
             </>
           </ThemeProvider>
         </ErrorBoundary>

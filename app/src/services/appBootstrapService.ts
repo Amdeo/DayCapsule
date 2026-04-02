@@ -1,5 +1,5 @@
 import { logger } from '@/src/utils/logger';
-import { Alert } from 'react-native';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { initializeFileSystem } from '@/src/utils/fileSystem';
 import { VoiceService } from '@/src/services/voiceService';
 import { initDatabase } from '@/src/database/sqlite';
@@ -47,7 +47,11 @@ export async function runAppBootstrap(
       logger.log(`✅ 数据迁移完成，迁移了 ${migrationResult.migratedCount} 条记录`);
     } else {
       logger.warn('⚠️ 数据迁移警告:', migrationResult.error);
-      Alert.alert('数据迁移警告', '部分数据可能未正确导入，但应用可以正常使用');
+      showErrorFeedback({
+        title: '数据迁移警告',
+        message: '部分数据可能未正确导入，但应用可以正常使用',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
 
     await migrateTagsToNormalized();
@@ -83,7 +87,11 @@ export async function runAppBootstrap(
     if (cloudModeRaw === 'switching') {
       logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
       await Storage.setString('settings:cloudMode', 'false');
-      Alert.alert('提示', '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。');
+      showErrorFeedback({
+        title: '提示',
+        message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
     }
 
     let shouldSyncCloud = false;

@@ -1,19 +1,26 @@
 import React from 'react';
-import { Alert, Modal } from 'react-native';
+import { Modal } from 'react-native';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   renderEntryEditor,
   resetRenderEntryEditorMocks,
 } from '../helpers/renderEntryEditor';
 
+const mockShowConfirmDialog = jest.fn();
+const mockShowErrorFeedback = jest.fn();
+
+jest.mock('@/src/services/showConfirmDialog', () => ({
+  showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
 describe('EntryEditor leave guard', () => {
   beforeEach(() => {
     resetRenderEntryEditorMocks();
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
   it('closes immediately when leaving a pristine editor', () => {
@@ -23,7 +30,7 @@ describe('EntryEditor leave guard', () => {
     fireEvent.press(screen.getByTestId('entry-editor-back-button'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(mockShowConfirmDialog).not.toHaveBeenCalled();
   });
 
   it('asks for confirmation before leaving a dirty editor', () => {
@@ -33,15 +40,20 @@ describe('EntryEditor leave guard', () => {
     fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '新的正文');
     fireEvent.press(screen.getByTestId('entry-editor-back-button'));
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      '放弃修改？',
-      '未保存的修改将会丢失。',
-      expect.any(Array)
-    );
+    expect(mockShowConfirmDialog).toHaveBeenCalledWith({
+      title: '放弃修改？',
+      message: '未保存的修改将会丢失。',
+      actions: [
+        expect.objectContaining({ label: '继续编辑', role: 'secondary' }),
+        expect.objectContaining({ label: '放弃修改', role: 'danger' }),
+      ],
+    });
     expect(onClose).not.toHaveBeenCalled();
 
-    const actions = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const discardAction = actions.find((action) => action.text === '放弃修改');
+    const request = mockShowConfirmDialog.mock.calls[0][0] as {
+      actions: Array<{ label: string; onPress?: () => void | Promise<void> }>;
+    };
+    const discardAction = request.actions.find((action) => action.label === '放弃修改');
 
     discardAction?.onPress?.();
 
@@ -55,14 +67,19 @@ describe('EntryEditor leave guard', () => {
     fireEvent.changeText(screen.getByTestId('entry-editor-content-input'), '继续编辑的正文');
     fireEvent.press(screen.getByTestId('entry-editor-back-button'));
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      '放弃修改？',
-      '未保存的修改将会丢失。',
-      expect.arrayContaining([expect.objectContaining({ text: '继续编辑' })])
-    );
+    expect(mockShowConfirmDialog).toHaveBeenCalledWith({
+      title: '放弃修改？',
+      message: '未保存的修改将会丢失。',
+      actions: [
+        expect.objectContaining({ label: '继续编辑', role: 'secondary' }),
+        expect.objectContaining({ label: '放弃修改', role: 'danger' }),
+      ],
+    });
 
-    const actions = (Alert.alert as jest.Mock).mock.calls[0][2] as Array<{ text?: string; onPress?: () => void }>;
-    const continueAction = actions.find((action) => action.text === '继续编辑');
+    const request = mockShowConfirmDialog.mock.calls[0][0] as {
+      actions: Array<{ label: string; onPress?: () => void | Promise<void> }>;
+    };
+    const continueAction = request.actions.find((action) => action.label === '继续编辑');
 
     expect(continueAction).toBeDefined();
     expect(continueAction?.onPress).toEqual(expect.any(Function));
@@ -93,7 +110,7 @@ describe('EntryEditor leave guard', () => {
       UNSAFE_getByType(Modal).props.onRequestClose();
     });
 
-    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(mockShowConfirmDialog).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
 
     resolveSave?.();
