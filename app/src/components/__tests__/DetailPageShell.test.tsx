@@ -112,7 +112,7 @@ describe('DetailPageShell', () => {
     expect(pageStyle.bottom).toBeUndefined();
   });
 
-  it('keeps the shell mounted during exit and removes it after the delay', () => {
+  it('unmounts immediately when hidden so closed detail pages do not block underlying touches', () => {
     const screen = render(
       <DetailPageShell visible title="帮助" onClose={jest.fn()}>
         <Text>body</Text>
@@ -126,16 +126,10 @@ describe('DetailPageShell', () => {
     );
 
     expect(screen.queryByTestId('detail-page-shell')).toBeNull();
-    expect(screen.queryByTestId('detail-page-backdrop')).toBeTruthy();
-
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
-
     expect(screen.queryByTestId('detail-page-backdrop')).toBeNull();
   });
 
-  it('disables backdrop presses while the shell is in its exit phase', () => {
+  it('removes the backdrop immediately when hidden', () => {
     const onClose = jest.fn();
     const screen = render(
       <DetailPageShell visible title="帮助" onClose={onClose}>
@@ -149,8 +143,7 @@ describe('DetailPageShell', () => {
       </DetailPageShell>
     );
 
-    fireEvent.press(screen.getByTestId('detail-page-backdrop'));
-
+    expect(screen.queryByTestId('detail-page-backdrop')).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });
 });

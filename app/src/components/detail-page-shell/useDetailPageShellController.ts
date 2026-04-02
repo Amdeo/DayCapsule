@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 
-const DETAIL_PAGE_SHELL_EXIT_DURATION_MS = 300;
-
 export function useDetailPageShellController(visible: boolean) {
-  const [shouldRender, setShouldRender] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [shouldRender, setShouldRender] = useState(visible);
+  const [isAnimating, setIsAnimating] = useState(visible);
 
   useEffect(() => {
     if (visible) {
@@ -13,10 +11,8 @@ export function useDetailPageShellController(visible: boolean) {
       return;
     }
 
+    setShouldRender(false);
     setIsAnimating(false);
-    const timer = setTimeout(() => setShouldRender(false), DETAIL_PAGE_SHELL_EXIT_DURATION_MS);
-
-    return () => clearTimeout(timer);
   }, [visible]);
 
   return {
