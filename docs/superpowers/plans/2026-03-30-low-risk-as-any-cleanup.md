@@ -106,7 +106,7 @@ Then remove the `as any` casts from the corresponding `Ionicons` JSX call sites.
 Run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: either FAIL with a specific icon-name type mismatch that reveals one remaining broad local type, or PASS immediately if the local type tightening was complete on the first pass.
@@ -122,13 +122,13 @@ If typecheck already passed, keep the initial changes only and do not widen scop
 Run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Then run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx
 ```
 
 Expected: PASS.
@@ -176,7 +176,7 @@ with the real private helper named `getErrorCode`.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
+pnpm test --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
 ```
 
 Expected: FAIL because the helper does not exist yet.
@@ -221,13 +221,13 @@ Do not change alert copy, cleanup logic, or logging flow.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
+pnpm test --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -256,7 +256,7 @@ git commit -m "refactor: narrow home screen error codes"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts"
 ```
 
 Expected: PASS.
@@ -266,7 +266,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

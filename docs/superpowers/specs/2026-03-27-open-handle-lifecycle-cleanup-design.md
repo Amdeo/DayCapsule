@@ -197,7 +197,7 @@ This usually means that there are asynchronous operations that weren't stopped i
 实现阶段验证顺序固定为：
 
 1. 先跑新增的 targeted `_layout` / `HomeScreen` 回归
-2. 再跑 `npm test -- --runInBand --detectOpenHandles`
+2. 再跑 `pnpm test --runInBand --detectOpenHandles`
 3. 最后跑前端全量 Jest
 
 判定标准：

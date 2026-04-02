@@ -14,10 +14,10 @@
   - `查看记录、照片、语音概览`
   - `管理本地备份与云端同步`
   - `调整账号、显示和存储偏好`
-- 2026-03-27：执行 `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`，结果 PASS（2 suites, 18 tests）。
-- 2026-03-27：执行 `cd app && npm run test:frontend:settings`，结果 PASS（6 suites, 23 tests）。
-- 2026-03-27：执行 `cd app && npm run typecheck`，结果 PASS。
-- 2026-03-27：执行 `cd app && npm run lint`，结果 FAIL；失败集中于分支内既有 `style-guard/no-new-stylesheet-create` 与 `style-guard/no-static-inline-styles` 规则报错，属于本任务范围外的基线问题。
+- 2026-03-27：执行 `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`，结果 PASS（2 suites, 18 tests）。
+- 2026-03-27：执行 `cd app && pnpm run test:frontend:settings`，结果 PASS（6 suites, 23 tests）。
+- 2026-03-27：执行 `cd app && pnpm run typecheck`，结果 PASS。
+- 2026-03-27：执行 `cd app && pnpm run lint`，结果 FAIL；失败集中于分支内既有 `style-guard/no-new-stylesheet-create` 与 `style-guard/no-static-inline-styles` 规则报错，属于本任务范围外的基线问题。
 
 ## 评审记录
 

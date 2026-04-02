@@ -19,7 +19,7 @@ This keeps prompt-style feedback and confirmation-style feedback visually separa
   - replace all native alerts, including confirmations
   - prompt/info feedback and confirm dialogs do not need to share one component
 - Worktree: `.worktrees/remove-native-alerts`
-- Baseline note: `npm install` succeeded in the worktree `app/`, but `npm test -- --runInBand` initially reported `sh: jest: command not found` even though `node_modules/.bin/jest` exists afterward. This needs to be treated as a local baseline anomaly during verification, not as evidence against the design.
+- Baseline note: `pnpm install` succeeded in the worktree `app/`, but `pnpm test --runInBand` initially reported `sh: jest: command not found` even though `node_modules/.bin/jest` exists afterward. This needs to be treated as a local baseline anomaly during verification, not as evidence against the design.
 
 ## Goals
 
@@ -287,7 +287,7 @@ Preferred verification order:
 
 - targeted Jest paths for new confirm dialog tests
 - targeted feature suites affected by the migration
-- `npm run typecheck`
+- `pnpm run typecheck`
 - broader project verification if the worktree baseline permits it
 
 ## Risks And Mitigations

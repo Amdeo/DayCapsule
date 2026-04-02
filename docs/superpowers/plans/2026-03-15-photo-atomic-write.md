@@ -257,6 +257,6 @@ git commit -m "fix: atomic photo write — save file before DB entry to prevent 
 在 Android 模拟器中：
 
 1. 拍一张照片 → 卡片出现，图片显示正常
-2. `npm run android` 重新构建安装
+2. `pnpm run android` 重新构建安装
 3. 重启后，照片卡片仍显示图片（修复前此处会消失）
 4. 模拟保存失败（临时在 `savePhotoToStorage` 里 throw）→ 弹出 Alert，Timeline 不出现空卡片

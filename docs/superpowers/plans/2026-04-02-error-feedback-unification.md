@@ -90,7 +90,7 @@ Expected: output includes `2026-04-02-error-feedback-audit.md`
 
 - [x] **Step 4: Sanity-check that the audit reflects the current codebase**
 
-Run: `npm test -- --runInBand src/components/__tests__/LoginPage.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `pnpm test --runInBand src/components/__tests__/LoginPage.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: PASS for all listed suites
 
 - [ ] **Step 5: Commit the audit baseline**
@@ -150,7 +150,7 @@ it('rethrows when saving from the timeline rejects so the editor flow can keep h
 
 - [x] **Step 2: Run the targeted timeline controller test and verify RED**
 
-Run: `npm test -- --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx`
+Run: `pnpm test --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx`
 Expected: FAIL because `handleSaveEdit(...)` resolves instead of rethrowing the rejected save, so the editor flow cannot keep handling the failure
 
 - [x] **Step 3: Write the minimal production fix in the timeline controller**
@@ -173,17 +173,17 @@ const handleSaveEdit = useCallback(
 
 - [x] **Step 4: Run the targeted timeline controller test and verify GREEN**
 
-Run: `npm test -- --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx`
+Run: `pnpm test --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx`
 Expected: PASS
 
 - [x] **Step 5: Run the nearby integration-style editor test for regression coverage**
 
-Run: `npm test -- --runInBand src/components/__tests__/editor/entry-editor.save-flow.test.tsx`
+Run: `pnpm test --runInBand src/components/__tests__/editor/entry-editor.save-flow.test.tsx`
 Expected: PASS
 
 - [x] **Step 6: Run the real timeline dialog-chain regression test**
 
-Run: `npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+Run: `pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
 Expected: PASS with a test proving timeline save rejection keeps the editor usable and surfaces branded save feedback through the real `EntryEditor` chain
 
 - [x] **Step 7: Update the audit document with the fixed status**
@@ -235,7 +235,7 @@ If `entryStore` already satisfies this at compile/test time, skip the rest of th
 
 - [x] **Step 2: Run the smallest suite that exercises the type-affected store path**
 
-Run: `npm test -- --runInBand src/store/__tests__/entryStore.test.ts`
+Run: `pnpm test --runInBand src/store/__tests__/entryStore.test.ts`
 Expected: PASS if no behavioral regression was introduced
 
 - [x] **Step 3: Commit only if code changed in this task**
@@ -269,12 +269,12 @@ Append this section to `docs/superpowers/audits/2026-04-02-error-feedback-audit.
 
 - [x] **Step 2: Run the focused verification command for this branch slice**
 
-Run: `npm test -- --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/LoginPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `pnpm test --runInBand src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/LoginPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: PASS
 
 - [ ] **Step 3: Run the full suite before handoff if this slice is being merged immediately**
 
-Run: `npm test -- --runInBand`
+Run: `pnpm test --runInBand`
 Expected: PASS for the full suite
 
 - [ ] **Step 4: Commit the audit status update if the document changed in this task**

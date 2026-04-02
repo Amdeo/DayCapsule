@@ -85,12 +85,12 @@ Expected: PASS
 
 - [ ] **Step 1: 运行设置页测试组**
 
-Run: `cd app && npm run test:frontend:settings`
+Run: `cd app && pnpm run test:frontend:settings`
 Expected: PASS
 
 - [ ] **Step 2: 如有回归，做最小修复并重跑**
 
-Run: `cd app && npm run test:frontend:settings`
+Run: `cd app && pnpm run test:frontend:settings`
 Expected: PASS
 
 - [ ] **Step 3: 记录变更涉及的实际验证结果**

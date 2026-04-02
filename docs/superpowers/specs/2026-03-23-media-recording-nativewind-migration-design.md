@@ -244,7 +244,7 @@
   - `src/components/PhotoGrid.tsx`
   - `src/components/VoiceRecorder.tsx`
   - `src/components/ImageViewer.tsx`
-- 跑相关组件测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑相关组件测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 7. 风险与控制
 
@@ -291,9 +291,9 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/WaveformAnimation.test.tsx src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/VoiceRecorder.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx`：PASS，4 个 suite / 13 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，59 个 suite / 364 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，59 个 suite / 364 个测试全部通过
 
 ## 偏差说明
 

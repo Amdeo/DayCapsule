@@ -53,7 +53,7 @@ describe('cloudRecoveryFlowService', () => {
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
 ```
 
 Expected: FAIL because the new service module does not exist yet.
@@ -112,7 +112,7 @@ Constraints:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
 ```
 
 Expected: PASS.
@@ -169,7 +169,7 @@ it('returns sync and upload recovery results to the caller', async () => {
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
 ```
 
 Expected: FAIL until the service returns the structured result shape required by callers.
@@ -191,7 +191,7 @@ and still always refresh the indicator after upload recovery.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts
 ```
 
 Expected: PASS.
@@ -244,7 +244,7 @@ For lifecycle, similarly mock `runRecoveryFlow` and assert:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: FAIL until the production callers switch to the shared flow service.
@@ -308,7 +308,7 @@ Constraints:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -335,7 +335,7 @@ git commit -m "refactor: share cloud recovery flow order"
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudRecoveryFlowService.test.ts src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -345,7 +345,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

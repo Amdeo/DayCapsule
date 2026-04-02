@@ -55,40 +55,40 @@ Update `README.md` so it reflects:
 | 工具 | 版本要求 |
 | --- | --- |
 | Node.js | 20+ |
-| npm | 10+ |
+| pnpm | 10+ |
 | iOS 开发 | Xcode 15+（仅 macOS） |
 | Android 开发 | Android Studio + JDK 17 |
 
 ### 安装依赖
 
 ```bash
-npm install
-cd app && npm install
+pnpm install
+cd app && pnpm install
 ```
 
 ### 启动应用开发环境
 
 ```bash
 cd app
-npm start
+pnpm start
 ```
 
 ### 常用命令
 
 ```bash
 cd app
-npm run ios
-npm run android
-npm run lint
-npm run typecheck
-npm test
-npm run verify
-npm run test:frontend:home
-npm run test:frontend:settings
-npm run test:frontend:auth
-npm run test:frontend:tags
-npm run test:frontend:editor-image
-npm run test:maestro:app-core
+pnpm run ios
+pnpm run android
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run verify
+pnpm run test:frontend:home
+pnpm run test:frontend:settings
+pnpm run test:frontend:auth
+pnpm run test:frontend:tags
+pnpm run test:frontend:editor-image
+pnpm run test:maestro:app-core
 ```
 ```
 
@@ -124,7 +124,7 @@ Remove references to docs that are no longer present or are no longer top-level 
 Run:
 
 ```bash
-cd /Users/cooper/Documents/code/MemoryCapsule/.worktrees/docs-sync-current-rules && rg -n "docs/|npm run|eas |expo run" README.md
+cd /Users/cooper/Documents/code/MemoryCapsule/.worktrees/docs-sync-current-rules && rg -n "docs/|pnpm run|eas |expo run" README.md
 ```
 
 Expected: Every referenced file exists in the repository and every command matches `app/package.json` or known Expo commands.
@@ -162,19 +162,19 @@ Make the command section match `app/package.json`, for example:
 
 ```bash
 cd app
-npm start
-npm run ios
-npm run android
-npm run lint
-npm run typecheck
-npm test
-npm run verify
-npm run test:frontend:home
-npm run test:frontend:settings
-npm run test:frontend:auth
-npm run test:frontend:tags
-npm run test:frontend:editor-image
-npm run test:maestro:app-core
+pnpm start
+pnpm run ios
+pnpm run android
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run verify
+pnpm run test:frontend:home
+pnpm run test:frontend:settings
+pnpm run test:frontend:auth
+pnpm run test:frontend:tags
+pnpm run test:frontend:editor-image
+pnpm run test:maestro:app-core
 ```
 ```
 
@@ -194,7 +194,7 @@ Rewrite the body into concise sections such as:
 ## 测试入口
 
 - Jest：见 `app/package.json` 中各 `test:*` 脚本
-- Maestro：`app/.maestro/` 与 `npm run test:maestro:app-core`
+- Maestro：`app/.maestro/` 与 `pnpm run test:maestro:app-core`
 - 手测：`docs/MANUAL_TEST_PLAN.md` 与 `docs/manual-test/README.md`
 
 ## 部署入口

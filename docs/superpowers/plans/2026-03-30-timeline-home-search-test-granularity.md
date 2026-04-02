@@ -70,7 +70,7 @@ it('keeps existing entries visible while the home screen refreshes', async () =>
 
 - [ ] **Step 2: Run the targeted timeline-state suite to verify current behavior**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" --runInBand`
+Run: `cd app && pnpm test --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" --runInBand`
 
 Expected: PASS if current helper already models the intended behavior, or FAIL pointing to missing refresh helper semantics.
 
@@ -88,7 +88,7 @@ loadEntries: jest.fn(async () => {
 
 - [ ] **Step 4: Re-run the timeline-state suite**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" --runInBand`
+Run: `cd app && pnpm test --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" --runInBand`
 
 Expected: PASS
 
@@ -132,7 +132,7 @@ it('clears only the search overlay while preserving the base timeline after canc
 
 - [ ] **Step 2: Run the targeted search-filter suite**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" --runInBand`
+Run: `cd app && pnpm test --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" --runInBand`
 
 Expected: PASS or a focused FAIL describing search cancel/restore mismatch.
 
@@ -150,7 +150,7 @@ setSearchQuery: jest.fn((query: string) => {
 
 - [ ] **Step 4: Re-run the search-filter suite**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" --runInBand`
+Run: `cd app && pnpm test --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" --runInBand`
 
 Expected: PASS
 
@@ -204,7 +204,7 @@ it('falls back safely when the cloud ui state becomes unknown', () => {
 
 - [ ] **Step 3: Run the three targeted timeline suites**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx --runInBand`
+Run: `cd app && pnpm test --runTestsByPath src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx --runInBand`
 
 Expected: PASS, 或 FAIL 指向 detail close / status mapping 的真实缺口。
 
@@ -225,7 +225,7 @@ if (uiState === 'hidden') {
 
 - [ ] **Step 5: Re-run the timeline suites**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx --runInBand`
+Run: `cd app && pnpm test --runTestsByPath src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.controller.test.tsx --runInBand`
 
 Expected: PASS
 

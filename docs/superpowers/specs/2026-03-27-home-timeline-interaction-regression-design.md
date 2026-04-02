@@ -207,7 +207,7 @@
 
 - 新增首页时间线交互回归文件通过
 - 相关 `timeline` 旧测试文件保持通过
-- `cd app && npm test -- --runInBand` 通过
+- `cd app && pnpm test --runInBand` 通过
 
 ## 风险与取舍
 

@@ -75,7 +75,7 @@ it('writes validation summary and issues even when no repair prompt is shown', a
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
 ```
 
 Expected: PASS immediately, because this is a test-only follow-up that locks existing behavior already present on `main`.
@@ -85,7 +85,7 @@ Expected: PASS immediately, because this is a test-only follow-up that locks exi
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.
@@ -117,7 +117,7 @@ git commit -m "test(sync): verify bootstrap summary writeback without prompt"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
 ```
 
 Expected: PASS.

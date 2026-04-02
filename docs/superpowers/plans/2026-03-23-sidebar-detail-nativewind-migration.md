@@ -148,7 +148,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/DetailPageShell.tsx`
+Run: `cd app && pnpm run lint -- src/components/DetailPageShell.tsx`
 
 Expected: PASS
 
@@ -240,7 +240,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/TagsPage.tsx`
+Run: `cd app && pnpm run lint -- src/components/TagsPage.tsx`
 
 Expected: PASS
 
@@ -323,7 +323,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/AboutPage.tsx`
+Run: `cd app && pnpm run lint -- src/components/AboutPage.tsx`
 
 Expected: PASS
 
@@ -412,7 +412,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/HelpPage.tsx`
+Run: `cd app && pnpm run lint -- src/components/HelpPage.tsx`
 
 Expected: PASS
 
@@ -447,13 +447,13 @@ Expected: PASS
 
 - [x] **Step 2: 跑静态检查与全量测试**
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [x] **Step 3: 回填文档执行结果**
@@ -486,9 +486,9 @@ git commit -m "docs: backfill sidebar detail nativewind migration"
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/DetailPageShell.test.tsx src/components/__tests__/TagsPage.test.tsx src/components/__tests__/AboutPage.test.tsx src/components/__tests__/HelpPage.test.tsx`：PASS
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS
 
 ## 本地结构化 Review 结论
 

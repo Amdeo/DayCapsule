@@ -81,7 +81,7 @@ These tests should fail once you intentionally tighten them against the exact cu
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: FAIL only if the new assertions expose a mismatch during extraction work. If they pass immediately, keep them and proceed — existing behavior is now locked before refactor.
@@ -139,13 +139,13 @@ Implementation constraints:
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -168,7 +168,7 @@ git commit -m "refactor: share entry insert assembly"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -178,7 +178,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS. If unrelated pre-existing failures appear, record them exactly and stop widening scope.

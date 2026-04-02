@@ -128,8 +128,8 @@ Most relevant verification targets:
 
 - `app/src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx`
 - `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx`
-- `npm run test:frontend:settings`
-- `npm run verify`
+- `pnpm run test:frontend:settings`
+- `pnpm run verify`
 
 If a small extra regression test is needed, it should focus on externally visible disable-mode behavior, not on internal helper calls.
 

@@ -31,7 +31,7 @@
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/backendEnvironmentService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/backendEnvironmentService.test.ts`
 
 Expected: FAIL，原因是 `backendEnvironmentService.ts` 尚不存在
 
@@ -62,7 +62,7 @@ Expected: FAIL，原因是 `backendEnvironmentService.ts` 尚不存在
 
 - [ ] **Step 5: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/backendEnvironmentService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/backendEnvironmentService.test.ts`
 
 Expected: PASS
 
@@ -90,7 +90,7 @@ git commit -m "feat(settings): add backend environment service"
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/apiClient.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/apiClient.test.ts`
 
 Expected: FAIL，原因是当前 `getApiClient()` 只初始化一次固定 base URL
 
@@ -104,7 +104,7 @@ Expected: FAIL，原因是当前 `getApiClient()` 只初始化一次固定 base 
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/apiClient.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/apiClient.test.ts`
 
 Expected: PASS
 
@@ -138,7 +138,7 @@ git commit -m "feat(settings): make api client switchable per backend environmen
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts`
 
 Expected: FAIL，原因是 store 仍使用固定 key
 
@@ -152,7 +152,7 @@ Expected: FAIL，原因是 store 仍使用固定 key
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts`
 
 Expected: PASS
 
@@ -184,7 +184,7 @@ git commit -m "feat(settings): scope auth settings and sync state by backend env
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/utils/__tests__/fileSystem.test.ts src/database/__tests__/migration.test.ts`
+Run: `cd app && pnpm test --runInBand src/utils/__tests__/fileSystem.test.ts src/database/__tests__/migration.test.ts`
 
 Expected: FAIL，原因是数据库名和媒体路径仍是固定值
 
@@ -209,7 +209,7 @@ Expected: FAIL，原因是数据库名和媒体路径仍是固定值
 
 - [ ] **Step 5: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/utils/__tests__/fileSystem.test.ts src/database/__tests__/migration.test.ts`
+Run: `cd app && pnpm test --runInBand src/utils/__tests__/fileSystem.test.ts src/database/__tests__/migration.test.ts`
 
 Expected: PASS
 
@@ -250,7 +250,7 @@ git commit -m "feat(settings): isolate sqlite and media paths by backend environ
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/backendConnectionService.test.ts src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/backendConnectionService.test.ts src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因是连接测试服务和设置页新交互尚不存在
 
@@ -292,7 +292,7 @@ Expected: FAIL，原因是连接测试服务和设置页新交互尚不存在
 
 - [ ] **Step 6: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/backendConnectionService.test.ts src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/backendConnectionService.test.ts src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: PASS
 
@@ -323,7 +323,7 @@ git commit -m "feat(settings): add backend connection test and server selector"
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/localEnvironmentDataManager.test.ts src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/localEnvironmentDataManager.test.ts src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因是切换管理器不存在
 
@@ -359,7 +359,7 @@ Expected: FAIL，原因是切换管理器不存在
 
 - [ ] **Step 6: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/localEnvironmentDataManager.test.ts src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/localEnvironmentDataManager.test.ts src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: PASS
 
@@ -381,13 +381,13 @@ git commit -m "feat(settings): switch backend environment atomically"
 
 - [ ] **Step 1: 运行设置链路相关测试**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/apiClient.test.ts src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts src/utils/__tests__/fileSystem.test.ts`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/apiClient.test.ts src/store/__tests__/settingsStore.test.ts src/store/__tests__/authStore.test.ts src/store/__tests__/syncStore.test.ts src/utils/__tests__/fileSystem.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 2: 运行后端环境新服务测试**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/backendEnvironmentService.test.ts src/services/__tests__/backendConnectionService.test.ts src/services/__tests__/localEnvironmentDataManager.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/backendEnvironmentService.test.ts src/services/__tests__/backendConnectionService.test.ts src/services/__tests__/localEnvironmentDataManager.test.ts`
 
 Expected: PASS
 

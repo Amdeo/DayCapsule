@@ -28,7 +28,7 @@
 Run:
 
 ```bash
-npm run test:frontend:settings -- --listTests
+pnpm run test:frontend:settings -- --listTests
 ```
 
 Expected: the output includes the existing Settings files but does **not** include:
@@ -57,7 +57,7 @@ Do not remove `settings-page.account-auth.test.tsx` from `test:frontend:auth`; o
 Run:
 
 ```bash
-npm run test:frontend:settings -- --listTests
+pnpm run test:frontend:settings -- --listTests
 ```
 
 Expected: the output now includes both:
@@ -72,7 +72,7 @@ src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
 Run:
 
 ```bash
-npm run test:frontend:settings
+pnpm run test:frontend:settings
 ```
 
 Expected: the command passes and runs the full Settings helper-sensitive surface from the named script.
@@ -118,7 +118,7 @@ Only add this test if it creates a real missing proof. If current coverage alrea
 Run the narrow helper test you added, or the helper stability file if you extended it:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: FAIL only if you intentionally added a new missing-proof test before implementation. If no new helper-facing proof was needed, skip this step.
@@ -146,7 +146,7 @@ Do not refactor helper state or change production behavior.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -156,7 +156,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
+pnpm test --runInBand src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
 ```
 
 Expected: PASS.
@@ -184,7 +184,7 @@ If no helper files changed because the current boundary proof was already suffic
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

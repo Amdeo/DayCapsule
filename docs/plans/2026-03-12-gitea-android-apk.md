@@ -22,8 +22,8 @@ Add a manual `workflow_dispatch` job that:
 - checks out the repo;
 - sets up Node 20 and Java 17;
 - installs Android SDK command-line tooling and required packages;
-- runs `npm ci`, `npm run typecheck`, and `npm test -- --runInBand` in `app/`;
-- runs `npx expo prebuild --platform android --non-interactive --clean`;
+- runs `pnpm install --frozen-lockfile`, `pnpm run typecheck`, and `pnpm test --runInBand` in `app/`;
+- runs `pnpm exec expo prebuild --platform android --non-interactive --clean`;
 - runs `./gradlew assembleRelease`;
 - uploads `app-release-unsigned.apk` as an artifact.
 
@@ -38,8 +38,8 @@ Add a short deployment note covering:
 
 Run:
 - `ruby -e "require 'yaml'; YAML.load_file('.gitea/workflows/android-release.yml'); puts 'yaml ok'"`
-- `npm run typecheck` in `app/`
-- `npm test -- --runInBand` in `app/`
+- `pnpm run typecheck` in `app/`
+- `pnpm test --runInBand` in `app/`
 
 Expected:
 - workflow YAML parses;

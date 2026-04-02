@@ -88,7 +88,7 @@ it('loads and resets the last media validation summary', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/syncStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/syncStore.test.ts`
 Expected: FAIL because the media summary state and persistence helpers do not exist.
 
 - [ ] **Step 3: Implement the minimal store additions**
@@ -115,7 +115,7 @@ Expose only the minimal store methods needed by callers:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/syncStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/syncStore.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -160,7 +160,7 @@ it('returns partial when hydrate falls back to remote urls or files are missing'
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
 Expected: FAIL because the service does not exist.
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -185,7 +185,7 @@ Implementation rules:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -231,7 +231,7 @@ it('stores a partial media summary when inbound server media fails validation', 
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudSyncService.test.ts`
 Expected: FAIL because `cloudSyncService` does not call the validation service or persist its result.
 
 - [ ] **Step 3: Implement the minimal sync hook-up**
@@ -248,7 +248,7 @@ Do not validate locally-created pending uploads here. This hook is only for clou
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudSyncService.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -293,7 +293,7 @@ it('renders 部分成功 when metadata succeeded but media validation is partial
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/syncBootstrapService.test.ts src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/syncBootstrapService.test.ts src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: FAIL because restore does not validate media and the overview/alert payload does not include media summary fields.
 
 - [ ] **Step 3: Implement the minimal restore/overview/dialog changes**
@@ -316,7 +316,7 @@ Implementation notes:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/syncBootstrapService.test.ts src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/syncBootstrapService.test.ts src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -428,7 +428,7 @@ Expected: PASS
 
 - [ ] **Step 5: Run full frontend and backend verification**
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 Run: `cd backend && go test ./...`

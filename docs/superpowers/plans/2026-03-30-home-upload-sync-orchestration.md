@@ -64,7 +64,7 @@ The exact assertion shape can vary, but the test must prove the extracted orches
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
+pnpm test --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
 ```
 
 Expected: FAIL because the new service module and callback factory do not exist yet.
@@ -163,7 +163,7 @@ configurePhotoUploadQueueCallbacks({
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
+pnpm test --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
 ```
 
 Expected: PASS.
@@ -229,7 +229,7 @@ describe('homeUploadSyncOrchestration enqueue decisions', () => {
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
+pnpm test --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
 ```
 
 Expected: FAIL because the enqueue-decision API does not exist yet.
@@ -276,7 +276,7 @@ Keep the recording and photo flow structure otherwise unchanged.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
+pnpm test --runInBand src/services/__tests__/homeUploadSyncOrchestration.test.ts
 ```
 
 Expected: PASS.
@@ -286,7 +286,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts" "app/(tabs)/__tests__/index.photo.test.ts"
+pnpm test --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts" "app/(tabs)/__tests__/index.photo.test.ts"
 ```
 
 Expected: PASS.
@@ -312,7 +312,7 @@ git commit -m "refactor: extract home upload enqueue decisions"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts" "app/(tabs)/__tests__/index.photo.test.ts" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/services/__tests__/homeUploadSyncOrchestration.test.ts
+pnpm test --runInBand --runTestsByPath "app/(tabs)/__tests__/index.voice-cloud-mode.test.ts" "app/(tabs)/__tests__/index.photo.test.ts" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/services/__tests__/homeUploadSyncOrchestration.test.ts
 ```
 
 Expected: PASS.
@@ -322,7 +322,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

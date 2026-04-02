@@ -200,7 +200,7 @@
   - `src/components/BackupExportSheet.tsx`
   - `src/components/BackupPage.tsx`
   - `src/components/StatsPage.tsx`
-- 跑相关组件测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑相关组件测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 6. 风险与控制
 
@@ -245,15 +245,15 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/BackupExportSheet.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/BackupExportSheet.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/BackupPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/BackupPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/StatsPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/StatsPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx src/components/__tests__/BackupPage.test.tsx src/components/__tests__/StatsPage.test.tsx`：PASS，3 个 suite / 8 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，57 个 suite / 359 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，57 个 suite / 359 个测试全部通过
 
 ## 偏差说明
 

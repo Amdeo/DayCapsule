@@ -173,7 +173,7 @@
 
 ### 验证结果
 
-- `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx` 通过
-- `cd app && npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx` 通过
-- `cd app && npm test -- --runInBand src/components/__tests__/CalendarView.test.tsx` 通过
-- `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/CalendarView.test.tsx` 通过
+- `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx` 通过
+- `cd app && pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx` 通过
+- `cd app && pnpm test --runInBand src/components/__tests__/CalendarView.test.tsx` 通过
+- `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/CalendarView.test.tsx` 通过

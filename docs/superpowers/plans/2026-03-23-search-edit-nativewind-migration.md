@@ -36,9 +36,9 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/TextEditor.test.tsx`：通过
-- `cd app && npm run lint`：通过
-- `cd app && npm run typecheck`：通过
-- `cd app && npm test -- --runInBand`：通过
+- `cd app && pnpm run lint`：通过
+- `cd app && pnpm run typecheck`：通过
+- `cd app && pnpm test --runInBand`：通过
 
 ## File Structure
 
@@ -199,7 +199,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/SearchOverlay.tsx`
+Run: `cd app && pnpm run lint -- src/components/SearchOverlay.tsx`
 
 Expected: PASS，说明 `SearchOverlay` 已不再依赖 allowlist。
 
@@ -301,7 +301,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/EntryEditor.tsx`
+Run: `cd app && pnpm run lint -- src/components/EntryEditor.tsx`
 
 Expected: PASS
 
@@ -411,7 +411,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/TextEditor.tsx`
+Run: `cd app && pnpm run lint -- src/components/TextEditor.tsx`
 
 Expected: PASS
 
@@ -445,13 +445,13 @@ Expected: PASS
 
 - [x] **Step 2: 跑静态检查与全量测试**
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [x] **Step 3: 回填文档执行结果**

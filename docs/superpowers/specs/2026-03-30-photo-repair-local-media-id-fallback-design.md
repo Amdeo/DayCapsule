@@ -100,7 +100,7 @@ The tests should keep the rest of the repair setup minimal and should not expand
 Relevant verification targets:
 
 - `app/src/services/__tests__/photoRepairService.test.ts`
-- `npm run verify`
+- `pnpm run verify`
 
 ## Risks And Mitigations
 

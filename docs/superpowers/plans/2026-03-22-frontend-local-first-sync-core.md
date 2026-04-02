@@ -35,9 +35,9 @@
 
 ## 验证结果
 
-- 2026-03-22：已运行 `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
+- 2026-03-22：已运行 `cd app && pnpm test --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
   - 结果：PASS（7 个 test suite，80 个测试全部通过）
-- 2026-03-22：已运行 `cd app && npm run typecheck`
+- 2026-03-22：已运行 `cd app && pnpm run typecheck`
   - 结果：PASS
 
 ## File Structure
@@ -110,7 +110,7 @@ it('markEntryPendingDelete keeps the row and marks sync_op=delete for cloud mode
 
 - [ ] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/database/__tests__/operations.test.ts`
 
 Expected: FAIL，原因是当前 schema 与 `rowToEntry` 还没有完整持久化 `base_updated_at` / `user_id` / `deleted` 等字段。
 
@@ -150,7 +150,7 @@ deleted INTEGER DEFAULT 0
 
 - [ ] **Step 4: 重新运行 DB 测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/database/__tests__/operations.test.ts`
 
 Expected: PASS
 
@@ -197,7 +197,7 @@ it('marks ignored delete results as locally settled without recreating pending r
 
 - [ ] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts`
 
 Expected: FAIL，原因是当前还没有 `syncStore`，且 `cloudSyncService` 仍使用旧 conflict shape 与裸 `Storage` 键。
 
@@ -228,7 +228,7 @@ Expected: FAIL，原因是当前还没有 `syncStore`，且 `cloudSyncService` �
 
 - [ ] **Step 4: 重新运行状态与 service 测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts`
 
 Expected: PASS
 
@@ -273,7 +273,7 @@ it('keeps localDataSource as the only mainline datasource used by entryStore', a
 
 - [ ] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts`
 
 Expected: FAIL，原因是当前 `entryStore` 仍通过 `getActiveDataSource()` 与 `switchDataSource()` 控制主读写路径。
 
@@ -292,7 +292,7 @@ Expected: FAIL，原因是当前 `entryStore` 仍通过 `getActiveDataSource()` 
 
 - [ ] **Step 4: 重新运行 store / datasource 测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts`
 
 Expected: PASS
 
@@ -343,7 +343,7 @@ it('triggers manual sync without replacing the local datasource', async () => {}
 
 - [ ] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因是当前没有 `syncBootstrapService`，`SettingsPage` 仍在切换 `RemoteDataSource` 并直接做远端导入导出。
 
@@ -378,11 +378,11 @@ Expected: FAIL，原因是当前没有 `syncBootstrapService`，`SettingsPage` �
 
 - [ ] **Step 4: 运行目标测试、类型检查与必要的手动验证**
 
-Run: `cd app && npm test -- --runInBand app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx app/src/store/__tests__/syncStore.test.ts app/src/store/__tests__/entryStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/database/__tests__/operations.test.ts app/src/database/__tests__/dataSource.test.ts`
+Run: `cd app && pnpm test --runInBand app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx app/src/store/__tests__/syncStore.test.ts app/src/store/__tests__/entryStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/database/__tests__/operations.test.ts app/src/database/__tests__/dataSource.test.ts`
 
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 
 Expected: PASS
 

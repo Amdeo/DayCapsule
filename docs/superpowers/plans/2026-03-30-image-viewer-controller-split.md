@@ -53,7 +53,7 @@ it('falls back to fade close when shared-element return is unavailable', async (
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx -t "falls back to fade close when shared-element return is unavailable"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx -t "falls back to fade close when shared-element return is unavailable"
 ```
 
 Expected:
@@ -118,13 +118,13 @@ Do not move `showActionSheet`, `closeActionSheet`, `useImageViewerActions`, or `
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -150,7 +150,7 @@ git commit -m "refactor: extract image viewer close transition"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx
 ```
 
 Expected: PASS.
@@ -160,7 +160,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run test:frontend:editor-image
+pnpm run test:frontend:editor-image
 ```
 
 Expected: PASS.
@@ -170,7 +170,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

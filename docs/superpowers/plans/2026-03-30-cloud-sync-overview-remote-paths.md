@@ -94,7 +94,7 @@ it('ignores relative /api/media paths when summing local media bytes', async () 
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts -t "ignores relative /api/media paths when summing local media bytes"
+pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts -t "ignores relative /api/media paths when summing local media bytes"
 ```
 
 Expected: FAIL because `/api/media/...` is still treated as a local path and `snapshot.local.mediaBytes` includes the wrong file size or extra `getInfoAsync` calls.
@@ -114,13 +114,13 @@ Do not change any other overview logic.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -143,7 +143,7 @@ git commit -m "fix(sync): ignore remote media api paths in overview"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncOverviewService.test.ts
 ```
 
 Expected: PASS.
@@ -153,7 +153,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

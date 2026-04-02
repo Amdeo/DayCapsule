@@ -21,8 +21,8 @@ The remaining work is therefore not to invent a new feedback architecture, but t
   - include both result/error feedback and confirmation interactions in the unified product direction
 - Worktree: `.worktrees/error-feedback-unification`
 - Baseline verification:
-  - `app/` `npm install` succeeded in the worktree
-  - `app/` `npm test -- --runInBand` passed with 128 suites and 923 tests
+  - `app/` `pnpm install` succeeded in the worktree
+  - `app/` `pnpm test --runInBand` passed with 128 suites and 923 tests
 - Current baseline observation:
   - `ConfirmDialogHost`, `ConfirmDialogModal`, `confirmDialogStore`, and `showConfirmDialog` already exist
   - `Alert.alert(...)` business call sites are already absent from `app/` source files

@@ -20,7 +20,7 @@
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: npm exits non-zero with `Missing script: "verify"`.
@@ -38,7 +38,7 @@ Update the scripts block so the app exposes a single full verification entry poi
     "web": "expo start --web",
     "lint": "eslint . --ext .js,.ts,.tsx --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run lint && npm run typecheck && npm test -- --runInBand",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm test --runInBand",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -51,7 +51,7 @@ Update the scripts block so the app exposes a single full verification entry poi
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and tests all run from the new single entry point and exit successfully.
@@ -75,7 +75,7 @@ git commit -m "chore: add canonical verify command"
 Run:
 
 ```bash
-grep -n "npm run verify" .github/workflows/android-release.yml
+grep -n "pnpm run verify" .github/workflows/android-release.yml
 ```
 
 Expected: no output.
@@ -87,11 +87,11 @@ Change the workflow section from separate typecheck and test steps to one step:
 ```yaml
       - name: Install dependencies
         working-directory: app
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run verify
         working-directory: app
-        run: npm run verify
+        run: pnpm run verify
 ```
 
 Delete the old block:
@@ -99,11 +99,11 @@ Delete the old block:
 ```yaml
       - name: Typecheck
         working-directory: app
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Run tests
         working-directory: app
-        run: npm test -- --runInBand
+        run: pnpm test --runInBand
 ```
 
 - [ ] **Step 3: Sanity-check the workflow now points at the shared command**
@@ -111,10 +111,10 @@ Delete the old block:
 Run:
 
 ```bash
-grep -n "Run verify\|npm run verify" .github/workflows/android-release.yml
+grep -n "Run verify\|pnpm run verify" .github/workflows/android-release.yml
 ```
 
-Expected: one step name line and one `run: npm run verify` line.
+Expected: one step name line and one `run: pnpm run verify` line.
 
 - [ ] **Step 4: Commit the CI change**
 
@@ -185,7 +185,7 @@ describe('renderSettingsPage stability', () => {
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: the new `returns only after the storage summary is visible` assertion fails because `< 0.1 MB` is not yet present immediately after `renderSettingsPage()` returns.
@@ -295,7 +295,7 @@ Important details:
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: both helper stability tests pass without any manual `Promise.resolve()` flushes.
@@ -305,7 +305,7 @@ Expected: both helper stability tests pass without any manual `Promise.resolve()
 Run:
 
 ```bash
-npm run test:frontend:settings
+pnpm run test:frontend:settings
 ```
 
 Expected: the Settings page test suite passes without new `act` warnings or helper timing failures.
@@ -332,7 +332,7 @@ git commit -m "test: harden settings page helper settling"
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

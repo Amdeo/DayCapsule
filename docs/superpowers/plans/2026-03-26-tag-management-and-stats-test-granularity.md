@@ -84,7 +84,7 @@ it('submits trimmed text from submitEditing and clears the input', async () => {
 
 - [ ] **Step 2: Run the targeted suite to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
 
 Expected: FAIL，因为当前页面还没有 `tag-management-add-input` 之类的稳定锚点，且测试文件还没有可重置的 store mock 状态。
 
@@ -123,7 +123,7 @@ function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {
 
 - [ ] **Step 4: Re-run the targeted suite to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -187,7 +187,7 @@ it('does not reorder when drag never crosses a row threshold', async () => {
 
 - [ ] **Step 2: Run the suite to verify the new cases fail or expose harness gaps**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
 
 Expected: 至少部分新增用例失败，暴露 alert 按钮触发、上限状态重置或拖拽 helper 的缺口；如果个别用例一次通过，保留它们作为回归基线，不为制造失败而改业务代码。
 
@@ -212,7 +212,7 @@ function resetTagManagementMocks() {
 
 - [ ] **Step 4: Re-run the tag management suite to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -281,7 +281,7 @@ it('aggregates repeated tags, ignores undefined tags, and renders rows in descen
 
 - [ ] **Step 2: Run the targeted suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagsPage.test.tsx --runInBand`
 
 Expected: FAIL，因为 `TagsPageContent` 还没有 `tags-page-row` 选择器，新断言无法稳定定位统计行。
 
@@ -310,10 +310,10 @@ Expected: FAIL，因为 `TagsPageContent` 还没有 `tags-page-row` 选择器，
 
 - [ ] **Step 4: Re-run the targeted suites and the new grouped script**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagsPage.test.tsx --runInBand`
 Expected: PASS
 
-Run: `cd app && npm run test:frontend:tags`
+Run: `cd app && pnpm run test:frontend:tags`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -333,7 +333,7 @@ git commit -m "test(tags): cover settings entry and tag stats"
 
 - [ ] **Step 1: Re-run the grouped tag-related Jest suite**
 
-Run: `cd app && npm run test:frontend:tags`
+Run: `cd app && pnpm run test:frontend:tags`
 
 Expected: PASS
 
@@ -353,7 +353,7 @@ Expected: 只剩本批计划内修改；如果有额外脏文件，先确认是�
 
 记录最终验证结果，并在执行阶段结束时引用：
 
-- `npm run test:frontend:tags`
+- `pnpm run test:frontend:tags`
 - `maestro test .maestro/flows/smoke/settings-to-tag-management.yaml`
 
 作为完成依据。

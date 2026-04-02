@@ -52,7 +52,7 @@
 
 - [x] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
 Expected:
 - 当前 store 没有重排方法或相关行为，新增断言失败
 
@@ -65,7 +65,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
 Expected:
 - store 测试通过
 
@@ -95,7 +95,7 @@ Expected:
 
 - [x] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 当前页面没有拖拽排序实现，新增断言失败
 
@@ -110,7 +110,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 标签管理页测试通过
 
@@ -132,13 +132,13 @@ Expected:
 
 - [x] **Step 1: 运行相关回归测试**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
 Expected:
 - store、标签管理页和设置页测试全部通过
 
 - [x] **Step 2: 运行 typecheck**
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected:
 - TypeScript 检查通过
 
@@ -152,8 +152,8 @@ Expected:
 
 ## 最终验证清单
 
-- [x] `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
-- [x] `cd app && npm run typecheck`
+- [x] `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+- [x] `cd app && pnpm run typecheck`
 - [x] 手动确认预制标签支持长按拖拽排序
 - [x] 手动确认排序后重新进入页面顺序保持不变
 - [x] 手动确认删除与恢复默认能力未变
@@ -173,13 +173,13 @@ Expected:
 ## 最终验证摘要
 
 - 失败验证：
-  - `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
+  - `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
   - 新增断言初始失败，证明 store 中还没有 `reorderCommonTags`
-  - `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+  - `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
   - 新增断言初始失败，证明页面还没有拖拽排序入口
 - 实现后验证：
-  - `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
-  - `cd app && npm run typecheck` 通过
+  - `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
+  - `cd app && pnpm run typecheck` 通过
 
 ## 最终实现说明
 

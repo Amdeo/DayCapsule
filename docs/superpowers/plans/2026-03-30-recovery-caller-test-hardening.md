@@ -82,7 +82,7 @@ it('marks initialization failed when the recovery flow reports a refresh error',
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts
 ```
 
 Expected:
@@ -101,7 +101,7 @@ If the tests pass immediately, make no production change.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts
 ```
 
 Expected: PASS.
@@ -180,7 +180,7 @@ it('rethrows refresh failures from the recovery runner so the caller can handle 
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected:
@@ -199,7 +199,7 @@ If the tests pass immediately, make no production change.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -226,7 +226,7 @@ If a tiny production fix was needed, include that file in the same commit.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -236,7 +236,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

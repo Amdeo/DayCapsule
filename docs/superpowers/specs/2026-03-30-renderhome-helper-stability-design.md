@@ -69,7 +69,7 @@ Minimum required proof for this batch:
 - one stability test covering cross-render independence
 - one stability test covering helper-exposed trigger binding to the correct render
 - one stability test covering default empty/hidden baseline semantics
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -101,4 +101,4 @@ This batch is complete when all of the following are true:
 - `renderHomeScreen` has a dedicated helper-facing stability test file
 - the key isolation guarantees are encoded there clearly
 - no unnecessary helper/production refactor was introduced
-- full `npm run verify` passes
+- full `pnpm run verify` passes

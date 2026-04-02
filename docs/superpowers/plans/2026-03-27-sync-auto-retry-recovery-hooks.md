@@ -21,7 +21,7 @@
   - 覆盖恢复流程进行中重复触发不会重复执行
 
 - [ ] **Step 2: 运行测试确认失败**
-  - Run: `npm test -- --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
 ### Task 2: 实现统一恢复入口
 
@@ -34,7 +34,7 @@
   - 网络恢复时补 `syncNow()`
 
 - [ ] **Step 2: 运行测试确认通过**
-  - Run: `npm test -- --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
 ### Task 3: 回归验证
 
@@ -43,7 +43,7 @@
 - Verify: `app/src/services/__tests__/cloudSyncService.test.ts`
 
 - [ ] **Step 1: 跑相关前端测试**
-  - Run: `npm test -- --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx src/services/__tests__/cloudSyncService.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx src/services/__tests__/cloudSyncService.test.ts`
 
 - [ ] **Step 2: 跑类型检查**
-  - Run: `npm run typecheck`
+  - Run: `pnpm run typecheck`

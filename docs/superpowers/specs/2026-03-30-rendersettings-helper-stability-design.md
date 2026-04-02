@@ -67,7 +67,7 @@ Minimum required proof for this batch:
 - one explicit stability contract around initial render settling
 - one explicit stability contract around cross-render login state reset
 - no unnecessary duplication with `renderSettingsPage.state.test.tsx`
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -99,4 +99,4 @@ This batch is complete when all of the following are true:
 - `renderSettingsPage` has a clear helper-facing stability test layer
 - the key settle/login-reset contracts are encoded there clearly
 - no unnecessary helper/production refactor was introduced
-- full `npm run verify` passes
+- full `pnpm run verify` passes

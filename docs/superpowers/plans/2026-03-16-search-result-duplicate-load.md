@@ -507,8 +507,8 @@ Tests:       15+ passed, 0 failed
 Run:
 
 ```bash
-cd app && npm test -- --runInBand
-cd app && npm run typecheck
+cd app && pnpm test --runInBand
+cd app && pnpm run typecheck
 ```
 
 Expected:

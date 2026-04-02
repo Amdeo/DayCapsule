@@ -75,7 +75,7 @@ describe('TimelineSectionHeader', () => {
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
 ```
 
 Expected: `TimelineSectionHeader.test.tsx` fails because the canonical component does not expose `timestamp` or `testID`, proving the old duplicate-specific assertions are no longer valid.
@@ -91,7 +91,7 @@ No production code changes in this task.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
 ```
 
 Expected: PASS for both test files.
@@ -127,7 +127,7 @@ Do not touch the `timeline-v2` implementations.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
 ```
 
 Expected: PASS, showing the tests no longer depend on the deleted duplicate files.
@@ -153,7 +153,7 @@ Expected non-match: no runtime import should reference `src/components/TimelineE
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx
 ```
 
 Expected: PASS.
@@ -229,7 +229,7 @@ jest.mock('expo-file-system/legacy', () => ({
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: FAIL because `getFileInfo` and `getDirectorySize` are not yet imported into the test file.
@@ -273,7 +273,7 @@ Do not change public signatures or fallback behavior.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: PASS.
@@ -392,7 +392,7 @@ it('legacy media column update uses the first media item when media_json is unav
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts -t "legacy media column"
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts -t "legacy media column"
 ```
 
 Expected: FAIL if the test block placement or assertions do not yet match the current mocked column flow. Fix the test until it fails for the intended legacy-media expectation.
@@ -418,13 +418,13 @@ Apply this to all four approved production locations in the legacy insert/update
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts -t "legacy media column"
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts -t "legacy media column"
 ```
 
 Then run the broader database suite:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -451,7 +451,7 @@ git commit -m "refactor(database): remove legacy media any casts"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/utils/__tests__/fileSystem.test.ts src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/utils/__tests__/fileSystem.test.ts src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -461,7 +461,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: exit code `0`.

@@ -122,7 +122,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/BackupExportSheet.tsx`
+Run: `cd app && pnpm run lint -- src/components/BackupExportSheet.tsx`
 
 Expected: PASS
 
@@ -208,7 +208,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/BackupPage.tsx`
+Run: `cd app && pnpm run lint -- src/components/BackupPage.tsx`
 
 Expected: PASS
 
@@ -288,7 +288,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/StatsPage.tsx`
+Run: `cd app && pnpm run lint -- src/components/StatsPage.tsx`
 
 Expected: PASS
 
@@ -322,13 +322,13 @@ Expected: PASS
 
 - [x] **Step 2: 跑静态检查与全量测试**
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [x] **Step 3: 回填文档执行结果**
@@ -367,15 +367,15 @@ git commit -m "docs: backfill backup stats nativewind migration"
 ## 验证记录
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/BackupExportSheet.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/BackupExportSheet.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/BackupPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/BackupPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/StatsPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/StatsPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/StatsPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BackupExportSheet.test.tsx src/components/__tests__/BackupPage.test.tsx src/components/__tests__/StatsPage.test.tsx`：PASS，3 个 suite / 8 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，57 个 suite / 359 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，57 个 suite / 359 个测试全部通过
 
 ## 偏差说明
 

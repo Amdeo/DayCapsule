@@ -532,7 +532,7 @@ git commit -m "docs: close out voice cloud background upload plan"
   - `cd app && CI=1 npx jest --run-in-band`
   - 结果：34 个测试套件，257 个测试全部通过
 - 最小手动验证：
-  - 已执行 `cd app && npm run android` 完成 Android 原生重编译安装
+  - 已执行 `cd app && pnpm run android` 完成 Android 原生重编译安装
   - 模拟器已确认 app 可启动，不再出现 `Cannot find native module 'ExpoNetwork'`
   - 为避免再次影响现有模拟器数据，本轮未执行会写入用户数据的完整录音上传手测
 

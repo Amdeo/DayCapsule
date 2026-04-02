@@ -45,7 +45,7 @@ If removing the wait makes the test fail for a real timing reason, replace it wi
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx
 ```
 
 Expected:
@@ -64,7 +64,7 @@ If the test passes, make no production change.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx
 ```
 
 Expected: PASS.
@@ -90,7 +90,7 @@ If a tiny production fix was needed, include that file in the same commit.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx
 ```
 
 Expected: PASS.
@@ -100,7 +100,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

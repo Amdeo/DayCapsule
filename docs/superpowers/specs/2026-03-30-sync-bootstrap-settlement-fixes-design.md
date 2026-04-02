@@ -112,7 +112,7 @@ Relevant coverage already exists or should be minimally adjusted for:
 Relevant verification targets:
 
 - `app/src/services/__tests__/syncBootstrapService.test.ts`
-- `npm run verify`
+- `pnpm run verify`
 
 ## Risks And Mitigations
 

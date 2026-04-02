@@ -39,7 +39,7 @@
 
 - [ ] **Step 2: 先让至少一个代表性断言以旧实现方式失败，再切到新断言方向**
 
-Run: `npm test -- --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts`
 
 Expected: FAIL during transition while old grep assertions are removed and new runtime assertions尚未全部补齐
 
@@ -72,7 +72,7 @@ describe('runtime regression guards', () => {
 
 - [ ] **Step 4: 运行该测试文件确认新守卫通过**
 
-Run: `npm test -- --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts`
 
 Expected: PASS
 
@@ -104,7 +104,7 @@ await Promise.resolve();
 
 - [ ] **Step 2: 运行单测确认过渡态下能暴露问题或至少精确覆盖目标行为**
 
-Run: `npm test -- --runInBand --testNamePattern "数据库表未就绪的延迟重试在签名过期后应放弃" src/store/__tests__/entryStore.test.ts`
+Run: `pnpm test --runInBand --testNamePattern "数据库表未就绪的延迟重试在签名过期后应放弃" src/store/__tests__/entryStore.test.ts`
 
 Expected: If transition temporarily breaks assumptions, FAIL with a clear mismatch on final entries; otherwise continue once the new assertion shape is in place.
 
@@ -126,7 +126,7 @@ await waitFor(() => {
 
 - [ ] **Step 4: 运行该测试文件确认竞态守卫稳定通过**
 
-Run: `npm test -- --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts`
 
 Expected: PASS
 
@@ -158,7 +158,7 @@ const flushPromises = async () => {
 
 - [ ] **Step 2: 运行该测试文件，确认移除 flush helper 后旧测试会在过渡态暴露问题或至少需要新等待逻辑**
 
-Run: `npm test -- --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
+Run: `pnpm test --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
 Expected: During transition, FAIL or partial FAIL until each case is converted to explicit waiting
 
@@ -182,7 +182,7 @@ it('delegates app bootstrap to the bootstrap service', async () => {
 
 - [ ] **Step 4: 运行该测试文件确认通过**
 
-Run: `npm test -- --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
+Run: `pnpm test --runInBand --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx`
 
 Expected: PASS
 
@@ -195,18 +195,18 @@ Expected: PASS
 
 - [ ] **Step 1: 运行这三个目标测试文件**
 
-Run: `npm test -- --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts src/store/__tests__/entryStore.test.ts app/__tests__/_layout.photo-upload.test.tsx`
+Run: `pnpm test --runInBand --runTestsByPath src/__tests__/runtime-regressions.test.ts src/store/__tests__/entryStore.test.ts app/__tests__/_layout.photo-upload.test.tsx`
 
 Expected: PASS
 
 - [ ] **Step 2: 运行全量测试，确认没有引入回归**
 
-Run: `npm test -- --runInBand`
+Run: `pnpm test --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 3: 运行带句柄检测的全量测试，确认没有把 warning cleanup 重新打坏**
 
-Run: `npm test -- --runInBand --detectOpenHandles --openHandlesTimeout=3000`
+Run: `pnpm test --runInBand --detectOpenHandles --openHandlesTimeout=3000`
 
 Expected: PASS with 117/117 suites and no reintroduced act/open-handle warning output

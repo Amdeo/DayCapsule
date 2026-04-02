@@ -77,7 +77,7 @@ Important:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts
 ```
 
 Expected:
@@ -96,7 +96,7 @@ If the test passes, make no production change.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts
 ```
 
 Expected: PASS.
@@ -158,7 +158,7 @@ Important:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/voiceService.test.ts
+pnpm test --runInBand src/services/__tests__/voiceService.test.ts
 ```
 
 Expected:
@@ -177,7 +177,7 @@ If the test passes, make no production change.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/voiceService.test.ts
+pnpm test --runInBand src/services/__tests__/voiceService.test.ts
 ```
 
 Expected: PASS.
@@ -204,7 +204,7 @@ If a tiny production fix was needed, include that file in the same commit.
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/voiceService.test.ts
+pnpm test --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/voiceService.test.ts
 ```
 
 Expected: PASS.
@@ -214,7 +214,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

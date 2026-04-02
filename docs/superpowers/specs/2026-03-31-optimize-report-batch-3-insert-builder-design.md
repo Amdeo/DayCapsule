@@ -172,4 +172,4 @@ Mitigation:
 - The duplicated insert-part assembly in `addEntry()` and `restoreEntries()` is extracted into one file-local helper.
 - Existing behavior remains unchanged.
 - `operations.test.ts` stays green.
-- `npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts` passes.
+- `pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts` passes.

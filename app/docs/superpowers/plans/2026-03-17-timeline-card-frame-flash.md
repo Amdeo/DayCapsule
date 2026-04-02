@@ -73,7 +73,7 @@ it('uses stable SectionList keys when switching between list and monthly views',
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -176,7 +176,7 @@ const keyExtractor = useCallback((item: Entry) => item.id, []);
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -256,7 +256,7 @@ useEffect(() => {
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
 ```
 
 Expected:
@@ -268,7 +268,7 @@ Expected:
 
 Run:
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected:
@@ -295,7 +295,7 @@ git commit -m "fix: remove timeline card transition wrappers"
 
 Run:
 ```bash
-npm start
+pnpm start
 ```
 
 手工验证路径：

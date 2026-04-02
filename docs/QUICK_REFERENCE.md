@@ -10,7 +10,7 @@
 │   ├── app/              # 路由入口
 │   ├── src/              # 业务实现、服务、状态模块
 │   ├── assets/           # 静态资源
-│   ├── package.json      # npm scripts
+│   ├── package.json      # 项目脚本
 │   └── app.json          # Expo 配置
 ├── backend/              # 后端服务
 ├── docs/                 # 项目文档
@@ -32,24 +32,24 @@
 前端命令都在 `app/` 目录执行。
 
 ```bash
-(cd app && npm start)
-(cd app && npm run ios)
-(cd app && npm run android)
-(cd app && npm run web)
-(cd app && npm run lint)
-(cd app && npm run typecheck)
-(cd app && npm run verify)
+(cd app && pnpm start)
+(cd app && pnpm run ios)
+(cd app && pnpm run android)
+(cd app && pnpm run web)
+(cd app && pnpm run lint)
+(cd app && pnpm run typecheck)
+(cd app && pnpm run verify)
 ```
 
 ## 测试入口
 
 前端测试都在 `app/` 目录执行，当前可用入口包括：
 
-- 最小闭环：`(cd app && npm run verify)`
-- 通用 Jest：`(cd app && npm test)`、`(cd app && npm run test:watch)`、`(cd app && npm run test:coverage)`
-- 账号与设置：`(cd app && npm run test:frontend:auth)`、`(cd app && npm run test:frontend:settings)`
-- 内容与浏览：`(cd app && npm run test:frontend:tags)`、`(cd app && npm run test:frontend:home)`、`(cd app && npm run test:frontend:editor-image)`
-- 应用核心手工流：`(cd app && npm run test:maestro:app-core)`
+- 最小闭环：`(cd app && pnpm run verify)`
+- 通用 Jest：`(cd app && pnpm test)`、`(cd app && pnpm run test:watch)`、`(cd app && pnpm run test:coverage)`
+- 账号与设置：`(cd app && pnpm run test:frontend:auth)`、`(cd app && pnpm run test:frontend:settings)`
+- 内容与浏览：`(cd app && pnpm run test:frontend:tags)`、`(cd app && pnpm run test:frontend:home)`、`(cd app && pnpm run test:frontend:editor-image)`
+- 应用核心手工流：`(cd app && pnpm run test:maestro:app-core)`
 
 ## 关键服务/状态模块入口
 

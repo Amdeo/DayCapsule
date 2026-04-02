@@ -81,7 +81,7 @@ Use the existing `cloudSyncOverviewService` unit test file. No broader integrati
 Relevant verification targets:
 
 - `app/src/services/__tests__/cloudSyncOverviewService.test.ts`
-- `npm run verify`
+- `pnpm run verify`
 
 ## Risks And Mitigations
 

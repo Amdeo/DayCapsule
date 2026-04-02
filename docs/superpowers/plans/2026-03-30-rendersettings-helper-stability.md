@@ -33,7 +33,7 @@ If the current test already expresses that cleanly, only reduce incidental noise
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected:
@@ -52,7 +52,7 @@ If the test passes, make no helper change.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -104,7 +104,7 @@ The exact assertions can differ, but the goal is to express a high-level render-
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected:
@@ -123,7 +123,7 @@ If the test passes, make no helper change.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -150,7 +150,7 @@ git commit -m "test: refine renderSettings login stability"
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx src/components/__tests__/helpers/renderSettingsPage.state.test.tsx src/components/__tests__/SettingsPage.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx src/components/__tests__/helpers/renderSettingsPage.state.test.tsx src/components/__tests__/SettingsPage.test.tsx
 ```
 
 Expected: PASS.
@@ -160,7 +160,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

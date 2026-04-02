@@ -34,6 +34,6 @@ It removes the highest-risk false signals first. Right now the repo claims tests
 
 **Success Criteria**
 
-- `npm test -- --runInBand` passes.
+- `pnpm test --runInBand` passes.
 - Backup timestamp logic is correct under async MMKV access.
 - Release docs no longer claim unsupported or unverified states.

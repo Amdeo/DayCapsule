@@ -209,7 +209,7 @@
   - `src/components/AboutPage.tsx`
   - `src/components/HelpPage.tsx`
   - `src/components/TagsPage.tsx`
-- 跑第四批相关测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑第四批相关测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 7. 风险与控制
 
@@ -232,9 +232,9 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/DetailPageShell.test.tsx src/components/__tests__/TagsPage.test.tsx src/components/__tests__/AboutPage.test.tsx src/components/__tests__/HelpPage.test.tsx`：PASS
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS
 
 ## 实现备注
 

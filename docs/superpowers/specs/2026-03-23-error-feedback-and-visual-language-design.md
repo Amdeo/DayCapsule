@@ -6,7 +6,7 @@
 - 设计确认日期：2026-03-23
 - 实现完成日期：2026-03-23
 - 实现范围：先定视觉规范与错误弹层，不重刷全应用页面
-- 验证结果：`npm run typecheck` 通过；本轮相关测试集通过；全量测试通过
+- 验证结果：`pnpm run typecheck` 通过；本轮相关测试集通过；全量测试通过
 
 ## 评审记录
 
@@ -33,9 +33,9 @@
   - 无产品级偏差。本轮仍保留 `showCloudSyncStatusAlert()` 的成功状态展示使用原生 `Alert`，仅将失败分支迁移到统一错误反馈，这与 spec 范围一致。
 
 - **验证说明**
-  - 通过：`cd app && npm run typecheck`
+  - 通过：`cd app && pnpm run typecheck`
   - 通过：本轮 9 个新增/修改相关测试文件的定向验证
-  - 通过：`cd app && npm test -- --runInBand --watchAll=false`
+  - 通过：`cd app && pnpm test --runInBand --watchAll=false`
 
 ## 背景
 

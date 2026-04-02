@@ -89,7 +89,7 @@ These tests should validate behavior through the current helper API rather than 
 - `app/src/components/__tests__/timeline/timeline.home.interactions.test.tsx`
 - `app/src/components/__tests__/timeline/timeline.home.navigation.test.tsx`
 - any new helper-facing test file for `renderHomeScreen`
-- full `npm run verify`
+- full `pnpm run verify`
 
 ## Testing Strategy
 
@@ -100,7 +100,7 @@ Minimum required proof for this batch:
 - one helper-facing regression test for source entries/state lifetime
 - one helper-facing regression test for cloud sync UI state lifetime
 - existing Home/timeline tests continue to pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -141,4 +141,4 @@ This batch is complete when all of the following are true:
 - targeted module-level state has clearer reset/per-render boundaries
 - helper-facing regression tests prove those boundaries
 - Home/timeline tests continue to pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes

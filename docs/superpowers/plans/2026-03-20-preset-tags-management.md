@@ -58,7 +58,7 @@
 
 - [x] **Step 2: 运行目标测试，确认当前语义未对齐**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
 Expected:
 - 现有测试名称、断言或对外语义仍是“常用标签”，无法完整表达“预制标签”心智
 
@@ -71,7 +71,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
 Expected:
 - store 测试通过
 
@@ -100,11 +100,11 @@ Expected:
 
 - [x] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx`
 Expected:
 - 当前入口仍为“常用标签管理”，测试失败
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 若测试不存在则先新增；当前标题/提示文案不符合预制标签语义而失败
 
@@ -118,11 +118,11 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx`
 Expected:
 - 设置页测试通过
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 标签管理页测试通过
 
@@ -144,8 +144,8 @@ Expected:
 - [x] **Step 1: 运行现有相关测试**
 
 优先检查：
-- `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
-- `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx`
+- `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
+- `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx`
 
 如果仓库已有覆盖编辑器或搜索里常用标签的测试，也纳入回归范围。
 
@@ -158,7 +158,7 @@ Expected:
 
 - [x] **Step 3: 运行最终回归测试**
 
-Run: `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 相关测试全部通过
 
@@ -191,9 +191,9 @@ Expected:
 - [x] **Step 3: 补验证结果**
 
 至少记录：
-- `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
-- `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx`
-- `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+- `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
+- `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx`
+- `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 
 - [x] **Step 4: 更新本计划状态**
 
@@ -204,9 +204,9 @@ Expected:
 
 ## 最终验证清单
 
-- [x] `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts`
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx`
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+- [x] `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 - [x] 手动确认标签管理页直接显示当前预制标签
 - [x] 手动确认设置入口文案改为预制标签语义
 - [x] 手动确认编辑器和搜索筛选仍继续使用这组标签
@@ -226,12 +226,12 @@ Expected:
 ## 最终验证摘要
 
 - 失败验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx`
+  - `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx`
   - 新增断言初始失败，证明设置入口和标签管理页文案仍停留在“常用标签/标签管理”语义
 - 实现后验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx` 通过
-  - `cd app && npm test -- --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx` 通过
-  - `cd app && npm run typecheck` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx` 通过
+  - `cd app && pnpm test --runInBand src/store/__tests__/commonTagsStore.test.ts src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx` 通过
+  - `cd app && pnpm run typecheck` 通过
 
 ## 最终实现说明
 

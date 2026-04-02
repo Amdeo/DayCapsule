@@ -129,7 +129,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/BottomToolbar.tsx`
+Run: `cd app && pnpm run lint -- src/components/BottomToolbar.tsx`
 
 Expected: PASS
 
@@ -211,7 +211,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/CalendarTimelineItem.tsx`
+Run: `cd app && pnpm run lint -- src/components/CalendarTimelineItem.tsx`
 
 Expected: PASS
 
@@ -292,7 +292,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/CalendarView.tsx`
+Run: `cd app && pnpm run lint -- src/components/CalendarView.tsx`
 
 Expected: PASS
 
@@ -369,7 +369,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/FilterBar.tsx`
+Run: `cd app && pnpm run lint -- src/components/FilterBar.tsx`
 
 Expected: PASS
 
@@ -404,13 +404,13 @@ Expected: PASS
 
 - [x] **Step 2: 跑静态检查与全量测试**
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [x] **Step 3: 回填文档执行结果**
@@ -449,9 +449,9 @@ git commit -m "docs: backfill timeline interaction nativewind migration"
 ## 验证记录
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/BottomToolbar.test.tsx src/components/__tests__/CalendarTimelineItem.test.tsx src/components/__tests__/CalendarView.test.tsx src/components/__tests__/FilterBar.test.tsx`：PASS，4 个 suite / 14 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，62 个 suite / 372 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，62 个 suite / 372 个测试全部通过
 
 ## 偏差说明
 

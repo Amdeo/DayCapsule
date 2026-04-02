@@ -98,7 +98,7 @@ it('renders stable action testIDs for cloud sync feedback actions', () => {
 
 - [ ] **Step 2: Run the modal test to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx --runInBand`
 
 Expected: FAIL，因为 `ErrorFeedbackAction` 还没有 `testID` 字段，`ErrorFeedbackModal` 也还没有透传。
 
@@ -128,7 +128,7 @@ export type ErrorFeedbackAction = {
 
 - [ ] **Step 4: Re-run the modal test to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -161,7 +161,7 @@ expect(firstRequest.actions).toEqual(expect.arrayContaining([
 
 - [ ] **Step 6: Run the settings and sync status tests to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts --runInBand`
 
 Expected: FAIL，因为“同步状态”按钮还没有稳定 `testID`，动作对象也还没有显式 `testID`。
 
@@ -199,7 +199,7 @@ Expected: FAIL，因为“同步状态”按钮还没有稳定 `testID`，动作
 
 - [ ] **Step 8: Re-run the settings and sync status tests to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts --runInBand`
 
 Expected: PASS
 
@@ -246,7 +246,7 @@ it('injects a suspect repairable media fixture into syncStore and mediaRepairSto
 
 - [ ] **Step 2: Run the service test to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/services/__tests__/e2eSyncLabService.test.ts --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/services/__tests__/e2eSyncLabService.test.ts --runInBand`
 
 Expected: FAIL，因为 service 还不存在。
 
@@ -309,7 +309,7 @@ export interface E2ESyncLabService {
 
 - [ ] **Step 4: Re-run the service test to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/services/__tests__/e2eSyncLabService.test.ts --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/services/__tests__/e2eSyncLabService.test.ts --runInBand`
 
 Expected: PASS
 
@@ -338,7 +338,7 @@ expect(mockInjectSuspectRepairable).toHaveBeenCalledTimes(1);
 
 - [ ] **Step 6: Run the settings test to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
 
 Expected: FAIL，因为 `SettingsE2ESyncLab` 还不存在，设置页也没有接入这个测试区域。
 
@@ -389,7 +389,7 @@ const e2eSyncLab = createE2ESyncLabService();
 
 - [ ] **Step 8: Re-run the settings test to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -419,7 +419,7 @@ git commit -m "test(ui): add e2e sync lab fixtures for android maestro"
 在 `app/.maestro/README.md` 补充：
 
 - Android app 包名：`com.memorycapsule.app`
-- 运行前提：模拟器已启动，执行 `cd app && npm run android`
+- 运行前提：模拟器已启动，执行 `cd app && pnpm run android`
 - 环境变量：`EXPO_PUBLIC_E2E_SYNC_LAB=1`
 - 真实后端 happy path 所需测试账号、测试数据
 - 单条执行命令
@@ -665,7 +665,7 @@ Expected: Android 模拟器在线，app 可启动。
 Run:
 
 ```bash
-cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts src/services/__tests__/photoRepairService.test.ts src/services/__tests__/e2eSyncLabService.test.ts
+cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/ErrorFeedbackModal.test.tsx src/components/__tests__/SettingsPage.test.tsx src/services/__tests__/showCloudSyncStatusAlert.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts src/services/__tests__/photoRepairService.test.ts src/services/__tests__/e2eSyncLabService.test.ts
 ```
 
 Expected: PASS

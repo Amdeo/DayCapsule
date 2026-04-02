@@ -169,7 +169,7 @@ it('恢复带 tags 的记录时应继续写入规范化标签关联', async () =
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: FAIL because `upsertEntryTags()` still emits the old per-tag SQL shape.
@@ -216,13 +216,13 @@ Do not change any caller signatures or move this logic into a new abstraction un
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -245,7 +245,7 @@ git commit -m "perf: batch entry tag upserts"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -255,7 +255,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS. If unrelated pre-existing failures appear, record them exactly and stop widening scope.

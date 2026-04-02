@@ -193,7 +193,7 @@
   - `src/components/LoginPage.tsx`
   - `src/components/TagManagementPage.tsx`
   - `src/components/SettingsPage.tsx`
-- 跑相关组件测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑相关组件测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 6. 风险与控制
 
@@ -231,15 +231,15 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/LoginPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/LoginPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TagManagementPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/TagManagementPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/TagManagementPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`：PASS
-- `cd app && npm run lint -- src/components/SettingsPage.tsx`：PASS
+- `cd app && pnpm run lint -- src/components/SettingsPage.tsx`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/LoginPage.test.tsx src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`：PASS，3 个 suite / 13 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，56 个 suite / 358 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，56 个 suite / 358 个测试全部通过
 
 ## 偏差说明
 

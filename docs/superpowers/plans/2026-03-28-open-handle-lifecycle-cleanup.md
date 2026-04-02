@@ -111,7 +111,7 @@ it('removes the network subscription when RootLayout unmounts', async () => {
 
 - [ ] **Step 3: Run the targeted RootLayout suite to verify current behavior**
 
-Run: `cd app && npm test -- --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx --runInBand`
 
 Expected: 如果 `_layout` 已正确 cleanup，这里可能直接 PASS；如果 FAIL，失败原因应明确指向 `remove()` 没被调用。
 
@@ -137,7 +137,7 @@ useEffect(() => {
 
 - [ ] **Step 5: Re-run the RootLayout suite until it passes**
 
-Run: `cd app && npm test -- --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath app/__tests__/_layout.photo-upload.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -223,7 +223,7 @@ it('clears the active recording timer when HomeScreen unmounts', () => {
 Run:
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test -- --runTestsByPath \
   'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' \
   'app/(tabs)/__tests__/index.render.test.tsx' \
   'app/(tabs)/__tests__/index.cleanup.test.tsx' \
@@ -264,7 +264,7 @@ useEffect(() => {
 Run:
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test -- --runTestsByPath \
   'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' \
   'app/(tabs)/__tests__/index.render.test.tsx' \
   'app/(tabs)/__tests__/index.cleanup.test.tsx' \
@@ -298,7 +298,7 @@ git commit -m "test(app): lock home screen cleanup paths"
 Run:
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test -- --runTestsByPath \
   app/__tests__/_layout.photo-upload.test.tsx \
   'app/(tabs)/__tests__/index.voice-cloud-mode.test.ts' \
   'app/(tabs)/__tests__/index.render.test.tsx' \
@@ -312,7 +312,7 @@ Expected: PASS
 
 - [ ] **Step 2: Re-run detectOpenHandles and record actual output**
 
-Run: `cd app && npm test -- --runInBand --detectOpenHandles`
+Run: `cd app && pnpm test --runInBand --detectOpenHandles`
 
 Expected:
 
@@ -322,7 +322,7 @@ Expected:
 
 - [ ] **Step 3: Run the front-end full Jest suite**
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 
 Expected: PASS
 

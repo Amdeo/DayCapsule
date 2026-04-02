@@ -55,7 +55,7 @@ Important:
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: FAIL because the current helper can retain `latestLoginPageProps` from the earlier render.
@@ -97,7 +97,7 @@ Requirements for this step:
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -107,7 +107,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/settings-page/settings-page.account-auth.test.tsx
+pnpm test --runInBand src/components/__tests__/settings-page/settings-page.account-auth.test.tsx
 ```
 
 Expected: PASS.
@@ -164,13 +164,13 @@ The exact assertion can vary, but it must prove that one render's effective sett
 Run one of these, depending on where you placed the test:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.state.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.state.test.tsx
 ```
 
 or
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderSettingsPage.stability.test.tsx
 ```
 
 Expected: FAIL because the current helper updates `mockPersistedSettings.cloudMode` from the render path and can bias the next render.
@@ -216,7 +216,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
+pnpm test --runInBand src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
 ```
 
 Expected: PASS.
@@ -244,7 +244,7 @@ If you kept all helper-facing tests inside `renderSettingsPage.stability.test.ts
 Run:
 
 ```bash
-npm run test:frontend:settings
+pnpm run test:frontend:settings
 ```
 
 Expected: PASS.
@@ -254,7 +254,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

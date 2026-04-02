@@ -87,7 +87,7 @@
   - `./node_modules/.bin/jest --runInBand --runTestsByPath src/services/__tests__/showPhotoRepairPrompt.test.ts`
   - `./node_modules/.bin/jest --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx`
   - `./node_modules/.bin/jest --runInBand --runTestsByPath src/components/__tests__/editor/entry-editor.leave-guard.test.tsx`
-- Typecheck: `npm run typecheck`
+- Typecheck: `pnpm run typecheck`
 
 ### Task 1: Confirm Dialog Store
 
@@ -794,7 +794,7 @@ Expected: 只剩测试 mock 或框架级非业务代码；如果命中业务代�
 Run:
 
 - `./node_modules/.bin/jest --runInBand --runTestsByPath src/store/__tests__/confirmDialogStore.test.ts src/components/__tests__/ConfirmDialogModal.test.tsx src/components/__tests__/ConfirmDialogHost.test.tsx src/services/__tests__/showPhotoRepairPrompt.test.ts src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx`
-- `npm run typecheck`
+- `pnpm run typecheck`
 
 Expected: PASS。
 
@@ -821,5 +821,5 @@ git commit -m "test: verify non-native feedback migration"
 - 新增全局确认弹窗链路
 - 所有业务原生 Alert 已迁移
 - 列出实际执行过的测试命令与结果
-- 若 `npm test` 仍受 worktree shell 异常影响，注明已使用 `./node_modules/.bin/jest` 完成验证
+- 若 `pnpm test` 仍受 worktree shell 异常影响，注明已使用 `./node_modules/.bin/jest` 完成验证
 ```

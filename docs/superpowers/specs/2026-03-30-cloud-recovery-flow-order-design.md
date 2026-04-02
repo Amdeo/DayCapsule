@@ -85,7 +85,7 @@ That keeps observability local to the caller while still centralizing order.
 - new cloud recovery flow service test file
 - `app/src/services/__tests__/appBootstrapService.test.ts`
 - `app/src/services/__tests__/appLifecycleService.test.ts`
-- full `npm run verify`
+- full `pnpm run verify`
 
 ## Testing Strategy
 
@@ -96,7 +96,7 @@ Minimum required proof for this batch:
 - one focused service test proving the order is `sync -> upload recovery -> indicator refresh`
 - one focused service test proving structured results preserve per-step failure information for callers
 - existing bootstrap/lifecycle tests continue to pass after adopting the shared flow
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -135,4 +135,4 @@ This batch is complete when all of the following are true:
 - `appBootstrapService` and `appLifecycleService` keep their own precondition logic
 - caller-side contextual logging remains intact
 - bootstrap/lifecycle tests pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes

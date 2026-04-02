@@ -92,7 +92,7 @@ At this point, the tests should fail because production code and imports still a
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts
+pnpm test --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts
 ```
 
 Expected: FAIL because the new filter store does not exist yet and `entryStore` still owns filter state.
@@ -205,13 +205,13 @@ Do not move `entries`, paging, CRUD, or sync state.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts
+pnpm test --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -272,7 +272,7 @@ At this point, component tests should fail because production UI still reads fil
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/FilterBar.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/FilterBar.test.tsx
 ```
 
 Expected: FAIL because `Timeline.v2`, `SearchOverlay`, and `FilterBar` still read filter state from `entryStore`.
@@ -330,13 +330,13 @@ Do not change search semantics or query-side effects in UI components.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/FilterBar.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/FilterBar.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -387,7 +387,7 @@ Then update the helper tests to read filter state assertions from the new mock f
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx
 ```
 
 Expected: FAIL until the helper is updated for the new filter-store ownership.
@@ -423,13 +423,13 @@ Keep helper behavior aligned with the existing tests; do not redesign its abstra
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx
 ```
 
 Then run the broader final verification:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

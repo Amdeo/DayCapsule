@@ -33,9 +33,9 @@
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/EntryEditor.test.tsx`：通过
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/TextEditor.test.tsx`：通过
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchOverlay.test.tsx src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/TextEditor.test.tsx`：通过
-- `cd app && npm run lint`：通过
-- `cd app && npm run typecheck`：通过
-- `cd app && npm test -- --runInBand`：通过
+- `cd app && pnpm run lint`：通过
+- `cd app && pnpm run typecheck`：通过
+- `cd app && pnpm test --runInBand`：通过
 
 ## 偏差与已知问题
 
@@ -237,7 +237,7 @@
 第二层是守卫与全量验收：
 
 - 迁移完成后，从 [style-guard-allowlist.js](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/eslint/style-guard-allowlist.js) 删除这 3 个文件
-- 跑相关组件测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑相关组件测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 7. 风险与控制
 

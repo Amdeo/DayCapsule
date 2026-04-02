@@ -156,8 +156,8 @@ Most relevant verification targets:
 - `app/src/components/__tests__/image/image-viewer.lifecycle.test.tsx`
 - `app/src/components/__tests__/ImageViewer.shared-element.test.tsx`
 - `app/src/components/__tests__/image/image-viewer.navigation.test.tsx`
-- `npm run test:frontend:editor-image`
-- `npm run verify`
+- `pnpm run test:frontend:editor-image`
+- `pnpm run verify`
 
 If an extra regression test is needed, it should focus on externally visible close behavior, not on whether the new internal hook exists.
 

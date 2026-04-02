@@ -75,7 +75,7 @@ The default production behavior should remain equivalent to today's direct impor
 - `app/src/services/__tests__/appBootstrapService.test.ts`
 - `app/src/services/__tests__/appLifecycleService.test.ts`
 - new upload recovery service test file
-- full `npm run verify`
+- full `pnpm run verify`
 
 ## Testing Strategy
 
@@ -86,7 +86,7 @@ Minimum required proof for this batch:
 - one focused service test proving both queue flush functions are invoked through the new entrypoint
 - one focused service test proving one queue failure does not block the other queue flush attempt
 - existing bootstrap/lifecycle tests continue to pass after being updated to mock the new shared entrypoint
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -126,4 +126,4 @@ This batch is complete when all of the following are true:
 - one shared upload queue recovery entrypoint is used instead
 - focused service tests cover normal invocation and isolated failure behavior
 - existing bootstrap/lifecycle tests pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes

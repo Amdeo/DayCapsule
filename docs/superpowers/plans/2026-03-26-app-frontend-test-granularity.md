@@ -151,7 +151,7 @@ it('renders a stable cancel button testID for dismiss flows', () => {
 
 - [ ] **Step 2: Run the targeted tests to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/SearchOverlay.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/SearchOverlay.test.tsx --runInBand`
 
 Expected: FAIL，因为 `EntryEditor` 和 `SearchOverlayFooter` 还没有这些稳定锚点。
 
@@ -173,7 +173,7 @@ Expected: FAIL，因为 `EntryEditor` 和 `SearchOverlayFooter` 还没有这些�
 
 - [ ] **Step 4: Re-run the targeted tests to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/SearchOverlay.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/SearchOverlay.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -256,7 +256,7 @@ it('keeps local mode when enabling cloud mode fails', async () => {
 
 - [ ] **Step 2: Run the two new suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx --runInBand`
 
 Expected: FAIL，因为 helper 还未接入，且新的页面粒度行为还未被独立建模。
 
@@ -275,7 +275,7 @@ const { screen, mocks } = renderSettingsPage({
 
 - [ ] **Step 4: Re-run the two suites to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -320,7 +320,7 @@ it('keeps the previous backend environment when switching fails', async () => {
 
 - [ ] **Step 6: Run the three new suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.sync-status.test.tsx src/components/__tests__/settings-page/settings-page.repair-entry.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/settings-page/settings-page.sync-status.test.tsx src/components/__tests__/settings-page/settings-page.repair-entry.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx --runInBand`
 
 Expected: FAIL，直到新的 suites 和 helper 都建立完毕。
 
@@ -336,7 +336,7 @@ Expected: FAIL，直到新的 suites 和 helper 都建立完毕。
 
 - [ ] **Step 8: Run the full settings batch**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.sync-status.test.tsx src/components/__tests__/settings-page/settings-page.repair-entry.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.preferences.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.sync-status.test.tsx src/components/__tests__/settings-page/settings-page.repair-entry.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -390,7 +390,7 @@ it('renders the sync status action when cloud mode is active', () => {
 
 - [ ] **Step 2: Run the home timeline tests to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx --runInBand`
 
 Expected: FAIL，因为 helper 和分场景断言还未建立。
 
@@ -407,7 +407,7 @@ Expected: FAIL，因为 helper 和分场景断言还未建立。
 
 - [ ] **Step 4: Re-run the home timeline tests to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath "app/(tabs)/__tests__/index.timeline-state.test.tsx" src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -437,7 +437,7 @@ it('keeps tag filters when clearing only the keyword', async () => {
 
 - [ ] **Step 6: Run the search/filter suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath "app/(tabs)/__tests__/index.search-filter.test.tsx" src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx src/components/__tests__/SearchBar.safe-area.test.tsx --runInBand`
 
 Expected: FAIL，因为新的页面组合行为还没有被独立建模。
 
@@ -459,7 +459,7 @@ Expected: FAIL，因为新的页面组合行为还没有被独立建模。
 
 - [ ] **Step 8: Run the full timeline/search batch**
 
-Run: `cd app && npm test -- --runTestsByPath "app/(tabs)/__tests__/index.render.test.tsx" "app/(tabs)/__tests__/index.timeline-state.test.tsx" "app/(tabs)/__tests__/index.search-filter.test.tsx" src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath "app/(tabs)/__tests__/index.render.test.tsx" "app/(tabs)/__tests__/index.timeline-state.test.tsx" "app/(tabs)/__tests__/index.search-filter.test.tsx" src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/search/search-overlay.filters.test.tsx src/components/__tests__/search/search-overlay.restore-state.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -524,7 +524,7 @@ it('shows a leave-confirmation path when unsaved edits exist', () => {
 
 - [ ] **Step 2: Run the editor suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx --runInBand`
 
 Expected: FAIL，因为新的细颗粒行为还未单独建模。
 
@@ -534,7 +534,7 @@ Expected: FAIL，因为新的细颗粒行为还未单独建模。
 
 - [ ] **Step 4: Re-run the editor suites to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx src/components/__tests__/EntryEditor.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx src/components/__tests__/EntryEditor.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -567,7 +567,7 @@ it('keeps local photo entry state when upload enqueue fails', async () => {
 
 - [ ] **Step 6: Run the image/photo suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/photo-grid.render.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx "app/(tabs)/__tests__/index.photo.test.ts" --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/photo-grid.render.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx "app/(tabs)/__tests__/index.photo.test.ts" --runInBand`
 
 Expected: FAIL，因为新的分文件矩阵和首页照片恢复断言还未建立。
 
@@ -583,7 +583,7 @@ Expected: FAIL，因为新的分文件矩阵和首页照片恢复断言还未建
 
 - [ ] **Step 8: Run the full editor/image batch**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/photo-grid.render.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx "app/(tabs)/__tests__/index.photo.test.ts" --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/EntryEditor.test.tsx src/components/__tests__/editor/entry-editor.dirty-state.test.tsx src/components/__tests__/editor/entry-editor.save-flow.test.tsx src/components/__tests__/editor/entry-editor.leave-guard.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/photo-grid.render.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx "app/(tabs)/__tests__/index.photo.test.ts" --runInBand`
 
 Expected: PASS
 
@@ -736,25 +736,25 @@ git commit -m "test(maestro): add app-core android regression flows"
 
 - [ ] **Step 2: Run the settings batch script**
 
-Run: `cd app && npm run test:frontend:settings`
+Run: `cd app && pnpm run test:frontend:settings`
 
 Expected: PASS
 
 - [ ] **Step 3: Run the home batch script**
 
-Run: `cd app && npm run test:frontend:home`
+Run: `cd app && pnpm run test:frontend:home`
 
 Expected: PASS
 
 - [ ] **Step 4: Run the editor/image batch script**
 
-Run: `cd app && npm run test:frontend:editor-image`
+Run: `cd app && pnpm run test:frontend:editor-image`
 
 Expected: PASS
 
 - [ ] **Step 5: Run the Maestro batch script**
 
-Run: `cd app && npm run test:maestro:app-core`
+Run: `cd app && pnpm run test:maestro:app-core`
 
 Expected: PASS
 

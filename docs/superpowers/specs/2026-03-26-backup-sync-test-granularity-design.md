@@ -244,7 +244,7 @@
 实现完成后至少执行：
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test --runTestsByPath \
   src/components/__tests__/BackupPage.test.tsx \
   src/components/__tests__/CloudSyncStatusButton.test.tsx \
   src/components/__tests__/cloud-sync-status-button/CloudSyncStatusButton.animation.test.tsx \
@@ -254,7 +254,7 @@ cd app && npm test -- --runTestsByPath \
 如果需要对已有云同步首页链路做回归补充，再追加：
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test --runTestsByPath \
   src/components/__tests__/timeline/timeline.home.sync-status.test.tsx \
   src/components/__tests__/CloudSyncStatusButton.test.tsx \
   src/components/__tests__/cloud-sync-status-button/CloudSyncStatusButton.animation.test.tsx \

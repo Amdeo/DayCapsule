@@ -20,7 +20,7 @@
   - 媒体部分成功时顶部状态应为 `failed`
 
 - [ ] **Step 2: 运行测试确认失败**
-  - Run: `npm test -- --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts`
 
 ### Task 2: 最小实现
 
@@ -31,7 +31,7 @@
   - `resolveUiState` 纳入 `lastMediaValidationSummary`
 
 - [ ] **Step 2: 运行测试确认通过**
-  - Run: `npm test -- --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts`
 
 ### Task 3: 回归验证
 
@@ -40,7 +40,7 @@
 - Verify: `app/src/services/showCloudSyncStatusAlert.ts`
 
 - [ ] **Step 1: 跑相关测试**
-  - Run: `npm test -- --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/store/__tests__/cloudSyncIndicatorStore.test.ts src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 
 - [ ] **Step 2: 跑类型检查**
-  - Run: `npm run typecheck`
+  - Run: `pnpm run typecheck`

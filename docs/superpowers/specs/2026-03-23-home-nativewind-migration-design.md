@@ -36,9 +36,9 @@
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/entryCardVariants.test.ts src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.border-radius.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx`：通过
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`：通过
 - `cd app && npx jest --run-in-band --runTestsByPath src/__tests__/runtime-regressions.test.ts`：通过
-- `cd app && npm run lint`：通过
-- `cd app && npm run typecheck`：通过
-- `cd app && npm test -- --runInBand`：通过
+- `cd app && pnpm run lint`：通过
+- `cd app && pnpm run typecheck`：通过
+- `cd app && pnpm test --runInBand`：通过
 
 ## 偏差与已知问题
 
@@ -252,7 +252,7 @@
 
 建议目标：
 
-- 新增 `npm run lint`
+- 新增 `pnpm run lint`
 - 在 CI 中接入 lint
 - 规则以样式迁移守卫为中心，而不是先追求全量代码风格治理
 
@@ -294,8 +294,8 @@
 
 每轮迁移验收至少包含：
 
-1. `npm run lint`
-2. `npm run typecheck`
+1. `pnpm run lint`
+2. `pnpm run typecheck`
 3. 首页相关测试
 4. 全量测试回归
 

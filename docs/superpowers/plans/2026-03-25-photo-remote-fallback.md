@@ -58,7 +58,7 @@ expect(
 
 - [ ] **Step 3: 运行测试并确认当前失败**
 
-Run: `cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand`
+Run: `cd app && pnpm test src/services/__tests__/photoService.test.ts --runInBand`
 
 Expected: 失败，提示新方法不存在或返回值不符合预期。
 
@@ -86,7 +86,7 @@ static getFallbackPhotoUri(media: MediaInfo, failedUri: string, kind: 'thumbnail
 
 - [ ] **Step 3: 重新运行 `photoService` 测试并确认变绿**
 
-Run: `cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand`
+Run: `cd app && pnpm test src/services/__tests__/photoService.test.ts --runInBand`
 
 Expected: PASS
 
@@ -106,7 +106,7 @@ Expected: PASS
 
 - [ ] **Step 2: 运行测试并确认当前失败**
 
-Run: `cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand`
+Run: `cd app && pnpm test src/components/__tests__/PhotoGrid.test.tsx --runInBand`
 
 Expected: 失败，当前实现会直接进入 missing 状态或保持旧地址。
 
@@ -137,7 +137,7 @@ PhotoService.getPreferredPhotoUri(photo, 'thumbnail')
 
 - [ ] **Step 4: 重新运行 `PhotoGrid` 测试并确认变绿**
 
-Run: `cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand`
+Run: `cd app && pnpm test src/components/__tests__/PhotoGrid.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -165,7 +165,7 @@ media: [
 
 - [ ] **Step 2: 运行测试并确认当前失败**
 
-Run: `cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand`
+Run: `cd app && pnpm test src/components/__tests__/EntryCard.test.tsx --runInBand`
 
 Expected: 失败，当前实现仍把旧 `uri` 传给查看器。
 
@@ -189,7 +189,7 @@ Expected: 失败，当前实现仍把旧 `uri` 传给查看器。
 
 - [ ] **Step 3: 重新运行 `EntryCard` 测试并确认变绿**
 
-Run: `cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand`
+Run: `cd app && pnpm test src/components/__tests__/EntryCard.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -211,9 +211,9 @@ Expected: PASS
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
-cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+cd app && pnpm test src/services/__tests__/photoService.test.ts --runInBand
+cd app && pnpm test src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected: 全部 PASS

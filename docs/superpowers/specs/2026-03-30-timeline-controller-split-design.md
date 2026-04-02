@@ -147,8 +147,8 @@ Most relevant verification targets:
 - `app/src/components/__tests__/timeline/timeline.controller.test.tsx`
 - `app/src/components/__tests__/timeline/timeline.home.navigation.test.tsx`
 - `app/src/components/__tests__/timeline/timeline.home.sync-status.test.tsx`
-- `npm run test:frontend:home`
-- `npm run verify`
+- `pnpm run test:frontend:home`
+- `pnpm run verify`
 
 If an extra regression test is needed, it should focus on externally visible detail/edit behavior, not on whether a new internal hook exists.
 

@@ -16,7 +16,7 @@
 
 - 2026-03-23：基于已批准 spec 创建实现计划，范围锁定为“视觉语言 token + 全局错误弹层 + 第一批关键错误迁移”。
 - 2026-03-23：当前会话未显式授权使用子代理 review，本轮 plan review 改为本地结构化 review，并在文档中留痕。
-- 2026-03-23：记录当前仓库已知基线问题：`cd app && npm test -- --runInBand --watchAll=false` 目前会在 `src/__tests__/runtime-regressions.test.ts` 因过时断言失败；执行本计划时不要把该失败误判为本需求引入。
+- 2026-03-23：记录当前仓库已知基线问题：`cd app && pnpm test --runInBand --watchAll=false` 目前会在 `src/__tests__/runtime-regressions.test.ts` 因过时断言失败；执行本计划时不要把该失败误判为本需求引入。
 - 2026-03-23：已修正 `src/__tests__/runtime-regressions.test.ts` 的过时断言，全量测试恢复通过。
 
 ## 执行状态
@@ -591,7 +591,7 @@ git commit -m "feat: migrate settings and backup errors to feedback modal"
 Run:
 
 ```bash
-cd app && npm run typecheck
+cd app && pnpm run typecheck
 ```
 
 Expected: PASS
@@ -620,7 +620,7 @@ Expected: PASS
 Run:
 
 ```bash
-cd app && npm test -- --runInBand --watchAll=false
+cd app && pnpm test --runInBand --watchAll=false
 ```
 
 Expected:

@@ -54,7 +54,7 @@ it('can reopen the action sheet after it closes and resets', () => {
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx -t "can reopen the action sheet after it closes and resets"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx -t "can reopen the action sheet after it closes and resets"
 ```
 
 Expected:
@@ -117,13 +117,13 @@ Do not move image-viewer state, `handleCardPress()`, or `runStopRecording()`.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -149,7 +149,7 @@ git commit -m "refactor: extract entry card action sheet state"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx
 ```
 
 Expected: PASS.
@@ -159,7 +159,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run test:frontend:editor-image
+pnpm run test:frontend:editor-image
 ```
 
 Expected: PASS.
@@ -169,7 +169,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

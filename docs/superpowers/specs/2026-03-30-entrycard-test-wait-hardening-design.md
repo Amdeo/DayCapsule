@@ -55,7 +55,7 @@ Minimum required proof for this batch:
 
 - `EntryCard.test.tsx` no longer uses `Promise.resolve()` in the targeted processing-voice test
 - the targeted `EntryCard` test file passes
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -79,4 +79,4 @@ This batch is complete when all of the following are true:
 - `EntryCard.test.tsx` no longer relies on `Promise.resolve()` in the targeted test
 - the tested processing-voice behavior is still covered
 - no unnecessary production refactor was introduced
-- full `npm run verify` passes
+- full `pnpm run verify` passes

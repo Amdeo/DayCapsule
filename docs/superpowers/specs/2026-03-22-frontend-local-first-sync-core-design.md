@@ -345,9 +345,9 @@
 
 ## 验证结果
 
-- 2026-03-22：已运行 `cd app && npm test -- --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
+- 2026-03-22：已运行 `cd app && pnpm test --runInBand app/src/database/__tests__/operations.test.ts app/src/store/__tests__/syncStore.test.ts app/src/services/__tests__/cloudSyncService.test.ts app/src/store/__tests__/entryStore.test.ts app/src/database/__tests__/dataSource.test.ts app/src/services/__tests__/syncBootstrapService.test.ts app/src/components/__tests__/SettingsPage.test.tsx`
   - 结果：PASS（7 个 test suite，80 个测试全部通过）
-- 2026-03-22：已运行 `cd app && npm run typecheck`
+- 2026-03-22：已运行 `cd app && pnpm run typecheck`
   - 结果：PASS
 
 ## Spec Review 留痕

@@ -128,7 +128,7 @@ Relevant verification targets:
 - `app/src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx`
 - `app/src/components/__tests__/settings-page/settings-page.backend-env.test.tsx`
 - existing render helper tests if needed
-- `npm run verify`
+- `pnpm run verify`
 
 If a small focused unit test for one of the extracted hooks becomes necessary, keep it minimal and only add it if the current integration tests do not cover the moved behavior well enough.
 

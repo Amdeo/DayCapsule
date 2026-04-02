@@ -89,8 +89,8 @@ The tests should validate behavior through the current public helper API rather 
 - `app/src/components/__tests__/settings-page/settings-page.account-auth.test.tsx`
 - `app/src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx`
 - `app/src/components/__tests__/SettingsPage.test.tsx`
-- `npm run test:frontend:settings`
-- `npm run verify`
+- `pnpm run test:frontend:settings`
+- `pnpm run verify`
 
 ## Testing Strategy
 
@@ -101,7 +101,7 @@ Minimum required proof for this batch:
 - one helper-facing regression test for login prop capture lifetime or reset behavior
 - one helper-facing regression test for persisted settings lifetime or reset behavior
 - direct Settings frontend script still passes
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 The key is to prove that helper state is now explicit enough that a previous render cannot silently bias the next one unless the test intentionally sets that state up.
 
@@ -143,5 +143,5 @@ This batch is complete when all of the following are true:
 - `renderSettingsPage` keeps the same public API
 - targeted helper state around login prop capture and persisted settings has clearer per-render/reset boundaries
 - new or tightened helper-facing regression tests prove those boundaries
-- `npm run test:frontend:settings` passes
-- `npm run verify` passes
+- `pnpm run test:frontend:settings` passes
+- `pnpm run verify` passes

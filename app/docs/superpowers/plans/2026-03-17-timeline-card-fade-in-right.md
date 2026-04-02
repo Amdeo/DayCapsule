@@ -64,7 +64,7 @@ it('passes staggered enter delays to entry cards', () => {
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -129,7 +129,7 @@ it('applies FadeInRight entering with the provided delay and no exiting animatio
 
 Run:
 ```bash
-npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected:
@@ -206,7 +206,7 @@ const enterDelay = staggerIndex * 50;
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -285,7 +285,7 @@ import Animated, {
 
 Run:
 ```bash
-npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected:
@@ -313,7 +313,7 @@ git commit -m "feat: add fade in right entering to entry cards"
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
 ```
 
 Expected:
@@ -326,8 +326,8 @@ Expected:
 
 Run:
 ```bash
-npm test -- --runInBand
-npm run typecheck
+pnpm test --runInBand
+pnpm run typecheck
 ```
 
 Expected:
@@ -338,7 +338,7 @@ Expected:
 
 Run:
 ```bash
-npm start
+pnpm start
 ```
 
 手工检查：

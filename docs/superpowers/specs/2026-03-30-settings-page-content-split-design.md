@@ -139,8 +139,8 @@ Most relevant verification targets:
 - `app/src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx`
 - `app/src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx`
 - `app/src/components/__tests__/settings-page/settings-page.backend-env.test.tsx`
-- `npm run test:frontend:settings`
-- `npm run verify`
+- `pnpm run test:frontend:settings`
+- `pnpm run verify`
 
 If an extra regression test is needed, it should focus on externally visible section behavior, not component implementation boundaries.
 

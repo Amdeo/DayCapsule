@@ -24,7 +24,7 @@ The goal is to make local verification and CI run the same checks, while removin
 
 ### Verification drift
 
-`app/package.json` currently exposes separate `lint`, `typecheck`, and `test` scripts, but there is no single command representing the full required verification pass. The Android release workflow manually runs `npm run typecheck` and `npm test -- --runInBand`, and it does not run lint.
+`app/package.json` currently exposes separate `lint`, `typecheck`, and `test` scripts, but there is no single command representing the full required verification pass. The Android release workflow manually runs `pnpm run typecheck` and `pnpm test --runInBand`, and it does not run lint.
 
 This creates two kinds of drift:
 
@@ -47,15 +47,15 @@ That approach is fragile because:
 
 `app/package.json` will gain a `verify` script that runs:
 
-1. `npm run lint`
-2. `npm run typecheck`
-3. `npm test -- --runInBand`
+1. `pnpm run lint`
+2. `pnpm run typecheck`
+3. `pnpm test --runInBand`
 
 `verify` is the only new top-level verification alias introduced in this batch. No additional `check`, `ci`, or overlapping scripts will be added.
 
 ### 2. Make CI consume the same command
 
-`.github/workflows/android-release.yml` will stop manually invoking separate typecheck and test steps. The workflow will instead run `npm run verify` in the `app/` working directory before the Android prebuild and release build steps.
+`.github/workflows/android-release.yml` will stop manually invoking separate typecheck and test steps. The workflow will instead run `pnpm run verify` in the `app/` working directory before the Android prebuild and release build steps.
 
 This keeps verification logic centralized in one file and ensures that adding or removing verification requirements only requires updating one command definition.
 
@@ -102,7 +102,7 @@ Minimum required verification for this batch:
 
 - targeted Settings helper stability test
 - targeted Settings page test set affected by the helper
-- full `npm run verify`
+- full `pnpm run verify`
 
 The targeted tests should prove two things:
 
@@ -144,9 +144,9 @@ Mitigation:
 
 This batch is complete when all of the following are true:
 
-- `app/package.json` exposes `npm run verify` as the canonical verification command
-- the Android release workflow calls `npm run verify`
+- `app/package.json` exposes `pnpm run verify` as the canonical verification command
+- the Android release workflow calls `pnpm run verify`
 - `renderSettingsPage` no longer relies on `Promise.resolve()` flush loops to settle initial render
 - `renderSettingsPage.stability.test.tsx` no longer uses `Promise.resolve()` settling
 - targeted Settings tests pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes

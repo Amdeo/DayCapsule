@@ -73,7 +73,7 @@ Add a second idempotency test proving the migration skips backfill when the tabl
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts
 ```
 
 Expected: FAIL because the FTS table and migration do not exist yet.
@@ -119,7 +119,7 @@ Keep this migration narrowly focused on local `content` backfill only.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts
 ```
 
 Expected: PASS.
@@ -221,7 +221,7 @@ it('restoreEntries 应回填恢复记录的 entries_fts content', async () => {
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: FAIL because write paths do not yet maintain `entries_fts`.
@@ -262,7 +262,7 @@ Do not add trigger-based synchronization in this phase.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -321,7 +321,7 @@ These tests encode the phase-1 semantic shift: free-text search is content-only 
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Expected: FAIL because local search still uses `LIKE`.
@@ -372,13 +372,13 @@ Do not change the existing exact tag-filter subqueries.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -403,7 +403,7 @@ git commit -m "feat: use content fts for local search"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/migration.test.ts src/database/__tests__/operations.test.ts
 ```
 
 Expected: PASS.
@@ -413,7 +413,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS. If unrelated pre-existing failures appear, record them exactly and stop widening scope.

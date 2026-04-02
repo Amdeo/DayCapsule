@@ -168,7 +168,7 @@ it('falls back to existing media localMediaId in failed logs when the issue omit
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts -t "falls back to existing media localMediaId"
+pnpm test --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts -t "falls back to existing media localMediaId"
 ```
 
 Expected: FAIL because the service still uses `issue.localMediaId` directly in upload metadata and logs.
@@ -184,7 +184,7 @@ Do not modify production code in this task.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts -t "falls back to existing media localMediaId"
+pnpm test --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts -t "falls back to existing media localMediaId"
 ```
 
 Expected: FAIL specifically because `traceId` / `localMediaId` / log payload still remain `undefined` when the issue omits them.
@@ -265,13 +265,13 @@ Do not change the repair writeback, sync trigger, or error propagation flow.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -281,7 +281,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.
@@ -314,7 +314,7 @@ git commit -m "fix(sync): preserve photo repair local media id fallback"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/photoRepairService.test.ts
 ```
 
 Expected: PASS.

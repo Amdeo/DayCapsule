@@ -227,7 +227,7 @@
 
 - 新增 lifecycle 文件通过
 - 现有 viewer 三组测试保持通过
-- `cd app && npm test -- --runInBand` 通过
+- `cd app && pnpm test --runInBand` 通过
 
 ## 风险与取舍
 

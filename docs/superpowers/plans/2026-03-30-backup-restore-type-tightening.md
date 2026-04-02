@@ -69,7 +69,7 @@ const mockUpdateEntry = jest.fn<Promise<void>, [string, Partial<Entry>]>()
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
 ```
 
 Expected: either FAIL because the stricter mock typings surface the current controller `any` contract mismatch, or FAIL because one import fixture no longer matches the tightened media expectations.
@@ -89,7 +89,7 @@ Do not modify production code in this task.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
 ```
 
 Expected: FAIL for the intended production typing gap, not for a broken test fixture.
@@ -190,7 +190,7 @@ Do not change runtime control flow, alert copy, or media extraction behavior.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
 ```
 
 Expected: PASS.
@@ -200,7 +200,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -224,7 +224,7 @@ git commit -m "refactor: tighten backup restore typing"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/BackupPage.test.tsx
 ```
 
 Expected: PASS.
@@ -234,7 +234,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

@@ -22,7 +22,7 @@
   - 远端图片未 hydrate 时点击卡片不打开 viewer
 
 - [ ] **Step 2: 运行测试确认失败**
-  - Run: `npm test -- --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx`
 
 ### Task 2: 实现 media-ready helper 与展示层占位
 
@@ -40,7 +40,7 @@
   - 未就绪时禁用图片 viewer 和语音播放入口
 
 - [ ] **Step 2: 运行测试确认通过**
-  - Run: `npm test -- --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx`
 
 ### Task 3: 回归验证
 
@@ -49,7 +49,7 @@
 - Verify: `app/src/components/EntryCard.tsx`
 
 - [ ] **Step 1: 跑相关前端测试**
-  - Run: `npm test -- --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx src/components/__tests__/image/entry-card.missing-media-variants.test.tsx`
 
 - [ ] **Step 2: 跑类型检查**
-  - Run: `npm run typecheck`
+  - Run: `pnpm run typecheck`

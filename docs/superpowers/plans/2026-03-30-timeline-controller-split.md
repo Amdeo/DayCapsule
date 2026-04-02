@@ -59,7 +59,7 @@ it('clears the pending detail-to-editor handoff when the detail view is closed b
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx -t "clears the pending detail-to-editor handoff when the detail view is closed before the timer finishes"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx -t "clears the pending detail-to-editor handoff when the detail view is closed before the timer finishes"
 ```
 
 Expected:
@@ -115,13 +115,13 @@ Do not move search, view-mode, scroll/FAB, or action-sheet logic.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -148,7 +148,7 @@ git commit -m "refactor: extract timeline entry detail state"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.controller.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx
 ```
 
 Expected: PASS.
@@ -158,7 +158,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run test:frontend:home
+pnpm run test:frontend:home
 ```
 
 Expected: PASS.
@@ -168,7 +168,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

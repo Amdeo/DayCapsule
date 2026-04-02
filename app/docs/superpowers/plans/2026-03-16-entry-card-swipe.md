@@ -419,7 +419,7 @@ it('expands card on long press instead of showing action sheet', () => {
 
 ```bash
 cd /Users/cooper/Documents/code/MemoryCapsule/app
-npm test -- EntryCard.test.tsx --no-coverage
+pnpm test -- EntryCard.test.tsx --no-coverage
 ```
 
 Expected: 所有测试通过
@@ -450,7 +450,7 @@ git commit -m "test: update EntryCard tests for swipe actions"
 
 ```bash
 cd /Users/cooper/Documents/code/MemoryCapsule/app
-npm test -- EntryCard.missing-media.test.tsx --no-coverage
+pnpm test -- EntryCard.missing-media.test.tsx --no-coverage
 ```
 
 - [ ] **Step 4: Commit**
@@ -470,7 +470,7 @@ git commit -m "test: update missing media tests for swipe actions"
 
 ```bash
 cd /Users/cooper/Documents/code/MemoryCapsule/app
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: 无 TypeScript 错误
@@ -494,7 +494,7 @@ git commit -m "fix: resolve TypeScript type errors"
 
 ```bash
 cd /Users/cooper/Documents/code/MemoryCapsule/app
-npm test -- --coverage
+pnpm test -- --coverage
 ```
 
 Expected: 所有测试通过，覆盖率不降低

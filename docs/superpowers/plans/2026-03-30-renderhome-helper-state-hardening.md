@@ -69,7 +69,7 @@ The exact fixture data can differ, but the test must prove:
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
 ```
 
 Expected: FAIL if the current helper leaks entries/tags across renders.
@@ -110,7 +110,7 @@ If another tiny reset helper is clearer, use that instead. The important point i
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
 ```
 
 Expected: PASS.
@@ -120,7 +120,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/timeline/timeline.home.interactions.test.tsx
+pnpm test --runInBand src/components/__tests__/timeline/timeline.home.interactions.test.tsx
 ```
 
 Expected: PASS.
@@ -164,7 +164,7 @@ If the helper exposes this state through a different rendered token or spy surfa
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
 ```
 
 Expected: FAIL if the current helper leaks cloud sync UI state across renders.
@@ -180,7 +180,7 @@ If Task 1's refactor already fixed this behavior and the new test passes immedia
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx
 ```
 
 Expected: PASS.
@@ -190,7 +190,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/timeline/timeline.home.navigation.test.tsx
+pnpm test --runInBand src/components/__tests__/timeline/timeline.home.navigation.test.tsx
 ```
 
 Expected: PASS.
@@ -217,7 +217,7 @@ git commit -m "test: isolate renderhome cloud ui state"
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
 ```
 
 Expected: PASS.
@@ -227,7 +227,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

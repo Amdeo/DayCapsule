@@ -48,10 +48,10 @@
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand
-cd app && npm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
-cd app && npm test -- src/database/__tests__/operations.test.ts --runInBand
-cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+cd app && pnpm test -- src/services/__tests__/photoService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
+cd app && pnpm test -- src/database/__tests__/operations.test.ts --runInBand
+cd app && pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected: 至少新增的日志断言失败。
@@ -92,9 +92,9 @@ Expected: 至少新增的日志断言失败。
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand
-cd app && npm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
-cd app && npm test -- src/database/__tests__/operations.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/photoService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
+cd app && pnpm test -- src/database/__tests__/operations.test.ts --runInBand
 ```
 
 ### Task 3: 实现查看器入口与失败日志
@@ -125,7 +125,7 @@ cd app && npm test -- src/database/__tests__/operations.test.ts --runInBand
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 ### Task 4: 最终回归并提交
@@ -148,11 +148,11 @@ cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/photoService.test.ts --runInBand
-cd app && npm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
-cd app && npm test -- src/database/__tests__/operations.test.ts --runInBand
-cd app && npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
-cd app && npm run typecheck
+cd app && pnpm test -- src/services/__tests__/photoService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/mediaCacheService.test.ts --runInBand
+cd app && pnpm test -- src/database/__tests__/operations.test.ts --runInBand
+cd app && pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+cd app && pnpm run typecheck
 ```
 
 - [ ] **Step 2: 提交**

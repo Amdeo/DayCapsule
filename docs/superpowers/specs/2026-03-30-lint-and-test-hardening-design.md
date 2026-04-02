@@ -4,7 +4,7 @@
 
 当前 `main` 分支的工程状态已经比较健康：全量测试通过，但仍有两类明确可优化问题。
 
-1. `npm run lint` 仍然被 `entry-card` 相关样式迁移残留阻塞。
+1. `pnpm run lint` 仍然被 `entry-card` 相关样式迁移残留阻塞。
 2. 少量测试仍依赖事件循环和调度细节，例如 `Promise.resolve()` 冲刷、`setTimeout(0)`、以及对实现时序的隐式假设。
 
 这轮优化只处理这两类问题，不再扩展到更大范围的测试基础设施治理。
@@ -13,7 +13,7 @@
 
 本轮只完成以下两组改动：
 
-1. 修复 `entry-card` 相关 4 个 lint 错误，恢复 `npm run lint` 绿灯。
+1. 修复 `entry-card` 相关 4 个 lint 错误，恢复 `pnpm run lint` 绿灯。
 2. 收口一小批高价值测试脆弱点，只限以下文件：
    - `app/src/services/__tests__/cloudSyncService.test.ts`
    - `app/src/store/__tests__/entryStore.test.ts`
@@ -132,13 +132,13 @@
 
 本轮完成后至少执行：
 
-1. `npm run lint`
+1. `pnpm run lint`
 2. 目标测试文件定向运行
-3. `npm test -- --runInBand`
+3. `pnpm test --runInBand`
 
 如涉及异步等待/句柄问题回归，还应追加：
 
-4. `npm test -- --runInBand --detectOpenHandles --openHandlesTimeout=3000`
+4. `pnpm test --runInBand --detectOpenHandles --openHandlesTimeout=3000`
 
 ## 实施原则
 

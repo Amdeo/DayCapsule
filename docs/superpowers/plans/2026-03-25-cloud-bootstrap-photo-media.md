@@ -34,7 +34,7 @@
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
 ```
 
 Expected: 新增断言失败，说明当前实现还没有做预上传。
@@ -65,7 +65,7 @@ Expected: 新增断言失败，说明当前实现还没有做预上传。
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
 ```
 
 ### Task 3: 回归验证
@@ -81,9 +81,9 @@ cd app && npm test -- src/services/__tests__/syncBootstrapService.test.ts --runI
 Run:
 
 ```bash
-cd app && npm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
-cd app && npm test -- src/services/__tests__/cloudSyncService.test.ts --runInBand
-cd app && npm run typecheck
+cd app && pnpm test -- src/services/__tests__/syncBootstrapService.test.ts --runInBand
+cd app && pnpm test -- src/services/__tests__/cloudSyncService.test.ts --runInBand
+cd app && pnpm run typecheck
 ```
 
 - [ ] **Step 2: 提交**

@@ -41,14 +41,14 @@
   - 新增“服务器返回较新版本时前端直接应用服务器快照，不创建冲突副本”
 
 - [ ] **Step 2: 运行前端测试确认失败**
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
 
 - [ ] **Step 3: 最小实现**
   - 去掉 `createConflictCopy` 路径
   - 调整 `settleResults` 和冲突统计
 
 - [ ] **Step 4: 运行前端测试确认通过**
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
 
 ### Task 3: 回归验证
 
@@ -59,10 +59,10 @@
 
 - [ ] **Step 1: 跑相关前后端测试**
   - Run: `go test ./internal/service -run SyncV2Service`
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts src/store/__tests__/entryStore.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts src/store/__tests__/entryStore.test.ts`
 
 - [ ] **Step 2: 跑类型检查**
-  - Run: `npm run typecheck`
+  - Run: `pnpm run typecheck`
 
 - [ ] **Step 3: 检查 diff 与状态**
   - Run: `git diff --stat`

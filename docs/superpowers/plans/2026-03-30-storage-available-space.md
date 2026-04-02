@@ -78,7 +78,7 @@ it('falls back to -1 when Expo cannot report free storage', async () => {
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: FAIL because `getStorageStats()` still returns the placeholder value and does not yet use the free-space API.
@@ -92,7 +92,7 @@ If Jest fails because the mock function is missing from the typed module namespa
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: FAIL specifically on the `available` assertions.
@@ -162,7 +162,7 @@ Do not change the outer catch block that returns zeroed stats.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: PASS.
@@ -172,7 +172,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: exit code `0`.
@@ -205,7 +205,7 @@ git commit -m "feat(filesystem): report available disk space"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
+pnpm test --runInBand --runTestsByPath src/utils/__tests__/fileSystem.test.ts
 ```
 
 Expected: PASS.
@@ -215,7 +215,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

@@ -49,7 +49,7 @@
 
 - [x] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 当前页面没有显式分区标题，新增断言失败
 
@@ -63,7 +63,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
 Expected:
 - 目标测试通过
 
@@ -84,13 +84,13 @@ Expected:
 
 - [x] **Step 1: 运行相关回归测试**
 
-Run: `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
 Expected:
 - 标签管理页和设置页测试都通过
 
 - [x] **Step 2: 运行 typecheck**
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected:
 - TypeScript 检查通过
 
@@ -104,8 +104,8 @@ Expected:
 
 ## 最终验证清单
 
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
-- [x] `cd app && npm run typecheck`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+- [x] `cd app && pnpm run typecheck`
 - [x] 手动确认标签管理页显示“当前预制标签”区块
 - [x] 手动确认现有新增、删除、恢复能力未变
 - [x] 手动确认文档状态已收口
@@ -124,11 +124,11 @@ Expected:
 ## 最终验证摘要
 
 - 失败验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx`
+  - `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx`
   - 新增断言初始失败，证明页面里还没有真正的“当前预制标签”区块标题与说明
 - 实现后验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
-  - `cd app && npm run typecheck` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
+  - `cd app && pnpm run typecheck` 通过
 
 ## 最终实现说明
 

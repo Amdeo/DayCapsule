@@ -121,7 +121,7 @@ it('skips pre-upload for pending-delete or delete-op entries', async () => {
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts -t "shows the repair prompt only when validation issues require repair action|skips pre-upload for pending-delete or delete-op entries"
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts -t "shows the repair prompt only when validation issues require repair action|skips pre-upload for pending-delete or delete-op entries"
 ```
 
 Expected: FAIL because current `main` shows the prompt for any non-empty issues and still pre-uploads delete-bound entries.
@@ -137,7 +137,7 @@ Do not modify production code in this task.
 Run the same command again:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts -t "shows the repair prompt only when validation issues require repair action|skips pre-upload for pending-delete or delete-op entries"
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts -t "shows the repair prompt only when validation issues require repair action|skips pre-upload for pending-delete or delete-op entries"
 ```
 
 Expected: FAIL specifically on prompt gating and delete-aware pre-upload skipping.
@@ -191,13 +191,13 @@ Do not change any other bootstrap logic.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -207,7 +207,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.
@@ -240,7 +240,7 @@ git commit -m "fix(sync): restore bootstrap settlement guards"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
+pnpm test --runInBand --runTestsByPath src/services/__tests__/syncBootstrapService.test.ts
 ```
 
 Expected: PASS.

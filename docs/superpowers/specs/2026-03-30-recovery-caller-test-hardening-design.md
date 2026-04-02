@@ -71,7 +71,7 @@ Minimum required proof for this batch:
 - one caller-side lifecycle test that directly validates auth/cloudMode gating intent
 - one caller-side test covering refresh failure behavior
 - focused bootstrap/lifecycle tests pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -110,4 +110,4 @@ This batch is complete when all of the following are true:
 - lifecycle caller gating is directly covered by tests
 - refresh failure handling/propagation is directly covered by tests
 - no unnecessary production refactor was introduced
-- full `npm run verify` passes
+- full `pnpm run verify` passes

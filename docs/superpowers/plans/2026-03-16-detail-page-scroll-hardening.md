@@ -28,9 +28,9 @@
 - `app/src/components/Sidebar.tsx`
 
 **Verification commands:**
-- `cd app && npm test -- --runInBand src/components/__tests__/DetailPageShell.test.tsx`
-- `cd app && npm run typecheck`
-- `cd app && npm test -- --runInBand`
+- `cd app && pnpm test --runInBand src/components/__tests__/DetailPageShell.test.tsx`
+- `cd app && pnpm run typecheck`
+- `cd app && pnpm test --runInBand`
 
 ---
 
@@ -89,7 +89,7 @@
   Run:
 
   ```bash
-  cd app && npm test -- --runInBand src/components/__tests__/DetailPageShell.test.tsx
+  cd app && pnpm test --runInBand src/components/__tests__/DetailPageShell.test.tsx
   ```
 
   Expected: FAIL with module-not-found for `../DetailPageShell` or equivalent import error.
@@ -264,7 +264,7 @@
   Run:
 
   ```bash
-  cd app && npm test -- --runInBand src/components/__tests__/DetailPageShell.test.tsx
+  cd app && pnpm test --runInBand src/components/__tests__/DetailPageShell.test.tsx
   ```
 
   Expected: PASS with 2 passing tests.
@@ -345,7 +345,7 @@
   Run:
 
   ```bash
-  cd app && npm run typecheck
+  cd app && pnpm run typecheck
   ```
 
   Expected: PASS with no TypeScript errors.
@@ -406,7 +406,7 @@
   Run:
 
   ```bash
-  cd app && npm test -- --runInBand src/components/__tests__/DetailPageShell.test.tsx
+  cd app && pnpm test --runInBand src/components/__tests__/DetailPageShell.test.tsx
   ```
 
   Expected: PASS; the shared shell contract still holds after consumer migration.
@@ -472,7 +472,7 @@
   Run:
 
   ```bash
-  cd app && npm run typecheck
+  cd app && pnpm run typecheck
   ```
 
   Expected: PASS with no import/style/reference errors.
@@ -515,7 +515,7 @@
 - [ ] **Step 2: Run the focused component test suite**
 
   ```bash
-  cd app && npm test -- --runInBand src/components/__tests__/BackupPage.test.tsx
+  cd app && pnpm test --runInBand src/components/__tests__/BackupPage.test.tsx
   ```
 
   Expected: PASS.
@@ -537,7 +537,7 @@
   Run:
 
   ```bash
-  cd app && npm test -- --runInBand
+  cd app && pnpm test --runInBand
   ```
 
   Expected: PASS for the existing suite plus the new detail-page tests.
@@ -547,7 +547,7 @@
   Run:
 
   ```bash
-  cd app && npm run typecheck
+  cd app && pnpm run typecheck
   ```
 
   Expected: PASS.

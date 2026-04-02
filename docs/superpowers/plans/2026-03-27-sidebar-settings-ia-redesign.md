@@ -92,7 +92,7 @@ it('renders only stats, backup and settings entries in the sidebar menu', () => 
 
 - [ ] **Step 2: 运行侧栏测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
 
 Expected: FAIL，原因应包含 `sidebar-menu-tags` / `sidebar-menu-help` / `sidebar-menu-about` 仍然存在。
 
@@ -126,11 +126,11 @@ const actionSetters: Record<SidebarAction, SidebarSetter> = {
 
 - [ ] **Step 4: 重新运行侧栏测试并补一次类型检查**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
 
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 
 Expected: PASS
 
@@ -178,7 +178,7 @@ it('renders the regrouped settings sections and support entries', async () => {
 
 - [ ] **Step 2: 运行设置页组装测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因应包含旧 section 名称仍为 `账户 / 通知 / 数据 / 存储 / 其他 / 后端`，且帮助与关于入口尚不存在。
 
@@ -213,7 +213,7 @@ const SETTINGS_SECTION_TEST_IDS: Record<string, string> = {
 
 - [ ] **Step 4: 重新运行设置页组装测试**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: PASS
 
@@ -255,7 +255,7 @@ it('renders the settings overview card with account, sync and storage summary', 
 
 - [ ] **Step 2: 运行设置页测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: FAIL，原因应包含 `settings-overview-card` 尚不存在。
 
@@ -297,7 +297,7 @@ interface SettingsOverviewCardProps {
 
 - [ ] **Step 4: 重新运行设置页测试**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: PASS
 
@@ -330,7 +330,7 @@ expect(screen.getByText('调整账号、显示和存储偏好')).toBeTruthy();
 
 - [x] **Step 2: 运行侧栏测试，确认副标题断言先失败**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx`
 
 Expected: FAIL，原因应包含副标题文本尚未渲染。
 
@@ -347,19 +347,19 @@ Expected: FAIL，原因应包含副标题文本尚未渲染。
 
 - [x] **Step 4: 跑完整回归**
 
-Run: `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+Run: `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
 
 Expected: PASS
 
-Run: `cd app && npm run test:frontend:settings`
+Run: `cd app && pnpm run test:frontend:settings`
 
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 
 Expected: PASS
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 
 Expected: FAIL（当前分支存在基线遗留 style-guard 报错，非本任务新增）
 
@@ -384,10 +384,10 @@ git commit -m "refactor: redesign sidebar and settings information architecture"
 
 ## 最终验证清单
 
-- [x] `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
-- [x] `cd app && npm run test:frontend:settings`
-- [x] `cd app && npm run typecheck`
-- [ ] `cd app && npm run lint`（FAIL，分支基线存在大量 style-guard 遗留错误，非本任务引入）
+- [x] `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx`
+- [x] `cd app && pnpm run test:frontend:settings`
+- [x] `cd app && pnpm run typecheck`
+- [ ] `cd app && pnpm run lint`（FAIL，分支基线存在大量 style-guard 遗留错误，非本任务引入）
 - [x] 手动验证菜单只保留 3 个一级入口
 - [x] 手动验证帮助与关于已迁入设置页支持区
 - [x] 手动验证标签管理已迁入设置页且仍可打开
@@ -397,7 +397,7 @@ git commit -m "refactor: redesign sidebar and settings information architecture"
 ## Task 4 执行结果（2026-03-27）
 
 - Step 1：已确认 `Sidebar.test.tsx` 原本已有副标题断言，但文案非最终版本；已更新为最终文案。
-- Step 2：已执行 `cd app && npm test -- --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx` 并得到预期失败（缺少新副标题文案）。
+- Step 2：已执行 `cd app && pnpm test --runInBand --runTestsByPath src/components/__tests__/Sidebar.test.tsx` 并得到预期失败（缺少新副标题文案）。
 - Step 3：已在 `SidebarPanel.tsx`/`Sidebar.styles.ts` 完成最小视觉收口，未调整导航关系。
 - Step 4：完整回归中，`Sidebar + Settings` 相关测试与 `typecheck` 通过；`lint` 因基线遗留规则报错未通过。
 - Step 5：spec/plan 状态已回填，提交见本任务 commit。

@@ -132,8 +132,8 @@ Add or adjust tests only if the new types require a small fixture update to matc
 Expected verification scope:
 
 - `app/src/components/__tests__/BackupPage.test.tsx`
-- `npm run typecheck`
-- `npm run verify`
+- `pnpm run typecheck`
+- `pnpm run verify`
 
 ## Risks And Mitigations
 

@@ -208,7 +208,7 @@
   - `app/+not-found.tsx`
   - `app/modal.tsx`
   - `src/components/ErrorBoundary.tsx`
-- 跑最终批相关测试、`npm run lint`、`npm run typecheck` 和全量 `npm test -- --runInBand`
+- 跑最终批相关测试、`pnpm run lint`、`pnpm run typecheck` 和全量 `pnpm test --runInBand`
 
 ### 7. 风险与控制
 
@@ -257,9 +257,9 @@
 ## 验证结果
 
 - `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/shell-fallback-pages.test.tsx src/components/__tests__/ErrorBoundary.test.tsx app/(tabs)/__tests__/_layout.test.tsx app/__tests__/_layout.photo-upload.test.tsx`：PASS，4 个 suite / 9 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，65 个 suite / 378 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，65 个 suite / 378 个测试全部通过
 
 ## 偏差说明
 

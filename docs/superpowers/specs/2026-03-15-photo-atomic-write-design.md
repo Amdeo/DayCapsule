@@ -5,7 +5,7 @@
 
 ## 背景
 
-在 Android 上，`npm run android` 重新安装 app 后，刚添加的照片卡片显示正常但图片消失。SQLite 数据库条目保留（卡片仍在），但图片文件路径失效。
+在 Android 上，`pnpm run android` 重新安装 app 后，刚添加的照片卡片显示正常但图片消失。SQLite 数据库条目保留（卡片仍在），但图片文件路径失效。
 
 ## 根本原因
 

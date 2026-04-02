@@ -92,7 +92,7 @@ README 只修正与本轮直接相关且已经确认失真的内容，包括：
 - 调整：`app/app/_layout.tsx`
 - 新增：`app/src/services` 或相邻目录下的 bootstrap / lifecycle 编排模块
 - 调整：`app/package.json`
-- 调整：`app/package-lock.json`
+- 调整：`app/pnpm-lock.yaml`
 - 调整：`README.md`
 
 具体命名以贴合现有目录结构为准，优先使用最少的新文件数。
@@ -104,7 +104,7 @@ README 只修正与本轮直接相关且已经确认失真的内容，包括：
 控制方式：
 
 - 只做结构性搬移，不改业务条件判断。
-- 改后至少运行 `npm run typecheck`。
+- 改后至少运行 `pnpm run typecheck`。
 - 若 lint 仍停留在已知样式问题，不将其视为本轮新增失败。
 
 ### 风险 2：误删依赖
@@ -125,8 +125,8 @@ README 只修正与本轮直接相关且已经确认失真的内容，包括：
 
 本轮完成后至少执行：
 
-- `npm run typecheck`
-- `npm run lint`
+- `pnpm run typecheck`
+- `pnpm run lint`
 
 对 `lint` 的判断标准是：不引入新的 lint 失败；若仍保留当前已知样式迁移问题，应在结果中明确说明。
 

@@ -43,7 +43,7 @@ it('keeps backend card and account actions inside the account/sync section', asy
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx -t "keeps backend card and account actions inside the account/sync section"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx -t "keeps backend card and account actions inside the account/sync section"
 ```
 
 Expected:
@@ -96,13 +96,13 @@ Do not change text, test IDs, or `Switch` behavior.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -144,7 +144,7 @@ it('keeps storage controls grouped inside the data/storage section', async () =>
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx -t "keeps storage controls grouped inside the data/storage section"
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx -t "keeps storage controls grouped inside the data/storage section"
 ```
 
 Expected:
@@ -183,13 +183,13 @@ Do not change visible text or callback behavior.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -218,7 +218,7 @@ git commit -m "refactor: extract settings data storage section"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx src/components/__tests__/settings-page/settings-page.cloud-mode.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
 ```
 
 Expected: PASS.
@@ -228,7 +228,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run test:frontend:settings
+pnpm run test:frontend:settings
 ```
 
 Expected: PASS.
@@ -238,7 +238,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

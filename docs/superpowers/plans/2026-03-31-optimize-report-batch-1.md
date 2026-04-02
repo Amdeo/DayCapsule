@@ -88,7 +88,7 @@ it('maps a legacy media row with optional fields through row conversion', async 
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts
 ```
 
 Expected: `sqlite.test.ts` fails because the new index assertion is not yet true. `operations.test.ts` should stay green or fail only if the row-shape assumptions expose a typing-related mismatch after the next code change.
@@ -151,13 +151,13 @@ Keep the type local to the file and do not broaden this task into typing every S
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -204,7 +204,7 @@ it('cancels the active recording when the modal becomes hidden externally', asyn
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx
 ```
 
 Expected: FAIL because hiding the modal currently resets local state without cancelling the active recorder.
@@ -238,7 +238,7 @@ If a small guard is needed to avoid duplicate cleanup during an already-handled 
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/VoiceRecorder.test.tsx
 ```
 
 Expected: PASS.
@@ -310,7 +310,7 @@ These test edits should fail before production code changes because `Timeline.v2
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/EntryCard.test.tsx
 ```
 
 Expected: FAIL because the components still expect whole-store returns.
@@ -351,13 +351,13 @@ Do not broaden this task into other components.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -389,7 +389,7 @@ git commit -m "perf: narrow timeline store subscriptions"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts src/components/__tests__/VoiceRecorder.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/EntryCard.test.tsx
+pnpm test --runInBand --runTestsByPath src/database/__tests__/sqlite.test.ts src/database/__tests__/operations.test.ts src/components/__tests__/VoiceRecorder.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/EntryCard.test.tsx
 ```
 
 Expected: PASS.
@@ -399,13 +399,13 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run lint
+pnpm run lint
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -415,7 +415,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS. If this is too slow or reveals unrelated pre-existing failures, record the exact failure and stop widening the fix scope.

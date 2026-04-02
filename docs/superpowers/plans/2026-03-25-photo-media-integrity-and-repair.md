@@ -14,7 +14,7 @@
 
 - Modify: `app/package.json`
   Purpose: add `expo-crypto` so the client can compute SHA-256 fingerprints for persisted media and downloaded files.
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
   Purpose: lock the new frontend dependency.
 - Modify: `app/src/types/entry.ts`
   Purpose: extend `MediaInfo.metadata` with integrity and repair fields shared across photo creation, upload, sync, and repair flows.
@@ -109,7 +109,7 @@
 
 **Files:**
 - Modify: `app/package.json`
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
 - Modify: `app/src/types/entry.ts`
 - Create: `app/src/services/photoIntegrityService.ts`
 - Create: `app/src/services/__tests__/photoIntegrityService.test.ts`
@@ -149,7 +149,7 @@ it('marks a cloud mismatch as repairable only when a healthy local source exists
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/photoIntegrityService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/photoIntegrityService.test.ts`
 Expected: FAIL because the helper and new metadata fields do not exist yet.
 
 - [ ] **Step 3: Add the minimal dependency and helper implementation**
@@ -205,13 +205,13 @@ repairSource?: 'local-original';
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/photoIntegrityService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/photoIntegrityService.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/package.json app/package-lock.json app/src/types/entry.ts app/src/services/photoIntegrityService.ts app/src/services/__tests__/photoIntegrityService.test.ts
+git add app/package.json app/pnpm-lock.yaml app/src/types/entry.ts app/src/services/photoIntegrityService.ts app/src/services/__tests__/photoIntegrityService.test.ts
 git commit -m "feat: add photo integrity helper and metadata types"
 ```
 
@@ -248,7 +248,7 @@ it('stores source and persisted hashes on the new photo entry', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand 'app/(tabs)/__tests__/index.photo.test.ts'`
+Run: `cd app && pnpm test --runInBand 'app/(tabs)/__tests__/index.photo.test.ts'`
 Expected: FAIL because `handlePhotoSelectForTest` does not build integrity metadata yet.
 
 - [ ] **Step 3: Add the minimal local-persist wiring**
@@ -295,7 +295,7 @@ Emit:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand 'app/(tabs)/__tests__/index.photo.test.ts'`
+Run: `cd app && pnpm test --runInBand 'app/(tabs)/__tests__/index.photo.test.ts'`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -343,7 +343,7 @@ it('sends photo integrity metadata with multipart uploads', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/apiClient.test.ts src/services/__tests__/photoUploadQueue.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/apiClient.test.ts src/services/__tests__/photoUploadQueue.test.ts`
 Expected: FAIL because `uploadFile` does not accept metadata yet.
 
 - [ ] **Step 3: Implement the minimal upload envelope**
@@ -388,7 +388,7 @@ metadata: {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/apiClient.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/syncBootstrapService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/apiClient.test.ts src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/syncBootstrapService.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -617,7 +617,7 @@ it('marks a downloaded file as cloud_content_suspect when local persistedHash di
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudMediaSyncService.test.ts`
 Expected: FAIL because the validation service only checks file existence today.
 
 - [ ] **Step 3: Implement the minimal expanded validation result**
@@ -669,7 +669,7 @@ useMediaRepairStore.getState().replaceIssues(result.issues);
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudMediaSyncService.test.ts src/services/__tests__/cloudSyncService.test.ts src/services/__tests__/syncBootstrapService.test.ts src/store/__tests__/syncStore.test.ts src/store/__tests__/mediaRepairStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudMediaSyncService.test.ts src/services/__tests__/cloudSyncService.test.ts src/services/__tests__/syncBootstrapService.test.ts src/store/__tests__/syncStore.test.ts src/store/__tests__/mediaRepairStore.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -714,7 +714,7 @@ it('re-uploads the healthy local source and marks the entry pending sync when th
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/photoRepairService.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/photoRepairService.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts`
 Expected: FAIL because there is no repair service or prompt yet.
 
 - [ ] **Step 3: Implement the minimal repair flow**
@@ -746,7 +746,7 @@ Read issues from `useMediaRepairStore.getState().issues`, and clear them only af
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/photoRepairService.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/photoRepairService.test.ts src/services/__tests__/showPhotoRepairPrompt.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -782,7 +782,7 @@ it('shows suspect and repairable counters and exposes a repair action', async ()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: FAIL because the status UI does not show repair state yet.
 
 - [ ] **Step 3: Implement the minimal status/UI updates**
@@ -807,7 +807,7 @@ logger.log('photo.render.source_selected', buildPhotoLogPayload({ ... }));
 Run:
 
 ```bash
-cd app && npm test -- --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts src/services/__tests__/photoIntegrityService.test.ts src/services/__tests__/photoRepairService.test.ts src/services/__tests__/cloudMediaSyncService.test.ts src/services/__tests__/photoUploadQueue.test.ts 'app/(tabs)/__tests__/index.photo.test.ts' src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx
+cd app && pnpm test --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts src/services/__tests__/photoIntegrityService.test.ts src/services/__tests__/photoRepairService.test.ts src/services/__tests__/cloudMediaSyncService.test.ts src/services/__tests__/photoUploadQueue.test.ts 'app/(tabs)/__tests__/index.photo.test.ts' src/components/__tests__/PhotoGrid.test.tsx src/components/__tests__/EntryCard.test.tsx
 cd backend && go test ./...
 ```
 
@@ -820,7 +820,7 @@ Then run the manual repro in the Android emulator:
 
 ```bash
 cd backend && go run ./cmd/server
-cd app && npm run android
+cd app && pnpm run android
 ```
 
 Manual expected result:

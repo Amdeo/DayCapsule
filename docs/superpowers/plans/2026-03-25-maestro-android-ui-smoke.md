@@ -28,7 +28,7 @@
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx --runInBand`
 
 Expected: FAIL，原因是 `SidebarPanel.tsx` 目前还没有这些 `testID`
 
@@ -43,7 +43,7 @@ Expected: FAIL，原因是 `SidebarPanel.tsx` 目前还没有这些 `testID`
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -69,7 +69,7 @@ git commit -m "test(ui): add stable sidebar menu test ids"
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
 
 Expected: FAIL，原因是当前 `SettingButton` 不支持透传 `testID`
 
@@ -86,7 +86,7 @@ Expected: FAIL，原因是当前 `SettingButton` 不支持透传 `testID`
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -113,7 +113,7 @@ git commit -m "test(ui): add stable settings tag management test id"
 在 `app/.maestro/README.md` 写清：
 
 - app 包名：`com.memorycapsule.app`
-- 运行前提：Android 模拟器已启动，且已执行 `cd app && npm run android`
+- 运行前提：Android 模拟器已启动，且已执行 `cd app && pnpm run android`
 - 单条执行命令
 - 批量执行命令
 - 首批覆盖范围
@@ -252,7 +252,7 @@ Expected: 全部通过
 
 - [ ] **Step 4: 回归 Jest 测试**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/Sidebar.test.tsx src/components/__tests__/SettingsPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -266,7 +266,7 @@ git commit -m "test(ui): verify android maestro smoke coverage"
 ## 执行提示
 
 - 若 Maestro MCP 文档查询因环境变量缺失不可用，直接参考官方文档并继续实现，不要阻塞编码。
-- 若 Android 模拟器未预启动，可以用 Maestro 设备工具启动；若 app 未安装，则复用现有 `cd app && npm run android` 流程。
+- 若 Android 模拟器未预启动，可以用 Maestro 设备工具启动；若 app 未安装，则复用现有 `cd app && pnpm run android` 流程。
 - 若某条 flow 因当前环境初始页状态与预期不一致而失败，优先通过更稳定的返回和断言收敛，不要引入坐标点击。
 
 Plan complete and saved to `docs/superpowers/plans/2026-03-25-maestro-android-ui-smoke.md`. Ready to execute.

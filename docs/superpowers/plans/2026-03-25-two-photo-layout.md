@@ -129,7 +129,7 @@ it('does not reorder two photos when aspect ratio metadata is missing', () => {
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
 ```
 
 Expected:
@@ -259,7 +259,7 @@ return {
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
 ```
 
 Expected:
@@ -393,7 +393,7 @@ it('uses window width to estimate two-photo collage widths on first render', () 
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
 ```
 
 Expected:
@@ -532,7 +532,7 @@ if (shouldRenderTwoPhotoCollage && primaryPhoto && secondaryPhoto) {
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
 ```
 
 Expected:
@@ -575,7 +575,7 @@ git commit -m "feat: render two-photo collage cards"
 Run:
 
 ```bash
-cd app && npm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
+cd app && pnpm test -- src/components/__tests__/PhotoGrid.test.tsx --runInBand
 ```
 
 Expected:
@@ -588,7 +588,7 @@ Expected:
 Run:
 
 ```bash
-cd app && npm run typecheck
+cd app && pnpm run typecheck
 ```
 
 Expected:
@@ -622,5 +622,5 @@ git commit -m "test: verify two-photo collage regressions"
 在执行反馈中明确写出：
 
 - `PhotoGrid.test.tsx` 是否全通过
-- `npm run typecheck` 是否通过
+- `pnpm run typecheck` 是否通过
 - 双图是否保持原始查看顺序映射

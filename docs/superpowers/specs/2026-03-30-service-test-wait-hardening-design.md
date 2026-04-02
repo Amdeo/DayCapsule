@@ -76,7 +76,7 @@ Minimum required proof for this batch:
 - `cloudSyncOverviewService.test.ts` no longer uses `Promise.resolve()` for concurrency progression in the targeted test
 - `voiceService.test.ts` no longer uses `Promise.resolve()` to observe stop-recording finalization timing
 - both targeted test files pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 ## Risks And Mitigations
 
@@ -113,4 +113,4 @@ This batch is complete when all of the following are true:
 - the two targeted service tests no longer rely on `Promise.resolve()` timing flushes
 - their assertions still validate the same behavior
 - no unnecessary production refactor was introduced
-- full `npm run verify` passes
+- full `pnpm run verify` passes

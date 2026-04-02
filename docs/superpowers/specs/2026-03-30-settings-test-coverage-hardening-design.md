@@ -8,7 +8,7 @@ The goal is not to redesign the entire Settings test helper system. The goal is 
 
 ## Goals
 
-- Make `npm run test:frontend:settings` cover the Settings page tests that depend on the shared Settings helper contract.
+- Make `pnpm run test:frontend:settings` cover the Settings page tests that depend on the shared Settings helper contract.
 - Keep the `renderSettingsPage` boundary explicit so future helper regressions are easier to catch through the named script.
 - Preserve the current minimal helper architecture without refactoring module-level mock state in this batch.
 
@@ -76,9 +76,9 @@ This batch should keep that contract but ensure the tests most sensitive to it a
 
 Minimum required verification for this batch:
 
-- run the adjusted `npm run test:frontend:settings`
+- run the adjusted `pnpm run test:frontend:settings`
 - confirm it now exercises the helper-sensitive Settings files that previously sat outside the command
-- run full `npm run verify`
+- run full `pnpm run verify`
 
 If a helper-facing test is adjusted, it must follow TDD and demonstrate that the tightened script surface would catch the relevant regression.
 
@@ -118,4 +118,4 @@ This batch is complete when all of the following are true:
 - `test:frontend:settings` includes the missing helper-sensitive Settings tests, especially `settings-page.account-auth.test.tsx` and `settings-page.storage-actions.test.tsx`
 - the adjusted script passes
 - the helper boundary remains stable without broad helper refactor
-- full `npm run verify` passes
+- full `pnpm run verify` passes

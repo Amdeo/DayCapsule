@@ -55,7 +55,7 @@
 
 - [x] **Step 2: 运行目标测试，确认当前实现失败**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
 Expected:
 - 断言 list 模式使用 `variant="calendar"` 失败
 
@@ -68,7 +68,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
 Expected:
 - 目标测试通过
 
@@ -101,7 +101,7 @@ Expected:
 
 - [x] **Step 2: 运行目标测试，确认先失败**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/EntryCard.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/EntryCard.test.tsx`
 Expected:
 - 新增断言在当前实现或当前主页接线下无法全部满足，或者暴露出 variant 切换后的差异
 
@@ -114,7 +114,7 @@ Expected:
 
 - [x] **Step 4: 运行目标测试，确认通过**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/EntryCard.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/EntryCard.test.tsx`
 Expected:
 - 目标测试通过
 
@@ -130,13 +130,13 @@ Expected:
 
 - [x] **Step 1: 运行相关回归测试**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/EntryCard.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/EntryCard.test.tsx`
 Expected:
 - 两组测试全部通过
 
 - [x] **Step 2: 运行更小范围关联测试**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/CalendarView.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/CalendarView.test.tsx`
 Expected:
 - 日历视图测试继续通过，证明未影响日历页
 
@@ -148,7 +148,7 @@ Expected:
 
 - [x] **Step 4: 运行最终组件回归**
 
-Run: `cd app && npm test -- --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/EntryCard.test.tsx app/src/components/__tests__/CalendarView.test.tsx`
+Run: `cd app && pnpm test --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx app/src/components/__tests__/EntryCard.test.tsx app/src/components/__tests__/CalendarView.test.tsx`
 Expected:
 - 三组测试全部通过
 
@@ -181,9 +181,9 @@ Expected:
 - [x] **Step 3: 补验证结果**
 
 至少记录：
-- `cd app && npm test -- --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
-- `cd app && npm test -- --runInBand app/src/components/__tests__/EntryCard.test.tsx`
-- `cd app && npm test -- --runInBand app/src/components/__tests__/CalendarView.test.tsx`
+- `cd app && pnpm test --runInBand app/src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+- `cd app && pnpm test --runInBand app/src/components/__tests__/EntryCard.test.tsx`
+- `cd app && pnpm test --runInBand app/src/components/__tests__/CalendarView.test.tsx`
 
 - [x] **Step 4: 更新本计划状态**
 
@@ -194,9 +194,9 @@ Expected:
 
 ## 最终验证清单
 
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx`
-- [x] `cd app && npm test -- --runInBand src/components/__tests__/CalendarView.test.tsx`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx`
+- [x] `cd app && pnpm test --runInBand src/components/__tests__/CalendarView.test.tsx`
 - [x] 手动确认主页 list 模式卡片已切为日历卡片
 - [x] 手动确认日历页未受影响
 - [x] 手动确认文档状态已收口
@@ -215,13 +215,13 @@ Expected:
 ## 最终验证摘要
 
 - 失败验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
+  - `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx`
   - 新增断言初始失败，证明主页列表此前未传 `variant="calendar"`
 - 实现后验证：
-  - `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx` 通过
-  - `cd app && npm test -- --runInBand src/components/__tests__/EntryCard.test.tsx` 通过
-  - `cd app && npm test -- --runInBand src/components/__tests__/CalendarView.test.tsx` 通过
-  - `cd app && npm test -- --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/CalendarView.test.tsx` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/EntryCard.test.tsx` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/CalendarView.test.tsx` 通过
+  - `cd app && pnpm test --runInBand src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/CalendarView.test.tsx` 通过
 
 ## 最终实现说明
 

@@ -16,9 +16,9 @@
   - 原因：最终验收确认 `IVL-02` 到 `IVL-04` 没有直连真实 `useImageViewerController`，只验证了壳层 wiring，不满足修订后的设计目标
   - 处理：本 plan 之后的验证需在“真实 controller + 环境 mock”方案下重新执行并重记结果
 - 2026-03-27：已运行
-  `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/image-viewer.actions.test.ts src/components/__tests__/image/image-viewer.action-sheet.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx --runInBand`
+  `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx src/components/__tests__/image/image-viewer.navigation.test.tsx src/components/__tests__/image/image-viewer.actions.test.ts src/components/__tests__/image/image-viewer.action-sheet.test.tsx src/components/__tests__/ImageViewer.shared-element.test.tsx --runInBand`
   - 结果：PASS（5 个 suite，16 个测试全部通过）
-- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
+- 2026-03-27：已运行 `cd app && pnpm test --runInBand`
   - 结果：PASS（111 个 suite，740 个测试全部通过）
   - 备注：Jest 结束后仍提示既有 open handles 警告，但测试结果本身全绿
 
@@ -83,7 +83,7 @@ it('does not render the viewer shell when visible is false', () => {
 
 - [ ] **Step 2: Run the new test to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: FAIL，原因应是当前 `Modal` 在测试树里仍保留 `image-viewer-root`，或测试环境下现有断言方式还不能区分 hidden/open 状态。
 
@@ -106,7 +106,7 @@ expect(modal.props.visible).toBe(false);
 
 - [ ] **Step 4: Re-run the test to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: PASS（仅 `IVL-01` 通过）
 
@@ -185,7 +185,7 @@ it('updates the rendered image when imageUri changes on rerender', () => {
 
 - [ ] **Step 3: Run the lifecycle suite to verify the new cases fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: FAIL，优先因为：
 
@@ -217,7 +217,7 @@ Expected: FAIL，优先因为：
 
 - [ ] **Step 5: Re-run the lifecycle suite to verify open/update behavior passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: PASS（`IVL-01` 到 `IVL-03` 全部通过）
 
@@ -273,7 +273,7 @@ it('removes the viewer shell after close is requested and visible becomes false'
 
 - [ ] **Step 2: Run the lifecycle suite to verify the close regression fails or exposes a modal-visibility gap**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: FAIL，原因应是 hidden-state 断言策略还不够稳，或 close 后树上仍能找到 viewer shell。
 
@@ -297,7 +297,7 @@ expect(tree.root.findAllByProps({ testID: 'image-viewer-root' })).toHaveLength(0
 
 - [ ] **Step 4: Re-run the lifecycle suite to verify all four regressions pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/image/image-viewer.lifecycle.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -318,7 +318,7 @@ git commit -m "test(image): verify image viewer close lifecycle"
 Run:
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test -- --runTestsByPath \
   src/components/__tests__/image/image-viewer.lifecycle.test.tsx \
   src/components/__tests__/image/image-viewer.navigation.test.tsx \
   src/components/__tests__/image/image-viewer.actions.test.ts \
@@ -331,7 +331,7 @@ Expected: PASS
 
 - [ ] **Step 2: Run the front-end full Jest suite**
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 
 Expected: PASS
 

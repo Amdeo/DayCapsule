@@ -175,4 +175,4 @@ Mitigation:
 - `upsertEntryTags()` no longer loops over tags issuing `2N` insert statements.
 - Existing callers continue to work without modification.
 - Relevant `operations.test.ts` cases pass with updated SQL-shape expectations.
-- `npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts` passes.
+- `pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts` passes.

@@ -56,7 +56,7 @@ it('applies FadeInRight entering on the outer card container with no exiting ani
 
 Run:
 ```bash
-npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected:
@@ -111,7 +111,7 @@ it('renders loader dots with text, photo, and voice theme colors during view tra
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -182,7 +182,7 @@ style={[
 
 Run:
 ```bash
-npm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
+pnpm test -- src/components/__tests__/EntryCard.test.tsx --runInBand
 ```
 
 Expected:
@@ -243,7 +243,7 @@ const DOT_COLORS = {
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx --runInBand
 ```
 
 Expected:
@@ -271,7 +271,7 @@ git commit -m "feat: use themed colors for timeline loader dots"
 
 Run:
 ```bash
-npm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
+pnpm test -- src/components/__tests__/Timeline.v2.view-mode.test.tsx src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx --runInBand
 ```
 
 Expected:
@@ -284,8 +284,8 @@ Expected:
 
 Run:
 ```bash
-npm test -- --runInBand
-npm run typecheck
+pnpm test --runInBand
+pnpm run typecheck
 ```
 
 Expected:
@@ -296,7 +296,7 @@ Expected:
 
 Run:
 ```bash
-npm start
+pnpm start
 ```
 
 检查清单：

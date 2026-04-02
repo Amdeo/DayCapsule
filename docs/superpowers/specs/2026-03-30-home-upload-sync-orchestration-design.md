@@ -101,7 +101,7 @@ Minimum required proof for this batch:
 - one focused service test proving queue callback wiring updates entry sync states and refreshes the cloud sync indicator
 - one focused service test proving enqueue decisions stay correct for photo and/or voice cloud-mode paths
 - existing Home screen tests covering voice/photo cloud mode continue to pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes
 
 The tests should prove behavior through the extracted orchestration API, not by requiring the entire screen to be mounted for every branch.
 
@@ -143,4 +143,4 @@ This batch is complete when all of the following are true:
 - cloud sync indicator refresh triggering for upload queue transitions is centralized in the extracted service
 - upload enqueue decisions for the targeted photo/voice cloud-mode paths are centralized in the extracted service
 - existing Home voice/photo cloud-mode tests pass
-- full `npm run verify` passes
+- full `pnpm run verify` passes

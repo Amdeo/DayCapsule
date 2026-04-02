@@ -66,7 +66,7 @@ This should express the stability contract directly, not replicate every state-i
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
 ```
 
 Expected:
@@ -85,7 +85,7 @@ If the test passes, make no helper change.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -135,7 +135,7 @@ The exact fixture details can vary, but the test must validate the helper-facing
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
 ```
 
 Expected:
@@ -154,7 +154,7 @@ If the test passes, make no helper change.
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx
 ```
 
 Expected: PASS.
@@ -181,7 +181,7 @@ git commit -m "test: tighten renderhome trigger stability"
 Run:
 
 ```bash
-npm test -- --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
+pnpm test --runInBand src/components/__tests__/helpers/renderHomeScreen.stability.test.tsx src/components/__tests__/helpers/renderHomeScreen.state.test.tsx src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx
 ```
 
 Expected: PASS.
@@ -191,7 +191,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

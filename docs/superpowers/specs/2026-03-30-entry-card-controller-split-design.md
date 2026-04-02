@@ -151,7 +151,7 @@ Most relevant verification targets:
 - `app/src/components/__tests__/EntryCard.test.tsx`
 - `app/src/components/__tests__/EntryCard.missing-media.test.tsx`
 - `app/src/components/__tests__/image/entry-card.missing-media-variants.test.tsx`
-- `npm run verify`
+- `pnpm run verify`
 
 If an extra regression test is needed, it should focus on externally visible swipe/action-sheet behavior, not on whether the new internal hook exists.
 

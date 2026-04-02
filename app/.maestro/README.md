@@ -6,7 +6,7 @@
 
 - 已启动 Android 模拟器
 - 已安装 Maestro
-- 已在 `app/` 目录执行过 `npm run android`
+- 已在 `app/` 目录执行过 `pnpm run android`
 - Android 包名为 `com.memorycapsule.app`
 - `app-core` / `cloud-sync` 默认面向 Android dev build；本地验证时建议直接使用已确认可用的 `emulator-5554`
 - `app-core` 整组批量执行默认要求带 `E2E Sync Lab` 的 Android dev build，因为其中的 `editor-unsaved-leave-guard`、`timeline-open-detail`、`image-viewer-back-navigation`、`settings-repair-prompt` 会自行注入稳定 fixture
@@ -23,7 +23,7 @@
 
 ```bash
 cd app
-EXPO_PUBLIC_E2E_SYNC_LAB=1 npm run android
+EXPO_PUBLIC_E2E_SYNC_LAB=1 pnpm run android
 ```
 
 > `EXPO_PUBLIC_E2E_SYNC_LAB` 是 app 端开关，不是 Maestro 变量。它需要在启动 Android dev build 前注入。
@@ -115,7 +115,7 @@ cd app
 ANDROID_HOME=/Users/cooper/Library/Android/sdk \
 ANDROID_SDK_ROOT=/Users/cooper/Library/Android/sdk \
 EXPO_PUBLIC_E2E_SYNC_LAB=1 \
-npm run android
+pnpm run android
 ```
 
 异常场景：
@@ -140,7 +140,7 @@ maestro test .maestro/flows/app-core/image-viewer-back-navigation.yaml
 如果当前不在 app 前台，先在 `app/` 目录重新执行一次：
 
 ```bash
-npm run android
+pnpm run android
 ```
 
 ## 批量执行
@@ -159,10 +159,10 @@ maestro test .maestro/flows/app-core/settings-sync-status-open.yaml
 如果直接在 `app/` 目录执行 package scripts：
 
 ```bash
-npm run test:frontend:settings
-npm run test:frontend:home
-npm run test:frontend:editor-image
-npm run test:maestro:app-core
+pnpm run test:frontend:settings
+pnpm run test:frontend:home
+pnpm run test:frontend:editor-image
+pnpm run test:maestro:app-core
 ```
 
 ## 当前覆盖

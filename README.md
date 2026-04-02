@@ -25,7 +25,7 @@
 │   ├── app/                     # Expo Router 路由入口
 │   ├── src/                     # 业务实现、组件、状态与数据层
 │   ├── assets/                  # 图片、图标、字体等静态资源
-│   ├── package.json             # 应用依赖与 npm scripts
+│   ├── package.json             # 应用依赖与项目脚本
 │   └── app.json                 # Expo 应用配置
 ├── backend/                     # 仓库内后端服务
 ├── docs/                        # README 进一步指向的项目文档
@@ -45,7 +45,7 @@
 前提：
 
 - Node.js 20+
-- npm 10+
+- pnpm 10+
 - iOS 开发需要 Xcode 15+（仅 macOS）
 - Android 开发需要 Android Studio + JDK 17
 
@@ -55,8 +55,8 @@
 git clone https://github.com/cooper/MemoryCapsule.git
 cd MemoryCapsule
 cd app
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 高频开发命令：
@@ -64,13 +64,13 @@ npm start
 ```bash
 cd app
 
-npm start
-npm run ios
-npm run android
-npm run web
-npm run lint
-npm run typecheck
-npm test
+pnpm start
+pnpm run ios
+pnpm run android
+pnpm run web
+pnpm run lint
+pnpm run typecheck
+pnpm test
 ```
 
 细分测试脚本和补充命令位于 `docs/QUICK_REFERENCE.md`。

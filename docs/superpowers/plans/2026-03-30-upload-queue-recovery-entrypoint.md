@@ -46,7 +46,7 @@ describe('uploadQueueRecoveryService', () => {
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
+pnpm test --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
 ```
 
 Expected: FAIL because the new service module does not exist yet.
@@ -90,7 +90,7 @@ Keep the abstraction narrow:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
+pnpm test --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
 ```
 
 Expected: PASS.
@@ -142,7 +142,7 @@ The exact error surface can vary, but the test must prove:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
+pnpm test --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
 ```
 
 Expected: FAIL because the current implementation short-circuits on the first thrown error.
@@ -188,7 +188,7 @@ This preserves the batch's intended behavior:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
+pnpm test --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts
 ```
 
 Expected: PASS.
@@ -245,7 +245,7 @@ For `app/src/services/__tests__/appLifecycleService.test.ts`, similarly swap dir
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: FAIL until the production services switch to the new shared entrypoint.
@@ -287,7 +287,7 @@ Important constraints:
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -314,7 +314,7 @@ git commit -m "refactor: share upload queue recovery entrypoint"
 Run:
 
 ```bash
-npm test -- --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
+pnpm test --runInBand src/services/__tests__/uploadQueueRecoveryService.test.ts src/services/__tests__/appBootstrapService.test.ts src/services/__tests__/appLifecycleService.test.ts
 ```
 
 Expected: PASS.
@@ -324,7 +324,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: lint, typecheck, and the full Jest suite pass.

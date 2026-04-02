@@ -85,7 +85,7 @@ it('calls onSuccess and clears inputs after a successful login', async () => {
 
 - [ ] **Step 2: Run the targeted suite to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/LoginPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/LoginPage.test.tsx --runInBand`
 
 Expected: FAIL，因为当前测试文件还没有这些场景，且至少一部分断言会暴露成功回流和 loading 态的覆盖缺口。
 
@@ -116,7 +116,7 @@ mockLogin.mockImplementationOnce(
 
 - [ ] **Step 4: Re-run the LoginPage suite to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/LoginPage.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/LoginPage.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -174,7 +174,7 @@ it('opens the login dialog instead of enabling cloud mode when unauthenticated u
 
 - [ ] **Step 2: Run the targeted settings suites to verify they fail**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
 
 Expected: FAIL，因为当前 `handleLoginSuccess` 会无条件 `enableCloudMode()`，还不满足普通入口成功只关闭弹窗的语义；同时测试 helper 也还没有稳定暴露登录弹窗 props 供测试驱动。
 
@@ -282,7 +282,7 @@ expect(loadEntriesOrder).toBeLessThan(logoutOrder);
 
 - [ ] **Step 6: Re-run the settings suites to verify they pass**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.account-auth.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -327,7 +327,7 @@ appId: com.memorycapsule.app
 
 - [ ] **Step 2: Run the grouped auth Jest script and Maestro flow to surface failures**
 
-Run: `cd app && npm run test:frontend:auth`
+Run: `cd app && pnpm run test:frontend:auth`
 Expected: PASS 或暴露脚本路径错误；如果脚本命令本身失败，先修正脚本。
 
 Run: `cd app && maestro test .maestro/flows/smoke/settings-to-login.yaml`
@@ -353,7 +353,7 @@ Expected: 初次可能 FAIL，常见原因是设置页落点不稳定或登录�
 
 - [ ] **Step 4: Re-run the auth script and Maestro smoke to verify they pass**
 
-Run: `cd app && npm run test:frontend:auth`
+Run: `cd app && pnpm run test:frontend:auth`
 Expected: PASS
 
 Run: `cd app && maestro test .maestro/flows/smoke/settings-to-login.yaml`
@@ -376,7 +376,7 @@ git commit -m "test(auth): add settings login smoke flow"
 
 - [ ] **Step 1: Run the grouped auth Jest suite fresh**
 
-Run: `cd app && npm run test:frontend:auth`
+Run: `cd app && pnpm run test:frontend:auth`
 
 Expected: PASS
 
@@ -396,7 +396,7 @@ Expected: 只剩本批计划内修改；如果有额外脏文件，先确认是�
 
 记录最终验证结果，并在执行阶段结束时引用：
 
-- `npm run test:frontend:auth`
+- `pnpm run test:frontend:auth`
 - `maestro test .maestro/flows/smoke/settings-to-login.yaml`
 
 作为完成依据。

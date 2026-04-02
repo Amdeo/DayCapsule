@@ -85,7 +85,7 @@
 
 ```bash
 cd app
-npm test -- --runInBand --runTestsByPath \
+pnpm test --runInBand --runTestsByPath \
   src/store/__tests__/cloudSyncIndicatorStore.test.ts \
   src/services/__tests__/showCloudSyncStatusAlert.test.ts \
   src/services/__tests__/cloudSyncService.test.ts \
@@ -93,7 +93,7 @@ npm test -- --runInBand --runTestsByPath \
   src/components/__tests__/EntryCard.test.tsx \
   app/__tests__/_layout.photo-upload.test.tsx
 
-npm run typecheck
+pnpm run typecheck
 ```
 
 ### 后端

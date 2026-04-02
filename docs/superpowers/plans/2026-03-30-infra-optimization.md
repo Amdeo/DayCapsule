@@ -21,7 +21,7 @@
   - 封装前后台切换与网络恢复逻辑：自动备份、回前台恢复、网络恢复触发补偿。
 - Modify: `app/package.json`
   - 删除未使用依赖 `@tanstack/react-query`。
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
   - 同步 lockfile。
 - Modify: `README.md`
   - 修正与当前工程状态不一致的表述。
@@ -55,7 +55,7 @@ export async function runAppBootstrap(
 
 - [ ] **Step 2: 运行类型检查确认新文件接入前仍然通过**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -154,7 +154,7 @@ useEffect(() => {
 
 - [ ] **Step 5: 运行类型检查验证启动编排拆分**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -207,7 +207,7 @@ export async function handleAppStateChange(
 
 - [ ] **Step 2: 运行类型检查确认骨架无误**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -288,7 +288,7 @@ useEffect(() => {
 
 - [ ] **Step 5: 运行类型检查验证生命周期拆分**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -296,7 +296,7 @@ Expected: PASS
 
 **Files:**
 - Modify: `app/package.json`
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
 - Test: `app/package.json`
 
 - [ ] **Step 1: 再次确认 `@tanstack/react-query` 没有代码引用**
@@ -315,13 +315,13 @@ Expected: no matches in application source
 
 - [ ] **Step 3: 更新 lockfile**
 
-Run: `npm install`
+Run: `pnpm install`
 
 Expected: package-lock updated, dependency removed
 
 - [ ] **Step 4: 运行类型检查确认删依赖后未破坏构建**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -349,14 +349,14 @@ Expected: returns the lines that need editing
 
 ```md
 - ✅ **TypeScript 严格模式** - 零 tsc 错误
-- ✅ **自动化测试** - 当前仓库 `npm test` 可运行（65 个用例）
+- ✅ **自动化测试** - 当前仓库 `pnpm test` 可运行（65 个用例）
 - **样式规范** - 使用 NativeWind `className`，避免 `StyleSheet`
 ```
 
 改成更准确的版本，例如：
 
 ```md
-- ✅ **TypeScript 严格模式** - 以 `npm run typecheck` 作为静态类型检查基线
+- ✅ **TypeScript 严格模式** - 以 `pnpm run typecheck` 作为静态类型检查基线
 - ✅ **自动化测试** - 提供按场景拆分的 Jest 命令与 Maestro 冒烟脚本
 - **样式规范** - 新增样式默认使用 NativeWind `className`，部分旧样式仍在迁移中
 ```
@@ -369,7 +369,7 @@ Expected: returns the lines that need editing
 
 - [ ] **Step 4: 运行类型检查作为本轮最终代码验证的一部分**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
@@ -380,23 +380,23 @@ Expected: PASS
 - Modify: `app/src/services/appBootstrapService.ts`
 - Modify: `app/src/services/appLifecycleService.ts`
 - Modify: `app/package.json`
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
 - Modify: `README.md`
 
 - [ ] **Step 1: 运行类型检查**
 
-Run: `npm run typecheck`
+Run: `pnpm run typecheck`
 
 Expected: PASS
 
 - [ ] **Step 2: 运行 lint 并确认没有新增失败**
 
-Run: `npm run lint`
+Run: `pnpm run lint`
 
 Expected: only the pre-existing 4 style migration errors remain, with no new lint failures
 
 - [ ] **Step 3: 查看最终 diff，确认范围没有扩散**
 
-Run: `git diff -- app/app/_layout.tsx app/src/services/appBootstrapService.ts app/src/services/appLifecycleService.ts app/package.json app/package-lock.json README.md`
+Run: `git diff -- app/app/_layout.tsx app/src/services/appBootstrapService.ts app/src/services/appLifecycleService.ts app/package.json app/pnpm-lock.yaml README.md`
 
 Expected: diff only covers bootstrap split, lifecycle split, dependency removal, and README updates

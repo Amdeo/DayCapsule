@@ -22,9 +22,9 @@
 ## 执行结果
 
 - Task 1 至 Task 4 的实现与分块验证均已完成，首页首批目标文件 `SearchBar`、`Timeline.v2`、`app/(tabs)/index.tsx`、`EntryCard.tsx`、`FABMenu.tsx`、`Sidebar.tsx` 已从 allowlist 移除。
-- `npm run lint`：通过
-- `npm run typecheck`：通过
-- `npm test -- --runInBand`：通过
+- `pnpm run lint`：通过
+- `pnpm run typecheck`：通过
+- `pnpm test --runInBand`：通过
 - 额外收口：更新 [runtime-regressions.test.ts](/Users/cooper/Documents/code/MemoryCapsule/.worktrees/nativewind-style-guardrails/app/src/__tests__/runtime-regressions.test.ts) 的过时字符串守卫，使其与当前录音时长去重实现一致。
 
 ## File Structure
@@ -184,7 +184,7 @@ Expected: FAIL，原因应是 `eslint` / `eslint.config.js` / 本地 rules 尚�
 Run: `cd app && npx jest --run-in-band --runTestsByPath eslint-rules/__tests__/style-guardrails.test.ts`
 Expected: PASS
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS，说明 allowlist 足以兜住当前 legacy 文件，而新规则已可用。
 
 - [x] **Step 5: Commit**
@@ -308,10 +308,10 @@ Expected: FAIL，原因应包含缺少 `TimelineSectionHeader` / `TimelineEmptyS
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/SearchBar.safe-area.test.tsx src/components/__tests__/TimelineSectionHeader.test.tsx src/components/__tests__/TimelineEmptyState.test.tsx src/components/__tests__/Timeline.v2.view-mode.test.tsx app/(tabs)/__tests__/index.photo.test.ts app/(tabs)/__tests__/index.voice-cloud-mode.test.ts`
 Expected: PASS
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS，且不会再因为 `SearchBar.tsx`、`Timeline.v2.tsx`、`app/(tabs)/index.tsx` 使用 `StyleSheet.create` 通过 allowlist。
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -405,10 +405,10 @@ export function getEntryCardVariant(type: Entry['type'], variant: 'default' | 'c
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/entryCardVariants.test.ts src/components/__tests__/EntryCard.test.tsx src/components/__tests__/EntryCard.border-radius.test.tsx src/components/__tests__/EntryCard.missing-media.test.tsx`
 Expected: PASS
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS，且 `EntryCard.tsx` 不再依赖 allowlist 才能通过。
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -491,21 +491,21 @@ Expected: FAIL，原因应包含缺少新的 testID 或 `Sidebar.test.tsx` 依�
 验证结果：
 
 - `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`：PASS
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
 - `cd app && npx jest --run-in-band --runTestsByPath src/__tests__/runtime-regressions.test.ts`：PASS
-- `cd app && npm test -- --runInBand`：PASS
+- `cd app && pnpm test --runInBand`：PASS
 
 Run: `cd app && npx jest --run-in-band --runTestsByPath src/components/__tests__/FABMenu.peek-hide.test.tsx src/components/__tests__/Sidebar.test.tsx`
 Expected: PASS
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: 只保留既有失败 `src/__tests__/runtime-regressions.test.ts`；如果出现其它新增失败，先修复再继续收口。
 
 在 `docs/superpowers/specs/2026-03-23-home-nativewind-migration-design.md`：

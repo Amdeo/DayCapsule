@@ -147,7 +147,7 @@ it('returns entry totals by type for sync overview', async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/database/__tests__/operations.test.ts`
+Run: `cd app && pnpm test --runInBand src/database/__tests__/operations.test.ts`
 Expected: FAIL because the local overview query does not exist.
 
 - [ ] **Step 3: Implement local aggregate query**
@@ -170,7 +170,7 @@ Prefer existing `getFileInfo()` rather than introducing a new FS abstraction. Th
 
 - [ ] **Step 5: Run targeted tests**
 
-Run: `cd app && npm test -- --runInBand src/database/__tests__/operations.test.ts`
+Run: `cd app && pnpm test --runInBand src/database/__tests__/operations.test.ts`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -201,7 +201,7 @@ it('merges cloud totals, local totals, and queue status into one overview', asyn
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts`
 Expected: FAIL because the overview service does not exist yet.
 
 - [ ] **Step 3: Implement `cloudSyncOverviewService`**
@@ -237,7 +237,7 @@ Do not move local/cloud total logic into `cloudSyncService`. Keep it focused on 
 
 - [ ] **Step 5: Run targeted tests**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/cloudSyncService.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/cloudSyncOverviewService.test.ts src/services/__tests__/cloudSyncService.test.ts`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -273,7 +273,7 @@ it('shows local and cloud overview sections in sync status feedback', async () =
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts`
 Expected: FAIL because the dialog still renders only queue fields.
 
 - [ ] **Step 3: Implement richer feedback builder**
@@ -304,7 +304,7 @@ If `syncNow()` fails:
 
 - [ ] **Step 5: Run UI-facing tests**
 
-Run: `cd app && npm test -- --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts`
+Run: `cd app && pnpm test --runInBand src/services/__tests__/showCloudSyncStatusAlert.test.ts src/store/__tests__/cloudSyncIndicatorStore.test.ts`
 Expected: PASS
 
 - [ ] **Step 6: Run final verification**
@@ -312,10 +312,10 @@ Expected: PASS
 Run: `cd backend && go test ./...`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [ ] **Step 7: Commit**

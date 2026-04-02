@@ -14,12 +14,12 @@
 
 **Files:**
 - Modify: `app/package.json`
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
 - Test: `app/src/services/__tests__/syncService.test.ts`
 
 **Step 1: Use the existing failing test run as RED**
 
-Run: `npm test -- --runInBand`
+Run: `pnpm test --runInBand`
 Expected: `SyncService` tests fail while the suite starts successfully.
 
 **Step 2: Realign Jest with Expo**
@@ -32,7 +32,7 @@ Match the current `pickAndParseBackup()` return shape and test media extraction 
 
 **Step 4: Re-run tests**
 
-Run: `npm test -- --runInBand`
+Run: `pnpm test --runInBand`
 Expected: all current suites pass or only fail on the next intentional RED change.
 
 ### Task 2: Fix Async Backup Timestamp Logic
@@ -49,7 +49,7 @@ Change `BackupService` tests so `Storage.getString()` is treated as async and `s
 
 **Step 2: Run targeted test to verify RED**
 
-Run: `npm test -- --runInBand src/services/__tests__/backupService.test.ts`
+Run: `pnpm test --runInBand src/services/__tests__/backupService.test.ts`
 Expected: failures caused by sync backup methods using async storage incorrectly.
 
 **Step 3: Implement minimal async fix**
@@ -59,8 +59,8 @@ Make backup timestamp methods async and update callers.
 **Step 4: Re-run targeted and full tests**
 
 Run:
-- `npm test -- --runInBand src/services/__tests__/backupService.test.ts`
-- `npm test -- --runInBand`
+- `pnpm test --runInBand src/services/__tests__/backupService.test.ts`
+- `pnpm test --runInBand`
 
 Expected: both pass.
 
@@ -84,6 +84,6 @@ Update scripts, verification notes, and outstanding manual launch items.
 
 Run:
 - `npx tsc --noEmit`
-- `npm test -- --runInBand`
+- `pnpm test --runInBand`
 
 Expected: both pass.

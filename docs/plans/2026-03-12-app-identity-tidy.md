@@ -15,7 +15,7 @@
 **Files:**
 - Modify: `app/app.json`
 - Modify: `app/package.json`
-- Modify: `app/package-lock.json`
+- Modify: `app/pnpm-lock.yaml`
 - Modify: `app/ios/MemoryCapsule/Info.plist`
 
 **Step 1: Update the Expo scheme**
@@ -34,8 +34,8 @@ Update the committed `Info.plist` URL scheme entry so the checked-in native proj
 
 Run:
 - `npx expo config --type public`
-- `npm run typecheck`
-- `npm test -- --runInBand`
+- `pnpm run typecheck`
+- `pnpm test --runInBand`
 
 Expected:
 - Expo config shows `scheme: "memorycapsule"`

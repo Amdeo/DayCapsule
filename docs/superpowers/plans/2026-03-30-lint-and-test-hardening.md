@@ -38,7 +38,7 @@
 
 - [ ] **Step 1: 先让 lint 明确指向当前 4 个错误位置**
 
-Run: `npm run lint`
+Run: `pnpm run lint`
 
 Expected:
 - FAIL only on:
@@ -75,7 +75,7 @@ style={{ ... }}
 
 - [ ] **Step 3: 运行 lint 验证样式迁移是否清掉这 4 个错误**
 
-Run: `npm run lint`
+Run: `pnpm run lint`
 
 Expected: PASS, or at minimum no remaining errors in the three `entry-card` files if unrelated issues unexpectedly appear elsewhere
 
@@ -111,7 +111,7 @@ const secondRun = service.syncNow();
 
 - [ ] **Step 2: 运行该测试文件，确认过渡态下旧时序假设已被替换**
 
-Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts`
 
 Expected: PASS
 
@@ -142,7 +142,7 @@ await Promise.resolve();
 
 - [ ] **Step 2: 运行该测试文件确认通过**
 
-Run: `npm test -- --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/store/__tests__/entryStore.test.ts`
 
 Expected: PASS
 
@@ -162,7 +162,7 @@ Expected: PASS
 
 - [ ] **Step 2: 运行该测试文件确认通过**
 
-Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/appLifecycleService.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/appLifecycleService.test.ts`
 
 Expected: PASS
 
@@ -181,7 +181,7 @@ Expected: PASS
 
 - [ ] **Step 2: 运行该测试文件确认通过**
 
-Run: `npm test -- --runInBand --runTestsByPath src/database/__tests__/operations.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/database/__tests__/operations.test.ts`
 
 Expected: PASS
 
@@ -198,24 +198,24 @@ Expected: PASS
 
 - [ ] **Step 1: 运行 lint**
 
-Run: `npm run lint`
+Run: `pnpm run lint`
 
 Expected: PASS
 
 - [ ] **Step 2: 运行目标测试文件**
 
-Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts src/store/__tests__/entryStore.test.ts src/services/__tests__/appLifecycleService.test.ts src/database/__tests__/operations.test.ts`
+Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/cloudSyncService.test.ts src/store/__tests__/entryStore.test.ts src/services/__tests__/appLifecycleService.test.ts src/database/__tests__/operations.test.ts`
 
 Expected: PASS
 
 - [ ] **Step 3: 运行全量测试**
 
-Run: `npm test -- --runInBand`
+Run: `pnpm test --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 4: 如涉及异步句柄回归风险，再跑句柄检测**
 
-Run: `npm test -- --runInBand --detectOpenHandles --openHandlesTimeout=3000`
+Run: `pnpm test --runInBand --detectOpenHandles --openHandlesTimeout=3000`
 
 Expected: PASS with no reintroduced hanging/open-handle symptoms

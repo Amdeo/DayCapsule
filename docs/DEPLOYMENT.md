@@ -25,7 +25,7 @@
 ### 1. 安装 EAS CLI
 
 ```bash
-npm install -g eas-cli
+pnpm install -g eas-cli
 ```
 
 ### 2. 登录 Expo 账号
@@ -94,10 +94,10 @@ eas build --profile production --platform all
 主要步骤:
 1. 安装 Node 20 和 Java 17
 2. 安装 Android SDK / Build Tools / NDK
-3. 运行 `npm ci`
-4. 运行 `npm run typecheck`
-5. 运行 `npm test -- --runInBand`
-6. 运行 `npx expo prebuild --platform android --non-interactive --clean`
+3. 运行 `pnpm install --frozen-lockfile`
+4. 运行 `pnpm run typecheck`
+5. 运行 `pnpm test --runInBand`
+6. 运行 `pnpm exec expo prebuild --platform android --non-interactive --clean`
 7. 运行 `./gradlew assembleRelease`
 8. 上传 APK artifact
 
@@ -392,7 +392,7 @@ eas config
 eas credentials
 
 # 更新 CLI
-npm install -g eas-cli@latest
+pnpm install -g eas-cli@latest
 ```
 
 ---

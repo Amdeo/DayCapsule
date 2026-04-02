@@ -22,7 +22,7 @@
   - 成功后失败计数清零，下一次失败重新从 15 秒开始
 
 - [ ] **Step 2: 运行测试确认失败**
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts`
 
 ### Task 2: 实现照片/语音上传队列退避重试
 
@@ -37,7 +37,7 @@
   - 外部 `flushPending()` 取消旧 timer 并立即补跑
 
 - [ ] **Step 2: 运行测试确认通过**
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts`
 
 ### Task 3: 回归验证
 
@@ -47,7 +47,7 @@
 - Verify: `app/app/_layout.tsx`
 
 - [ ] **Step 1: 跑相关测试**
-  - Run: `npm test -- --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.photo-upload.test.tsx`
+  - Run: `pnpm test --runInBand --runTestsByPath src/services/__tests__/photoUploadQueue.test.ts src/services/__tests__/voiceUploadQueue.test.ts app/__tests__/_layout.photo-upload.test.tsx`
 
 - [ ] **Step 2: 跑类型检查**
-  - Run: `npm run typecheck`
+  - Run: `pnpm run typecheck`

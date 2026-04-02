@@ -46,7 +46,7 @@ This test should document the storage-refresh contract before the extraction.
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx
 ```
 
 Expected:
@@ -117,13 +117,13 @@ Then update `useSettingsPageController.ts` to import and use that hook, removing
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/SettingsPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/SettingsPage.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -171,7 +171,7 @@ it('resets backend test status when the draft url changes after a successful tes
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
 ```
 
 Expected:
@@ -206,13 +206,13 @@ Keep all existing implementation logic, alert copy, and backend-service calls un
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.backend-env.test.tsx src/components/__tests__/SettingsPage.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/settings-page/settings-page.backend-env.test.tsx src/components/__tests__/SettingsPage.test.tsx
 ```
 
 Then run:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Expected: PASS.
@@ -239,7 +239,7 @@ git commit -m "refactor: extract settings backend controller"
 Run:
 
 ```bash
-npm test -- --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
+pnpm test --runInBand --runTestsByPath src/components/__tests__/SettingsPage.test.tsx src/components/__tests__/settings-page/settings-page.storage-actions.test.tsx src/components/__tests__/settings-page/settings-page.backend-env.test.tsx
 ```
 
 Expected: PASS.
@@ -249,7 +249,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run test:frontend:settings
+pnpm run test:frontend:settings
 ```
 
 Expected: PASS.
@@ -259,7 +259,7 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Expected: PASS.

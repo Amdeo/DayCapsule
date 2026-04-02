@@ -13,9 +13,9 @@
 ## 验证结果
 
 - 2026-03-27：已运行
-  `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx 'app/(tabs)/__tests__/index.timeline-state.test.tsx' --runInBand`
+  `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx src/components/__tests__/timeline/timeline.home.navigation.test.tsx src/components/__tests__/timeline/timeline.home.sync-status.test.tsx 'app/(tabs)/__tests__/index.timeline-state.test.tsx' --runInBand`
   - 结果：PASS（4 个 suite，20 个测试全部通过）
-- 2026-03-27：已运行 `cd app && npm test -- --runInBand`
+- 2026-03-27：已运行 `cd app && pnpm test --runInBand`
   - 结果：PASS（110 个 suite，722 个测试全部通过）
 
 ## Scope Note
@@ -77,7 +77,7 @@ it('switches from the empty state to timeline entries when the home store receiv
 
 - [ ] **Step 2: Run the new test to verify it fails**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
 
 Expected: FAIL，因为当前 `renderHomeScreen()` 还没有暴露 `controls.setEntries()`，也没有稳定的首页级数据切换入口。
 
@@ -129,7 +129,7 @@ controls: {
 
 - [ ] **Step 4: Re-run the targeted test to verify it passes**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
 
 Expected: PASS，只通过 `HT-01`，其余用例还未写。
 
@@ -179,7 +179,7 @@ it('does not expose the load-more trigger while loading-more is already in progr
 
 - [ ] **Step 2: Run the targeted suite to verify the new pagination assertions fail correctly**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
 
 Expected: 如果 `mockTimelineContentModule` 还没正确接 `hasMore / isLoadingMore / loadMore`，这里会 FAIL，失败原因应指向缺少触发点或状态未联动，而不是测试拼写错误。
 
@@ -235,7 +235,7 @@ it('updates the home timeline results when search filters are applied through th
 
 - [ ] **Step 5: Run the targeted suite to verify the filter regression fails or exposes a harness gap**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
 
 Expected: 如果当前 helper 里 `applySearchFilters()` 只改 store、不驱动首页重新展示，测试会 FAIL；如果已经能跑绿，可以直接记录该行为已被现有 helper 支撑。
 
@@ -287,7 +287,7 @@ it('returns the home timeline to a stable list state after closing detail and ed
 
 - [ ] **Step 8: Run the targeted suite to verify all four regressions**
 
-Run: `cd app && npm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
+Run: `cd app && pnpm test -- --runTestsByPath src/components/__tests__/timeline/timeline.home.interactions.test.tsx --runInBand`
 
 Expected: PASS
 
@@ -318,7 +318,7 @@ git commit -m "test(home): add timeline interaction regressions"
 Run:
 
 ```bash
-cd app && npm test -- --runTestsByPath \
+cd app && pnpm test -- --runTestsByPath \
   src/components/__tests__/timeline/timeline.home.interactions.test.tsx \
   src/components/__tests__/timeline/timeline.home.navigation.test.tsx \
   src/components/__tests__/timeline/timeline.home.sync-status.test.tsx \
@@ -330,7 +330,7 @@ Expected: PASS
 
 - [ ] **Step 2: Run the front-end full Jest suite**
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 
 Expected: PASS
 

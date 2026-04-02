@@ -121,5 +121,5 @@
 
 ### 验证结果
 
-- `cd app && npm test -- --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
-- `cd app && npm run typecheck` 通过
+- `cd app && pnpm test --runInBand src/components/__tests__/TagManagementPage.test.tsx src/components/__tests__/SettingsPage.test.tsx` 通过
+- `cd app && pnpm run typecheck` 通过

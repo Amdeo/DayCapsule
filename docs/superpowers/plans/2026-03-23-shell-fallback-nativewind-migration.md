@@ -117,7 +117,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- app/(tabs)/two.tsx app/+not-found.tsx app/modal.tsx`
+Run: `cd app && pnpm run lint -- app/(tabs)/two.tsx app/+not-found.tsx app/modal.tsx`
 
 Expected: PASS
 
@@ -177,7 +177,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- src/components/ErrorBoundary.tsx`
+Run: `cd app && pnpm run lint -- src/components/ErrorBoundary.tsx`
 
 Expected: PASS
 
@@ -230,7 +230,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- app/(tabs)/_layout.tsx`
+Run: `cd app && pnpm run lint -- app/(tabs)/_layout.tsx`
 
 Expected: PASS
 
@@ -286,7 +286,7 @@ Expected: PASS
 
 然后跑：
 
-Run: `cd app && npm run lint -- app/_layout.tsx`
+Run: `cd app && pnpm run lint -- app/_layout.tsx`
 
 Expected: PASS
 
@@ -321,13 +321,13 @@ Expected: PASS
 
 - [x] **Step 2: 跑静态检查与全量测试**
 
-Run: `cd app && npm run lint`
+Run: `cd app && pnpm run lint`
 Expected: PASS
 
-Run: `cd app && npm run typecheck`
+Run: `cd app && pnpm run typecheck`
 Expected: PASS
 
-Run: `cd app && npm test -- --runInBand`
+Run: `cd app && pnpm test --runInBand`
 Expected: PASS
 
 - [x] **Step 3: 回填文档执行结果**
@@ -370,9 +370,9 @@ git commit -m "docs: backfill shell fallback nativewind migration"
 ## 验证记录
 
 - `cd app && npx jest --run-in-band --runTestsByPath app/__tests__/shell-fallback-pages.test.tsx src/components/__tests__/ErrorBoundary.test.tsx app/(tabs)/__tests__/_layout.test.tsx app/__tests__/_layout.photo-upload.test.tsx`：PASS，4 个 suite / 9 个测试全部通过
-- `cd app && npm run lint`：PASS
-- `cd app && npm run typecheck`：PASS
-- `cd app && npm test -- --runInBand`：PASS，65 个 suite / 378 个测试全部通过
+- `cd app && pnpm run lint`：PASS
+- `cd app && pnpm run typecheck`：PASS
+- `cd app && pnpm test --runInBand`：PASS，65 个 suite / 378 个测试全部通过
 
 ## 偏差说明
 
