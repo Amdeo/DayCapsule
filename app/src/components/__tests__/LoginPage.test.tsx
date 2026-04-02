@@ -21,6 +21,7 @@ import { act, render, fireEvent, waitFor, userEvent } from '@testing-library/rea
 import { LoginPage } from '../LoginPage';
 import { useAuthStore } from '@/src/store/authStore';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { logger } from '@/src/utils/logger';
 
 const mockLogin = jest.fn();
 const mockRegister = jest.fn();
@@ -182,6 +183,9 @@ describe('LoginPage', () => {
         })
       );
     });
+
+    expect(logger.warn).toHaveBeenCalledWith('[LoginPage] Auth failed:', expect.any(Error));
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('switches to register mode', () => {

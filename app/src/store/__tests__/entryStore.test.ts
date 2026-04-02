@@ -334,6 +334,69 @@ describe('entryStore', () => {
       }
     });
 
+    it('同一筛选条件下重新加载后，旧的 no-such-table 重试不应再次执行', async () => {
+      jest.useFakeTimers();
+      try {
+        mockDataSource.getEntriesPage
+          .mockRejectedValueOnce(new Error('no such table: entries'))
+          .mockResolvedValueOnce([makeEntry('fresh', 2)])
+          .mockResolvedValueOnce([makeEntry('stale-retry', 1)]);
+
+        const firstLoad = useEntryStore.getState().loadEntries();
+
+        await act(async () => {
+          await Promise.resolve();
+        });
+
+        await useEntryStore.getState().loadEntries();
+
+        await waitFor(() => {
+          expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
+          expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(2);
+        });
+
+        await act(async () => {
+          jest.runOnlyPendingTimers();
+        });
+
+        await firstLoad;
+
+        expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(2);
+        expect(useEntryStore.getState().entries.map((entry) => entry.id)).toEqual(['fresh']);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('失效活动查询后，已排队的 no-such-table 重试不应再次执行', async () => {
+      jest.useFakeTimers();
+      try {
+        mockDataSource.getEntriesPage
+          .mockRejectedValueOnce(new Error('no such table: entries'))
+          .mockResolvedValueOnce([makeEntry('fresh', 2)]);
+
+        const firstLoad = useEntryStore.getState().loadEntries();
+
+        await act(async () => {
+          await Promise.resolve();
+        });
+
+        useEntryStore.getState().invalidateActiveQueries();
+
+        await act(async () => {
+          jest.runOnlyPendingTimers();
+        });
+
+        await firstLoad;
+
+        expect(mockDataSource.getEntriesPage).toHaveBeenCalledTimes(1);
+        expect(useEntryStore.getState().isLoading).toBe(false);
+        expect(useEntryStore.getState().isLoadingMore).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('应该把待上传照片合并到首屏列表中', async () => {
       mockDataSource.getEntriesPage.mockResolvedValue([
         { id: 'synced-1', type: 'text', content: '正常记录', timestamp: 1700000000000, syncStatus: 'synced' },

@@ -67,9 +67,11 @@ jest.mock('@/src/store/syncStore', () => ({
 }));
 
 const mockEntryLoad = jest.fn().mockResolvedValue(undefined);
+const mockInvalidateActiveQueries = jest.fn();
 jest.mock('@/src/store/entryStore', () => ({
   useEntryStore: {
     getState: () => ({
+      invalidateActiveQueries: mockInvalidateActiveQueries,
       loadEntries: mockEntryLoad,
     }),
   },
@@ -94,8 +96,12 @@ describe('localEnvironmentDataManager', () => {
 
     expect(setCurrentServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
     expect(rememberServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
+    expect(mockInvalidateActiveQueries).toHaveBeenCalledTimes(1);
     expect(mockResetApiClient).toHaveBeenCalledTimes(1);
     expect(mockResetDatabase).toHaveBeenCalledTimes(1);
+    expect(mockInvalidateActiveQueries.mock.invocationCallOrder[0]).toBeLessThan(
+      mockResetDatabase.mock.invocationCallOrder[0]
+    );
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
     expect(mockMigrateEntriesContentToFts).toHaveBeenCalledTimes(1);

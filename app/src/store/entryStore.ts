@@ -155,6 +155,7 @@ interface EntryStore {
   // 数据
   entries: Entry[];
   activeQueryKey: string;
+  activeLoadSessionId: number;
   isLoading: boolean;
   isLoadingMore: boolean;
   cursor: number | null;    // 最后一条的 timestamp，用于下一页查询
@@ -164,6 +165,7 @@ interface EntryStore {
   loadRetryCount: number;
 
   // 数据加载
+  invalidateActiveQueries: () => void;
   loadEntries: () => Promise<void>;
   loadMore: () => Promise<void>;
   refreshEntries: () => Promise<void>;
@@ -199,6 +201,7 @@ interface EntryStore {
 export const useEntryStore = create<EntryStore>((set, get) => {
   const executeFirstPageQuery = async (
     queryKey: string,
+    loadSessionId: number,
     retryCount: number,
     options: { allowRetry: boolean; logLabel: string }
   ): Promise<void> => {
@@ -211,7 +214,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       const merged = mergeUniqueById(mergedPending, page).sort((a, b) => b.timestamp - a.timestamp);
       const cleaned = await removeBrokenRecordingEntries(merged);
 
-      if (get().activeQueryKey !== queryKey) {
+      if (get().activeQueryKey !== queryKey || get().activeLoadSessionId !== loadSessionId) {
         logger.debug('[entryStore] Ignore stale first-page result:', queryKey);
         return;
       }
@@ -238,13 +241,13 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         logger.log(`⏳ 数据库表尚未创建，${nextRetry}/${MAX_LOAD_RETRIES} 秒后重试...`);
 
         setTimeout(() => {
-          if (get().activeQueryKey !== queryKey) return;
-          void executeFirstPageQuery(queryKey, nextRetry, options);
+          if (get().activeQueryKey !== queryKey || get().activeLoadSessionId !== loadSessionId) return;
+          void executeFirstPageQuery(queryKey, loadSessionId, nextRetry, options);
         }, 500);
         return;
       }
 
-      if (get().activeQueryKey === queryKey) {
+      if (get().activeQueryKey === queryKey && get().activeLoadSessionId === loadSessionId) {
         set((state) => ({
           isLoading: false,
           isLoadingMore: false,
@@ -257,11 +260,22 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   return ({
   entries: [],
   activeQueryKey: '',
+  activeLoadSessionId: 0,
   isLoading: false,
   isLoadingMore: false,
   cursor: null,
   hasMore: true,
   loadRetryCount: 0,
+
+  invalidateActiveQueries: () => {
+    set((state) => ({
+      activeQueryKey: `invalidated:${state.activeLoadSessionId + 1}`,
+      activeLoadSessionId: state.activeLoadSessionId + 1,
+      isLoading: false,
+      isLoadingMore: false,
+      loadRetryCount: 0,
+    }));
+  },
 
   /**
    * 首次加载（重置游标，加载第一页）
@@ -269,14 +283,16 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   loadEntries: async () => {
     const state = get();
     const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
+    const loadSessionId = state.activeLoadSessionId + 1;
     set({
       activeQueryKey: queryKey,
+      activeLoadSessionId: loadSessionId,
       isLoading: true,
       isLoadingMore: false,
       cursor: null,
       hasMore: true,
     });
-    await executeFirstPageQuery(queryKey, state.loadRetryCount, {
+    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, {
       allowRetry: true,
       logLabel: 'load entries',
     });
@@ -488,15 +504,17 @@ export const useEntryStore = create<EntryStore>((set, get) => {
   applyFilters: async () => {
     const state = get();
     const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
+    const loadSessionId = state.activeLoadSessionId + 1;
     set({
       activeQueryKey: queryKey,
+      activeLoadSessionId: loadSessionId,
       isLoading: true,
       isLoadingMore: false,
       cursor: null,
       hasMore: true,
     });
 
-    await executeFirstPageQuery(queryKey, state.loadRetryCount, {
+    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, {
       allowRetry: false,
       logLabel: 'apply filters',
     });

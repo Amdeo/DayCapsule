@@ -36,6 +36,7 @@ const reloadEnvironmentState = async (): Promise<void> => {
 
 const initializeEnvironmentRuntime = async (): Promise<void> => {
   resetApiClient();
+  useEntryStore.getState().invalidateActiveQueries();
   resetDatabase();
   const databaseReady = await initDatabase();
   if (!databaseReady) {
