@@ -26,9 +26,10 @@ export function useSettingsPageDisableCloudMode({
     };
 
     if (cloudCount === 0 && localCount > 0) {
-      showConfirmDialog({
+      const shown = showConfirmDialog({
         title: '切换到离线模式',
-        message: `云端 0 条记录\n本地 ${localCount} 条记录\n\n云端当前为空，继续“云端 → 本地”会清空本地数据。请选择保留本地数据，或先上传到云端。`,
+        dismissible: false,
+        message: `云端 0 条记录\n本地 ${localCount} 条记录\n\n云端当前为空，继续”云端 → 本地”会清空本地数据。请选择保留本地数据，或先上传到云端。`,
         actions: [
           {
             label: '保留本地并切回离线',
@@ -96,11 +97,15 @@ export function useSettingsPageDisableCloudMode({
           },
         ],
       });
+      if (!shown) {
+        await setCloudMode(true);
+      }
       return;
     }
 
-    showConfirmDialog({
+    const shown = showConfirmDialog({
       title: '切换到离线模式',
+      dismissible: false,
       message: `云端 ${cloudCount} 条记录\n本地 ${localCount} 条记录\n\n请选择数据保留方向：`,
       actions: [
         {
@@ -174,5 +179,8 @@ export function useSettingsPageDisableCloudMode({
         },
       ],
     });
+    if (!shown) {
+      await setCloudMode(true);
+    }
   }, [setCloudMode]);
 }

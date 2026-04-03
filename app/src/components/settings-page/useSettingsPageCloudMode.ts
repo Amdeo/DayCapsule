@@ -55,8 +55,9 @@ export function useSettingsPageCloudMode({
       const flow = bootstrap.buildInitialFlow(inspection);
 
       if (flow.type === 'needs-decision') {
-        showConfirmDialog({
+        const shown = showConfirmDialog({
           title: '数据同步',
+          dismissible: false,
           message: `云端 ${flow.cloudCount} 条记录\n本地 ${flow.localCount} 条记录\n\n请选择数据来源：`,
           actions: [
             { label: '使用云端数据', role: 'primary', onPress: () => { void finishEnableCloud('cloud'); } },
@@ -70,6 +71,9 @@ export function useSettingsPageCloudMode({
             },
           ],
         });
+        if (!shown) {
+          await setCloudMode(false);
+        }
       } else {
         const source = flow.type === 'restoring' ? 'cloud' : 'local';
         await finishEnableCloud(source);
