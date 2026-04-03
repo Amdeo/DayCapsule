@@ -28,7 +28,7 @@ export function useTimelineList({
   activeActionSheetId,
   onActionSheetOpen,
 }: UseTimelineListOptions) {
-  const sections = useMemo(() => generateTimeSections(entries), [displayMode, entries]);
+  const sections = useMemo(() => generateTimeSections(entries), [entries]);
 
   const globalIndexMap = useMemo(() => {
     const map = new Map<string, number>();

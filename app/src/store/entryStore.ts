@@ -6,144 +6,19 @@
 import { create } from 'zustand';
 import { Entry } from '@/src/types/entry';
 import { localDataSource } from '@/src/database/dataSource';
-import type { EntryFilters } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 import * as DB from '@/src/database/operations';
-import { deleteFile } from '@/src/utils/fileSystem';
 import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
 import { cancelPhotoUpload } from '@/src/services/photoUploadQueue';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
-import { useEntryFilterUIStore, type EntryFilterState } from '@/src/store/entryFilterUIStore';
+import { useEntryFilterUIStore } from '@/src/store/entryFilterUIStore';
+import { buildFilters, buildQueryKey, mergeUniqueById } from './__internal__/entryStoreUtils';
+import { buildPendingInsertEntry, buildPendingUpdate } from './__internal__/entrySyncMapper';
+import { removeBrokenRecordingEntries, deleteLocalMediaFiles } from './__internal__/entryMediaCleanup';
 
 const PAGE_SIZE = 20;
 const MAX_LOAD_RETRIES = 5;
-
-/** 从当前过滤状态构建 DB 查询参数 */
-const buildFilters = (state: EntryFilterState): EntryFilters => {
-  const filters: EntryFilters = {};
-  if (state.filterType !== 'all') {
-    filters.type = state.filterType as EntryFilters['type'];
-  }
-  if (state.filterDateRange !== 'all') {
-    const now = Date.now();
-    const ranges: Record<string, number> = {
-      today: 86_400_000,
-      week: 604_800_000,
-      month: 2_592_000_000,
-    };
-    filters.startTime = now - (ranges[state.filterDateRange] ?? 0);
-  }
-  if (state.searchQuery.trim()) {
-    filters.search = state.searchQuery;
-  }
-  if (state.selectedTags.length) {
-    filters.tags = state.selectedTags;
-  }
-  return filters;
-};
-
-const buildQueryKey = (state: EntryFilterState) =>
-  JSON.stringify({
-    query: state.searchQuery,
-    type: state.filterType,
-    dateRange: state.filterDateRange,
-    tags: [...state.selectedTags].sort((a, b) => a.localeCompare(b)),
-  });
-
-const mergeUniqueById = (prev: Entry[], next: Entry[]): Entry[] => {
-  const seen = new Set(prev.map((entry) => entry.id));
-  const uniqueNext = next.filter((entry) => {
-    if (seen.has(entry.id)) return false;
-    seen.add(entry.id);
-    return true;
-  });
-  return [...prev, ...uniqueNext];
-};
-
-const shouldUseCloudPendingState = (): boolean =>
-  useSettingsStore.getState().cloudMode === true;
-
-const buildPendingInsertEntry = (entry: Omit<Entry, 'id' | 'timestamp'>): Omit<Entry, 'id' | 'timestamp'> => {
-  if (!shouldUseCloudPendingState()) {
-    return {
-      ...entry,
-      syncStatus: 'synced',
-      syncOp: entry.syncOp ?? 'update',
-    };
-  }
-
-  return {
-    ...entry,
-    syncStatus: entry.syncStatus === 'pending_upload' || entry.syncStatus === 'uploading' || entry.syncStatus === 'pending_delete'
-      ? entry.syncStatus
-      : 'pending',
-    syncOp: entry.syncOp ?? 'create',
-    updatedAt: entry.updatedAt ?? Date.now(),
-    baseUpdatedAt: entry.baseUpdatedAt ?? entry.updatedAt,
-  };
-};
-
-const buildPendingUpdate = (updates: Partial<Entry>): Partial<Entry> => {
-  if (!shouldUseCloudPendingState()) {
-    return {
-      ...updates,
-      syncStatus: updates.syncStatus ? 'synced' : updates.syncStatus,
-      syncOp: updates.syncOp ?? 'update',
-    };
-  }
-
-  if (updates.syncStatus === 'pending_upload' || updates.syncStatus === 'uploading' || updates.syncStatus === 'pending_delete') {
-    return {
-      ...updates,
-      updatedAt: updates.updatedAt ?? Date.now(),
-      baseUpdatedAt: updates.baseUpdatedAt ?? updates.updatedAt,
-    };
-  }
-
-  return {
-    ...updates,
-    syncStatus: updates.syncStatus ?? 'pending',
-    syncOp: updates.syncOp ?? 'update',
-    updatedAt: updates.updatedAt ?? Date.now(),
-    baseUpdatedAt: updates.baseUpdatedAt ?? updates.updatedAt,
-  };
-};
-
-const removeBrokenRecordingEntries = async (page: Entry[]): Promise<Entry[]> => {
-  const cleaned: Entry[] = [];
-
-  for (const entry of page) {
-    if (entry.recordingStatus === 'recording' || entry.recordingStatus === 'paused') {
-      try {
-        await localDataSource.deleteEntry(entry.id);
-        logger.log('🧹 清理无效录音:', entry.id);
-        continue;
-      } catch {
-        // 如果删除失败，保留原 entry，避免静默丢数据
-      }
-    }
-
-    cleaned.push(entry);
-  }
-
-  return cleaned;
-};
-
-const getLocalMediaFileUris = (entry?: Entry): string[] =>
-  Array.from(
-    new Set(
-      (entry?.media ?? []).flatMap((media) =>
-        [media.uri, media.thumbnail].filter((uri): uri is string => Boolean(uri))
-      )
-    )
-  );
-
-const deleteLocalMediaFiles = async (entry?: Entry): Promise<void> => {
-  for (const uri of getLocalMediaFileUris(entry)) {
-    await deleteFile(uri).catch(() => {});
-  }
-};
 
 const refreshCloudSyncIndicator = (): void => {
   void useCloudSyncIndicatorStore.getState().refresh().catch((error) => {
@@ -339,7 +214,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   addEntry: async (entry) => {
     try {
-      const nextEntry = buildPendingInsertEntry(entry);
+      const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
       const newEntry = await DB.addEntry(nextEntry);
       set((s) => ({
         entries: [newEntry, ...s.entries],
@@ -354,7 +229,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
   addLocalEntry: async (entry) => {
     try {
-      const nextEntry = buildPendingInsertEntry(entry);
+      const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
       const newEntry = await DB.addEntry(nextEntry);
       set((s) => ({
         entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)],
@@ -373,7 +248,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
    */
   updateEntry: async (id, updates) => {
     try {
-      const nextUpdates = buildPendingUpdate(updates);
+      const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
       await DB.updateEntry(id, nextUpdates);
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
@@ -388,7 +263,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
   updateLocalEntry: async (id, updates) => {
     try {
-      const nextUpdates = buildPendingUpdate(updates);
+      const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
       await DB.updateEntry(id, nextUpdates);
       const patch = (arr: Entry[]) =>
         arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
@@ -420,7 +295,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         (existingEntry?.type === 'voice' || existingEntry?.type === 'photo') &&
         (existingEntry.syncStatus === 'pending_upload' || existingEntry.syncStatus === 'uploading');
       const shouldSoftDeleteForCloud =
-        shouldUseCloudPendingState() &&
+        useSettingsStore.getState().cloudMode === true &&
         !!existingEntry &&
         !shouldDeleteLocallyOnly &&
         existingEntry.syncStatus === 'synced';
