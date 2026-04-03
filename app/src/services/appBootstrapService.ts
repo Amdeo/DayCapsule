@@ -16,7 +16,7 @@ import {
 import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSyncStore } from '@/src/store/syncStore';
-import { Storage } from '@/src/utils/storage';
+import { useSettingsStore } from '@/src/store/settingsStore';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
@@ -81,12 +81,13 @@ export async function runAppBootstrap(
 
     await useAuthStore.getState().loadAuth();
     await useSyncStore.getState().load();
+    await useSettingsStore.getState().loadSettings();
 
-    const cloudModeRaw = await Storage.getString('settings:cloudMode');
+    const cloudMode = useSettingsStore.getState().cloudMode;
     const isAuthenticated = useAuthStore.getState().isAuthenticated;
-    if (cloudModeRaw === 'switching') {
+    if (cloudMode === 'switching') {
       logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
-      await Storage.setString('settings:cloudMode', 'false');
+      await useSettingsStore.getState().setCloudMode(false);
       showErrorFeedback({
         title: '提示',
         message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
@@ -96,7 +97,7 @@ export async function runAppBootstrap(
 
     let shouldSyncCloud = false;
 
-    if (cloudModeRaw === 'true' && isAuthenticated) {
+    if (cloudMode === true && isAuthenticated) {
       try {
         logger.log('✅ 恢复云端模式，执行本地优先同步初始化');
         const bootstrap = createSyncBootstrapService();
