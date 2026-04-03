@@ -131,7 +131,6 @@ export function SettingsPageContent({
 
       <SettingsAccountSyncSection
         isAuthenticated={isAuthenticated}
-        userEmail={userEmail}
         cloudMode={cloudMode}
         isSwitchingMode={isSwitchingMode}
         onCloudModeToggle={onCloudModeToggle}

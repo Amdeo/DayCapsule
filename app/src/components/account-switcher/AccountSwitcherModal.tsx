@@ -51,7 +51,7 @@ export function AccountSwitcherModal({
         <View style={styles.card}>
           <AccountSwitcherHeader onClose={onClose} />
           <View style={styles.divider} />
-          <ScrollView style={styles.list} bounces={false}>
+          <ScrollView style={styles.list} bounces={false} keyboardShouldPersistTaps="handled">
             {accounts.map((account, index) => (
               <React.Fragment key={`${account.serverUrl}::${account.userId}`}>
                 {index > 0 && <View style={styles.separator} />}

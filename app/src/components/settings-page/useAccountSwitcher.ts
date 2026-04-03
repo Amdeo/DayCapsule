@@ -25,14 +25,20 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
+  const switchAccount = useAuthStore((s) => s.switchAccount);
 
   const load = useCallback(async () => {
-    const [loadedAccounts, loadedRef] = await Promise.all([
-      getRegisteredAccounts(),
-      getActiveAccountRef(),
-    ]);
-    setAccounts(loadedAccounts);
-    setActiveRef(loadedRef);
+    try {
+      const [loadedAccounts, loadedRef] = await Promise.all([
+        getRegisteredAccounts(),
+        getActiveAccountRef(),
+      ]);
+      setAccounts(loadedAccounts);
+      setActiveRef(loadedRef);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '加载账号列表失败';
+      showErrorFeedback({ title: '加载失败', message: msg, actions: [{ label: '知道了', role: 'primary' }] });
+    }
   }, []);
 
   useEffect(() => {
@@ -54,7 +60,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
     async (serverUrl: string, userId: string) => {
       setIsSwitching(true);
       try {
-        await useAuthStore.getState().switchAccount(serverUrl, userId);
+        await switchAccount(serverUrl, userId);
         // switchAccount 会触发 triggerRestart，app 重启后无需更新本地状态
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -67,7 +73,7 @@ export function useAccountSwitcher(): UseAccountSwitcherReturn {
         setIsSwitching(false);
       }
     },
-    [],
+    [switchAccount],
   );
 
   return { accounts, activeRef, isLoading, isSwitching, handleSwitch, refresh };

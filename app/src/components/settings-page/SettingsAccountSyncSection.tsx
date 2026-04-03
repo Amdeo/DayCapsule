@@ -7,7 +7,6 @@ import { SettingsSection } from './SettingsSection';
 
 interface SettingsAccountSyncSectionProps {
   isAuthenticated: boolean;
-  userEmail?: string;
   cloudMode: boolean | 'switching';
   isSwitchingMode: boolean;
   onCloudModeToggle: (value: boolean) => void | Promise<void>;
