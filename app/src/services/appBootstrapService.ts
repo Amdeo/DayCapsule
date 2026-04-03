@@ -14,6 +14,8 @@ import {
   migrateLocalReadyStateColumn,
 } from '@/src/database/migration';
 import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
+import { cleanupOrphanWorkspaces } from '@/src/services/workspaceCleanupService';
+import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
@@ -143,6 +145,10 @@ export async function runAppBootstrap(
     if (recoveryResult.refreshError) {
       throw recoveryResult.refreshError;
     }
+
+    await cleanupOrphanWorkspaces(getCurrentDataScopeKeySync()).catch((e) => {
+      logger.warn('孤儿 workspace 清理失败（不影响启动）:', e);
+    });
   } catch (error) {
     logger.error('❌ 应用初始化失败:', error);
     deps.onInitializationFailed();
