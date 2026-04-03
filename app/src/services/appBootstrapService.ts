@@ -24,6 +24,7 @@ import { createSyncBootstrapService } from '@/src/services/syncBootstrapService'
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
 import { createCloudRecoveryFlowService } from '@/src/services/cloudRecoveryFlowService';
+import { NotificationService } from '@/src/services/notificationService';
 
 export interface AppBootstrapDependencies {
   refreshCloudSyncIndicator: (label: string) => Promise<void>;
@@ -90,6 +91,18 @@ export async function runAppBootstrap(
 
     await useSyncStore.getState().load();
     await useSettingsStore.getState().loadSettings();
+
+    // 同步通知调度状态
+    const { notifications } = useSettingsStore.getState();
+    if (notifications) {
+      const isScheduled = await NotificationService.isReminderScheduled();
+      if (!isScheduled) {
+        await NotificationService.scheduleDailyReminder().catch((e: unknown) => {
+          logger.warn('⚠️ 通知调度同步失败:', e);
+        });
+        logger.log('✅ 通知调度已同步');
+      }
+    }
 
     const cloudMode = useSettingsStore.getState().cloudMode;
     const isAuthenticated = useAuthStore.getState().isAuthenticated;

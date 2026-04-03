@@ -29,6 +29,8 @@ import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
 import { AppRestartingOverlay } from '@/src/components/AppRestartingOverlay';
 import { useEntryStore } from '@/src/store/entryStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
+import * as Notifications from 'expo-notifications';
+import { usePendingActionStore } from '@/src/store/pendingActionStore';
 
 LogBox.ignoreLogs([
   "SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead.",
@@ -146,6 +148,13 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(() => {
+      usePendingActionStore.getState().triggerOpenTextEditor();
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!loaded) {
     return null;

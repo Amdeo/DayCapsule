@@ -155,6 +155,13 @@ jest.mock('@/src/services/accountRegistryService', () => ({
   getRegisteredAccounts: jest.fn(async () => []),
 }));
 
+jest.mock('@/src/services/notificationService', () => ({
+  NotificationService: {
+    isReminderScheduled: jest.fn().mockResolvedValue(true),
+    scheduleDailyReminder: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import { runAppBootstrap } from '../appBootstrapService';
 
 describe('runAppBootstrap', () => {

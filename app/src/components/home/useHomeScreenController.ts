@@ -35,6 +35,7 @@ import {
   finalizeCloudVoiceRecordingForTest,
 } from '@/src/services/homeVoiceFlow';
 import { handlePhotoSelectForTest } from '@/src/services/homePhotoFlow';
+import { usePendingActionStore } from '@/src/store/pendingActionStore';
 
 const RECORDING_DURATION_POLL_MS = 250;
 
@@ -46,6 +47,15 @@ export function useHomeScreenController() {
 
   const [showTextEditor, setShowTextEditor] = useState(false);
   const uploadSyncOrchestration = useRef(createHomeUploadSyncOrchestration());
+
+  const openTextEditor = usePendingActionStore((s) => s.openTextEditor);
+  const clearOpenTextEditor = usePendingActionStore((s) => s.clearOpenTextEditor);
+
+  useEffect(() => {
+    if (!openTextEditor) return;
+    setShowTextEditor(true);
+    clearOpenTextEditor();
+  }, [openTextEditor, clearOpenTextEditor]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentRecordingIdRef = useRef<string | null>(null);
 
