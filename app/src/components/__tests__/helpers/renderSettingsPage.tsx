@@ -188,6 +188,11 @@ jest.mock('@/src/store/authStore', () => ({
   useAuthStore: () => mockAuthState,
 }));
 
+jest.mock('@/src/store/syncStore', () => ({
+  useSyncStore: (selector: (state: { lastSyncError: string | null; lastMediaValidationSummary: null }) => unknown) =>
+    selector({ lastSyncError: null, lastMediaValidationSummary: null }),
+}));
+
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: jest.fn(() => mockCloudSyncService),
 }));

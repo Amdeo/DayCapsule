@@ -31,16 +31,12 @@ describe('SettingsPage cloud mode', () => {
     expect(screen.getAllByText('数据存储在本地').length).toBeGreaterThan(0);
   });
 
-  it('keeps local entries when cloud is empty and user switches back to local mode', async () => {
-    const DB = require('@/src/database/operations');
-    jest.spyOn(DB, 'getEntriesCount').mockResolvedValueOnce(3);
-
+  it('shows simple confirmation dialog when disabling cloud mode', async () => {
     const { screen, mocks } = await renderSettingsPage({
       cloudMode: true,
       authenticated: true,
       userEmail: 'mobile3@test.com',
     });
-    mocks.apiClient.get.mockResolvedValueOnce({ entryCount: 0 });
 
     const cloudModeSwitch = await screen.findByTestId('settings-switch-cloud-mode');
     fireEvent(cloudModeSwitch, 'valueChange', false);
@@ -49,20 +45,23 @@ describe('SettingsPage cloud mode', () => {
       expect(mocks.showConfirmDialog).toHaveBeenCalledWith(
         expect.objectContaining({
           title: '切换到离线模式',
-          message: expect.stringContaining('云端当前为空'),
+          message: '本地数据将保留，云端数据不受影响。是否继续？',
         }),
       );
     });
 
-    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
-    const keepLocal = actions.find((action) => action.label === '保留本地并切回离线');
-    const cloudToLocal = actions.find((action) => action.label === '云端 → 本地');
+    // 不应发起任何 API 请求
+    expect(mocks.apiClient.get).not.toHaveBeenCalled();
 
-    expect(keepLocal).toBeTruthy();
-    expect(cloudToLocal).toBeUndefined();
+    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{
+      label?: string;
+      onPress?: () => void;
+    }>;
+    const confirmAction = actions.find((a) => a.label === '切换到离线');
+    expect(confirmAction).toBeTruthy();
 
     await act(async () => {
-      await keepLocal?.onPress?.();
+      await confirmAction?.onPress?.();
     });
 
     expect(mocks.settings.setCloudMode).toHaveBeenCalledWith(false);
