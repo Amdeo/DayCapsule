@@ -14,16 +14,15 @@ describe('SettingsPage assembly', () => {
     const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
-      expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
+      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
     });
 
     expect(screen.getByTestId('settings-page-root')).toBeTruthy();
-    expect(screen.getByTestId('settings-backend-card')).toBeTruthy();
-    expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByTestId('settings-open-login')).toBeTruthy();
+    expect(screen.getByText('账户与云同步')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
     expect(screen.getByText('登录后可使用云端同步功能')).toBeTruthy();
-    expect(screen.getByText('日历内容区密度')).toBeTruthy();
+    expect(screen.getByText('日历密度')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
   });
 
@@ -39,7 +38,7 @@ describe('SettingsPage assembly', () => {
     const { screen } = await renderSettingsPage();
 
     await waitFor(() => {
-      expect(screen.getByText('标签管理')).toBeTruthy();
+      expect(screen.getByText('数据管理')).toBeTruthy();
     });
 
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
@@ -49,13 +48,11 @@ describe('SettingsPage assembly', () => {
   it('renders the regrouped settings sections and support entries', async () => {
     const { screen } = await renderSettingsPage();
 
-    expect(screen.getByText('账户与同步')).toBeTruthy();
-    expect(screen.getByText('提醒')).toBeTruthy();
-    expect(screen.getByText('内容显示')).toBeTruthy();
-    expect(screen.getByText('数据与存储')).toBeTruthy();
-    expect(screen.getByText('标签管理')).toBeTruthy();
-    expect(screen.getByText('支持')).toBeTruthy();
-    expect(screen.getByText('危险操作')).toBeTruthy();
+    expect(screen.getByText('账户与云同步')).toBeTruthy();
+    expect(screen.getByText('外观')).toBeTruthy();
+    expect(screen.getByText('数据管理')).toBeTruthy();
+    expect(screen.getByText('关于与支持')).toBeTruthy();
+    expect(screen.getByText('高级')).toBeTruthy();
 
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByTestId('settings-open-help')).toBeTruthy();
@@ -66,11 +63,10 @@ describe('SettingsPage assembly', () => {
 
     expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
-    expect(within(dataStorageSection).getByTestId('settings-storage-card')).toBeTruthy();
     expect(within(dataStorageSection).getByText('清除缓存')).toBeTruthy();
   });
 
-  it('renders settings sections in fixed order and keeps reset action in danger section', async () => {
+  it('renders settings sections in fixed order', async () => {
     const { screen } = await renderSettingsPage();
 
     const findNodeByTestId = (
@@ -117,101 +113,43 @@ describe('SettingsPage assembly', () => {
     ));
 
     const accountSyncIndex = findSectionIndex('settings-section-account-sync');
-    const remindersIndex = findSectionIndex('settings-section-reminders');
     const displayIndex = findSectionIndex('settings-section-display');
     const dataStorageIndex = findSectionIndex('settings-section-data-storage');
-    const tagsIndex = findSectionIndex('settings-section-tags');
     const supportIndex = findSectionIndex('settings-section-support');
-    const dangerIndex = findSectionIndex('settings-section-danger');
+    const advancedIndex = findSectionIndex('settings-section-advanced');
 
     expect(accountSyncIndex).toBeGreaterThanOrEqual(0);
-    expect(accountSyncIndex).toBeLessThan(remindersIndex);
-    expect(remindersIndex).toBeLessThan(displayIndex);
+    expect(accountSyncIndex).toBeLessThan(displayIndex);
     expect(displayIndex).toBeLessThan(dataStorageIndex);
-    expect(dataStorageIndex).toBeLessThan(tagsIndex);
-    expect(tagsIndex).toBeLessThan(supportIndex);
-    expect(supportIndex).toBeLessThan(dangerIndex);
+    expect(dataStorageIndex).toBeLessThan(supportIndex);
+    expect(supportIndex).toBeLessThan(advancedIndex);
+  });
 
-    const supportSection = screen.getByTestId('settings-section-support');
-    const dangerSection = screen.getByTestId('settings-section-danger');
-    expect(within(dangerSection).getByText('重置设置')).toBeTruthy();
-    expect(within(supportSection).queryByText('重置设置')).toBeNull();
+  it('renders the profile card with storage info and account status', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: true });
+
+    const profileCard = screen.getByTestId('settings-profile-card');
+    expect(profileCard).toBeTruthy();
+    expect(within(profileCard).getByText('tester@example.com')).toBeTruthy();
+
+    const accountSection = screen.getByTestId('settings-section-account-sync');
+    expect(accountSection).toBeTruthy();
+  });
+
+  it('shows profile card with login button when not authenticated', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: false });
+
+    const profileCard = screen.getByTestId('settings-profile-card');
+    expect(profileCard).toBeTruthy();
+    expect(within(profileCard).getByText('未登录')).toBeTruthy();
+    expect(within(profileCard).getByText('< 0.1 MB')).toBeTruthy();
   });
 
   it('falls back to non-empty account title when authenticated user email is missing', async () => {
     const { screen } = await renderSettingsPage({ authenticated: true, userEmail: null });
-    const accountSection = screen.getByTestId('settings-section-account-sync');
+    const profileCard = screen.getByTestId('settings-profile-card');
 
-    expect(within(accountSection).getAllByText('已登录').length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('renders the settings overview card with account, sync and storage summary', async () => {
-    const { screen } = await renderSettingsPage({ authenticated: true });
-
-    const overviewCard = screen.getByTestId('settings-overview-card');
-    const accountSection = screen.getByTestId('settings-section-account-sync');
-    const findNodeByTestId = (
-      node: unknown,
-      testID: string,
-    ): { props?: { testID?: string }; children?: unknown[] } | null => {
-      if (!node) {
-        return null;
-      }
-      if (Array.isArray(node)) {
-        for (const child of node) {
-          const found = findNodeByTestId(child, testID);
-          if (found) {
-            return found;
-          }
-        }
-        return null;
-      }
-      if (typeof node !== 'object') {
-        return null;
-      }
-      const candidate = node as { props?: { testID?: string }; children?: unknown[] };
-      if (candidate.props?.testID === testID) {
-        return candidate;
-      }
-      if (candidate.children) {
-        for (const child of candidate.children) {
-          const found = findNodeByTestId(child, testID);
-          if (found) {
-            return found;
-          }
-        }
-      }
-      return null;
-    };
-
-    const settingsRootNode = findNodeByTestId(screen.toJSON(), 'settings-page-root');
-    const rootChildren = settingsRootNode?.children ?? [];
-    const firstRootChild = rootChildren[0] as { props?: { testID?: string } } | undefined;
-    const overviewIndex = rootChildren.findIndex((child) => (
-      typeof child === 'object'
-      && child !== null
-      && 'props' in child
-      && (child as { props?: { testID?: string } }).props?.testID === 'settings-overview-card'
-    ));
-    const accountSectionIndex = rootChildren.findIndex((child) => (
-      typeof child === 'object'
-      && child !== null
-      && 'props' in child
-      && (child as { props?: { testID?: string } }).props?.testID === 'settings-section-account-sync'
-    ));
-
-    expect(overviewCard).toBeTruthy();
-    expect(accountSection).toBeTruthy();
-    expect(within(overviewCard).getByText('当前账号')).toBeTruthy();
-    expect(within(overviewCard).getByText('同步模式')).toBeTruthy();
-    expect(within(overviewCard).getByText('当前后端')).toBeTruthy();
-    expect(within(overviewCard).getByText('存储概览')).toBeTruthy();
-    expect(firstRootChild?.props?.testID).toBe('settings-overview-card');
-    expect(overviewIndex).toBeLessThan(accountSectionIndex);
-    expect(overviewIndex).toBe(0);
-
-    const dataStorageSection = screen.getByTestId('settings-section-data-storage');
-    expect(within(dataStorageSection).getByTestId('settings-storage-card')).toBeTruthy();
+    expect(within(profileCard).getByText('已登录')).toBeTruthy();
   });
 
   it('opens help page from support entry with real close path', async () => {
@@ -254,7 +192,6 @@ describe('SettingsPage assembly', () => {
   });
 
   it('opens the login dialog from the real unauthenticated account entry', async () => {
-    // Note: unauthenticated real UI does not render the cloud-mode switch; only the login entry is available.
     const { screen } = await renderSettingsPage({ authenticated: false });
 
     fireEvent.press(screen.getByTestId('settings-open-login'));
@@ -306,6 +243,9 @@ describe('SettingsPage assembly', () => {
   it('shows backend save success feedback for save and switch results', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
+    // Expand advanced section first
+    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
+
     fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-new.example.com');
     fireEvent.press(screen.getByTestId('settings-backend-test-button'));
 
@@ -349,6 +289,9 @@ describe('SettingsPage assembly', () => {
     const { screen, mocks } = await renderSettingsPage();
 
     mocks.switchBackendEnvironment.mockRejectedValueOnce(new Error('backend offline'));
+
+    // Expand advanced section first
+    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
 
     fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-fail.example.com');
     fireEvent.press(screen.getByTestId('settings-backend-test-button'));

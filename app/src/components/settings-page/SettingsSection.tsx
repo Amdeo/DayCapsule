@@ -8,6 +8,12 @@ interface SettingsSectionProps {
 }
 
 const SETTINGS_SECTION_TEST_IDS: Record<string, string> = {
+  '账户与云同步': 'settings-section-account-sync',
+  '外观': 'settings-section-display',
+  '数据管理': 'settings-section-data-storage',
+  '关于与支持': 'settings-section-support',
+  '高级': 'settings-section-advanced',
+  // Legacy keys kept for test compatibility
   '账户与同步': 'settings-section-account-sync',
   '提醒': 'settings-section-reminders',
   '内容显示': 'settings-section-display',

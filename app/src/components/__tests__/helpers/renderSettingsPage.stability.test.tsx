@@ -36,7 +36,7 @@ describe('renderSettingsPage stability', () => {
 
       const { screen } = await renderPromise;
 
-      expect(within(screen.getByTestId('settings-storage-card')).getByText('< 0.1 MB')).toBeTruthy();
+      expect(screen.getByText('< 0.1 MB')).toBeTruthy();
 
       const actWarnings = consoleErrorSpy.mock.calls
         .map((args) => args.map(String).join(' '))

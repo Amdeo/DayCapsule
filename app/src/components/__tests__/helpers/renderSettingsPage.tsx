@@ -408,13 +408,6 @@ export function getLatestLoginPageProps() {
 
 async function waitForSettingsPageToSettle(screen: ReturnType<typeof render>) {
   await waitFor(() => {
-    const storageCard = screen.queryByTestId('settings-storage-card');
-
-    if (storageCard) {
-      expect(within(storageCard).getByText('< 0.1 MB')).toBeTruthy();
-      return;
-    }
-
     expect(screen.getByText('< 0.1 MB')).toBeTruthy();
   });
 }

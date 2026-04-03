@@ -24,28 +24,14 @@ describe('SettingsAccountSyncSection', () => {
         userEmail="tester@example.com"
         cloudMode={false}
         isSwitchingMode={false}
-        currentServerUrl="https://server-a.example.com"
-        backendDraftUrl="https://server-a.example.com"
-        recentServerUrls={["https://server-b.example.com"]}
-        backendTestStatus="idle"
-        backendTestErrorMessage={null}
-        isSavingBackendServer={false}
-        canSaveBackendServer={false}
         onCloudModeToggle={onCloudModeToggle}
         onShowSyncStatus={onShowSyncStatus}
         onLogout={onLogout}
         onShowLogin={onShowLogin}
-        onBackendDraftUrlChange={() => undefined}
-        onTestBackendServer={() => undefined}
-        onSaveBackendServer={() => undefined}
-        onSelectRecentBackendServer={() => undefined}
       />
     );
 
-    expect(screen.getByText('账户与同步')).toBeTruthy();
-    expect(screen.getByText('后端连接')).toBeTruthy();
-    expect(screen.getByText('当前生效地址：https://server-a.example.com')).toBeTruthy();
-    expect(screen.getByText('tester@example.com')).toBeTruthy();
+    expect(screen.getByText('账户与云同步')).toBeTruthy();
     expect(screen.getByText('云端模式')).toBeTruthy();
     expect(screen.getByText('数据存储在本地')).toBeTruthy();
     expect(screen.getByTestId('settings-switch-cloud-mode')).toBeTruthy();
