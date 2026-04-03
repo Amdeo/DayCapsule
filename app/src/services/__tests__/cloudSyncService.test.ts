@@ -627,7 +627,7 @@ describe('cloudSyncService', () => {
     expect(DB.addEntry).not.toHaveBeenCalled();
   });
 
-  it('preserves the existing media summary when no synced media needs validation', async () => {
+  it('resets partial media validation summary to success when sync completes with no new media entries', async () => {
     useSyncStore.setState({
       lastMediaValidationSummary: {
         status: 'partial',
@@ -667,17 +667,7 @@ describe('cloudSyncService', () => {
     await createCloudSyncService().syncNow();
 
     expect(mockValidateEntries).not.toHaveBeenCalled();
-    expect(useSyncStore.getState().lastMediaValidationSummary).toEqual({
-      status: 'partial',
-      total: 3,
-      downloaded: 1,
-      missing: 2,
-      failed: 0,
-      suspect: 1,
-      repairable: 1,
-      lastError: 'missing file',
-      lastValidatedAt: 1000,
-    });
+    expect(useSyncStore.getState().lastMediaValidationSummary?.status).toBe('success');
     expect(mockShowPhotoRepairPrompt).not.toHaveBeenCalled();
   });
 

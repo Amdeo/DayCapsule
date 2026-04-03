@@ -227,6 +227,21 @@ export function createCloudSyncService(): SyncServiceApi {
       await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
       useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
       if (mediaValidationRun.issues.length > 0) showPhotoRepairPrompt();
+    } else {
+      const prevStatus = useSyncStore.getState().lastMediaValidationSummary?.status;
+      if (prevStatus === 'partial' || prevStatus === 'failed') {
+        await useSyncStore.getState().setMediaValidationSummary({
+          status: 'success',
+          total: 0,
+          downloaded: 0,
+          missing: 0,
+          failed: 0,
+          suspect: 0,
+          repairable: 0,
+          lastError: null,
+          lastValidatedAt: Date.now(),
+        });
+      }
     }
 
     await useSyncStore.getState().markSyncSuccess(Date.now());
