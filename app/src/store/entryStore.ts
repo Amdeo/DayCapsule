@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { Entry } from '@/src/types/entry';
+import type { Entry } from '@/src/types/entry';
 import { localDataSource } from '@/src/database/dataSource';
 import { logger } from '@/src/utils/logger';
 import * as DB from '@/src/database/operations';
@@ -15,10 +15,9 @@ import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore'
 import { useEntryFilterUIStore } from '@/src/store/entryFilterUIStore';
 import { buildFilters, buildQueryKey, mergeUniqueById } from './__internal__/entryStoreUtils';
 import { buildPendingInsertEntry, buildPendingUpdate } from './__internal__/entrySyncMapper';
-import { removeBrokenRecordingEntries, deleteLocalMediaFiles } from './__internal__/entryMediaCleanup';
-
-const PAGE_SIZE = 20;
-const MAX_LOAD_RETRIES = 5;
+import { deleteLocalMediaFiles } from './__internal__/entryMediaCleanup';
+import { executeFirstPageQuery, PAGE_SIZE } from './__internal__/entryFirstPageQuery';
+import type { EntryStore } from './__internal__/entryStoreTypes';
 
 const refreshCloudSyncIndicator = (): void => {
   void useCloudSyncIndicatorStore.getState().refresh().catch((error) => {
@@ -26,113 +25,7 @@ const refreshCloudSyncIndicator = (): void => {
   });
 };
 
-interface EntryStore {
-  // 数据
-  entries: Entry[];
-  activeQueryKey: string;
-  activeLoadSessionId: number;
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  cursor: number | null;    // 最后一条的 timestamp，用于下一页查询
-  hasMore: boolean;
-
-  // 重试计数
-  loadRetryCount: number;
-
-  // 数据加载
-  invalidateActiveQueries: () => void;
-  loadEntries: () => Promise<void>;
-  loadMore: () => Promise<void>;
-  refreshEntries: () => Promise<void>;
-
-  // CRUD
-  addEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<void>;
-  addLocalEntry: (entry: Omit<Entry, 'id' | 'timestamp'>) => Promise<Entry>;
-  updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
-  updateLocalEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
-  replaceEntry: (oldId: string, entry: Entry) => void;
-  deleteEntry: (id: string) => Promise<void>;
-
-  // 查询
-  getRecentEntries: (limit?: number) => Entry[];
-  searchEntries: (query: string) => Promise<void>;
-  getAllTags: () => Promise<string[]>;
-
-  // 录音
-  updateRecordingStatus: (id: string, status: 'recording' | 'paused' | 'completed') => Promise<void>;
-  updateRecordingDuration: (id: string, duration: number) => void;
-  completeRecording: (id: string, uri: string, duration: number) => Promise<void>;
-
-  applyFilters: () => Promise<void>;
-  applySearchFilters: (filters: {
-    query?: string;
-    type?: 'all' | 'text' | 'photo' | 'voice';
-    dateRange?: 'all' | 'today' | 'week' | 'month';
-    tags?: string[];
-  }) => Promise<void>;
-  restoreEntries: (entries: Entry[]) => Promise<string[]>;
-}
-
-export const useEntryStore = create<EntryStore>((set, get) => {
-  const executeFirstPageQuery = async (
-    queryKey: string,
-    loadSessionId: number,
-    retryCount: number,
-    options: { allowRetry: boolean; logLabel: string }
-  ): Promise<void> => {
-    try {
-      const filters = buildFilters(useEntryFilterUIStore.getState());
-      const page = await localDataSource.getEntriesPage(filters, PAGE_SIZE);
-      const pendingVoiceEntries = await DB.getVoiceEntriesBySyncStatus(['pending_upload', 'uploading']);
-      const pendingPhotoEntries = await DB.getPhotoEntriesBySyncStatus(['pending_upload', 'uploading']);
-      const mergedPending = mergeUniqueById(pendingVoiceEntries, pendingPhotoEntries);
-      const merged = mergeUniqueById(mergedPending, page).sort((a, b) => b.timestamp - a.timestamp);
-      const cleaned = await removeBrokenRecordingEntries(merged);
-
-      if (get().activeQueryKey !== queryKey || get().activeLoadSessionId !== loadSessionId) {
-        logger.debug('[entryStore] Ignore stale first-page result:', queryKey);
-        return;
-      }
-
-      set((state) => ({
-        entries: cleaned,
-        cursor: cleaned.at(-1)?.timestamp ?? null,
-        hasMore: page.length === PAGE_SIZE,
-        isLoading: false,
-        isLoadingMore: false,
-        loadRetryCount: retryCount > 0 ? 0 : state.loadRetryCount,
-      }));
-      logger.log('✅ 加载了', cleaned.length, '条记录');
-    } catch (error: any) {
-      logger.error(`Failed to ${options.logLabel}:`, error);
-
-      if (
-        options.allowRetry &&
-        error?.message?.includes('no such table') &&
-        retryCount < MAX_LOAD_RETRIES
-      ) {
-        const nextRetry = retryCount + 1;
-        set({ loadRetryCount: nextRetry });
-        logger.log(`⏳ 数据库表尚未创建，${nextRetry}/${MAX_LOAD_RETRIES} 秒后重试...`);
-
-        setTimeout(() => {
-          if (get().activeQueryKey !== queryKey || get().activeLoadSessionId !== loadSessionId) return;
-          void executeFirstPageQuery(queryKey, loadSessionId, nextRetry, options);
-        }, 500);
-        return;
-      }
-
-      if (get().activeQueryKey === queryKey && get().activeLoadSessionId === loadSessionId) {
-        set((state) => ({
-          isLoading: false,
-          isLoadingMore: false,
-          loadRetryCount: options.allowRetry ? 0 : state.loadRetryCount,
-        }));
-      }
-    }
-  };
-
-  return ({
+export const useEntryStore = create<EntryStore>((set, get) => ({
   entries: [],
   activeQueryKey: '',
   activeLoadSessionId: 0,
@@ -152,30 +45,16 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     }));
   },
 
-  /**
-   * 首次加载（重置游标，加载第一页）
-   */
+  /** 首次加载（重置游标，加载第一页） */
   loadEntries: async () => {
     const state = get();
     const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
     const loadSessionId = state.activeLoadSessionId + 1;
-    set({
-      activeQueryKey: queryKey,
-      activeLoadSessionId: loadSessionId,
-      isLoading: true,
-      isLoadingMore: false,
-      cursor: null,
-      hasMore: true,
-    });
-    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, {
-      allowRetry: true,
-      logLabel: 'load entries',
-    });
+    set({ activeQueryKey: queryKey, activeLoadSessionId: loadSessionId, isLoading: true, isLoadingMore: false, cursor: null, hasMore: true });
+    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, { allowRetry: true, logLabel: 'load entries' }, { get, set });
   },
 
-  /**
-   * 加载下一页（追加到 entries 末尾）
-   */
+  /** 加载下一页（追加到 entries 末尾） */
   loadMore: async () => {
     const { cursor, isLoadingMore, hasMore, activeQueryKey } = get();
     if (isLoadingMore || !hasMore) return;
@@ -192,33 +71,22 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
       set((s) => {
         const next = mergeUniqueById(s.entries, page);
-        return {
-          entries: next,
-          cursor: page.at(-1)?.timestamp ?? s.cursor,
-          hasMore: page.length === PAGE_SIZE,
-          isLoadingMore: false,
-        };
+        return { entries: next, cursor: page.at(-1)?.timestamp ?? s.cursor, hasMore: page.length === PAGE_SIZE, isLoadingMore: false };
       });
     } catch (error) {
       logger.error('Failed to load more entries:', error);
-      if (get().activeQueryKey === activeQueryKey) {
-        set({ isLoadingMore: false });
-      }
+      if (get().activeQueryKey === activeQueryKey) set({ isLoadingMore: false });
     }
   },
 
   refreshEntries: async () => get().loadEntries(),
 
-  /**
-   * 添加记录：写 DB 后 prepend 到内存头部，无需重新加载
-   */
+  /** 添加记录：写 DB 后 prepend 到内存头部 */
   addEntry: async (entry) => {
     try {
       const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
       const newEntry = await DB.addEntry(nextEntry);
-      set((s) => ({
-        entries: [newEntry, ...s.entries],
-      }));
+      set((s) => ({ entries: [newEntry, ...s.entries] }));
       refreshCloudSyncIndicator();
       logger.log('✅ 添加记录:', newEntry.id);
     } catch (error) {
@@ -231,9 +99,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     try {
       const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
       const newEntry = await DB.addEntry(nextEntry);
-      set((s) => ({
-        entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)],
-      }));
+      set((s) => ({ entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)] }));
       refreshCloudSyncIndicator();
       logger.log('✅ 本地添加记录:', newEntry.id);
       return newEntry;
@@ -243,16 +109,12 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     }
   },
 
-  /**
-   * 更新记录：写 DB 后 map 更新内存
-   */
+  /** 更新记录：写 DB 后 map 更新内存 */
   updateEntry: async (id, updates) => {
     try {
       const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
       await DB.updateEntry(id, nextUpdates);
-      const patch = (arr: Entry[]) =>
-        arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
-      set((s) => ({ entries: patch(s.entries) }));
+      set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e)) }));
       refreshCloudSyncIndicator();
       logger.log('✅ 更新记录:', id);
     } catch (error) {
@@ -265,9 +127,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     try {
       const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
       await DB.updateEntry(id, nextUpdates);
-      const patch = (arr: Entry[]) =>
-        arr.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e));
-      set((s) => ({ entries: patch(s.entries) }));
+      set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e)) }));
       refreshCloudSyncIndicator();
       logger.log('✅ 本地更新记录:', id);
     } catch (error) {
@@ -280,14 +140,12 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     set((s) => ({
       entries: s.entries
         .map((existing) => (existing.id === oldId ? entry : existing))
-        .filter((existing, index, arr) => arr.findIndex((candidate) => candidate.id === existing.id) === index),
+        .filter((existing, index, arr) => arr.findIndex((c) => c.id === existing.id) === index),
     }));
     refreshCloudSyncIndicator();
   },
 
-  /**
-   * 删除记录：写 DB 后从内存移除
-   */
+  /** 删除记录：写 DB 后从内存移除 */
   deleteEntry: async (id) => {
     try {
       const existingEntry = get().entries.find((entry) => entry.id === id);
@@ -301,12 +159,8 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         existingEntry.syncStatus === 'synced';
 
       if (shouldDeleteLocallyOnly) {
-        if (existingEntry?.type === 'voice') {
-          cancelVoiceUpload(id);
-        } else if (existingEntry?.type === 'photo') {
-          cancelPhotoUpload(id);
-        }
-
+        if (existingEntry?.type === 'voice') cancelVoiceUpload(id);
+        else if (existingEntry?.type === 'photo') cancelPhotoUpload(id);
         await deleteLocalMediaFiles(existingEntry);
         await DB.deleteEntry(id);
       } else if (shouldSoftDeleteForCloud) {
@@ -315,8 +169,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
         await localDataSource.deleteEntry(id);
       }
 
-      const remove = (arr: Entry[]) => arr.filter((e) => e.id !== id);
-      set((s) => ({ entries: remove(s.entries) }));
+      set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
       refreshCloudSyncIndicator();
       logger.log('✅ 删除记录:', id);
     } catch (error) {
@@ -339,9 +192,7 @@ export const useEntryStore = create<EntryStore>((set, get) => {
 
   /** 仅内存更新，避免 100ms 高频 I/O */
   updateRecordingDuration: (id, duration) => {
-    const patch = (arr: Entry[]) =>
-      arr.map((e) => (e.id === id ? { ...e, recordingDuration: duration } : e));
-    set((s) => ({ entries: patch(s.entries) }));
+    set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, recordingDuration: duration } : e)) }));
   },
 
   completeRecording: async (id, uri, duration) =>
@@ -351,18 +202,13 @@ export const useEntryStore = create<EntryStore>((set, get) => {
       media: [{ uri, mimeType: 'audio/m4a', size: 0, duration }],
     }),
 
-  /**
-   * 批量应用搜索筛选条件，只触发一次数据库查询
-   */
   applySearchFilters: async (filters) => {
     useEntryFilterUIStore.getState().applySearchFilters(filters);
     await get().applyFilters();
   },
 
-  /**
-   * 批量恢复备份记录，完成后重新加载第一页
-   */
-  restoreEntries: async (entries: Entry[]): Promise<string[]> => {
+  /** 批量恢复备份记录，完成后重新加载第一页 */
+  restoreEntries: async (entries: Entry[]) => {
     const insertedIds = await localDataSource.restoreEntries(entries);
     try {
       await get().loadEntries();
@@ -373,28 +219,14 @@ export const useEntryStore = create<EntryStore>((set, get) => {
     return insertedIds;
   },
 
-  /**
-   * 过滤条件变更：重置游标，重新加载第一页
-   */
+  /** 过滤条件变更：重置游标，重新加载第一页 */
   applyFilters: async () => {
     const state = get();
     const queryKey = buildQueryKey(useEntryFilterUIStore.getState());
     const loadSessionId = state.activeLoadSessionId + 1;
-    set({
-      activeQueryKey: queryKey,
-      activeLoadSessionId: loadSessionId,
-      isLoading: true,
-      isLoadingMore: false,
-      cursor: null,
-      hasMore: true,
-    });
-
-    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, {
-      allowRetry: false,
-      logLabel: 'apply filters',
-    });
+    set({ activeQueryKey: queryKey, activeLoadSessionId: loadSessionId, isLoading: true, isLoadingMore: false, cursor: null, hasMore: true });
+    await executeFirstPageQuery(queryKey, loadSessionId, state.loadRetryCount, { allowRetry: false, logLabel: 'apply filters' }, { get, set });
   },
-  });
-});
+}));
 
 export type { Entry };
