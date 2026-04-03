@@ -1,31 +1,24 @@
-/**
- * 照片服务
- * 处理拍照、选择、压缩、存储等照片相关操作
- */
-
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { Camera } from 'expo-camera';
+import type { MediaInfo } from '@/src/types/entry';
+import type { PhotoFileFingerprint } from './photoIntegrityService';
 import {
-  COMPRESSION_PRESETS,
-  STORAGE_QUOTA,
-  ERROR_MESSAGES,
-} from '@/src/utils/constants';
+  requestCameraPermission,
+  takePhoto,
+  pickPhotoFromLibrary,
+} from './photo/photoPicker';
 import {
-  getMediaPaths,
-  generateUniqueFilename,
-  deleteFile,
-  getFileInfo,
-  copyFile,
-} from '@/src/utils/fileSystem';
-import { MediaCacheService } from './mediaCacheService';
+  compressPhoto,
+  generateThumbnail,
+  getPhotoMetadata,
+} from './photo/photoProcessor';
 import {
-  buildPhotoLogPayload,
-  fingerprintPhotoFile,
-  type PhotoFileFingerprint,
-} from './photoIntegrityService';
-import { MediaError, type MediaInfo } from '@/src/types/entry';
-import { logger } from '@/src/utils/logger';
+  resolvePhotoUri,
+  getPreferredPhotoUri,
+  getFallbackPhotoUri,
+  savePhotoToStorage,
+  savePhotoToCache,
+  resolveThumbnailUri,
+  deletePhoto,
+} from './photo/photoStorage';
 
 /**
  * 照片结果
@@ -97,75 +90,15 @@ export interface PickPhotoOptions {
  * 照片服务类
  */
 export class PhotoService {
-  private static isCurrentManagedPhotoUri(uri: string | undefined): boolean {
-    if (!uri || MediaCacheService.isRemoteUri(uri)) {
-      return false;
-    }
-
-    const { photoOriginal, photoDisplay, photoThumbnail } = getMediaPaths();
-    return uri.startsWith(photoOriginal)
-      || uri.startsWith(photoDisplay)
-      || uri.startsWith(photoThumbnail);
-  }
-
-  private static buildPhotoUriCandidates(
-    media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
-    kind: 'thumbnail' | 'full'
-  ): string[] {
-    const localThumbnail = media.thumbnail && !MediaCacheService.isRemoteUri(media.thumbnail)
-      ? media.thumbnail
-      : undefined;
-    const remoteThumbnail = media.remoteThumbnail
-      ?? (media.thumbnail && MediaCacheService.isRemoteUri(media.thumbnail) ? media.thumbnail : undefined);
-    const remoteMain = media.remoteUri
-      ?? (media.uri && MediaCacheService.isRemoteUri(media.uri) ? media.uri : undefined);
-    const localMain = media.uri && this.isCurrentManagedPhotoUri(media.uri)
-      ? media.uri
-      : undefined;
-    const fallbackLocalMain = media.uri && !MediaCacheService.isRemoteUri(media.uri) && !this.isCurrentManagedPhotoUri(media.uri)
-      ? media.uri
-      : undefined;
-
-    const rawCandidates = kind === 'thumbnail'
-      ? [localThumbnail, localMain, remoteThumbnail, remoteMain, fallbackLocalMain]
-      : [localMain, remoteMain, fallbackLocalMain];
-
-    return rawCandidates
-      .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.trim().length > 0)
-      .map((candidate) => this.resolvePhotoUri(candidate))
-      .filter((candidate, index, allCandidates) => allCandidates.indexOf(candidate) === index);
-  }
-
-  /**
-   * 解析照片 URI：兼容旧绝对路径（沙盒 UUID 可能已变）
-   * 统一提取文件名后用当前 documentDirectory 重建路径
-   */
   static resolvePhotoUri(uri: string): string {
-    if (MediaCacheService.isRemoteUri(uri)) {
-      return MediaCacheService.normalizeRemoteUri(uri);
-    }
-    const photoOriginalRelative = 'media/photos/original/';
-    if (uri.includes(photoOriginalRelative)) {
-      const filename = uri.split(photoOriginalRelative).pop();
-      if (filename) {
-        return `${getMediaPaths().photoOriginal}${filename}`;
-      }
-    }
-    return uri;
+    return resolvePhotoUri(uri);
   }
 
   static getPreferredPhotoUri(
     media: Pick<MediaInfo, 'uri' | 'remoteUri' | 'thumbnail' | 'remoteThumbnail'>,
     kind: 'thumbnail' | 'full'
   ): string {
-    const candidates = this.buildPhotoUriCandidates(media, kind);
-    const selectedUri = candidates[0] ?? '';
-    logger.log('[photoService] preferred photo uri', {
-      kind,
-      candidates,
-      selectedUri,
-    });
-    return selectedUri;
+    return getPreferredPhotoUri(media, kind);
   }
 
   static getFallbackPhotoUri(
@@ -173,47 +106,14 @@ export class PhotoService {
     failedUri: string,
     kind: 'thumbnail' | 'full'
   ): string | null {
-    const candidates = this.buildPhotoUriCandidates(media, kind);
-    const normalizedFailedUri = failedUri.trim().length > 0
-      ? this.resolvePhotoUri(failedUri)
-      : '';
-    const failedIndex = candidates.findIndex((candidate) => candidate === normalizedFailedUri);
-
-    if (failedIndex >= 0) {
-      const selectedUri = candidates[failedIndex + 1] ?? null;
-      logger.log('[photoService] fallback photo uri', {
-        kind,
-        failedUri: normalizedFailedUri,
-        candidates,
-        selectedUri,
-      });
-      return selectedUri;
-    }
-
-    const selectedUri = candidates[0] ?? null;
-    logger.log('[photoService] fallback photo uri', {
-      kind,
-      failedUri: normalizedFailedUri,
-      candidates,
-      selectedUri,
-    });
-    return selectedUri;
+    return getFallbackPhotoUri(media, failedUri, kind);
   }
 
   /**
    * 请求相机权限
    */
   static async requestCameraPermission(): Promise<boolean> {
-    try {
-      const { granted } = await Camera.requestCameraPermissionsAsync();
-      return granted;
-    } catch (error) {
-      logger.error('Failed to request camera permission:', error);
-      throw this.createError(
-        'PERMISSION_DENIED',
-        ERROR_MESSAGES.CAMERA_ERROR
-      );
-    }
+    return requestCameraPermission();
   }
 
   /**
@@ -221,43 +121,7 @@ export class PhotoService {
    * 保持原始尺寸，不裁剪
    */
   static async takePhoto(): Promise<PhotoResult> {
-    try {
-      // 检查权限
-      const granted = await this.requestCameraPermission();
-      if (!granted) {
-        throw this.createError(
-          'PERMISSION_DENIED',
-          ERROR_MESSAGES.CAMERA_ERROR
-        );
-      }
-
-      // 打开相机 - 保持原始尺寸，不裁剪
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false,
-        quality: 0.95,
-      });
-
-      if (result.canceled) {
-        throw new Error('User cancelled camera');
-      }
-
-      const asset = result.assets[0];
-      const width = asset.width || 0;
-      const height = asset.height || 0;
-      return {
-        uri: asset.uri,
-        width,
-        height,
-        aspectRatio: height > 0 ? width / height : 1,
-        exif: asset.exif,
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message === 'User cancelled camera') {
-        throw error;
-      }
-      logger.error('Failed to take photo:', error);
-      throw this.createError('CAMERA_ERROR', ERROR_MESSAGES.CAMERA_ERROR);
-    }
+    return takePhoto();
   }
 
   /**
@@ -267,37 +131,7 @@ export class PhotoService {
   static async pickPhotoFromLibrary(
     options?: PickPhotoOptions
   ): Promise<PhotoResult[]> {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        selectionLimit: 9,
-        allowsEditing: false,
-        quality: options?.quality ?? 0.95,
-      });
-
-      if (result.canceled) {
-        throw new Error('User cancelled photo library');
-      }
-
-      return result.assets.map((asset) => {
-        const width = asset.width || 0;
-        const height = asset.height || 0;
-        return {
-          uri: asset.uri,
-          width,
-          height,
-          aspectRatio: height > 0 ? width / height : 1,
-          exif: asset.exif,
-        };
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'User cancelled photo library') {
-        throw error;
-      }
-      logger.error('Failed to pick photo:', error);
-      throw this.createError('INVALID_FILE', ERROR_MESSAGES.INVALID_FILE);
-    }
+    return pickPhotoFromLibrary(options);
   }
 
   /**
@@ -307,39 +141,7 @@ export class PhotoService {
     uri: string,
     quality: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<CompressedPhoto> {
-    try {
-      const { size: originalSize } = await getFileInfo(uri);
-
-      // 获取压缩预设
-      const preset = COMPRESSION_PRESETS[quality.toUpperCase() as keyof typeof COMPRESSION_PRESETS];
-
-      // 使用 expo-image-manipulator 进行压缩
-      const result = await ImageManipulator.manipulateAsync(uri, [], {
-        compress: preset.quality,
-        format: ImageManipulator.SaveFormat.JPEG,
-      });
-
-      const { size: compressedSize } = await getFileInfo(result.uri);
-      const ratio = compressedSize / originalSize;
-
-      return {
-        original: {
-          uri,
-          size: originalSize,
-        },
-        compressed: {
-          uri: result.uri,
-          size: compressedSize,
-          width: result.width,
-          height: result.height,
-        },
-        ratio,
-        quality,
-      };
-    } catch (error) {
-      logger.error('Failed to compress photo:', error);
-      throw this.createError('CODEC_ERROR', ERROR_MESSAGES.CODEC_ERROR);
-    }
+    return compressPhoto(uri, quality);
   }
 
   /**
@@ -352,22 +154,7 @@ export class PhotoService {
     uri: string,
     maxWidth: number = 1200
   ): Promise<string> {
-    try {
-      const result = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: maxWidth } }],
-        {
-          compress: 0.8,
-          format: ImageManipulator.SaveFormat.JPEG,
-        }
-      );
-
-      return result.uri;
-    } catch (error) {
-      logger.error('Failed to generate thumbnail:', error);
-      // 不抛出错误，缩略图生成失败不应该中断流程
-      return uri;
-    }
+    return generateThumbnail(uri, maxWidth);
   }
 
   /**
@@ -381,8 +168,10 @@ export class PhotoService {
     quality: 'low' | 'medium' | 'high' = 'medium',
     aspectRatio?: number
   ): Promise<SavedPhotoResult> {
-    const mediaPaths = getMediaPaths();
-    return this.savePhoto(sourceUri, entryId, mediaPaths.photoOriginal, mediaPaths.photoOriginal, quality, aspectRatio);
+    return savePhotoToStorage(sourceUri, entryId, quality, aspectRatio, {
+      compressPhoto: this.compressPhoto.bind(this),
+      generateThumbnail: this.generateThumbnail.bind(this),
+    });
   }
 
   static async savePhotoToCache(
@@ -391,90 +180,10 @@ export class PhotoService {
     quality: 'low' | 'medium' | 'high' = 'medium',
     aspectRatio?: number
   ): Promise<SavedPhotoResult> {
-    const mediaPaths = getMediaPaths();
-    return this.savePhoto(sourceUri, entryId, mediaPaths.photoDisplay, mediaPaths.photoThumbnail, quality, aspectRatio);
-  }
-
-  private static async savePhoto(
-    sourceUri: string,
-    entryId: string,
-    photoDir: string,
-    thumbnailDir: string,
-    quality: 'low' | 'medium' | 'high' = 'medium',
-    aspectRatio?: number
-  ): Promise<SavedPhotoResult> {
-    try {
-      // 检查存储空间
-      const { size } = await getFileInfo(sourceUri);
-      if (size > STORAGE_QUOTA.MAX_PHOTO_SIZE) {
-        throw this.createError(
-          'DEVICE_STORAGE_FULL',
-          ERROR_MESSAGES.FILE_TOO_LARGE
-        );
-      }
-
-      // 压缩照片（原图质量压缩）
-      const compressed = await this.compressPhoto(sourceUri, quality);
-      const width = compressed.compressed.width;
-      const height = compressed.compressed.height;
-      // 优先使用传入的 aspectRatio，否则从实际尺寸计算
-      const finalAspectRatio = aspectRatio || (height > 0 ? width / height : 1);
-
-      // 生成缩略图（保持比例，限制宽度）
-      const thumbnailUri = await this.generateThumbnail(compressed.compressed.uri);
-
-      // 保存原图到存储
-      const filename = generateUniqueFilename(entryId, 'photo', 'jpg');
-      const targetUri = await copyFile(
-        compressed.compressed.uri,
-        photoDir,
-        filename
-      );
-
-      // 保存缩略图
-      const thumbnailFilename = generateUniqueFilename(entryId, 'thumb', 'jpg');
-      const targetThumbnailUri = await copyFile(
-        thumbnailUri,
-        thumbnailDir,
-        thumbnailFilename
-      );
-
-      const persistedFingerprint = await fingerprintPhotoFile(targetUri);
-      logger.log('photo.persist.saved', buildPhotoLogPayload({
-        entryId,
-        localMediaId: entryId,
-        localUri: targetUri,
-        mimeType: persistedFingerprint.mimeType,
-        size: persistedFingerprint.size,
-        width: persistedFingerprint.width,
-        height: persistedFingerprint.height,
-        persistedHash: persistedFingerprint.sha256,
-        integrityStatus: 'healthy',
-        integrityReason: null,
-      }));
-
-      // 清理临时文件
-      await deleteFile(compressed.compressed.uri);
-      // 缩略图是新生成的临时文件，需要清理
-      if (thumbnailUri !== compressed.compressed.uri) {
-        await deleteFile(thumbnailUri).catch(() => {});
-      }
-
-      return {
-        originalUri: targetUri,
-        thumbnailUri: targetThumbnailUri,
-        aspectRatio: finalAspectRatio,
-        width,
-        height,
-        persistedFingerprint,
-      };
-    } catch (error) {
-      if (error instanceof MediaError) {
-        throw error;
-      }
-      logger.error('Failed to save photo:', error);
-      throw this.createError('DEVICE_STORAGE_FULL', ERROR_MESSAGES.STORAGE_FULL);
-    }
+    return savePhotoToCache(sourceUri, entryId, quality, aspectRatio, {
+      compressPhoto: this.compressPhoto.bind(this),
+      generateThumbnail: this.generateThumbnail.bind(this),
+    });
   }
 
   /**
@@ -482,34 +191,7 @@ export class PhotoService {
    * 注意：ImageManipulator.manipulateAsync 会创建临时文件，使用后会自动清理
    */
   static async getPhotoMetadata(uri: string): Promise<PhotoMetadata> {
-    try {
-      const { size } = await getFileInfo(uri);
-
-      // 获取图片信息
-      const result = await ImageManipulator.manipulateAsync(uri, [], {
-        compress: 1,
-        format: ImageManipulator.SaveFormat.JPEG,
-      });
-
-      // 清理临时文件（manipulateAsync 生成的临时文件）
-      if (result.uri !== uri) {
-        await deleteFile(result.uri).catch(() => {});
-      }
-
-      // 这里简化处理，实际应该读取 EXIF 数据
-      return {
-        width: result.width || 0,
-        height: result.height || 0,
-        size,
-      };
-    } catch (error) {
-      logger.error('Failed to get photo metadata:', error);
-      return {
-        width: 0,
-        height: 0,
-        size: 0,
-      };
-    }
+    return getPhotoMetadata(uri);
   }
 
   /**
@@ -517,12 +199,7 @@ export class PhotoService {
    * @param uri 照片 URI（原图或缩略图路径）
    */
   static async deletePhoto(uri: string): Promise<void> {
-    try {
-      await deleteFile(uri);
-    } catch (error) {
-      logger.error('Failed to delete photo:', error);
-      // 不抛出错误，删除失败不应该中断流程
-    }
+    return deletePhoto(uri);
   }
 
   /**
@@ -530,34 +207,7 @@ export class PhotoService {
    * 根据原图路径获取对应的缩略图路径
    */
   static resolveThumbnailUri(originalUri: string): string | null {
-    // 如果已经是缩略图路径，直接返回
-    if (originalUri.includes('_thumb.')) {
-      return originalUri;
-    }
-    // 根据原图路径生成缩略图路径
-    const photoOriginalRelative = 'media/photos/original/';
-    if (originalUri.includes(photoOriginalRelative)) {
-      const filename = originalUri.split(photoOriginalRelative).pop();
-      if (filename) {
-        // 将 _photo_ 替换为 _thumb_ 获取缩略图文件名
-        const thumbFilename = filename.replace('_photo_', '_thumb_');
-        return `${getMediaPaths().photoOriginal}${thumbFilename}`;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * 创建媒体错误
-   */
-  private static createError(
-    code: MediaError['code'],
-    userMessage: string
-  ): MediaError {
-    const error = new Error(userMessage) as MediaError;
-    error.code = code;
-    error.userMessage = userMessage;
-    return error;
+    return resolveThumbnailUri(originalUri);
   }
 }
 
