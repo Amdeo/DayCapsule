@@ -35,7 +35,7 @@ const baseSummary: LastSyncRunSummary = {
 describe('CloudSyncMonitorModal', () => {
   it('renders the idle state when there is no active run or summary', () => {
     const screen = render(
-      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} onDismiss={jest.fn()} />
+      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} onDismiss={jest.fn()} />
     );
 
     expect(screen.getByText('当前没有正在执行的云同步')).toBeTruthy();
@@ -47,6 +47,7 @@ describe('CloudSyncMonitorModal', () => {
       <CloudSyncMonitorModal
         activeRun={baseActiveRun}
         lastRunSummary={null}
+        lastSyncError={null}
         onDismiss={jest.fn()}
       />
     );
@@ -67,6 +68,7 @@ describe('CloudSyncMonitorModal', () => {
       <CloudSyncMonitorModal
         activeRun={null}
         lastRunSummary={{ ...baseSummary, status: 'partial' }}
+        lastSyncError={null}
         onDismiss={jest.fn()}
       />
     );
@@ -93,6 +95,7 @@ describe('CloudSyncMonitorModal', () => {
             { id: 'voice-1', title: '语音备忘', detail: '网络中断' },
           ],
         }}
+        lastSyncError={null}
         onDismiss={jest.fn()}
       />
     );
@@ -106,10 +109,25 @@ describe('CloudSyncMonitorModal', () => {
     expect(screen.getByText('网络中断')).toBeTruthy();
   });
 
+  it('renders the idle state with lastSyncError when no run summary exists', () => {
+    const screen = render(
+      <CloudSyncMonitorModal
+        activeRun={null}
+        lastRunSummary={null}
+        lastSyncError="Network request failed"
+        onDismiss={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('上次同步遇到错误')).toBeTruthy();
+    expect(screen.getByText('错误信息')).toBeTruthy();
+    expect(screen.getByText('Network request failed')).toBeTruthy();
+  });
+
   it('dismisses from the footer action', () => {
     const onDismiss = jest.fn();
     const screen = render(
-      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} onDismiss={onDismiss} />
+      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} onDismiss={onDismiss} />
     );
 
     fireEvent.press(screen.getByTestId('cloud-sync-monitor-dismiss'));

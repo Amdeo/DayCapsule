@@ -2,14 +2,25 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { CloudSyncMonitorHost } from '../cloud-sync-monitor/CloudSyncMonitorHost';
 import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
+import { useSyncStore } from '@/src/store/syncStore';
+
+jest.mock('@/src/store/syncStore', () => {
+  const { create } = require('zustand');
+  return {
+    useSyncStore: create(() => ({
+      lastSyncError: null,
+    })),
+  };
+});
 
 jest.mock('../cloud-sync-monitor/CloudSyncMonitorModal', () => ({
-  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, onDismiss }: any) => {
+  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, lastSyncError, onDismiss }: any) => {
     const { Pressable, Text, View } = require('react-native');
     return (
       <View testID="cloud-sync-monitor-modal">
         <Text>{activeRun ? activeRun.runId : 'no-active-run'}</Text>
         <Text>{lastRunSummary ? lastRunSummary.runId : 'no-summary'}</Text>
+        <Text>{lastSyncError ?? 'no-error'}</Text>
         <Pressable testID="cloud-sync-monitor-dismiss" onPress={onDismiss}>
           <Text>关闭</Text>
         </Pressable>

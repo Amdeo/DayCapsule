@@ -9,6 +9,7 @@ import type {
 interface CloudSyncMonitorModalProps {
   activeRun: ActiveSyncRun | null;
   lastRunSummary: LastSyncRunSummary | null;
+  lastSyncError: string | null;
   onDismiss: () => void;
 }
 
@@ -253,7 +254,24 @@ function FailedContent({ lastRunSummary }: { lastRunSummary: LastSyncRunSummary 
   );
 }
 
-function IdleContent() {
+function IdleContent({ lastSyncError }: { lastSyncError: string | null }) {
+  if (lastSyncError) {
+    return (
+      <View className="gap-4">
+        <View className="rounded-2xl bg-rose-50 p-4">
+          <Text className="text-[20px] font-bold text-slate-950">上次同步遇到错误</Text>
+          <Text className="mt-2 text-sm leading-5 text-slate-600">
+            当前没有正在进行的同步任务。
+          </Text>
+        </View>
+        <View className="rounded-2xl border border-rose-100 bg-white p-4">
+          <Text className="mb-1 text-sm font-semibold text-slate-500">错误信息</Text>
+          <Text className="text-sm leading-5 text-rose-700">{lastSyncError}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="gap-4">
       <View className="rounded-2xl bg-slate-100 p-4">
@@ -269,6 +287,7 @@ function IdleContent() {
 export function CloudSyncMonitorModal({
   activeRun,
   lastRunSummary,
+  lastSyncError,
   onDismiss,
 }: CloudSyncMonitorModalProps) {
   const content = activeRun
@@ -277,7 +296,7 @@ export function CloudSyncMonitorModal({
       ? <FailedContent lastRunSummary={lastRunSummary} />
       : lastRunSummary
         ? <SummaryContent lastRunSummary={lastRunSummary} />
-        : <IdleContent />;
+        : <IdleContent lastSyncError={lastSyncError} />;
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={onDismiss}>

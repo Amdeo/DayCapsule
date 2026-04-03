@@ -106,6 +106,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#D7EEF2',
+    marginTop: 12,
   },
   topRow: {
     flexDirection: 'row',
