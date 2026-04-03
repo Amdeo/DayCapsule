@@ -1,0 +1,19 @@
+# .claudeignore — 减少 Claude Code 索引范围，节省 token
+# 注意：.gitignore 已有的内容（node_modules、build 产物等）无需重复
+
+# Lock 文件 — 机器生成，无阅读价值
+app/pnpm-lock.yaml
+app/ios/Podfile.lock
+backend/go.sum
+
+# 二进制 / 设计文件 — Claude 无法解析
+design.pen
+
+# 第三方工具配置 — 非项目源码
+opencode.json
+
+# Python 缓存
+__pycache__/
+
+# 截图目录
+screenshots/
