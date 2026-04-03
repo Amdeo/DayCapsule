@@ -1,7 +1,7 @@
 # 工作区数据隔离与云端模式简化设计
 
 **日期**：2026-04-04
-**状态**：待实现
+**状态**：待实现（无需数据迁移，应用尚未上线）
 
 ---
 
@@ -63,40 +63,10 @@ export function buildDataScopeKey(serverUrl: string, userId: string): string
 
 ```
 改前：initDatabase → migrations → loadAuth → loadSettings
-改后：loadAuth → [migration] → initDatabase → migrations → loadSettings
+改后：loadAuth → initDatabase → migrations → loadSettings
 ```
 
 新顺序中 `loadAuth()` 最先执行，此后 `workspaceService` 能正确返回 userId-scoped key。
-
----
-
-## 数据迁移（一次性，对用户透明）
-
-在 `loadAuth()` 之后、`initDatabase()` 之前执行，检测并迁移旧格式数据：
-
-**触发条件**（同时满足）：
-1. 用户已登录（有 userId）
-2. 新 scope DB 文件不存在
-3. 旧 scope DB 文件存在
-
-**迁移步骤**（顺序执行，任一失败则跳过后续但不崩溃）：
-
-```
-1. 重命名 SQLite DB 文件
-   MemoryCapsule-env_{server}.db → MemoryCapsule-env_{server}_{userId}.db
-
-2. 复制 MMKV keys（共 9 个已知 key）
-   env_{server}:settings:{7个key} → env_{server}_{userId}:settings:{7个key}
-   env_{server}:sync:{lastSyncAt, cursor} → env_{server}_{userId}:sync:{...}
-
-3. 重命名文件系统目录
-   environments/env_{server}/ → environments/env_{server}_{userId}/
-
-4. 删除旧 MMKV keys（DB 和目录已重命名，旧 key 无用）
-```
-
-**降级**：迁移失败时，以空工作区启动（旧数据留在原位，不丢失）。
-**幂等**：以新 scope DB 是否存在作为"已迁移"标志，重启不重复执行。
 
 ---
 
@@ -150,8 +120,6 @@ Auth 相关（`authStore.ts`、`apiClient.ts`、`mediaCacheService.ts`）**不�
 
 | 场景 | 预期结果 |
 |------|---------|
-| 老用户首次升级，已登录 | 数据自动迁移到新 scope，无感 |
-| 老用户首次升级，未登录 | 以本地模式启动，数据保留在旧位置 |
 | 同一服务器 A 账号登录 | 使用 `env_{server}_{userId_A}` 数据 |
 | 同服务器切换到 B 账号 | 使用 `env_{server}_{userId_B}` 数据，与 A 完全隔离 |
 | 开启云端模式（云端有数据）| 下载云端数据，无对话框 |
