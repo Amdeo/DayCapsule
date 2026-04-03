@@ -11,6 +11,8 @@ import { ImageViewerActionSheet } from './ImageViewerActionSheet';
 import { imageViewerStyles as styles } from './ImageViewer.styles';
 import type { ImageViewerSceneProps } from './imageViewerTypes';
 
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+
 export function ImageViewerScene({
   visible,
   imageUri,
@@ -47,7 +49,7 @@ export function ImageViewerScene({
         <Animated.View style={[styles.backdropFill, backdropAnimatedStyle]} />
 
         {(phase === 'opening' || phase === 'closing') ? (
-          <Animated.Image
+          <AnimatedImage
             source={{ uri: imageUri }}
             style={heroAnimatedStyle}
             contentFit="contain"
