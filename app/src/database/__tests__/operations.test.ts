@@ -374,48 +374,6 @@ describe('database/operations', () => {
       expect(result).toEqual([]);
     });
 
-    it('查询 photo 记录时应该打印媒体路径摘要日志', async () => {
-      mockDb.getAllAsync.mockResolvedValue([
-        {
-          id: 'photo-log-1',
-          type: 'photo',
-          content: '调试图片',
-          timestamp: 1700000000000,
-          tags: null,
-          media_json: JSON.stringify([
-            {
-              uri: 'file:///stale/photo.jpg',
-              remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
-              thumbnail: 'file:///stale/thumb.jpg',
-              remoteThumbnail: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-              mimeType: 'image/jpeg',
-              size: 12,
-            },
-          ]),
-          recording_status: null,
-          recording_duration: null,
-          sync_status: 'synced',
-        },
-      ]);
-
-      await getEntriesPage({ type: 'photo' }, 20);
-
-      expect(logger.log).toHaveBeenCalledWith(
-        '[db:getEntriesPage] photo media snapshot',
-        expect.objectContaining({
-          entryId: 'photo-log-1',
-          mediaCount: 1,
-          media: [
-            expect.objectContaining({
-              uri: 'file:///stale/photo.jpg',
-              remoteUri: 'http://101.43.120.134:8081/api/media/photo-1',
-              thumbnail: 'file:///stale/thumb.jpg',
-              remoteThumbnail: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-            }),
-          ],
-        }),
-      );
-    });
   });
 
   // ─── getEntryById ───────────────────────────────────────────────────────────

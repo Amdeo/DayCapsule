@@ -125,14 +125,6 @@ describe('MediaCacheService', () => {
     }]);
 
     expect((FileSystem.downloadAsync as jest.Mock).mock.calls.length).toBe(1);
-    expect(logger.log).toHaveBeenCalledWith(
-      '[mediaCache] cache hit',
-      expect.objectContaining({
-        normalizedUri: 'http://101.43.120.134:8081/api/media/2',
-        kind: 'photo',
-        variant: 'main',
-      }),
-    );
   });
 
   it('logs normalized download metadata when remote media caching fails', async () => {
@@ -161,39 +153,4 @@ describe('MediaCacheService', () => {
     );
   });
 
-  it('logs photo hydrate summary with before and after paths', async () => {
-    const [entry] = await MediaCacheService.hydrateEntries([{
-      id: 'photo-log-1',
-      type: 'photo',
-      content: '',
-      timestamp: 1,
-      syncStatus: 'synced',
-      media: [{
-        uri: 'http://localhost:3000/api/media/9',
-        thumbnail: 'http://localhost:3000/api/media/9-thumb',
-        mimeType: 'image/jpeg',
-        size: 12,
-      }],
-    }]);
-
-    expect(entry.media?.[0].uri).toContain('file:///cache/environments/env_https_server_a_example_com/media/photos/display/');
-    expect(logger.log).toHaveBeenCalledWith(
-      '[mediaCache] photo hydrate summary',
-      expect.objectContaining({
-        entryId: 'photo-log-1',
-        before: [
-          expect.objectContaining({
-            uri: 'http://localhost:3000/api/media/9',
-            thumbnail: 'http://localhost:3000/api/media/9-thumb',
-          }),
-        ],
-        after: [
-          expect.objectContaining({
-            uri: expect.stringContaining('file:///cache/environments/env_https_server_a_example_com/media/photos/display/'),
-            thumbnail: expect.stringContaining('file:///cache/environments/env_https_server_a_example_com/media/photos/thumbnails/'),
-          }),
-        ],
-      }),
-    );
-  });
 });

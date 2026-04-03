@@ -157,17 +157,17 @@ describe('photoUploadQueue', () => {
     );
     expect(queue.deps.onEntryPendingUpload).not.toHaveBeenCalled();
     expect(logger.log).toHaveBeenCalledWith(
-      'photo.upload.start',
+      '[photo] upload.start',
       expect.objectContaining({
         localMediaId: 'local-media-1',
-        localUri: 'file:///cache/media/photos/display/photo_1.jpg',
+        mimeType: 'image/jpeg',
       }),
     );
     expect(logger.log).toHaveBeenCalledWith(
-      'photo.upload.finish',
+      '[photo] upload.finish',
       expect.objectContaining({
         remoteUri: 'https://cdn/photo_1.jpg',
-        remoteHash: 'remote-hash-1',
+        localMediaId: 'local-media-1',
       }),
     );
   });

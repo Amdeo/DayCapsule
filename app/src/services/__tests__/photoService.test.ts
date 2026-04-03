@@ -283,13 +283,6 @@ describe('PhotoService', () => {
         'full'
       )
     ).toBe('file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg');
-    expect(logger.log).toHaveBeenCalledWith(
-      '[photoService] preferred photo uri',
-      expect.objectContaining({
-        kind: 'full',
-        selectedUri: 'file:///cache/environments/env_https_server_a_example_com/media/photos/display/photo.jpg',
-      }),
-    );
   });
 
   it('full 图在没有 remoteUri 时回退使用本地 uri', () => {
@@ -320,14 +313,6 @@ describe('PhotoService', () => {
         'thumbnail'
       )
     ).toBe('http://101.43.120.134:8081/api/media/photo-1-thumb');
-    expect(logger.log).toHaveBeenCalledWith(
-      '[photoService] fallback photo uri',
-      expect.objectContaining({
-        kind: 'thumbnail',
-        failedUri: 'file:///stale/thumb.jpg',
-        selectedUri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-      }),
-    );
   });
 
   it('thumbnail 在没有缩略图字段时优先使用当前设备本地缓存原图', () => {
