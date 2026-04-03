@@ -111,7 +111,7 @@ jest.mock('react-native-css-interop/src/runtime/jsx-runtime', () => jest.require
 
 import type { MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
-import { handlePhotoSelectForTest, type PhotoSelectDeps } from '../index';
+import { handlePhotoSelectForTest, type PhotoSelectDeps } from '@/src/services/homePhotoFlow';
 
 const PHOTO_RESULT = {
   uri: 'content://media/external/images/1234',

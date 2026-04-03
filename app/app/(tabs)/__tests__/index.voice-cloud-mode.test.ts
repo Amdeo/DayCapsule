@@ -130,7 +130,7 @@ import {
   handleVoiceRecordingStartErrorForTest,
   type VoiceCloudStartDeps,
   type VoiceCloudFinalizeDeps,
-} from '../index';
+} from '@/src/services/homeVoiceFlow';
 
 function toDisplayedRecordingDuration(duration: number): number {
   return Math.max(0, Math.floor(duration));

@@ -5,6 +5,43 @@
 ## Process Requirements
 - 所有走brainstorming技能的需求，默认调用 superpowers中创建 worktree的技能,所有修改在 worktree 中实现
 
+## Agent 友好编码规则
+
+### 文件规模上限
+- 组件 / Hook 文件：≤ 200 行
+- Service 文件：≤ 300 行
+- Store 文件：≤ 250 行
+- 样式文件（`.styles.ts`）：≤ 300 行，超过则按子组件拆分
+- 纯工具文件：≤ 250 行，单文件导出 ≤ 12 个
+
+### 函数规模
+- 单个函数体：≤ 50 行
+- React 组件 JSX return：≤ 60 行，超过则提取子组件
+- 嵌套深度：≤ 3 层（`if` / `try` / `callback` 各算一层）
+
+### 路由文件规则（`app/` 目录）
+- 路由文件只做 JSX 组装，**不定义业务逻辑函数**
+- 业务流程放在 `src/services/` 或 `src/components/<screen>/useXxxController.ts` 中
+- DI 接口和测试辅助函数（`...ForTest`）随对应 service 文件存放，不放路由文件
+
+### 拆分模式
+- 大 service（> 300 行）→ 子目录 + 门面 re-export（如 `services/voice/voiceRecorder.ts` + `services/voiceService.ts`）
+- 大 store（> 250 行）→ Zustand slice 模式（`store/__internal__/xxxSlice.ts`）
+- 大组件 → 已有门面模式（`ComponentName.tsx` 壳 + `component-name/` 子目录）继续沿用
+
+### 类型安全
+- 禁止 `catch (e: any)`，使用 `catch (e: unknown)` + `instanceof` 或类型守卫
+- 禁止 `@ts-ignore` / `@ts-expect-error`（当前已零，保持）
+- Reanimated 动画值使用 `SharedValue<T>` 而非 `any`
+
+### 单一职责
+- 一个文件只做一件事：不混合 UI 构建与业务逻辑
+- 数据库层（`database/`）不导入任何 store（已做到，保持）
+- store action 中不包含复杂业务逻辑，委托给 service
+- service 不直接调用 `storeXxx.getState()`，通过参数注入或返回值传递状态
+
+---
+
 ## 项目概览
 
 `MemoryCapsule` 是仓库名，当前移动端应用名为 `DayCapsule`。
