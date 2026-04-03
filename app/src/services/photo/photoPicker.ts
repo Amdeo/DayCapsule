@@ -3,7 +3,7 @@ import { Camera } from 'expo-camera';
 import { ERROR_MESSAGES } from '@/src/utils/constants';
 import { type MediaError } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
-import type { PhotoResult, PickPhotoOptions } from '../photoService';
+import type { PhotoResult, PickPhotoOptions } from './photoTypes';
 
 const createMediaError = (
   code: MediaError['code'],

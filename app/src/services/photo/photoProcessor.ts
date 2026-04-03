@@ -3,7 +3,7 @@ import { COMPRESSION_PRESETS, ERROR_MESSAGES } from '@/src/utils/constants';
 import { deleteFile, getFileInfo } from '@/src/utils/fileSystem';
 import { type MediaError } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
-import type { CompressedPhoto, PhotoMetadata } from '../photoService';
+import type { CompressedPhoto, PhotoMetadata } from './photoTypes';
 
 const createMediaError = (
   code: MediaError['code'],

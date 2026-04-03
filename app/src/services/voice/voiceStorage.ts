@@ -34,6 +34,14 @@ export class VoiceStorage {
     return this.saveVoice(sourceUri, entryId, getMediaPaths().voiceOriginal, quality);
   }
 
+  static async saveVoiceToCache(
+    sourceUri: string,
+    entryId: string,
+    quality: 'low' | 'medium' | 'high' = 'medium'
+  ): Promise<string> {
+    return this.saveVoice(sourceUri, entryId, getMediaPaths().voiceCompressed, quality);
+  }
+
   static getPreferredVoiceUri(uri: string): string {
     if (MediaCacheService.isRemoteUri(uri)) {
       return MediaCacheService.normalizeRemoteUri(uri);

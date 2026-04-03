@@ -143,7 +143,7 @@ export class VoiceService {
     entryId: string,
     quality: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<string> {
-    return VoicePlayer.saveVoiceToCache(sourceUri, entryId, quality);
+    return VoiceStorage.saveVoiceToCache(sourceUri, entryId, quality);
   }
 
   static async clearSoundCache(): Promise<void> {

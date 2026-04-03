@@ -21,7 +21,7 @@ import {
   compressPhoto as defaultCompressPhoto,
   generateThumbnail as defaultGenerateThumbnail,
 } from './photoProcessor';
-import type { CompressedPhoto, SavedPhotoResult } from '../photoService';
+import type { CompressedPhoto, SavedPhotoResult } from './photoTypes';
 
 interface PhotoProcessorDependencies {
   compressPhoto: (

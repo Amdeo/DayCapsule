@@ -5,7 +5,7 @@ import {
   type AudioStatus,
 } from 'expo-audio';
 import { ERROR_MESSAGES } from '@/src/utils/constants';
-import { getFileInfo, getMediaPaths } from '@/src/utils/fileSystem';
+import { getFileInfo } from '@/src/utils/fileSystem';
 import { MediaError } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 import { VoiceRecorder } from './voiceRecorder';
@@ -183,14 +183,6 @@ export class VoicePlayer {
       logger.error('Failed to get playback progress:', error);
       return { current: 0, total: 0 };
     }
-  }
-
-  static async saveVoiceToCache(
-    sourceUri: string,
-    entryId: string,
-    quality: 'low' | 'medium' | 'high' = 'medium'
-  ): Promise<string> {
-    return VoiceStorage.saveVoice(sourceUri, entryId, getMediaPaths().voiceCompressed, quality);
   }
 
   static async clearSoundCache(): Promise<void> {
