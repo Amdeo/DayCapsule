@@ -141,6 +141,20 @@ jest.mock('@/src/services/cloudRecoveryFlowService', () => ({
   }),
 }));
 
+jest.mock('@/src/services/workspaceCleanupService', () => ({
+  cleanupOrphanWorkspaces: jest.fn(async () => undefined),
+}));
+
+jest.mock('@/src/services/workspaceService', () => ({
+  getCurrentDataScopeKeySync: jest.fn(() => 'local'),
+  buildDataScopeKey: jest.fn((serverUrl: string, userId: string) => `${serverUrl}/${userId}`),
+}));
+
+jest.mock('@/src/services/accountRegistryService', () => ({
+  migrateAuthKeysToUserScoped: jest.fn(async () => undefined),
+  getRegisteredAccounts: jest.fn(async () => []),
+}));
+
 import { runAppBootstrap } from '../appBootstrapService';
 
 describe('runAppBootstrap', () => {

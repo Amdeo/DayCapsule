@@ -8,7 +8,7 @@ import { logger } from '@/src/utils/logger';
 
 const ENVIRONMENTS_SUBDIR = 'environments/';
 
-async function cleanupDir(baseDir: string | null | undefined, currentScope: string): Promise<void> {
+async function cleanupDir(baseDir: string | null | undefined, protectedScopes: string[]): Promise<void> {
   if (!baseDir) return;
   const envDir = `${baseDir}${ENVIRONMENTS_SUBDIR}`;
 
@@ -21,7 +21,7 @@ async function cleanupDir(baseDir: string | null | undefined, currentScope: stri
   }
 
   for (const name of names) {
-    if (name === currentScope) continue;
+    if (protectedScopes.includes(name)) continue;
     const entryUri = `${envDir}${name}/`;
     try {
       await FileSystem.deleteAsync(entryUri, { idempotent: true });
@@ -32,9 +32,9 @@ async function cleanupDir(baseDir: string | null | undefined, currentScope: stri
   }
 }
 
-export async function cleanupOrphanWorkspaces(currentScope: string): Promise<void> {
+export async function cleanupOrphanWorkspaces(protectedScopes: string[]): Promise<void> {
   await Promise.all([
-    cleanupDir(FileSystem.documentDirectory, currentScope),
-    cleanupDir(FileSystem.cacheDirectory, currentScope),
+    cleanupDir(FileSystem.documentDirectory, protectedScopes),
+    cleanupDir(FileSystem.cacheDirectory, protectedScopes),
   ]);
 }

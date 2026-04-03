@@ -15,7 +15,8 @@ import {
 } from '@/src/database/migration';
 import { cleanupIncompleteLocalEntries } from '@/src/services/localEntryRecoveryService';
 import { cleanupOrphanWorkspaces } from '@/src/services/workspaceCleanupService';
-import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
+import { getCurrentDataScopeKeySync, buildDataScopeKey } from '@/src/services/workspaceService';
+import { migrateAuthKeysToUserScoped, getRegisteredAccounts } from '@/src/services/accountRegistryService';
 import { useAuthStore } from '@/src/store/authStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
@@ -37,6 +38,10 @@ export async function runAppBootstrap(
       initializeFileSystem().then(() => logger.log('✅ 文件系统初始化成功')),
       VoiceService.initializeAudio().then(() => logger.log('✅ 音频系统初始化成功')),
     ]);
+
+    await migrateAuthKeysToUserScoped().catch((e) => {
+      logger.warn('⚠️ auth key 迁移失败（不影响启动）:', e);
+    });
 
     await useAuthStore.getState().loadAuth();
     logger.log('✅ 认证状态已加载');
@@ -146,7 +151,13 @@ export async function runAppBootstrap(
       throw recoveryResult.refreshError;
     }
 
-    await cleanupOrphanWorkspaces(getCurrentDataScopeKeySync()).catch((e) => {
+    const registeredAccounts = await getRegisteredAccounts();
+    const protectedScopes = registeredAccounts.map((a) => buildDataScopeKey(a.serverUrl, a.userId));
+    const currentScope = getCurrentDataScopeKeySync();
+    if (currentScope !== 'local' && !protectedScopes.includes(currentScope)) {
+      protectedScopes.push(currentScope);
+    }
+    await cleanupOrphanWorkspaces(protectedScopes).catch((e) => {
       logger.warn('孤儿 workspace 清理失败（不影响启动）:', e);
     });
   } catch (error) {
