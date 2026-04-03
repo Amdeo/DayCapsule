@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { Storage, withScope } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKey } from '@/src/services/workspaceService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 export type CardSpacing = 'compact' | 'default' | 'loose';
@@ -79,8 +79,8 @@ const DEFAULT_SETTINGS = {
 };
 
 const getScopedSettingsKey = async (key: string): Promise<string> => {
-  const serverUrl = await getCurrentServerUrl();
-  return withScope(getServerKey(serverUrl), key);
+  const scope = await getCurrentDataScopeKey();
+  return withScope(scope, key);
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
