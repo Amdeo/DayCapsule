@@ -20,6 +20,7 @@ import { SettingsPageContent } from './settings-page/SettingsPageContent';
 import { useSettingsPageCloudMode } from './settings-page/useSettingsPageCloudMode';
 import { useSettingsPageController } from './settings-page/useSettingsPageController';
 import { SettingsPageDialogs } from './settings-page/SettingsPageDialogs';
+import { useAccountSwitcher } from './settings-page/useAccountSwitcher';
 import { useConfirmDialogStore } from '@/src/store/confirmDialogStore';
 import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
 
@@ -55,7 +56,10 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const [showLogin, setShowLogin] = React.useState(false);
   const [showHelp, setShowHelp] = React.useState(false);
   const [showAbout, setShowAbout] = React.useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = React.useState(false);
   const [loginIntent, setLoginIntent] = React.useState<'account' | 'cloud-gating' | null>(null);
+
+  const { accounts, activeRef, isSwitching, handleSwitch } = useAccountSwitcher();
 
   const openHelp = React.useCallback(() => {
     setShowAbout(false);
@@ -170,6 +174,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onShowSyncStatus={() => {
             showCloudSyncMonitor();
           }}
+          onSwitchAccount={() => setShowAccountSwitcher(true)}
           onLogout={handleLogout}
           onShowLogin={() => openLogin('account')}
           onNotificationsChange={handleNotifications}
@@ -197,11 +202,18 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           showLogin={showLogin}
           showHelp={showHelp}
           showAbout={showAbout}
+          showAccountSwitcher={showAccountSwitcher}
+          accounts={accounts}
+          activeRef={activeRef}
+          isSwitching={isSwitching}
           onCloseTagManagement={closeTagManagement}
           onCloseLogin={closeLogin}
           onCloseHelp={() => setShowHelp(false)}
           onCloseAbout={() => setShowAbout(false)}
+          onCloseAccountSwitcher={() => setShowAccountSwitcher(false)}
           onLoginSuccess={handleLoginSuccess}
+          onSwitchAccount={handleSwitch}
+          onAddAccount={() => openLogin('account')}
         />
       </View>
     </DetailPageShell>

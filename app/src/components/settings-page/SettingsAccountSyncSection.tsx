@@ -12,6 +12,7 @@ interface SettingsAccountSyncSectionProps {
   isSwitchingMode: boolean;
   onCloudModeToggle: (value: boolean) => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
+  onSwitchAccount: () => void;
   onLogout: () => void;
   onShowLogin: () => void;
 }
@@ -22,6 +23,7 @@ export function SettingsAccountSyncSection({
   isSwitchingMode,
   onCloudModeToggle,
   onShowSyncStatus,
+  onSwitchAccount,
   onLogout,
   onShowLogin,
 }: SettingsAccountSyncSectionProps) {
@@ -51,6 +53,12 @@ export function SettingsAccountSyncSection({
               subtitle="查看最近同步时间和待同步条数"
               testID="settings-show-sync-status"
               onPress={onShowSyncStatus}
+            />
+            <SettingButton
+              icon="people"
+              title="切换账号"
+              subtitle="管理和切换已登录的账号"
+              onPress={onSwitchAccount}
             />
             <SettingButton
               icon="log-out"

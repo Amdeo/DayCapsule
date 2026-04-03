@@ -47,6 +47,7 @@ interface SettingsPageContentProps {
   showE2ESyncLab?: boolean;
   onCloudModeToggle: (value: boolean) => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
+  onSwitchAccount: () => void;
   onLogout: () => void;
   onShowLogin: () => void;
   onNotificationsChange: (value: boolean) => void | Promise<void>;
@@ -93,6 +94,7 @@ export function SettingsPageContent({
   showE2ESyncLab,
   onCloudModeToggle,
   onShowSyncStatus,
+  onSwitchAccount,
   onLogout,
   onShowLogin,
   onNotificationsChange,
@@ -134,6 +136,7 @@ export function SettingsPageContent({
         isSwitchingMode={isSwitchingMode}
         onCloudModeToggle={onCloudModeToggle}
         onShowSyncStatus={onShowSyncStatus}
+        onSwitchAccount={onSwitchAccount}
         onLogout={onLogout}
         onShowLogin={onShowLogin}
       />
