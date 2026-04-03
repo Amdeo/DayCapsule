@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Network from 'expo-network';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, LogBox } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -25,6 +25,9 @@ import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { runAppBootstrap } from '@/src/services/appBootstrapService';
 import { createCloudRecoveryRunner, handleAppStateChange } from '@/src/services/appLifecycleService';
+import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
+import { useEntryStore } from '@/src/store/entryStore';
+import { useSettingsStore } from '@/src/store/settingsStore';
 
 LogBox.ignoreLogs([
   "SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead.",
@@ -67,26 +70,42 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const refreshCloudSyncIndicator = async (label: string) => {
+  const refreshCloudSyncIndicator = useCallback(async (label: string) => {
     await useCloudSyncIndicatorStore.getState().refresh().catch((refreshError) => {
       logger.warn(`⚠️ ${label}刷新顶部同步状态失败:`, refreshError);
     });
-  };
+  }, []);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
-  // 初始化文件系统和音频系统
-  useEffect(() => {
-    void runAppBootstrap({
+  const needsRestart = useAppLifecycleStore((s) => s.needsRestart);
+  const clearRestart = useAppLifecycleStore((s) => s.clearRestart);
+
+  const runBootstrap = useCallback(async () => {
+    await runAppBootstrap({
       refreshCloudSyncIndicator,
       onInitializationFailed: () => {
         showErrorFeedback(buildAppInitializationFailedFeedback());
       },
     });
-  }, []);
+  }, [refreshCloudSyncIndicator]);
+
+  // 初始化文件系统和音频系统
+  useEffect(() => {
+    void runBootstrap();
+  }, [runBootstrap]);
+
+  // 账号切换后重跑 bootstrap
+  useEffect(() => {
+    if (!needsRestart) return;
+    useSyncStore.setState({ isLoaded: false });
+    useSettingsStore.setState({ isLoaded: false });
+    useEntryStore.getState().invalidateActiveQueries();
+    void runBootstrap().then(() => clearRestart());
+  }, [needsRestart, runBootstrap, clearRestart]);
 
   // 监听 App 进入后台，触发自动备份
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
