@@ -143,6 +143,23 @@ describe('CloudSyncMonitorModal', () => {
     expect(screen.getByText(/部分通过/)).toBeTruthy();
   });
 
+  it('renders sync button when mediaValidationStatus is partial', () => {
+    const onSyncNow = jest.fn();
+    const screen = render(
+      <CloudSyncMonitorModal
+        activeRun={null}
+        lastRunSummary={null}
+        lastSyncError={null}
+        mediaValidationStatus="partial"
+        onSyncNow={onSyncNow}
+        onDismiss={jest.fn()}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('cloud-sync-now-button'));
+    expect(onSyncNow).toHaveBeenCalledTimes(1);
+  });
+
   it('dismisses from the footer action', () => {
     const onDismiss = jest.fn();
     const screen = render(

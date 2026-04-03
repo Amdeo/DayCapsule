@@ -11,6 +11,7 @@ interface CloudSyncMonitorModalProps {
   lastRunSummary: LastSyncRunSummary | null;
   lastSyncError: string | null;
   mediaValidationStatus: 'idle' | 'running' | 'success' | 'partial' | 'failed' | null;
+  onSyncNow?: () => void;
   onDismiss: () => void;
 }
 
@@ -258,9 +259,11 @@ function FailedContent({ lastRunSummary }: { lastRunSummary: LastSyncRunSummary 
 function IdleContent({
   lastSyncError,
   mediaValidationStatus,
+  onSyncNow,
 }: {
   lastSyncError: string | null;
   mediaValidationStatus: 'idle' | 'running' | 'success' | 'partial' | 'failed' | null;
+  onSyncNow?: () => void;
 }) {
   if (lastSyncError) {
     return (
@@ -275,6 +278,11 @@ function IdleContent({
           <Text className="mb-1 text-sm font-semibold text-slate-500">错误信息</Text>
           <Text className="text-sm leading-5 text-rose-700">{lastSyncError}</Text>
         </View>
+        {onSyncNow && (
+          <Pressable className="items-center rounded-2xl bg-sky-500 py-3" onPress={onSyncNow} testID="cloud-sync-now-button">
+            <Text className="text-base font-semibold text-white">立即同步</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -288,6 +296,11 @@ function IdleContent({
             上次媒体校验结果为「{mediaValidationStatus === 'partial' ? '部分通过' : '失败'}」，部分文件可能未完整同步到云端。下次同步时将自动重试。
           </Text>
         </View>
+        {onSyncNow && (
+          <Pressable className="items-center rounded-2xl bg-sky-500 py-3" onPress={onSyncNow} testID="cloud-sync-now-button">
+            <Text className="text-base font-semibold text-white">立即同步</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -309,6 +322,7 @@ export function CloudSyncMonitorModal({
   lastRunSummary,
   lastSyncError,
   mediaValidationStatus,
+  onSyncNow,
   onDismiss,
 }: CloudSyncMonitorModalProps) {
   const content = activeRun
@@ -317,7 +331,7 @@ export function CloudSyncMonitorModal({
       ? <FailedContent lastRunSummary={lastRunSummary} />
       : lastRunSummary
         ? <SummaryContent lastRunSummary={lastRunSummary} />
-        : <IdleContent lastSyncError={lastSyncError} mediaValidationStatus={mediaValidationStatus} />;
+        : <IdleContent lastSyncError={lastSyncError} mediaValidationStatus={mediaValidationStatus} onSyncNow={onSyncNow} />;
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={onDismiss}>

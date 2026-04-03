@@ -4,6 +4,12 @@ import { CloudSyncMonitorHost } from '../cloud-sync-monitor/CloudSyncMonitorHost
 import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 import { useSyncStore } from '@/src/store/syncStore';
 
+jest.mock('@/src/services/cloudSyncService', () => ({
+  createCloudSyncService: () => ({
+    syncNow: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 jest.mock('@/src/store/syncStore', () => {
   const { create } = require('zustand');
   return {
@@ -15,7 +21,7 @@ jest.mock('@/src/store/syncStore', () => {
 });
 
 jest.mock('../cloud-sync-monitor/CloudSyncMonitorModal', () => ({
-  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, lastSyncError, mediaValidationStatus, onDismiss }: any) => {
+  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, lastSyncError, mediaValidationStatus, onSyncNow, onDismiss }: any) => {
     const { Pressable, Text, View } = require('react-native');
     return (
       <View testID="cloud-sync-monitor-modal">
@@ -23,6 +29,9 @@ jest.mock('../cloud-sync-monitor/CloudSyncMonitorModal', () => ({
         <Text>{lastRunSummary ? lastRunSummary.runId : 'no-summary'}</Text>
         <Text>{lastSyncError ?? 'no-error'}</Text>
         <Text>{mediaValidationStatus ?? 'no-validation'}</Text>
+        <Pressable testID="cloud-sync-now-button" onPress={onSyncNow}>
+          <Text>立即同步</Text>
+        </Pressable>
         <Pressable testID="cloud-sync-monitor-dismiss" onPress={onDismiss}>
           <Text>关闭</Text>
         </Pressable>
