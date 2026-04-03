@@ -262,6 +262,27 @@ jest.mock('@/src/store/settingsStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/syncStore', () => ({
+  useSyncStore: {
+    getState: jest.fn(() => ({ load: jest.fn(), isLoaded: true })),
+    setState: jest.fn(),
+    subscribe: jest.fn(() => jest.fn()),
+  },
+}));
+
+jest.mock('@/src/store/appLifecycleStore', () => ({
+  useAppLifecycleStore: Object.assign(
+    jest.fn((selector?: Function) => {
+      const state = { needsRestart: false, triggerRestart: jest.fn(), clearRestart: jest.fn() };
+      return selector ? selector(state) : state;
+    }),
+    {
+      getState: jest.fn(() => ({ needsRestart: false, triggerRestart: jest.fn(), clearRestart: jest.fn() })),
+      setState: jest.fn(),
+    }
+  ),
+}));
+
 jest.mock('@/src/store/commonTagsStore', () => ({
   useCommonTagsStore: {
     getState: () => ({
