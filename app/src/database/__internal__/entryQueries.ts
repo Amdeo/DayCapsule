@@ -1,51 +1,34 @@
-import { getDatabase } from '../sqlite';
 import type { Entry, EntryFilters } from '@/src/types/entry';
+import { getDatabase } from '../sqlite';
 import { logger } from '@/src/utils/logger';
 import { getTableColumns } from './schemaCapabilities';
 import { buildFtsContentMatchQuery } from './ftsQuery';
 import { rowToEntry, summarizePhotoMediaForDebug, type EntryRow } from './entryMapper';
+import { safeQuery } from './queryHelper';
 
 export type { EntryFilters } from '@/src/types/entry';
 
-export const getAllEntries = async (limit?: number): Promise<Entry[]> => {
-  try {
-    const db = getDatabase();
+export const getAllEntries = async (limit?: number): Promise<Entry[]> =>
+  safeQuery('get all entries', async (db) => {
     const query = limit
       ? `SELECT * FROM entries ORDER BY timestamp DESC LIMIT ?`
       : `SELECT * FROM entries ORDER BY timestamp DESC`;
-
     const result = limit
       ? await db.getAllAsync<EntryRow>(query, [limit])
       : await db.getAllAsync<EntryRow>(query);
     return result.map(rowToEntry);
-  } catch (error) {
-    logger.error('Failed to get all entries:', error);
-    return [];
-  }
-};
+  }, []);
 
-export const getEntryById = async (id: string): Promise<Entry | null> => {
-  try {
-    const db = getDatabase();
-    const result = await db.getFirstAsync<EntryRow>(
-      'SELECT * FROM entries WHERE id = ?',
-      [id]
-    );
+export const getEntryById = async (id: string): Promise<Entry | null> =>
+  safeQuery('get entry by id', async (db) => {
+    const result = await db.getFirstAsync<EntryRow>('SELECT * FROM entries WHERE id = ?', [id]);
     return result ? rowToEntry(result) : null;
-  } catch (error) {
-    logger.error('Failed to get entry by id:', error);
-    return null;
-  }
-};
+  }, null);
 
-export const searchEntries = async (query: string, limit = 100): Promise<Entry[]> => {
-  try {
-    const db = getDatabase();
+export const searchEntries = async (query: string, limit = 100): Promise<Entry[]> =>
+  safeQuery('search entries', async (db) => {
     const normalizedQuery = buildFtsContentMatchQuery(query);
-    if (!normalizedQuery) {
-      return [];
-    }
-
+    if (!normalizedQuery) return [];
     const result = await db.getAllAsync<EntryRow>(
       `SELECT e.* FROM entries e
        JOIN entries_fts f ON f.entry_id = e.id
@@ -55,70 +38,38 @@ export const searchEntries = async (query: string, limit = 100): Promise<Entry[]
       [normalizedQuery, limit]
     );
     return result.map(rowToEntry);
-  } catch (error) {
-    logger.error('Failed to search entries:', error);
-    return [];
-  }
-};
+  }, []);
 
-export const getEntriesByType = async (type: string): Promise<Entry[]> => {
-  try {
-    const db = getDatabase();
+export const getEntriesByType = async (type: string): Promise<Entry[]> =>
+  safeQuery('get entries by type', async (db) => {
     const result = await db.getAllAsync<EntryRow>(
       'SELECT * FROM entries WHERE type = ? ORDER BY timestamp DESC',
       [type]
     );
     return result.map(rowToEntry);
-  } catch (error) {
-    logger.error('Failed to get entries by type:', error);
-    return [];
-  }
-};
+  }, []);
 
-export const getEntriesByDateRange = async (
-  startTime: number,
-  endTime?: number
-): Promise<Entry[]> => {
-  try {
-    const db = getDatabase();
+export const getEntriesByDateRange = async (startTime: number, endTime?: number): Promise<Entry[]> =>
+  safeQuery('get entries by date range', async (db) => {
     const query = endTime
       ? 'SELECT * FROM entries WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC'
       : 'SELECT * FROM entries WHERE timestamp >= ? ORDER BY timestamp DESC';
-
     const params = endTime ? [startTime, endTime] : [startTime];
     const result = await db.getAllAsync<EntryRow>(query, params);
     return result.map(rowToEntry);
-  } catch (error) {
-    logger.error('Failed to get entries by date range:', error);
-    return [];
-  }
-};
+  }, []);
 
-export const getAllTags = async (): Promise<string[]> => {
-  try {
-    const db = getDatabase();
-    const result = await db.getAllAsync<{ name: string }>(
-      'SELECT name FROM tags ORDER BY name ASC'
-    );
+export const getAllTags = async (): Promise<string[]> =>
+  safeQuery('get all tags', async (db) => {
+    const result = await db.getAllAsync<{ name: string }>('SELECT name FROM tags ORDER BY name ASC');
     return result.map((r) => r.name);
-  } catch (error) {
-    logger.error('Failed to get all tags:', error);
-    return [];
-  }
-};
+  }, []);
 
-export const getEntriesCount = async (): Promise<number> => {
-  try {
-    const db = getDatabase();
-    const result = await db.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM entries'
-    );
+export const getEntriesCount = async (): Promise<number> =>
+  safeQuery('get entries count', async (db) => {
+    const result = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM entries');
     return result?.count || 0;
-  } catch (error) {
-    logger.error('Failed to get entries count:', error);
-    return 0;
-  }
-};
+  }, 0);
 
 export const getEntriesPage = async (
   filters: EntryFilters = {},
@@ -131,22 +82,11 @@ export const getEntriesPage = async (
     const conditions: string[] = [];
     const params: Array<string | number> = [];
 
-    if (columns.has('deleted')) {
-      conditions.push('e.deleted = 0');
-    }
+    if (columns.has('deleted')) conditions.push('e.deleted = 0');
+    if (cursor) { conditions.push('e.timestamp < ?'); params.push(cursor); }
+    if (filters.type) { conditions.push('e.type = ?'); params.push(filters.type); }
+    if (filters.startTime) { conditions.push('e.timestamp >= ?'); params.push(filters.startTime); }
 
-    if (cursor) {
-      conditions.push('e.timestamp < ?');
-      params.push(cursor);
-    }
-    if (filters.type) {
-      conditions.push('e.type = ?');
-      params.push(filters.type);
-    }
-    if (filters.startTime) {
-      conditions.push('e.timestamp >= ?');
-      params.push(filters.startTime);
-    }
     const normalizedSearch = filters.search ? buildFtsContentMatchQuery(filters.search) : null;
     if (normalizedSearch) {
       conditions.push('e.id IN (SELECT f.entry_id FROM entries_fts f WHERE f.content MATCH ?)');

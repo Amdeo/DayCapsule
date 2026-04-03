@@ -113,6 +113,21 @@ export const addEntry = async (entry: Omit<Entry, 'id' | 'timestamp'>): Promise<
   }
 };
 
+// 需要检测列是否存在才能写入的字段映射（声明式，易于扩展）
+const GUARDED_COLUMN_MAPPINGS: Array<{
+  field: keyof Entry;
+  column: string;
+  transform?: (val: unknown) => string | number | null;
+}> = [
+  { field: 'syncStatus', column: 'sync_status' },
+  { field: 'syncOp', column: 'sync_op' },
+  { field: 'conflictedCopyOf', column: 'conflicted_copy_of' },
+  { field: 'baseUpdatedAt', column: 'base_updated_at' },
+  { field: 'userId', column: 'user_id' },
+  { field: 'deleted', column: 'deleted', transform: (v) => (v ? 1 : 0) },
+  { field: 'localReadyState', column: 'local_ready_state' },
+];
+
 export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<void> => {
   try {
     const db = getDatabase();
@@ -122,11 +137,6 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
 
     const columns = await getTableColumns(db);
     const hasMediaColumns = columns.has('media_thumbnail') && columns.has('media_metadata');
-    const hasConflictedCopyOf = columns.has('conflicted_copy_of');
-    const hasBaseUpdatedAt = columns.has('base_updated_at');
-    const hasUserID = columns.has('user_id');
-    const hasDeleted = columns.has('deleted');
-    const hasLocalReadyState = columns.has('local_ready_state');
 
     if (updates.content !== undefined) {
       fields.push('content = ?');
@@ -142,20 +152,8 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
         values.push(JSON.stringify(updates.media));
       } else if (hasMediaColumns) {
         const media = updates.media?.[0];
-        fields.push(
-          'media_uri = ?',
-          'media_type = ?',
-          'media_duration = ?',
-          'media_thumbnail = ?',
-          'media_metadata = ?'
-        );
-        values.push(
-          media?.uri ?? null,
-          media?.mimeType ?? null,
-          media?.duration ?? null,
-          media?.thumbnail ?? null,
-          media?.metadata ? JSON.stringify(media.metadata) : null
-        );
+        fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?', 'media_thumbnail = ?', 'media_metadata = ?');
+        values.push(media?.uri ?? null, media?.mimeType ?? null, media?.duration ?? null, media?.thumbnail ?? null, media?.metadata ? JSON.stringify(media.metadata) : null);
       } else {
         const media = updates.media?.[0];
         fields.push('media_uri = ?', 'media_type = ?', 'media_duration = ?');
@@ -170,33 +168,13 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
       fields.push('recording_duration = ?');
       values.push(updates.recordingDuration);
     }
-    if (updates.syncStatus !== undefined && columns.has('sync_status')) {
-      fields.push('sync_status = ?');
-      values.push(updates.syncStatus);
-    }
-    if (updates.syncOp !== undefined && columns.has('sync_op')) {
-      fields.push('sync_op = ?');
-      values.push(updates.syncOp);
-    }
-    if (updates.conflictedCopyOf !== undefined && hasConflictedCopyOf) {
-      fields.push('conflicted_copy_of = ?');
-      values.push(updates.conflictedCopyOf);
-    }
-    if (updates.baseUpdatedAt !== undefined && hasBaseUpdatedAt) {
-      fields.push('base_updated_at = ?');
-      values.push(updates.baseUpdatedAt);
-    }
-    if (updates.userId !== undefined && hasUserID) {
-      fields.push('user_id = ?');
-      values.push(updates.userId);
-    }
-    if (updates.deleted !== undefined && hasDeleted) {
-      fields.push('deleted = ?');
-      values.push(updates.deleted ? 1 : 0);
-    }
-    if (updates.localReadyState !== undefined && hasLocalReadyState) {
-      fields.push('local_ready_state = ?');
-      values.push(updates.localReadyState);
+
+    for (const { field, column, transform } of GUARDED_COLUMN_MAPPINGS) {
+      const val = updates[field];
+      if (val !== undefined && columns.has(column)) {
+        fields.push(`${column} = ?`);
+        values.push(transform ? transform(val) : val as string | number | null);
+      }
     }
 
     fields.push('updated_at = ?');
@@ -210,7 +188,6 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
     if (updates.content !== undefined) {
       await upsertEntryContentFts(db, id, updates.content);
     }
-
     if (normalizedTags !== undefined) {
       await upsertEntryTags(db, id, normalizedTags);
     }
