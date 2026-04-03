@@ -4,7 +4,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import Animated, { FadeIn, SlideInUp } from 'react-native-reanimated';
@@ -57,17 +56,17 @@ export function FilterBarTagModal({
               <Text style={styles.modalTitle}>选择标签</Text>
               <View style={styles.modalHeaderButtons}>
                 {selectedTags.length > 0 ? (
-                  <TouchableOpacity onPress={onClear} style={styles.clearButton}>
+                  <Pressable onPress={onClear} style={styles.clearButton}>
                     <Text style={styles.clearButtonText}>清除</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ) : null}
-                <TouchableOpacity onPress={onClose} style={styles.closeModalButton}>
+                <Pressable onPress={onClose} style={styles.closeModalButton}>
                   <Ionicons name="close" size={24} color="#4A4A4A" />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
 
-            <ScrollView style={styles.tagList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.tagList} showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic">
               {allTags.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons name="pricetags-outline" size={48} color="#D1D1D1" />
@@ -79,7 +78,7 @@ export function FilterBarTagModal({
                   {allTags.map((tag) => {
                     const isSelected = selectedTags.includes(tag);
                     return (
-                      <TouchableOpacity
+                      <Pressable
                         key={tag}
                         style={[styles.tagChip, isSelected && styles.tagChipSelected]}
                         onPress={() => onToggleTag(tag)}
@@ -100,7 +99,7 @@ export function FilterBarTagModal({
                         >
                           #{tag}
                         </Text>
-                      </TouchableOpacity>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -108,9 +107,9 @@ export function FilterBarTagModal({
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.doneButton} onPress={onClose}>
+              <Pressable style={styles.doneButton} onPress={onClose}>
                 <Text style={styles.doneButtonText}>完成</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </Animated.View>

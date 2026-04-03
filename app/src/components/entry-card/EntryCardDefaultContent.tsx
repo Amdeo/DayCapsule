@@ -1,12 +1,12 @@
 import React from 'react';
 import { Text } from 'react-native';
 import type { Entry } from '@/src/types/entry';
-import { PhotoGrid } from '../PhotoGrid';
+import { PhotoGrid } from '@/src/components/PhotoGrid';
 import type { EntryCardSyncStatusMeta } from './entryCardAppearance';
 import { entryCardStyles as styles } from './EntryCard.styles';
 import { EntryCardDefaultMeta } from './EntryCardDefaultMeta';
 import { EntryCardDefaultVoiceContent } from './EntryCardDefaultVoiceContent';
-import type { PhotoImageRadiusStyle } from '../photo-grid/photoGridTypes';
+import type { PhotoImageRadiusStyle } from '@/src/components/photo-grid/photoGridTypes';
 
 interface EntryCardDefaultContentProps {
   entry: Entry;

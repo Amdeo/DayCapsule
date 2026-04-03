@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Entry } from '@/src/types/entry';
-import { EntryEditor } from '../EntryEditor';
-import { TextEntryDetailPage } from '../TextEntryDetailPage';
+import { EntryEditor } from '@/src/components/EntryEditor';
+import { TextEntryDetailPage } from '@/src/components/TextEntryDetailPage';
 
 interface TimelineDialogsProps {
   viewingEntry: Entry | null;

@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { backupPageStyles as styles } from './BackupPage.styles';
 
@@ -65,7 +65,7 @@ export function BackupActionCard({
         <Text style={styles.actionTitle}>{title}</Text>
         <Text style={styles.actionSubtitle}>{subtitle}</Text>
       </View>
-      <TouchableOpacity
+      <Pressable
         style={[
           styles.actionButton,
           { backgroundColor: buttonColor },
@@ -75,7 +75,7 @@ export function BackupActionCard({
         disabled={disabled}
       >
         <Text style={styles.actionButtonText}>{buttonLabel}</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
@@ -93,12 +93,12 @@ export function BackupHistoryRow({
         <Text style={styles.rowValue}>{title}</Text>
         {sizeText ? <Text style={styles.rowLabel}>{sizeText}</Text> : null}
       </View>
-      <TouchableOpacity
+      <Pressable
         testID={`backup-history-share-${fileUri}`}
         onPress={onShare}
       >
         <Ionicons name="share-outline" size={20} color="#6A89CC" />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

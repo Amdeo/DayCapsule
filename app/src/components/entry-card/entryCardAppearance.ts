@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { Entry } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
-import type { PhotoImageRadiusStyle } from '../photo-grid/photoGridTypes';
+import type { PhotoImageRadiusStyle } from '@/src/components/photo-grid/photoGridTypes';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 

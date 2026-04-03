@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,21 +41,21 @@ export function BackupExportSheetContent({
             {fileName}
           </Text>
 
-          <TouchableOpacity
+          <Pressable
             testID="backup-export-save"
             style={styles.actionButton}
             onPress={onSaveToFiles}
           >
             <Text style={styles.actionText}>{primaryActionLabel}</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             testID="backup-export-cancel"
             style={styles.cancelButton}
             onPress={onClose}
           >
             <Text style={styles.cancelText}>取消</Text>
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={{ height: bottom }} />
         </View>

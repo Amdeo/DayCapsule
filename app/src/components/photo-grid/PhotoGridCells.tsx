@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import type { MediaInfo } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 import { photoGridStyles as styles } from './PhotoGrid.styles';
@@ -94,7 +95,7 @@ export function SinglePhoto({
   }
 
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+    <Pressable onPress={onPress}>
       <Image
         testID="photo-image-0"
         source={{ uri: sourceUri }}
@@ -105,7 +106,7 @@ export function SinglePhoto({
         resizeMode="cover"
         onError={handleError}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -133,14 +134,14 @@ export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
   }
 
   return (
-    <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
+    <Pressable testID={testID} onPress={onPress}>
       <Image
         source={{ uri: sourceUri }}
         style={{ width: cellSize, height: cellSize }}
         resizeMode="cover"
         onError={handleError}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -179,7 +180,7 @@ export function TwoPhotoCell({
   }
 
   return (
-    <TouchableOpacity testID={testID} activeOpacity={0.9} onPress={onPress}>
+    <Pressable testID={testID} onPress={onPress}>
       <Image
         testID={imageTestID}
         source={{ uri: sourceUri }}
@@ -187,6 +188,6 @@ export function TwoPhotoCell({
         resizeMode="cover"
         onError={handleError}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
 }

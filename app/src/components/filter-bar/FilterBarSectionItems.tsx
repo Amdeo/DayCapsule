@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FilterBarAnimatedButton } from './FilterBarAnimatedButton';
 import { filterBarStyles as styles } from './FilterBar.styles';
@@ -139,12 +139,12 @@ export function FilterBarSelectedTag({
   return (
     <View style={styles.selectedTag}>
       <Text style={styles.selectedTagText}>#{tag}</Text>
-      <TouchableOpacity
+      <Pressable
         onPress={() => onRemove(tag)}
         style={styles.removeTagButton}
       >
         <Ionicons name="close-circle" size={16} color="#6A89CC" />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

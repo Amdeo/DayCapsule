@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import WaveformAnimation from '../WaveformAnimation';
+import WaveformAnimation from '@/src/components/WaveformAnimation';
 import { formatMMSS } from '@/src/utils/timeUtils';
 import { voiceRecorderStyles as styles } from './VoiceRecorder.styles';
 

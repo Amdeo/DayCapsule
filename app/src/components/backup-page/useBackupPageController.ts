@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import {
   buildBackupCreateFailedFeedback,
   buildBackupExportFailedFeedback,
@@ -48,7 +48,7 @@ export function useBackupPageController({
   const [lastBackupTime, setLastBackupTime] = useState<number | null>(null);
   const [exportTarget, setExportTarget] = useState<ExportTarget>(null);
   const [showExportSheet, setShowExportSheet] = useState(false);
-  const primaryActionLabel = Platform.OS === 'ios' ? '导出/分享' : '保存到文件';
+  const primaryActionLabel = process.env.EXPO_OS === 'ios' ? '导出/分享' : '保存到文件';
 
   const refreshStorageInfo = useCallback(async () => {
     try {
@@ -105,7 +105,7 @@ export function useBackupPageController({
 
     setIsSavingToFiles(true);
     try {
-      if (Platform.OS === 'ios') {
+      if (process.env.EXPO_OS === 'ios') {
         await BackupService.shareBackup(exportTarget.uri);
         closeExportSheet();
         return;

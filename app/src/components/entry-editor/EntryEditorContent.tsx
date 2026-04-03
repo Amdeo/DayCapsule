@@ -31,6 +31,7 @@ export function EntryEditorContent({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
       >
         <View
           testID="entry-editor-type-badge"

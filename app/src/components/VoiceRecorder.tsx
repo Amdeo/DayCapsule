@@ -6,7 +6,7 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +49,7 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
       onRequestClose={handleCancel}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleCancel} />
+        <Pressable style={styles.backdrop} onPress={handleCancel} />
 
         <View testID="voice-recorder-root" style={styles.sheet}>
           <View style={styles.handle} />
@@ -59,9 +59,9 @@ export function VoiceRecorder({ visible, onSave, onCancel }: VoiceRecorderProps)
               <Ionicons name="mic" size={14} color="#F5A623" />
               <Text style={styles.typeBadgeText}>语音记录</Text>
             </View>
-            <TouchableOpacity onPress={handleCancel} style={styles.closeBtn}>
+            <Pressable onPress={handleCancel} style={styles.closeBtn}>
               <Ionicons name="close" size={20} color="#737373" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <VoiceRecorderContent

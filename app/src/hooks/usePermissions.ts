@@ -11,7 +11,7 @@ import {
   getRecordingPermissionsAsync,
   requestRecordingPermissionsAsync,
 } from 'expo-audio';
-import { Platform, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import { PermissionStatus, PermissionType } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
 
@@ -52,7 +52,7 @@ export function usePermissions() {
           return micStatus.granted;
 
         case 'mediaLibrary':
-          if (Platform.OS === 'android') {
+          if (process.env.EXPO_OS === 'android') {
             // Android 使用不同的 API
             const mediaStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
             setPermissions((prev) => ({
@@ -76,7 +76,7 @@ export function usePermissions() {
           }
 
         case 'photoLibrary':
-          if (Platform.OS === 'ios') {
+          if (process.env.EXPO_OS === 'ios') {
             const photoStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
             setPermissions((prev) => ({
               ...prev,
@@ -132,7 +132,7 @@ export function usePermissions() {
    */
   const openAppSettings = useCallback(async (): Promise<void> => {
     try {
-      if (Platform.OS === 'ios') {
+      if (process.env.EXPO_OS === 'ios') {
         await Linking.openURL('app-settings:');
       } else {
         await Linking.openSettings();

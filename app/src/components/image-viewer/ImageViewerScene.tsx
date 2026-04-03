@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Modal } from 'react-native';
+import { Image } from 'expo-image';
+import { Modal } from 'react-native';
 import Animated from 'react-native-reanimated';
 import {
   GestureDetector,

@@ -5,11 +5,11 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { useEntryStore } from '../store/entryStore';
+import { useEntryStore } from '@/src/store/entryStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore, SPACING_VALUES } from '@/src/store/settingsStore';
 import { FABMenu } from './FABMenu';
-import { PhotoResult } from '../services/photoService';
+import { PhotoResult } from '@/src/services/photoService';
 import { TimelineCloudSyncStatusAction } from './timeline-v2/TimelineCloudSyncStatusAction';
 import { TimelineContent } from './timeline-v2/TimelineContent';
 import { TimelineDialogs } from './timeline-v2/TimelineDialogs';

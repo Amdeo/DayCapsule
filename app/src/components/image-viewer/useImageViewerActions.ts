@@ -1,4 +1,4 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Alert, Share } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 
 interface UseImageViewerActionsOptions {
@@ -35,7 +35,7 @@ export function useImageViewerActions({
 
     try {
       await Share.share(
-        Platform.OS === 'ios' ? { url: imageUri } : { message: imageUri },
+        process.env.EXPO_OS === 'ios' ? { url: imageUri } : { message: imageUri },
       );
     } catch {
       // User cancelled — no error needed

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { calendarViewStyles as styles } from './CalendarView.styles';
 import { CALENDAR_WEEKDAYS } from './calendarViewHelpers';
@@ -20,15 +20,15 @@ export function CalendarViewHeader({
   return (
     <>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onPreviousMonth} style={styles.navBtn}>
+        <Pressable onPress={onPreviousMonth} style={styles.navBtn}>
           <Ionicons name="chevron-back" size={20} color="#4A4A4A" />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.monthTitle}>
           {year}年{month + 1}月
         </Text>
-        <TouchableOpacity onPress={onNextMonth} style={styles.navBtn}>
+        <Pressable onPress={onNextMonth} style={styles.navBtn}>
           <Ionicons name="chevron-forward" size={20} color="#4A4A4A" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.weekRow}>

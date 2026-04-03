@@ -3,7 +3,7 @@ import {
   ScrollView,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,7 @@ export function TextEditorBody({
       style={styles.scrollView}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      contentInsetAdjustmentBehavior="automatic"
     >
       <View style={styles.typeTag}>
         <Ionicons name="document-text" size={16} color="#6A89CC" />
@@ -66,7 +67,7 @@ export function TextEditorBody({
             {commonTags.map((tag) => {
               const selected = currentTagsList.includes(tag);
               return (
-                <TouchableOpacity
+                <Pressable
                   key={tag}
                   style={[styles.commonChip, selected && styles.commonChipSelected]}
                   onPress={() => (selected ? onRemoveTag(tag) : onAddSuggestion(tag))}
@@ -79,7 +80,7 @@ export function TextEditorBody({
                   >
                     {tag}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </View>
@@ -109,14 +110,14 @@ export function TextEditorBody({
           <View style={styles.suggestionsRow}>
             <Text style={styles.suggestionsLabel}>建议：</Text>
             {suggestions.map((tag) => (
-              <TouchableOpacity
+              <Pressable
                 key={tag}
                 style={styles.suggestionChip}
                 onPress={() => onAddSuggestion(tag)}
               >
                 <Ionicons name="add" size={13} color="#6A89CC" />
                 <Text style={styles.suggestionChipText}>{tag}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         ) : null}

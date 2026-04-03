@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { searchOverlayStyles as styles } from './SearchOverlay.styles';
 import {
   SearchOverlayDateChip,
@@ -93,9 +93,9 @@ export function SearchOverlayTagsSection({
       <View style={styles.sectionRow}>
         <Text style={styles.sectionLabel}>标签</Text>
         {selectedTags.length > 0 ? (
-          <TouchableOpacity onPress={onClearTags}>
+          <Pressable onPress={onClearTags}>
             <Text style={styles.clearTagsText}>清除</Text>
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
       </View>
 

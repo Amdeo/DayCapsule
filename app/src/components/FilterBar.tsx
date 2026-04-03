@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
-import { useEntryStore } from '../store/entryStore';
+import { useEntryStore } from '@/src/store/entryStore';
 import {
   FilterBarDateSection,
   FilterBarHeader,

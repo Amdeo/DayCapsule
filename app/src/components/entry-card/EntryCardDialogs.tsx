@@ -2,8 +2,8 @@ import React from 'react';
 import type { Entry } from '@/src/types/entry';
 import { PhotoService } from '@/src/services/photoService';
 import { logger } from '@/src/utils/logger';
-import { EntryActionSheet } from '../EntryActionSheet';
-import { ImageViewer } from '../ImageViewer';
+import { EntryActionSheet } from '@/src/components/EntryActionSheet';
+import { ImageViewer } from '@/src/components/ImageViewer';
 import { isPhotoMediaPendingHydration } from '@/src/utils/mediaAvailability';
 
 interface EntryCardDialogsProps {

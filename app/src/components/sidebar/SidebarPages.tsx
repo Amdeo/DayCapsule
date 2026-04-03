@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BackupPage } from '../BackupPage';
-import { SettingsPage } from '../SettingsPage';
-import { StatsPage } from '../StatsPage';
+import { BackupPage } from '@/src/components/BackupPage';
+import { SettingsPage } from '@/src/components/SettingsPage';
+import { StatsPage } from '@/src/components/StatsPage';
 
 const DETAIL_PAGE_EXIT_DURATION_MS = 300;
 

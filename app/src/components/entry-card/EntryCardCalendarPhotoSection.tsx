@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Text, Pressable, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
 import { PhotoService } from '@/src/services/photoService';
@@ -95,15 +96,14 @@ function EntryCardCalendarPhotoBody({
 }: EntryCardCalendarPhotoBodyProps) {
   if (!entry.media || entry.media.length === 0) {
     return (
-      <TouchableOpacity
-        activeOpacity={0.92}
+      <Pressable
         onPress={onCardPress}
         style={[styles.calendarPhotoEmptyState, { height: resolvedPhotoHeight }]}
       >
         <View style={styles.calendarPhotoEmptyBadge}>
           <Ionicons name="images-outline" size={26} color="#9F8F7C" />
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
@@ -112,8 +112,7 @@ function EntryCardCalendarPhotoBody({
 
     return (
       <View testID={`calendar-photo-card-layout-single-${entry.id}`}>
-        <TouchableOpacity
-          activeOpacity={0.92}
+        <Pressable
           onPress={() => onImagePress(0)}
           testID={`calendar-photo-primary-${entry.id}`}
         >
@@ -122,7 +121,7 @@ function EntryCardCalendarPhotoBody({
             style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
             resizeMode="cover"
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -135,8 +134,7 @@ function EntryCardCalendarPhotoBody({
         testID={`calendar-photo-card-layout-double-${entry.id}`}
         style={[styles.calendarPhotoDoubleWrap, { height: resolvedPhotoHeight }]}
       >
-        <TouchableOpacity
-          activeOpacity={0.92}
+        <Pressable
           onPress={() => onImagePress(0)}
           style={[
             styles.calendarPhotoDoubleCell,
@@ -149,10 +147,9 @@ function EntryCardCalendarPhotoBody({
             style={styles.calendarPhotoImage}
             resizeMode="cover"
           />
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          activeOpacity={0.92}
+        <Pressable
           onPress={() => onImagePress(1)}
           style={[
             styles.calendarPhotoDoubleCell,
@@ -165,7 +162,7 @@ function EntryCardCalendarPhotoBody({
             style={styles.calendarPhotoImage}
             resizeMode="cover"
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -178,8 +175,7 @@ function EntryCardCalendarPhotoBody({
       testID={`calendar-photo-card-layout-multi-${entry.id}`}
       style={[styles.calendarPhotoMultiWrap, { height: resolvedPhotoHeight }]}
     >
-      <TouchableOpacity
-        activeOpacity={0.92}
+      <Pressable
         onPress={() => onImagePress(0)}
         style={styles.calendarPhotoPrimary}
         testID={`calendar-photo-primary-${entry.id}`}
@@ -189,12 +185,11 @@ function EntryCardCalendarPhotoBody({
           style={styles.calendarPhotoImage}
           resizeMode="cover"
         />
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={styles.calendarPhotoSecondaryColumn}>
         {secondary ? (
-          <TouchableOpacity
-            activeOpacity={0.92}
+          <Pressable
             onPress={() => onImagePress(1)}
             style={styles.calendarPhotoSecondaryCell}
             testID={`calendar-photo-secondary-cell-1-${entry.id}`}
@@ -204,14 +199,13 @@ function EntryCardCalendarPhotoBody({
               style={styles.calendarPhotoImage}
               resizeMode="cover"
             />
-          </TouchableOpacity>
+          </Pressable>
         ) : (
           <View style={styles.calendarPhotoSecondaryCell} />
         )}
 
         {tertiary ? (
-          <TouchableOpacity
-            activeOpacity={0.92}
+          <Pressable
             onPress={() => onImagePress(2)}
             style={styles.calendarPhotoSecondaryCell}
             testID={`calendar-photo-secondary-cell-2-${entry.id}`}
@@ -226,7 +220,7 @@ function EntryCardCalendarPhotoBody({
                 <Text style={styles.calendarPhotoOverflowText}>+{overflow}</Text>
               </View>
             ) : null}
-          </TouchableOpacity>
+          </Pressable>
         ) : (
           <View style={styles.calendarPhotoSecondaryCell} />
         )}
