@@ -60,7 +60,7 @@ export function ImageViewerScene({
         {phase === 'open' ? (
           <GestureDetector gesture={composedGesture}>
             <Animated.View style={styles.imageContainer}>
-              <Animated.View style={imageAnimatedStyle}>
+              <Animated.View testID="image-viewer-open-phase" style={imageAnimatedStyle}>
                 <Image
                   source={{ uri: imageUri }}
                   style={[styles.image, { width: screenWidth, height: screenHeight }]}

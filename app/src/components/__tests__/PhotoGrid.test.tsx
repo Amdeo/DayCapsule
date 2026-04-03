@@ -33,7 +33,7 @@ jest.mock('@expo/vector-icons', () => {
 
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Dimensions } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { PhotoGrid } from '../PhotoGrid';
 import { MediaInfo } from '@/src/types/entry';
 
@@ -138,12 +138,12 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file://photo0.jpg',
-    });
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'file://photo1.jpg',
-    });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo0.jpg' })])
+    );
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo1.jpg' })])
+    );
   });
 
   it('promotes the second photo to primary when it fits the primary slot much better', () => {
@@ -155,12 +155,12 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file://photo1.jpg',
-    });
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'file://photo0.jpg',
-    });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo1.jpg' })])
+    );
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo0.jpg' })])
+    );
   });
 
   it('does not reorder two photos when aspect ratio metadata is missing', () => {
@@ -172,9 +172,9 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file://photo0.jpg',
-    });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo0.jpg' })])
+    );
   });
 
   it('maps taps back to original indexes after swapping display order', () => {
@@ -205,7 +205,7 @@ describe('PhotoGrid', () => {
       />
     );
 
-    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error', { nativeEvent: {} });
 
     expect(screen.getByTestId('photo-primary-missing')).toBeTruthy();
     expect(screen.getByTestId('photo-secondary-cell')).toBeTruthy();
@@ -220,19 +220,19 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file:///stale/thumb.jpg',
-    });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/thumb.jpg' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-    });
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-primary-image'), 'error');
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file:///stale/photo.jpg',
-    });
+    fireEvent(screen.getByTestId('photo-primary-image'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/photo.jpg' })])
+    );
     expect(screen.queryByTestId('photo-primary-missing')).toBeNull();
   });
 
@@ -245,15 +245,15 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
-      uri: 'file:///stale/thumb.jpg',
-    });
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/thumb.jpg' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+    fireEvent(screen.getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
 
-    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
-      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-    });
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb' })])
+    );
   });
 
   it('falls back to the next available photo uri after the remote thumbnail also fails', () => {
@@ -265,15 +265,15 @@ describe('PhotoGrid', () => {
       />
     );
 
-    fireEvent(screen.getByTestId('photo-image-0'), 'error');
-    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
-      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-    });
+    fireEvent(screen.getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-image-0'), 'error');
-    expect(screen.getByTestId('photo-image-0').props.source).toEqual({
-      uri: 'file:///stale/photo.jpg',
-    });
+    fireEvent(screen.getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-image-0').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/photo.jpg' })])
+    );
   });
 
   it('keeps the secondary slot when the secondary image fails to load', () => {
@@ -285,7 +285,7 @@ describe('PhotoGrid', () => {
       />
     );
 
-    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error', { nativeEvent: {} });
 
     expect(screen.getByTestId('photo-secondary-missing')).toBeTruthy();
     expect(screen.getByTestId('photo-primary-cell')).toBeTruthy();
@@ -300,19 +300,19 @@ describe('PhotoGrid', () => {
       />
     );
 
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'file:///stale/thumb.jpg',
-    });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/thumb.jpg' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb',
-    });
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'http://101.43.120.134:8081/api/media/photo-1-thumb' })])
+    );
 
-    fireEvent(screen.getByTestId('photo-secondary-image'), 'error');
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'file:///stale/photo.jpg',
-    });
+    fireEvent(screen.getByTestId('photo-secondary-image'), 'error', { nativeEvent: {} });
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file:///stale/photo.jpg' })])
+    );
     expect(screen.queryByTestId('photo-secondary-missing')).toBeNull();
   });
 
@@ -369,13 +369,12 @@ describe('PhotoGrid', () => {
     );
 
     const expectedPrimaryWidth = (windowWidth - 3) * 0.64;
-    expect(screen.getByTestId('photo-primary-image').props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          width: expectedPrimaryWidth,
-          height: 280,
-        }),
-      ])
+    const flatStyle = StyleSheet.flatten(screen.getByTestId('photo-primary-image').props.style);
+    expect(flatStyle).toEqual(
+      expect.objectContaining({
+        width: expectedPrimaryWidth,
+        height: 280,
+      })
     );
   });
 

@@ -111,7 +111,10 @@ describe('useImageViewerActions', () => {
     await expect(handleShare()).resolves.toBeUndefined();
 
     expect(mockOnHideActionSheet).toHaveBeenCalledTimes(1);
-    expect(Share.share).toHaveBeenCalledWith({ message: 'file:///image.jpg' });
+    // jest-expo はデフォルトで iOS プラットフォームとしてテストを実行し、
+    // Babel が process.env.EXPO_OS をコンパイル時に 'ios' として内联するため、
+    // テスト環境では常に { url } が使われる
+    expect(Share.share).toHaveBeenCalledWith({ url: 'file:///image.jpg' });
     expect(showErrorFeedback).not.toHaveBeenCalled();
   });
 
@@ -126,7 +129,8 @@ describe('useImageViewerActions', () => {
     await expect(handleShare()).resolves.toBeUndefined();
 
     expect(mockOnHideActionSheet).toHaveBeenCalledTimes(1);
-    expect(Share.share).toHaveBeenCalledWith({ message: 'file:///image.jpg' });
+    // jest-expo では process.env.EXPO_OS が 'ios' にコンパイル時内联されるため { url } を使用
+    expect(Share.share).toHaveBeenCalledWith({ url: 'file:///image.jpg' });
     expect(showErrorFeedback).toHaveBeenCalledWith({
       title: '分享失败',
       message: '暂时无法分享图片，请重试',

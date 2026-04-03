@@ -68,12 +68,12 @@ describe('PhotoGrid render matrix', () => {
     );
 
     expect(screen.getByTestId('photo-collage-root')).toBeTruthy();
-    expect(screen.getByTestId('photo-primary-image').props.source).toEqual({
-      uri: 'file://photo1.jpg',
-    });
-    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual({
-      uri: 'file://photo0.jpg',
-    });
+    expect(screen.getByTestId('photo-primary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo1.jpg' })])
+    );
+    expect(screen.getByTestId('photo-secondary-image').props.source).toEqual(
+      expect.arrayContaining([expect.objectContaining({ uri: 'file://photo0.jpg' })])
+    );
   });
 
   it('renders a multi-photo grid for three photos', () => {

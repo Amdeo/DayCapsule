@@ -171,7 +171,7 @@ describe('EntryCard missing media variants', () => {
 
     const screen = render(<EntryCard entry={entry} onDelete={jest.fn()} />);
 
-    fireEvent(screen.getByTestId('photo-image-0'), 'error');
+    fireEvent(screen.getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
     fireEvent.press(screen.getByTestId('entry-card'));
 
     expect(screen.getByTestId('photo-image-0')).toBeTruthy();

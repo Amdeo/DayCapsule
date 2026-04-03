@@ -215,7 +215,7 @@ describe('EntryCard — 媒体文件丢失', () => {
     );
 
     // 模拟图片加载失败
-    fireEvent(getByTestId('photo-image-0'), 'error');
+    fireEvent(getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
 
     // 点击卡片
     fireEvent.press(getByTestId('entry-card'));

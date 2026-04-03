@@ -786,11 +786,6 @@ describe('EntryCard photo edge-to-edge', () => {
   it('纯图片卡片：图片四角圆角为 10', () => {
     render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
     const img = screen.getByTestId('photo-image-0');
-    expect(img.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ borderRadius: 10 }),
-      ])
-    );
     // 验证 borderRadius 为 10，底部不被明确设为 0
     const flatStyle = StyleSheet.flatten(img.props.style);
     expect(flatStyle.borderRadius).toBe(10);
@@ -886,7 +881,7 @@ describe('EntryCard photo edge-to-edge', () => {
     it('photoMissing 高度等于档位值（default=280）', () => {
       // PhotoGrid 集成后，error 状态下 SinglePhoto 仍使用 testID="photo-image-0"
       const { getByTestId } = render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
-      fireEvent(getByTestId('photo-image-0'), 'error');
+      fireEvent(getByTestId('photo-image-0'), 'error', { nativeEvent: {} });
       const missingView = getByTestId('photo-image-0');
       const flatStyle = StyleSheet.flatten(missingView.props.style);
       expect(flatStyle.height).toBe(280);
