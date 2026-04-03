@@ -26,7 +26,7 @@ describe('SettingsPage sync status', () => {
     });
 
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
-    expect(mocks.showCloudSyncStatusAlert).not.toHaveBeenCalled();
+    expect(mocks.showCloudSyncMonitor).not.toHaveBeenCalled();
   });
 
   it('renders the sync status entry for authenticated users even before cloud mode is enabled', async () => {
@@ -47,7 +47,7 @@ describe('SettingsPage sync status', () => {
     fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
 
     await waitFor(() => {
-      expect(mocks.showCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
+      expect(mocks.showCloudSyncMonitor).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -69,7 +69,7 @@ describe('SettingsPage sync status', () => {
     fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
 
     await waitFor(() => {
-      expect(mocks.showCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
+      expect(mocks.showCloudSyncMonitor).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -82,7 +82,7 @@ describe('SettingsPage sync status', () => {
     fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
 
     await waitFor(() => {
-      expect(mocks.showCloudSyncStatusAlert).not.toHaveBeenCalled();
+      expect(mocks.showCloudSyncMonitor).not.toHaveBeenCalled();
     });
   });
 });

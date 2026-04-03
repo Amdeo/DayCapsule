@@ -46,7 +46,7 @@ const mockCalendarView = jest.fn(() => null);
 const mockEntryEditor = jest.fn(() => null);
 const mockTextEntryDetailPage = jest.fn(() => null);
 const mockEntryCard = jest.fn(() => null);
-const mockShowCloudSyncStatusAlert = jest.fn();
+const mockShowCloudSyncMonitor = jest.fn();
 const actualEntryEditorModule = jest.requireActual('../EntryEditor');
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
@@ -104,8 +104,8 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   useCloudSyncIndicatorStore: () => 'hidden',
 }));
 
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
+jest.mock('@/src/services/showCloudSyncMonitor', () => ({
+  showCloudSyncMonitor: () => mockShowCloudSyncMonitor(),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({

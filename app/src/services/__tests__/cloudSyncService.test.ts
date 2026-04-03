@@ -2,6 +2,8 @@ import { createCloudSyncService } from '../cloudSyncService';
 import * as DB from '@/src/database/operations';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore } from '@/src/store/syncStore';
+import { getApiClient } from '@/src/services/apiClient';
+import { createCloudMediaSyncService } from '../cloudMediaSyncService';
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -16,6 +18,11 @@ function createDeferred<T>() {
 }
 
 const mockRefreshIndicator = jest.fn(async () => undefined);
+const mockMonitorStartRun = jest.fn();
+const mockMonitorSetPhase = jest.fn();
+const mockMonitorUpdateEntryProgress = jest.fn();
+const mockMonitorUpdateMediaProgress = jest.fn();
+const mockMonitorFinishRun = jest.fn();
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -69,6 +76,18 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/cloudSyncMonitorStore', () => ({
+  useCloudSyncMonitorStore: {
+    getState: () => ({
+      startRun: mockMonitorStartRun,
+      setPhase: mockMonitorSetPhase,
+      updateEntryProgress: mockMonitorUpdateEntryProgress,
+      updateMediaProgress: mockMonitorUpdateMediaProgress,
+      finishRun: mockMonitorFinishRun,
+    }),
+  },
+}));
+
 const mockPost = jest.fn();
 jest.mock('@/src/services/apiClient', () => {
   class MockApiError extends Error {
@@ -111,14 +130,127 @@ jest.mock('@/src/store/mediaRepairStore', () => ({
 
 describe('cloudSyncService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockRefreshIndicator.mockImplementation(async () => undefined);
+    (getApiClient as jest.Mock).mockReturnValue({ post: mockPost });
+    (createCloudMediaSyncService as jest.Mock).mockReturnValue({
+      validateEntries: mockValidateEntries,
+    });
+    (DB.getEntriesBySyncStatus as jest.Mock).mockImplementation(async () => []);
+    (DB.getCloudSyncIndicatorSummary as jest.Mock).mockImplementation(async () => ({
+      pendingEntries: 0,
+      pendingUploads: 0,
+      uploadingEntries: 0,
+      failedEntries: 0,
+    }));
+    (DB.getAllEntries as jest.Mock).mockImplementation(async () => []);
+    (DB.getEntryById as jest.Mock).mockImplementation(async () => null);
+    (DB.restoreEntries as jest.Mock).mockImplementation(async () => []);
+    (DB.updateEntry as jest.Mock).mockImplementation(async () => undefined);
+    (DB.deleteEntry as jest.Mock).mockImplementation(async () => undefined);
+    (DB.addEntry as jest.Mock).mockImplementation(async () => ({ id: 'conflict-copy' }));
     useSyncStore.setState({
       syncCursor: 0,
       lastSyncAt: null,
       lastSyncError: null,
       initialSyncState: 'idle',
+      lastMediaValidationSummary: null,
       isSyncing: false,
       isLoaded: true,
+    });
+  });
+
+  it('batches sync requests in groups of five and reports entry progress after each batch', async () => {
+    const pendingEntries = Array.from({ length: 6 }, (_, index) => ({
+      id: `entry-${index + 1}`,
+      type: 'text' as const,
+      content: `content-${index + 1}`,
+      timestamp: 1000 + index,
+      syncStatus: 'pending' as const,
+      syncOp: 'update' as const,
+      updatedAt: 2000 + index,
+      baseUpdatedAt: 1500 + index,
+    }));
+
+    (DB.getEntriesBySyncStatus as jest.Mock).mockResolvedValueOnce(pendingEntries);
+    mockPost
+      .mockResolvedValueOnce({
+        newCursor: 10,
+        results: pendingEntries.slice(0, 5).map((entry) => ({
+          changeId: `${entry.id}:update:${entry.updatedAt}`,
+          status: 'applied' as const,
+          entryId: entry.id,
+        })),
+        serverChanges: [],
+        conflicts: [],
+      })
+      .mockResolvedValueOnce({
+        newCursor: 12,
+        results: [
+          {
+            changeId: `${pendingEntries[5].id}:update:${pendingEntries[5].updatedAt}`,
+            status: 'applied' as const,
+            entryId: pendingEntries[5].id,
+          },
+        ],
+        serverChanges: [],
+        conflicts: [],
+      });
+
+    await createCloudSyncService().syncNow();
+
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost.mock.calls[0]?.[1]).toMatchObject({
+      cursor: 0,
+      clientChanges: pendingEntries.slice(0, 5).map((entry) => expect.objectContaining({
+        changeId: `${entry.id}:update:${entry.updatedAt}`,
+        entry: expect.objectContaining({ id: entry.id }),
+      })),
+    });
+    expect(mockPost.mock.calls[1]?.[1]).toMatchObject({
+      cursor: 10,
+      clientChanges: [
+        expect.objectContaining({
+          changeId: `${pendingEntries[5].id}:update:${pendingEntries[5].updatedAt}`,
+          entry: expect.objectContaining({ id: pendingEntries[5].id }),
+        }),
+      ],
+    });
+    expect(mockMonitorUpdateEntryProgress).toHaveBeenNthCalledWith(1, 5, 6, null);
+    expect(mockMonitorUpdateEntryProgress).toHaveBeenNthCalledWith(2, 6, 6, null);
+    expect(useSyncStore.getState().syncCursor).toBe(12);
+  });
+
+  it('reports monitor lifecycle on successful syncNow', async () => {
+    mockPost.mockResolvedValueOnce({
+      newCursor: 3,
+      results: [],
+      serverChanges: [],
+      conflicts: [],
+    });
+
+    await createCloudSyncService().syncNow();
+
+    expect(mockMonitorStartRun).toHaveBeenCalledWith(expect.stringMatching(/^sync-\d+$/));
+    expect(mockMonitorSetPhase).toHaveBeenNthCalledWith(1, 'sync-entries', 2);
+    expect(mockMonitorFinishRun).toHaveBeenCalledWith({
+      status: 'success',
+      failedPhase: null,
+      failedItems: [],
+    });
+  });
+
+  it('reports monitor lifecycle on failed syncNow', async () => {
+    (DB.getEntriesBySyncStatus as jest.Mock).mockRejectedValueOnce(new Error('sync failed'));
+
+    await expect(createCloudSyncService().syncNow()).rejects.toThrow('sync failed');
+
+    expect(mockMonitorStartRun).toHaveBeenCalledWith(expect.stringMatching(/^sync-\d+$/));
+    expect(mockMonitorSetPhase).toHaveBeenNthCalledWith(1, 'sync-entries', 2);
+    expect(mockMonitorFinishRun).toHaveBeenCalledWith({
+      status: 'failed',
+      failedPhase: 'sync-entries',
+      failedItems: [],
     });
   });
 
@@ -135,7 +267,7 @@ describe('cloudSyncService', () => {
         updatedAt: 2000,
       },
     ]);
-    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({
+    (DB.getEntryById as jest.Mock).mockResolvedValue({
       id: 'entry-1',
       media: [],
       syncStatus: 'pending',
@@ -205,7 +337,7 @@ describe('cloudSyncService', () => {
       ],
       conflicts: [],
     });
-    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-3' });
+    (DB.getEntryById as jest.Mock).mockResolvedValue({ id: 'entry-3' });
 
     const service = createCloudSyncService();
     await service.syncNow();
@@ -422,7 +554,7 @@ describe('cloudSyncService', () => {
       serverChanges: [],
       conflicts: [conflictPayload],
     });
-    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-conflict-photo', media: [] });
+    (DB.getEntryById as jest.Mock).mockResolvedValue({ id: 'entry-conflict-photo', media: [] });
     mockValidateEntries.mockResolvedValueOnce({
       summary: {
         status: 'success',
@@ -484,7 +616,7 @@ describe('cloudSyncService', () => {
         },
       ],
     });
-    (DB.getEntryById as jest.Mock).mockResolvedValueOnce({ id: 'entry-legacy-conflict' });
+    (DB.getEntryById as jest.Mock).mockResolvedValue({ id: 'entry-legacy-conflict' });
 
     await createCloudSyncService().syncNow();
 

@@ -31,7 +31,7 @@ const mockEntries: Entry[] = [
 ];
 
 const mockUpdateEntry = jest.fn();
-const mockShowCloudSyncStatusAlert = jest.fn();
+const mockShowCloudSyncMonitor = jest.fn();
 const mockFilterUiState = {
   searchQuery: '',
   filterType: 'all' as const,
@@ -79,8 +79,8 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   useCloudSyncIndicatorStore: () => 'hidden',
 }));
 
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
+jest.mock('@/src/services/showCloudSyncMonitor', () => ({
+  showCloudSyncMonitor: () => mockShowCloudSyncMonitor(),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({

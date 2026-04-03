@@ -679,8 +679,8 @@ jest.mock('@/src/services/photoUploadQueue', () => ({
   configurePhotoUploadQueueCallbacks: jest.fn(),
 }));
 
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
+jest.mock('@/src/services/showCloudSyncMonitor', () => ({
+  showCloudSyncMonitor: () => mockShowCloudSyncStatusAlert(),
 }));
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
@@ -784,7 +784,7 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
       triggerQuickAddText,
       triggerQuickAddVoice,
       loggerError: mockLoggerError,
-      showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
+      showCloudSyncMonitor: mockShowCloudSyncStatusAlert,
       showErrorFeedback: mockShowErrorFeedback,
     },
     stores: {

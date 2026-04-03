@@ -2,6 +2,7 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 
 const mockFeedbackHost = jest.fn(() => null);
+const mockCloudSyncMonitorHost = jest.fn(() => null);
 const mockRunAppBootstrap = jest.fn(async () => undefined);
 const mockShowErrorFeedback = jest.fn();
 const mockShouldBackup = jest.fn(async () => false);
@@ -115,6 +116,10 @@ jest.mock('@/src/components/ErrorBoundary', () => ({
 
 jest.mock('@/src/components/FeedbackHost', () => ({
   FeedbackHost: () => mockFeedbackHost(),
+}));
+
+jest.mock('@/src/components/cloud-sync-monitor/CloudSyncMonitorHost', () => ({
+  CloudSyncMonitorHost: () => mockCloudSyncMonitorHost(),
 }));
 
 jest.mock('@/src/components/Timeline.v2', () => ({

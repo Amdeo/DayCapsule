@@ -12,7 +12,7 @@ import {
   PhotoHeightPreset, PHOTO_HEIGHT_VALUES,
 } from '@/src/store/settingsStore';
 import { createE2ESyncLabService } from '@/src/services/e2eSyncLabService';
-import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
+import { showCloudSyncMonitor } from '@/src/services/showCloudSyncMonitor';
 import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
 import { DetailPageShell } from './DetailPageShell';
 import { useAuthStore } from '@/src/store/authStore';
@@ -172,7 +172,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           showE2ESyncLab={showE2ESyncLab}
           onCloudModeToggle={handleCloudModeToggle}
           onShowSyncStatus={() => {
-            void showCloudSyncStatusAlert();
+            showCloudSyncMonitor();
           }}
           onLogout={handleLogout}
           onShowLogin={() => openLogin('account')}

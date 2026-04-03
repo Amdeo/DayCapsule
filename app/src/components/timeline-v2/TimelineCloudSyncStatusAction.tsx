@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
-import { showCloudSyncStatusAlert } from '@/src/services/showCloudSyncStatusAlert';
+import { showCloudSyncMonitor } from '@/src/services/showCloudSyncMonitor';
 import { CloudSyncStatusButton } from '../CloudSyncStatusButton';
 
 export function TimelineCloudSyncStatusAction() {
@@ -14,7 +14,7 @@ export function TimelineCloudSyncStatusAction() {
     <CloudSyncStatusButton
       uiState={cloudSyncUiState}
       onPress={() => {
-        void showCloudSyncStatusAlert();
+        showCloudSyncMonitor();
       }}
     />
   );

@@ -4,10 +4,13 @@ import type { Entry } from '@/src/types/entry';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
 import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 import { createCloudMediaSyncService, type MediaValidationRun } from './cloudMediaSyncService';
 import { showPhotoRepairPrompt } from './showPhotoRepairPrompt';
 import { logger } from '@/src/utils/logger';
 import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
+
+const SYNC_BATCH_SIZE = 5;
 
 export interface SyncStatus {
   lastSyncAt: number | null;
@@ -300,61 +303,81 @@ export function createCloudSyncService(): SyncServiceApi {
     await ensureSyncStoreLoaded();
 
     const { syncCursor } = useSyncStore.getState();
+    const monitor = useCloudSyncMonitorStore.getState();
     const pending = await collectPendingChanges();
-    const pendingByChangeId = new Map<string, Entry>();
-    const pendingByEntryId = new Map<string, Entry>();
+    let currentCursor = syncCursor;
+    const validationEntries: Entry[] = [];
+    const batchStarts = pending.length > 0
+      ? Array.from({ length: Math.ceil(pending.length / SYNC_BATCH_SIZE) }, (_, index) => index * SYNC_BATCH_SIZE)
+      : [0];
 
-    const clientChanges = pending.map((entry) => {
-      const changeId = buildChangeId(entry);
-      pendingByChangeId.set(changeId, entry);
-      pendingByEntryId.set(entry.id, entry);
+    monitor.setPhase('sync-entries', 2);
 
-      return {
-        changeId,
-        op: entry.syncOp === 'delete' || entry.syncStatus === 'pending_delete'
-          ? 'delete'
-          : (entry.syncOp ?? 'update'),
-        entry: mapEntryToServer(entry),
-        baseUpdatedAt: entry.baseUpdatedAt
-          ? new Date(entry.baseUpdatedAt)
-          : (entry.updatedAt ? new Date(entry.updatedAt) : undefined),
+    for (const i of batchStarts) {
+      const batchPending = pending.slice(i, i + SYNC_BATCH_SIZE);
+      const batchPendingByChangeId = new Map<string, Entry>();
+      const batchPendingByEntryId = new Map<string, Entry>();
+
+      const clientChanges = batchPending.map((entry) => {
+        const changeId = buildChangeId(entry);
+        batchPendingByChangeId.set(changeId, entry);
+        batchPendingByEntryId.set(entry.id, entry);
+
+        return {
+          changeId,
+          op: entry.syncOp === 'delete' || entry.syncStatus === 'pending_delete'
+            ? 'delete'
+            : (entry.syncOp ?? 'update'),
+          entry: mapEntryToServer(entry),
+          baseUpdatedAt: entry.baseUpdatedAt
+            ? new Date(entry.baseUpdatedAt)
+            : (entry.updatedAt ? new Date(entry.updatedAt) : undefined),
+        };
+      });
+
+      const body = {
+        cursor: currentCursor,
+        deviceId: 'mobile',
+        clientChanges,
       };
-    });
 
-    const body = {
-      cursor: syncCursor,
-      deviceId: 'mobile',
-      clientChanges,
-    };
+      const data = await api.post<SyncResponsePayload>('/sync', body);
+      const { appliedEntryIds: serverAppliedEntryIds, mediaValidationEntries } = await applyServerChanges(data.serverChanges ?? []);
+      validationEntries.push(...mediaValidationEntries);
 
-    const data = await api.post<SyncResponsePayload>('/sync', body);
-    const { appliedEntryIds: serverAppliedEntryIds, mediaValidationEntries } = await applyServerChanges(data.serverChanges ?? []);
-    const validationEntries = [...mediaValidationEntries];
-
-    if (data.conflicts?.length) {
-      for (const conflict of data.conflicts) {
-        const conflictEntry = await applyConflictWinner(conflict);
-        if (conflictEntry && hasRemoteMedia(conflictEntry)) {
-          validationEntries.push(conflictEntry);
+      if (data.conflicts?.length) {
+        for (const conflict of data.conflicts) {
+          const conflictEntry = await applyConflictWinner(conflict);
+          if (conflictEntry && hasRemoteMedia(conflictEntry)) {
+            validationEntries.push(conflictEntry);
+          }
         }
+
+        logger.warn('[cloudSync] 冲突数:', data.conflicts.length);
       }
-      logger.warn('[cloudSync] 冲突数:', data.conflicts.length);
+
+      await settleResults(data.results ?? [], batchPendingByChangeId, batchPendingByEntryId, serverAppliedEntryIds);
+      currentCursor = data.newCursor ?? currentCursor;
+      await useSyncStore.getState().setCursor(currentCursor);
+      monitor.updateEntryProgress(Math.min(i + batchPending.length, pending.length), pending.length, null);
     }
 
-    await settleResults(data.results ?? [], pendingByChangeId, pendingByEntryId, serverAppliedEntryIds);
+    monitor.setPhase('validate-media', 4);
+
     if (validationEntries.length > 0) {
       await useSyncStore.getState().markMediaValidationRunning(validationEntries.length);
+      monitor.updateMediaProgress(0, validationEntries.length, null);
       const mediaValidationRun = normalizeMediaValidationRun(
         await createCloudMediaSyncService().validateEntries(validationEntries),
         validationEntries.length,
       );
+      monitor.updateMediaProgress(validationEntries.length, validationEntries.length, null);
       await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
       useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
       if (mediaValidationRun.issues.length > 0) {
         showPhotoRepairPrompt();
       }
     }
-    await useSyncStore.getState().setCursor(data.newCursor ?? syncCursor);
     await useSyncStore.getState().markSyncSuccess(Date.now());
   };
 
@@ -380,12 +403,25 @@ export function createCloudSyncService(): SyncServiceApi {
     inFlightSync = (async () => {
       await ensureSyncStoreLoaded();
       await useSyncStore.getState().markSyncStarted();
+      const monitor = useCloudSyncMonitorStore.getState();
+      monitor.startRun(`sync-${Date.now()}`);
+      monitor.setPhase('sync-entries', 2);
 
       try {
         await performSyncNow();
+        monitor.finishRun({
+          status: 'success',
+          failedPhase: null,
+          failedItems: [],
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown sync error';
         await useSyncStore.getState().markSyncFailure(message);
+        monitor.finishRun({
+          status: 'failed',
+          failedPhase: 'sync-entries',
+          failedItems: [],
+        });
 
         if (error instanceof ApiError) {
           logger.error('[cloudSync] syncNow ApiError:', error.code, error.message, error.status);

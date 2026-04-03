@@ -1,5 +1,14 @@
 const mockSetState = jest.fn();
 const mockRefreshCloudSyncIndicator = jest.fn();
+const mockUpdateQueueItem = jest.fn();
+const mockUpdateMediaProgress = jest.fn();
+let mockActiveRun: {
+  mediaProgress: {
+    completed: number;
+    total: number;
+    currentItemTitle: string | null;
+  };
+} | null = null;
 
 jest.mock('@/src/store/entryStore', () => {
   const useEntryStore = () => ({});
@@ -11,6 +20,16 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   useCloudSyncIndicatorStore: {
     getState: () => ({
       refresh: mockRefreshCloudSyncIndicator,
+    }),
+  },
+}));
+
+jest.mock('@/src/store/cloudSyncMonitorStore', () => ({
+  useCloudSyncMonitorStore: {
+    getState: () => ({
+      activeRun: mockActiveRun,
+      updateQueueItem: mockUpdateQueueItem,
+      updateMediaProgress: mockUpdateMediaProgress,
     }),
   },
 }));
@@ -43,6 +62,13 @@ describe('homeUploadSyncOrchestration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
+    mockActiveRun = {
+      mediaProgress: {
+        completed: 2,
+        total: 5,
+        currentItemTitle: 'existing-item',
+      },
+    };
   });
 
   it('returns enqueue decisions for cloud-mode voice and photo flows', () => {
@@ -110,6 +136,14 @@ describe('homeUploadSyncOrchestration', () => {
     });
 
     expect(mockRefreshCloudSyncIndicator).toHaveBeenCalledTimes(6);
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(1, 'entry-1', { status: 'running' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(2, 'entry-1', { status: 'failed' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(3, 'entry-1', { status: 'completed' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(4, 'entry-1', { status: 'running' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(5, 'entry-1', { status: 'failed' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(6, 'entry-1', { status: 'completed' });
+    expect(mockUpdateMediaProgress).toHaveBeenNthCalledWith(1, 3, 5, 'existing-item');
+    expect(mockUpdateMediaProgress).toHaveBeenNthCalledWith(2, 3, 5, 'existing-item');
   });
 
   it('preserves existing entry store state when updating entries', () => {
@@ -131,5 +165,22 @@ describe('homeUploadSyncOrchestration', () => {
       isLoading: true,
     });
     expect(nextState.entries[0].syncStatus).toBe('uploading');
+  });
+
+  it('still reports monitor events when active run is absent', () => {
+    mockActiveRun = null;
+    const orchestration = createHomeUploadSyncOrchestration({
+      setEntryState: mockSetState,
+      refreshCloudSyncIndicator: mockRefreshCloudSyncIndicator,
+    });
+
+    orchestration.voiceCallbacks.onEntryUploading?.('entry-1');
+    orchestration.voiceCallbacks.onEntryPending?.('entry-1');
+    orchestration.photoCallbacks.onEntryPendingUpload?.('entry-1');
+
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(1, 'entry-1', { status: 'running' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(2, 'entry-1', { status: 'failed' });
+    expect(mockUpdateQueueItem).toHaveBeenNthCalledWith(3, 'entry-1', { status: 'failed' });
+    expect(mockUpdateMediaProgress).not.toHaveBeenCalled();
   });
 });
