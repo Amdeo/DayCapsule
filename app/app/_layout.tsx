@@ -26,6 +26,7 @@ import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedba
 import { runAppBootstrap } from '@/src/services/appBootstrapService';
 import { createCloudRecoveryRunner, handleAppStateChange } from '@/src/services/appLifecycleService';
 import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
+import { AppRestartingOverlay } from '@/src/components/AppRestartingOverlay';
 import { useEntryStore } from '@/src/store/entryStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
 
@@ -150,7 +151,12 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <>
+      <RootLayoutNav />
+      {needsRestart && <AppRestartingOverlay />}
+    </>
+  );
 }
 
 function RootLayoutNav() {
