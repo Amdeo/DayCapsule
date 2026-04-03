@@ -5,7 +5,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 
 /**
  * 应用文件目录路径
@@ -31,8 +31,6 @@ export interface MediaPaths {
   database: string;
 }
 
-const DEFAULT_SERVER_SCOPE = 'env_default';
-
 const getExistingEntrySize = (info: { exists: boolean; size?: number | null }): number =>
   info.exists && typeof info.size === 'number' ? info.size : 0;
 
@@ -55,18 +53,13 @@ const getAvailableDiskSpace = async (): Promise<number> => {
   }
 };
 
-const getCurrentServerScope = (): string => {
-  const serverUrl = getCurrentServerUrlSync();
-  return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
-};
-
 const joinDir = (baseDir: string, relativePath: string): string => `${baseDir}${relativePath}`;
 
 /**
  * 媒体存储路径配置
  */
 export const getMediaPaths = (): MediaPaths => {
-  const scope = getCurrentServerScope();
+  const scope = getCurrentDataScopeKeySync();
   const documentsBase = joinDir(MEDIA_DIRS.documents, `environments/${scope}/`);
   const cacheBase = joinDir(MEDIA_DIRS.cache, `environments/${scope}/`);
   const tempBase = joinDir(MEDIA_DIRS.temp, `environments/${scope}/`);
