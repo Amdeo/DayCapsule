@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Storage, withScope } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKey } from '@/src/services/workspaceService';
 
 export type InitialSyncState =
   | 'idle'
@@ -62,8 +62,8 @@ const DEFAULT_SYNC_STATE = {
 };
 
 const getScopedSyncKey = async (key: string): Promise<string> => {
-  const serverUrl = await getCurrentServerUrl();
-  return withScope(getServerKey(serverUrl), key);
+  const scope = await getCurrentDataScopeKey();
+  return withScope(scope, key);
 };
 
 const parseNumber = (raw: string | null): number | null => {
