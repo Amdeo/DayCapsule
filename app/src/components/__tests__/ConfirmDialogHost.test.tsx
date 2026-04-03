@@ -48,10 +48,23 @@ describe('ConfirmDialogHost', () => {
     });
   });
 
-  it('renders nothing when the store has no current request', () => {
+  it('renders nothing when hidden', () => {
     const screen = render(<ConfirmDialogHost />);
 
     expect(screen.queryByTestId('confirm-dialog-host-action-0')).toBeNull();
+  });
+
+  it('renders after the store shows a dialog request', () => {
+    const screen = render(<ConfirmDialogHost />);
+
+    act(() => {
+      useConfirmDialogStore.getState().show({
+        title: '删除回忆',
+        actions: [{ label: '删除', role: 'danger' }],
+      });
+    });
+
+    expect(screen.getByText('删除回忆')).toBeTruthy();
   });
 
   it('dismisses the current request before running the wrapped action', async () => {
@@ -80,6 +93,19 @@ describe('ConfirmDialogHost', () => {
     expect(screen.queryByText('删除回忆')).toBeNull();
   });
 
+  it('closes after dismiss is triggered', () => {
+    useConfirmDialogStore.getState().show({
+      title: '删除回忆',
+      actions: [{ label: '取消', role: 'secondary' }],
+    });
+
+    const screen = render(<ConfirmDialogHost />);
+    fireEvent.press(screen.getByTestId('confirm-dialog-host-dismiss'));
+
+    expect(useConfirmDialogStore.getState().current).toBeNull();
+    expect(screen.queryByText('删除回忆')).toBeNull();
+  });
+
   it('dismisses and logs when a wrapped async action rejects', async () => {
     const actionError = new Error('delete failed');
     useConfirmDialogStore.getState().show({
@@ -102,6 +128,34 @@ describe('ConfirmDialogHost', () => {
     ).resolves.toBeUndefined();
 
     expect(useConfirmDialogStore.getState().current).toBeNull();
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      '[ConfirmDialogHost] dialog action failed:',
+      actionError
+    );
+  });
+
+  it('dismisses before logging when a wrapped action throws synchronously', async () => {
+    const actionError = new Error('delete sync failed');
+    const actionSpy = jest.fn(() => {
+      expect(useConfirmDialogStore.getState().current).toBeNull();
+      throw actionError;
+    });
+    useConfirmDialogStore.getState().show({
+      title: '删除回忆',
+      actions: [{ label: '删除', role: 'danger', onPress: actionSpy }],
+    });
+
+    const screen = render(<ConfirmDialogHost />);
+
+    await expect(
+      act(async () => {
+        fireEvent.press(screen.getByTestId('confirm-dialog-host-action-0'));
+      })
+    ).resolves.toBeUndefined();
+
+    expect(actionSpy).toHaveBeenCalledTimes(1);
+    expect(useConfirmDialogStore.getState().current).toBeNull();
+    expect(screen.queryByText('删除回忆')).toBeNull();
     expect(mockLoggerError).toHaveBeenCalledWith(
       '[ConfirmDialogHost] dialog action failed:',
       actionError

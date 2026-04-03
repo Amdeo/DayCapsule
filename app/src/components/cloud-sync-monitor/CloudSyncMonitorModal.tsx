@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import type {
   ActiveSyncRun,
   LastSyncRunSummary,
@@ -306,7 +306,7 @@ export function CloudSyncMonitorModal({
             </Pressable>
           </View>
 
-          <View>{content}</View>
+          <ScrollView showsVerticalScrollIndicator={false}>{content}</ScrollView>
         </View>
       </View>
     </Modal>

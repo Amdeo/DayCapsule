@@ -3,6 +3,7 @@ import { render, waitFor } from '@testing-library/react-native';
 
 const mockFeedbackHost = jest.fn(() => null);
 const mockCloudSyncMonitorHost = jest.fn(() => null);
+const mockConfirmDialogHost = jest.fn(() => null);
 const mockRunAppBootstrap = jest.fn(async () => undefined);
 const mockShowErrorFeedback = jest.fn();
 const mockShouldBackup = jest.fn(async () => false);
@@ -120,6 +121,10 @@ jest.mock('@/src/components/FeedbackHost', () => ({
 
 jest.mock('@/src/components/cloud-sync-monitor/CloudSyncMonitorHost', () => ({
   CloudSyncMonitorHost: () => mockCloudSyncMonitorHost(),
+}));
+
+jest.mock('@/src/components/ConfirmDialogHost', () => ({
+  ConfirmDialogHost: () => mockConfirmDialogHost(),
 }));
 
 jest.mock('@/src/components/Timeline.v2', () => ({
@@ -320,7 +325,7 @@ describe('runtime regression guards', () => {
     mockIsICloudAvailable.mockReturnValue(true);
   });
 
-  it('keeps the app layout root shell renderable inside the gesture handler wrapper', async () => {
+  it('renders the global overlay hosts from the root layout', async () => {
     const screen = render(React.createElement(RootLayout));
 
     await waitFor(() => {
@@ -329,6 +334,8 @@ describe('runtime regression guards', () => {
 
     expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
     expect(mockFeedbackHost).toHaveBeenCalled();
+    expect(mockCloudSyncMonitorHost).toHaveBeenCalled();
+    expect(mockConfirmDialogHost).toHaveBeenCalled();
   });
 
   it('consumes SyncService through the backup page runtime path', async () => {

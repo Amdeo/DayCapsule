@@ -1,6 +1,13 @@
+const mockAlertAlert = jest.fn();
 const mockShowConfirmDialog = jest.fn();
 const mockRepair = jest.fn(async () => undefined);
 const mockInjectRepairPending = jest.fn(async () => undefined);
+
+jest.mock('react-native', () => ({
+  Alert: {
+    alert: (...args: unknown[]) => mockAlertAlert(...args),
+  },
+}));
 
 jest.mock('../showConfirmDialog', () => ({
   showConfirmDialog: (...args: unknown[]) => mockShowConfirmDialog(...args),
@@ -31,7 +38,13 @@ function getActions() {
 
 async function pressAction(label: string) {
   const actions = getActions();
-  await actions.find((action: { label?: string }) => action.label === label)?.onPress?.();
+  const action = actions.find((candidate: { label?: string }) => candidate.label === label);
+
+  if (!action?.onPress) {
+    throw new Error(`Action not found: ${label}`);
+  }
+
+  await action.onPress();
 }
 
 describe('showPhotoRepairPrompt', () => {
@@ -83,11 +96,12 @@ describe('showPhotoRepairPrompt', () => {
     process.env.EXPO_PUBLIC_E2E_SYNC_LAB = originalE2ESyncLab;
   });
 
-  it('shows the repair confirmation prompt for the first repairable issue', () => {
+  it('must route the repair prompt through showConfirmDialog instead of Alert.alert', () => {
     useMediaRepairStore.getState().replaceIssues([issue]);
 
     showPhotoRepairPrompt();
 
+    expect(mockAlertAlert).not.toHaveBeenCalled();
     expect(mockShowConfirmDialog).toHaveBeenCalledTimes(1);
     const [request] = mockShowConfirmDialog.mock.calls[0] ?? [];
     expect(request).toEqual(expect.objectContaining({
