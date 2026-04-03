@@ -2,6 +2,7 @@ import type { Entry, MediaInfo } from '@/src/types/entry';
 import type { PhotoUploadQueueDeps } from '@/src/services/photoUploadQueue';
 import type { VoiceUploadQueueDeps } from '@/src/services/voiceUploadQueue';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 import { useEntryStore } from '@/src/store/entryStore';
 import { logger } from '@/src/utils/logger';
 
@@ -28,6 +29,27 @@ function updateEntryState(
     entries: state.entries.map((entry) => (entry.id === id ? updater(entry) : entry)),
   }));
   refreshCloudSyncIndicator(deps.refreshCloudSyncIndicator);
+}
+
+function updateMonitorQueueStatus(
+  id: string,
+  status: 'running' | 'failed' | 'completed'
+): void {
+  useCloudSyncMonitorStore.getState().updateQueueItem(id, { status });
+}
+
+function incrementMonitorMediaProgress(): void {
+  const monitor = useCloudSyncMonitorStore.getState();
+  const { activeRun } = monitor;
+  if (!activeRun) {
+    return;
+  }
+
+  monitor.updateMediaProgress(
+    activeRun.mediaProgress.completed + 1,
+    activeRun.mediaProgress.total,
+    activeRun.mediaProgress.currentItemTitle
+  );
 }
 
 export interface HomeUploadSyncOrchestration {
@@ -57,23 +79,31 @@ export function createHomeUploadSyncOrchestration(
     voiceCallbacks: {
       onEntryUploading: (id) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'uploading' }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'running');
       },
       onEntryPending: (id) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending_upload' }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'failed');
       },
       onEntryPendingSync: (id, entry) => {
         updateEntryState(id, (item) => ({ ...item, syncStatus: 'pending', media: entry.media }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'completed');
+        incrementMonitorMediaProgress();
       },
     },
     photoCallbacks: {
       onEntryUploading: (id) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'uploading' }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'running');
       },
       onEntryPendingUpload: (id) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending_upload' }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'failed');
       },
       onEntryPendingSync: (id, media: MediaInfo[]) => {
         updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending', media }), resolvedDeps);
+        updateMonitorQueueStatus(id, 'completed');
+        incrementMonitorMediaProgress();
       },
     },
   };

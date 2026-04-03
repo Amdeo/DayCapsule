@@ -3,7 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { Timeline } from '../../Timeline.v2';
 
 let mockUiState: 'hidden' | 'synced' | 'pending' | 'failed' | 'syncing' = 'hidden';
-const mockShowCloudSyncStatusAlert = jest.fn();
+const mockShowCloudSyncMonitor = jest.fn();
 const mockFilterUiState = {
   searchQuery: '',
   filterType: 'all' as const,
@@ -52,8 +52,8 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
     selector({ uiState: mockUiState }),
 }));
 
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: () => mockShowCloudSyncStatusAlert(),
+jest.mock('@/src/services/showCloudSyncMonitor', () => ({
+  showCloudSyncMonitor: () => mockShowCloudSyncMonitor(),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -127,7 +127,7 @@ describe('Timeline home cloud sync status', () => {
     ['failed', 'cloud-sync-dot-failed'],
     ['syncing', 'cloud-sync-spinner'],
   ] as const)(
-    'renders the %s cloud sync state in the timeline header and opens the status alert',
+    'renders the %s cloud sync state in the timeline header and opens the sync monitor',
     (uiState, indicatorTestId) => {
       mockUiState = uiState;
       const screen = render(<Timeline />);
@@ -136,7 +136,7 @@ describe('Timeline home cloud sync status', () => {
       expect(screen.getByTestId(indicatorTestId)).toBeTruthy();
 
       fireEvent.press(screen.getByTestId('cloud-sync-button'));
-      expect(mockShowCloudSyncStatusAlert).toHaveBeenCalledTimes(1);
+      expect(mockShowCloudSyncMonitor).toHaveBeenCalledTimes(1);
     }
   );
 

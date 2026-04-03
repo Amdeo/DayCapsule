@@ -20,6 +20,7 @@ import { useSyncStore } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { FeedbackHost } from '@/src/components/FeedbackHost';
 import { ConfirmDialogHost } from '@/src/components/ConfirmDialogHost';
+import { CloudSyncMonitorHost } from '@/src/components/cloud-sync-monitor/CloudSyncMonitorHost';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { buildAppInitializationFailedFeedback } from '@/src/services/errorFeedbackPresets';
 import { runAppBootstrap } from '@/src/services/appBootstrapService';
@@ -148,6 +149,7 @@ function RootLayoutNav() {
               </Stack>
               <FeedbackHost />
               <ConfirmDialogHost />
+              <CloudSyncMonitorHost />
             </>
           </ThemeProvider>
         </ErrorBoundary>

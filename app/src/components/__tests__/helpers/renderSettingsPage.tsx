@@ -277,8 +277,8 @@ jest.mock('@/src/services/e2eSyncLabService', () => ({
   })),
 }));
 
-jest.mock('@/src/services/showCloudSyncStatusAlert', () => ({
-  showCloudSyncStatusAlert: jest.fn(async () => {
+jest.mock('@/src/services/showCloudSyncMonitor', () => ({
+  showCloudSyncMonitor: jest.fn(async () => {
     const snapshot = await mockCloudSyncService.getStatus();
     return mockShowCloudSyncStatusAlert(snapshot);
   }),
@@ -483,7 +483,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
       backend: mockBackendState,
       showConfirmDialog: mockShowConfirmDialog,
       showErrorFeedback: mockShowErrorFeedback,
-      showCloudSyncStatusAlert: mockShowCloudSyncStatusAlert,
+      showCloudSyncMonitor: mockShowCloudSyncStatusAlert,
       showSyncRepairPrompt: mockShowSyncRepairPrompt,
       switchBackendEnvironment: mockSwitchBackendEnvironment,
       clearLocalAppData: mockClearLocalAppData,
