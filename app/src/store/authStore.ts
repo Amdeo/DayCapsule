@@ -51,6 +51,7 @@ const getAuthKeys = async () => {
   const serverUrl = await getCurrentServerUrl();
   const activeRef = await getActiveAccountRef();
   if (!activeRef?.userId) {
+    logger.warn('[authStore] getAuthKeys: 无 activeRef，使用 server-scoped fallback');
     const scope = getServerKey(serverUrl ?? '');
     return {
       tokenKey: withScope(scope, 'auth:token'),
@@ -129,7 +130,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     await Storage.delete('accounts:active');
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
-    await clearTokens();
     await clearWorkspaceUserId();
     useAppLifecycleStore.getState().triggerRestart();
     logger.log('✅ 已退出登录');
@@ -189,6 +189,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const currentServerUrl = await getCurrentServerUrl();
     if (serverUrl !== currentServerUrl) {
+      // 先清旧 server 的 workspace userId，再切换服务器
+      await clearWorkspaceUserId();
       await setCurrentServerUrl(serverUrl);
     }
 
