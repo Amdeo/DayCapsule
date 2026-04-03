@@ -39,9 +39,8 @@ export async function runAppBootstrap(
       VoiceService.initializeAudio().then(() => logger.log('✅ 音频系统初始化成功')),
     ]);
 
-    await migrateAuthKeysToUserScoped().catch((e) => {
-      logger.warn('⚠️ auth key 迁移失败（不影响启动）:', e);
-    });
+    await migrateAuthKeysToUserScoped();
+    logger.log('✅ auth key 迁移检查完成');
 
     await useAuthStore.getState().loadAuth();
     logger.log('✅ 认证状态已加载');
@@ -155,6 +154,7 @@ export async function runAppBootstrap(
     const protectedScopes = registeredAccounts.map((a) => buildDataScopeKey(a.serverUrl, a.userId));
     const currentScope = getCurrentDataScopeKeySync();
     if (currentScope !== 'local' && !protectedScopes.includes(currentScope)) {
+      logger.warn('[bootstrap] currentScope 不在注册账号列表中，追加保护:', currentScope);
       protectedScopes.push(currentScope);
     }
     await cleanupOrphanWorkspaces(protectedScopes).catch((e) => {

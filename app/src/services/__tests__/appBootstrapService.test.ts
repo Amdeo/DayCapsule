@@ -316,4 +316,42 @@ describe('runAppBootstrap', () => {
     expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传照片失败:', photoError);
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
   });
+
+  it('calls migrateAuthKeysToUserScoped before loadAuth', async () => {
+    const { migrateAuthKeysToUserScoped } = jest.requireMock('@/src/services/accountRegistryService') as {
+      migrateAuthKeysToUserScoped: jest.Mock;
+    };
+
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
+
+    expect(migrateAuthKeysToUserScoped).toHaveBeenCalledTimes(1);
+    expect(migrateAuthKeysToUserScoped.mock.invocationCallOrder[0]).toBeLessThan(
+      mockLoadAuth.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('passes registered account scopes to cleanupOrphanWorkspaces', async () => {
+    const { getRegisteredAccounts } = jest.requireMock('@/src/services/accountRegistryService') as {
+      getRegisteredAccounts: jest.Mock;
+    };
+    const { cleanupOrphanWorkspaces } = jest.requireMock('@/src/services/workspaceCleanupService') as {
+      cleanupOrphanWorkspaces: jest.Mock;
+    };
+    const { getCurrentDataScopeKeySync } = jest.requireMock('@/src/services/workspaceService') as {
+      getCurrentDataScopeKeySync: jest.Mock;
+    };
+
+    getRegisteredAccounts.mockResolvedValueOnce([
+      { serverUrl: 'https://api.example.com', userId: 'user-1' },
+      { serverUrl: 'https://api.example.com', userId: 'user-2' },
+    ]);
+    getCurrentDataScopeKeySync.mockReturnValueOnce('local');
+
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
+
+    expect(cleanupOrphanWorkspaces).toHaveBeenCalledTimes(1);
+    const calledScopes: string[] = cleanupOrphanWorkspaces.mock.calls[0][0];
+    expect(calledScopes).toContain('https://api.example.com/user-1');
+    expect(calledScopes).toContain('https://api.example.com/user-2');
+  });
 });

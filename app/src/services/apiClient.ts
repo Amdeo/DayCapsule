@@ -163,6 +163,8 @@ export function createApiClient(baseURL: string): ApiClient {
 
   const refreshToken = async (): Promise<boolean> => {
     try {
+      // 注意：两次 getScopedAuthKey 调用基于当前的 accounts:active 快照
+      // 在刷新过程中若账号切换，理论上存在写入不同 key 的风险（概率极低）
       const refreshTokenKey = getScopedAuthKey('auth:refreshToken');
       const tokenKey = getScopedAuthKey('auth:token');
       const rt = await Storage.getString(refreshTokenKey);
