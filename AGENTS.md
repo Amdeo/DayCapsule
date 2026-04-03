@@ -1,7 +1,7 @@
 # 智能体说明
 
 ## 流程要求
-- 所有使用 `brainstorming` 技能的需求，默认调用 `superpowers` 中创建 `worktree` 的流程，所有修改都在 `worktree` 中实现
+- 小问题，不要触发 superpowers，所有使用 `brainstorming` 技能的需求，默认调用 `superpowers` 中创建 `worktree` 的流程，所有修改都在 `worktree` 中实现
 - superpowers 流程中设计执行过程中，考虑使用多 subagent 并行
 
 ## 编码规范

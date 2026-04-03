@@ -3,7 +3,7 @@
 此文档为 AI 助手提供项目关键上下文。详细内容见下方文档索引。
 
 ## Process Requirements
-- 所有走brainstorming技能的需求，默认调用 superpowers中创建 worktree的技能,所有修改在 worktree 中实现
+- 小问题，不要触发 superpowers，其他所有走brainstorming技能的需求，默认调用 superpowers中创建 worktree的技能,所有修改在 worktree 中实现
 
 ## Agent 友好编码规则
 
