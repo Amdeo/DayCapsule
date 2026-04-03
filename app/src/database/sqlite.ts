@@ -5,21 +5,16 @@
 
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 
 const DB_NAME_PREFIX = 'MemoryCapsule';
-const DEFAULT_SERVER_SCOPE = 'env_default';
 
 // 单例连接，避免每次调用重复打开
 let _db: SQLiteDatabase | null = null;
 let _dbName: string | null = null;
 
-const getCurrentServerScope = (): string => {
-  const serverUrl = getCurrentServerUrlSync();
-  return serverUrl ? getServerKey(serverUrl) : DEFAULT_SERVER_SCOPE;
-};
-
-export const getDatabaseName = (): string => `${DB_NAME_PREFIX}-${getCurrentServerScope()}.db`;
+export const getDatabaseName = (): string =>
+  `${DB_NAME_PREFIX}-${getCurrentDataScopeKeySync()}.db`;
 
 export const resetDatabase = (): void => {
   _db = null;
