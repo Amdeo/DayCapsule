@@ -218,6 +218,44 @@ func (r *MediaRepository) deleteByEntryID(execer entryMediaExecer, userID, entry
 	return err
 }
 
+func (r *MediaRepository) FindByUserAndHash(userID, hash string) (*models.MediaFile, error) {
+	query := `
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
+		       sha256, width, height, validation_status, validation_error, validated_at,
+		       client_local_media_id, client_persisted_hash, upload_trace_id, created_at
+		FROM media_files
+		WHERE user_id = ? AND sha256 = ?
+		LIMIT 1
+	`
+	mediaFile, err := scanMediaFile(r.db.QueryRow(query, userID, hash))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return mediaFile, nil
+}
+
+func (r *MediaRepository) FindByUserAndTraceID(userID, traceID string) (*models.MediaFile, error) {
+	query := `
+		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
+		       sha256, width, height, validation_status, validation_error, validated_at,
+		       client_local_media_id, client_persisted_hash, upload_trace_id, created_at
+		FROM media_files
+		WHERE user_id = ? AND upload_trace_id = ?
+		LIMIT 1
+	`
+	mediaFile, err := scanMediaFile(r.db.QueryRow(query, userID, traceID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return mediaFile, nil
+}
+
 func (r *MediaRepository) FindByUserIDAndFilename(userID, filename string) (*models.MediaFile, error) {
 	query := `
 		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,

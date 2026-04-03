@@ -27,6 +27,8 @@ type mediaStore interface {
 	) (*models.MediaFile, error)
 	GetByID(mediaID string) (*models.MediaFile, error)
 	Delete(userID, mediaID string) error
+	FindByUserAndHash(userID, hash string) (*models.MediaFile, error)
+	FindByUserAndTraceID(userID, traceID string) (*models.MediaFile, error)
 }
 
 type MediaHandler struct {
@@ -106,6 +108,32 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "failed to validate uploaded media"},
+		})
+		return
+	}
+
+	// Dedup: traceID 优先（最精确），再用 hash 兜底
+	var existing *models.MediaFile
+	if uploadMetadata.TraceID != "" {
+		existing, _ = h.mediaRepo.FindByUserAndTraceID(userID, uploadMetadata.TraceID)
+	}
+	if existing == nil && validationResult.SHA256 != "" {
+		existing, _ = h.mediaRepo.FindByUserAndHash(userID, validationResult.SHA256)
+	}
+	if existing != nil {
+		_ = os.Remove(storagePath)
+		middleware.SetAccessLogField(c, "upload.dedup", "true")
+		middleware.SetAccessLogField(c, "upload.mediaId", existing.ID)
+		middleware.SetAccessLogField(c, "upload.validationStatus", existing.ValidationStatus)
+		c.JSON(http.StatusCreated, gin.H{
+			"success": true,
+			"data": gin.H{
+				"id":               existing.ID,
+				"url":              fmt.Sprintf("/api/media/%s", existing.ID),
+				"remoteHash":       existing.SHA256,
+				"validationStatus": existing.ValidationStatus,
+				"validationError":  existing.ValidationError,
+			},
 		})
 		return
 	}
