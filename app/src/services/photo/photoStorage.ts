@@ -186,11 +186,6 @@ export function getPreferredPhotoUri(
 ): string {
   const candidates = buildPhotoUriCandidates(media, kind);
   const selectedUri = candidates[0] ?? '';
-  logger.log('[photoService] preferred photo uri', {
-    kind,
-    candidates,
-    selectedUri,
-  });
   return selectedUri;
 }
 
@@ -207,22 +202,10 @@ export function getFallbackPhotoUri(
 
   if (failedIndex >= 0) {
     const selectedUri = candidates[failedIndex + 1] ?? null;
-    logger.log('[photoService] fallback photo uri', {
-      kind,
-      failedUri: normalizedFailedUri,
-      candidates,
-      selectedUri,
-    });
     return selectedUri;
   }
 
   const selectedUri = candidates[0] ?? null;
-  logger.log('[photoService] fallback photo uri', {
-    kind,
-    failedUri: normalizedFailedUri,
-    candidates,
-    selectedUri,
-  });
   return selectedUri;
 }
 

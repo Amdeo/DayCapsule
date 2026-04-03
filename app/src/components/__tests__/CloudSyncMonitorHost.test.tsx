@@ -9,18 +9,20 @@ jest.mock('@/src/store/syncStore', () => {
   return {
     useSyncStore: create(() => ({
       lastSyncError: null,
+      lastMediaValidationSummary: null,
     })),
   };
 });
 
 jest.mock('../cloud-sync-monitor/CloudSyncMonitorModal', () => ({
-  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, lastSyncError, onDismiss }: any) => {
+  CloudSyncMonitorModal: ({ activeRun, lastRunSummary, lastSyncError, mediaValidationStatus, onDismiss }: any) => {
     const { Pressable, Text, View } = require('react-native');
     return (
       <View testID="cloud-sync-monitor-modal">
         <Text>{activeRun ? activeRun.runId : 'no-active-run'}</Text>
         <Text>{lastRunSummary ? lastRunSummary.runId : 'no-summary'}</Text>
         <Text>{lastSyncError ?? 'no-error'}</Text>
+        <Text>{mediaValidationStatus ?? 'no-validation'}</Text>
         <Pressable testID="cloud-sync-monitor-dismiss" onPress={onDismiss}>
           <Text>关闭</Text>
         </Pressable>

@@ -29,14 +29,6 @@ export function useEntryCardAudio({
   const [playbackPosition, setPlaybackPosition] = useState(0);
 
   useEffect(() => {
-    logger.log(
-      '[EntryCard] currentPlayingId changed:',
-      currentPlayingId,
-      'myId:',
-      entry.id,
-      'isPlayingAudio:',
-      isPlayingAudio,
-    );
     if (currentPlayingId !== entry.id && isPlayingAudio) {
       logger.log('[EntryCard] resetting card', entry.id);
       setIsPlayingAudio(false);

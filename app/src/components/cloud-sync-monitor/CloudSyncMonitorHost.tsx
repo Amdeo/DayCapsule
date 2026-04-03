@@ -9,6 +9,7 @@ export function CloudSyncMonitorHost() {
   const lastRunSummary = useCloudSyncMonitorStore((state) => state.lastRunSummary);
   const hide = useCloudSyncMonitorStore((state) => state.hide);
   const lastSyncError = useSyncStore((state) => state.lastSyncError);
+  const lastMediaValidationSummary = useSyncStore((state) => state.lastMediaValidationSummary);
 
   if (!isVisible) {
     return null;
@@ -19,6 +20,7 @@ export function CloudSyncMonitorHost() {
       activeRun={activeRun}
       lastRunSummary={lastRunSummary}
       lastSyncError={lastSyncError}
+      mediaValidationStatus={lastMediaValidationSummary?.status ?? null}
       onDismiss={hide}
     />
   );

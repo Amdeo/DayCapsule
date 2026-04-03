@@ -112,13 +112,6 @@ async function ensureCachedFile(
   await ensureDir(targetDir);
   const info = await FileSystem.getInfoAsync(targetUri);
   if (info.exists) {
-    logger.log('[mediaCache] cache hit', {
-      remoteUri,
-      normalizedUri: normalized,
-      targetUri,
-      kind,
-      variant,
-    });
     return targetUri;
   }
 
@@ -210,15 +203,7 @@ export class MediaCacheService {
 
   static async hydrateEntry(entry: Entry): Promise<Entry> {
     if (!entry.media?.length) return entry;
-    const before = entry.type === 'photo' ? summarizePhotoMediaForDebug(entry.media) : null;
     const hydratedMedia = await Promise.all(entry.media.map((media) => hydrateMedia(entry.type, media)));
-    if (entry.type === 'photo') {
-      logger.log('[mediaCache] photo hydrate summary', {
-        entryId: entry.id,
-        before,
-        after: summarizePhotoMediaForDebug(hydratedMedia),
-      });
-    }
     return { ...entry, media: hydratedMedia };
   }
 

@@ -107,11 +107,6 @@ export const getEntriesPage = async (
       [...params, limit]
     );
     const entries = result.map(rowToEntry);
-    entries
-      .filter((entry) => entry.type === 'photo' && (entry.media?.length ?? 0) > 0)
-      .forEach((entry) => {
-        logger.log('[db:getEntriesPage] photo media snapshot', summarizePhotoMediaForDebug(entry));
-      });
     return entries;
   } catch (error) {
     logger.error('Failed to get entries page:', error);

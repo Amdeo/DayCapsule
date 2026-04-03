@@ -35,7 +35,7 @@ const baseSummary: LastSyncRunSummary = {
 describe('CloudSyncMonitorModal', () => {
   it('renders the idle state when there is no active run or summary', () => {
     const screen = render(
-      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} onDismiss={jest.fn()} />
+      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} mediaValidationStatus={null} onDismiss={jest.fn()} />
     );
 
     expect(screen.getByText('当前没有正在执行的云同步')).toBeTruthy();
@@ -48,6 +48,7 @@ describe('CloudSyncMonitorModal', () => {
         activeRun={baseActiveRun}
         lastRunSummary={null}
         lastSyncError={null}
+        mediaValidationStatus={null}
         onDismiss={jest.fn()}
       />
     );
@@ -69,6 +70,7 @@ describe('CloudSyncMonitorModal', () => {
         activeRun={null}
         lastRunSummary={{ ...baseSummary, status: 'partial' }}
         lastSyncError={null}
+        mediaValidationStatus={null}
         onDismiss={jest.fn()}
       />
     );
@@ -96,6 +98,7 @@ describe('CloudSyncMonitorModal', () => {
           ],
         }}
         lastSyncError={null}
+        mediaValidationStatus={null}
         onDismiss={jest.fn()}
       />
     );
@@ -115,6 +118,7 @@ describe('CloudSyncMonitorModal', () => {
         activeRun={null}
         lastRunSummary={null}
         lastSyncError="Network request failed"
+        mediaValidationStatus={null}
         onDismiss={jest.fn()}
       />
     );
@@ -124,10 +128,25 @@ describe('CloudSyncMonitorModal', () => {
     expect(screen.getByText('Network request failed')).toBeTruthy();
   });
 
+  it('renders media validation partial warning in idle state', () => {
+    const screen = render(
+      <CloudSyncMonitorModal
+        activeRun={null}
+        lastRunSummary={null}
+        lastSyncError={null}
+        mediaValidationStatus="partial"
+        onDismiss={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('媒体校验未完全通过')).toBeTruthy();
+    expect(screen.getByText(/部分通过/)).toBeTruthy();
+  });
+
   it('dismisses from the footer action', () => {
     const onDismiss = jest.fn();
     const screen = render(
-      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} onDismiss={onDismiss} />
+      <CloudSyncMonitorModal activeRun={null} lastRunSummary={null} lastSyncError={null} mediaValidationStatus={null} onDismiss={onDismiss} />
     );
 
     fireEvent.press(screen.getByTestId('cloud-sync-monitor-dismiss'));
