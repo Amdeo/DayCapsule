@@ -8,6 +8,7 @@ jest.mock('@/src/utils/storage', () => ({
     getString: jest.fn().mockResolvedValue(null),
     setString: jest.fn().mockResolvedValue(undefined),
     delete: jest.fn().mockResolvedValue(undefined),
+    getObjectSync: jest.fn().mockReturnValue(null),
   },
   withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));

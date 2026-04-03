@@ -293,6 +293,27 @@ jest.mock('@/src/services/showPhotoRepairPrompt', () => ({
   showPhotoRepairPrompt: (...args: unknown[]) => mockShowSyncRepairPrompt(...args),
 }));
 
+jest.mock('@/src/services/accountRegistryService', () => ({
+  getRegisteredAccounts: jest.fn().mockResolvedValue([]),
+  getActiveAccountRef: jest.fn().mockResolvedValue(null),
+  getActiveAccountRefSync: jest.fn().mockReturnValue(null),
+  registerAccount: jest.fn().mockResolvedValue(undefined),
+  setActiveAccount: jest.fn().mockResolvedValue(undefined),
+  removeAccount: jest.fn().mockResolvedValue(undefined),
+  getUserAuthKeys: jest.fn().mockReturnValue({ tokenKey: 'token', refreshKey: 'refresh' }),
+  getAccountTokens: jest.fn().mockResolvedValue(null),
+  migrateAuthKeysToUserScoped: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../settings-page/useAccountSwitcher', () => ({
+  useAccountSwitcher: jest.fn(() => ({
+    accounts: [],
+    activeRef: null,
+    isSwitching: false,
+    handleSwitch: jest.fn(),
+  })),
+}));
+
 jest.mock('../../DetailPageShell', () => ({
   DetailPageShell: ({
     children,
