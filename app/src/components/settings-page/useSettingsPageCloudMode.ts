@@ -54,29 +54,21 @@ export function useSettingsPageCloudMode({
       const inspection = await bootstrap.inspectInitialState();
       const flow = bootstrap.buildInitialFlow(inspection);
 
-      if (flow.type === 'needs-decision') {
-        const shown = showConfirmDialog({
-          title: '数据同步',
-          dismissible: false,
-          message: `云端 ${flow.cloudCount} 条记录\n本地 ${flow.localCount} 条记录\n\n请选择数据来源：`,
-          actions: [
-            { label: '使用云端数据', role: 'primary', onPress: () => { void finishEnableCloud('cloud'); } },
-            { label: '上传本地数据', role: 'primary', onPress: () => { void finishEnableCloud('local'); } },
-            {
-              label: '取消',
-              role: 'secondary',
-              onPress: () => {
-                void setCloudMode(false);
-              },
-            },
-          ],
-        });
-        if (!shown) {
-          await setCloudMode(false);
-        }
+      if (flow.type === 'restoring' || flow.type === 'needs-decision') {
+        // 云端有数据 → 云端 wins，从云端恢复
+        await finishEnableCloud('cloud');
       } else {
-        const source = flow.type === 'restoring' ? 'cloud' : 'local';
-        await finishEnableCloud(source);
+        // 云端为空（backing-up 或 ready）→ 直接连接，后续新增内容自动同步
+        await useEntryStore.getState().loadEntries();
+        await setCloudMode(true);
+        await createCloudSyncService().syncNow().catch((error) => {
+          logger.warn('[Settings] 初次启用云同步后的首轮同步失败:', error);
+          showErrorFeedback({
+            title: '同步未完成',
+            message: '云同步已开启，但首次同步失败，请稍后重试。',
+            actions: [{ label: '知道了', role: 'primary' }],
+          });
+        });
       }
     } catch (e: unknown) {
       showErrorFeedback(buildCloudModeToggleFailedFeedback(e, '请检查网络连接'));
