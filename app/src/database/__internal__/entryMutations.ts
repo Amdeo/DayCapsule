@@ -1,3 +1,4 @@
+import type { SQLiteBindValue } from 'expo-sqlite';
 import { getDatabase } from '../sqlite';
 import type { Entry } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
@@ -132,7 +133,7 @@ export const updateEntry = async (id: string, updates: Partial<Entry>): Promise<
   try {
     const db = getDatabase();
     const fields: string[] = [];
-    const values: Array<string | number | null | undefined> = [];
+    const values: SQLiteBindValue[] = [];
     const normalizedTags = normalizeEntryTags(updates.tags);
 
     const columns = await getTableColumns(db);

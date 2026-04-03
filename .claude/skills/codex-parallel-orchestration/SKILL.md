@@ -44,16 +44,28 @@ digraph when_to_use {
 
 ## The Process
 
+### Phase 0：确认目标窗口（必须先做）
+
+在创建任何面板之前，先确认当前所在窗口，并询问用户希望在哪个窗口创建 codex 面板：
+
+```bash
+# 查看所有窗口和面板
+tmux list-windows -a
+tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{pane_id} #{pane_current_command}'
+```
+
+确认目标窗口后，列出该窗口现有面板，记录哪些是用户已有的（claude/zsh/ssh 等），绝对不操作已有面板。
+
 ### Phase 1：创建 tmux 面板
 
 ```bash
-# 查看当前面板 ID
-tmux list-panes -F '#{pane_index}: #{pane_id}'
+# 在目标窗口创建 N 个面板（均匀平铺）
+tmux split-window -t <session>:<window> -v
+tmux split-window -t <session>:<window> -v  # 重复直到 N 个面板
+tmux select-layout -t <session>:<window> tiled
 
-# 创建 N 个面板（均匀平铺）
-tmux split-window -v
-tmux split-window -v  # 重复直到 N 个面板
-tmux select-layout tiled
+# 确认新面板 ID
+tmux list-panes -t <session>:<window> -F '#{pane_index}: #{pane_id}'
 ```
 
 ### Phase 2：在每个面板启动交互式 codex
@@ -97,7 +109,8 @@ tmux send-keys -t %PANE_ID "" Enter
 1. 项目/工作目录绝对路径
 2. 完整需求描述（codex 可以读文件，但明确告知更快）
 3. 明确的修改范围（不要动哪些文件）
-4. 验证方式（运行哪些测试）
+4. **所有关联变更**（不只是主要替换，还要列出需要删除的无效 prop、需要更新的 import 等副作用）
+5. 验证方式（运行哪些测试）
 
 > **交互优势：** codex 运行中如需澄清会直接在面板输出问题，用户可随时切到该面板回答，codex 会继续执行。
 
@@ -124,15 +137,24 @@ npx jest               # 测试套件
 
 如有文件冲突，手动解决或派发修复 subagent。
 
-### Phase 6：清理
+### Phase 6：清理（必须执行）
+
+所有任务完成后，**立即关闭**所有 codex 面板，不留残余：
 
 ```bash
-# 关闭所有 codex 面板
+# 关闭所有 codex 面板（只关新建的，不要动用户原有面板）
 tmux kill-pane -t %PANE_1
 tmux kill-pane -t %PANE_2
+# ...
 ```
 
 ## Common Mistakes
+
+**❌ 没有先确认目标窗口就创建面板**
+直接 `tmux split-window` 会在当前活跃窗口创建，可能不是用户希望看到的窗口，也可能误操作用户已有的面板。应先 `tmux list-windows -a` 确认窗口结构，明确目标窗口后再操作。
+
+**❌ 向用户已有的 Claude/进程面板发送命令**
+创建面板前必须列出该窗口现有面板（`tmux list-panes -t <window>`），只向新建的空 zsh 面板发送 `codex`。
 
 **❌ 面板刚创建就发送任务**
 codex 需要几秒初始化。应先轮询确认出现 `›` 提示符，再发送任务。
@@ -159,6 +181,12 @@ codex 默认在 Claude 的 cwd 执行，描述中必须明确工作目录。
 
 **❌ 超过 4 个并行面板**
 面板太多，用户无法观察，系统资源压力大。
+
+**❌ 任务完成后未关闭 codex 面板**
+所有任务完成、结果验证后，必须立即 `tmux kill-pane` 关闭所有新建的 codex 面板，保持用户工作区整洁。只关自己新建的面板，不要动用户原有的面板。
+
+**❌ 任务描述中遗漏关联变更**
+例如替换 `TouchableOpacity` → `Pressable` 时，必须同时说明移除 `activeOpacity` prop；替换 import 时说明需要同步更新类型声明等。描述不完整会导致 TypeScript 报错需要额外修复轮次。
 
 ## Real Example
 
