@@ -19,17 +19,12 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
 }));
 
-jest.mock('@/src/services/backendEnvironmentService', () => ({
-  getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
-  getServerKey: jest.fn((url: string) =>
-    url === 'https://server-b.example.com'
-      ? 'env_https_server_b_example_com'
-      : 'env_https_server_a_example_com'
-  ),
+jest.mock('@/src/services/workspaceService', () => ({
+  getCurrentDataScopeKey: jest.fn().mockResolvedValue('env_https_server_a_example_com'),
 }));
 
 import { useSettingsStore } from '../settingsStore';
-import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKey } from '@/src/services/workspaceService';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
 const { Storage } = require('@/src/utils/storage');
@@ -51,7 +46,7 @@ const resetStore = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
+  (getCurrentDataScopeKey as jest.Mock).mockResolvedValue('env_https_server_a_example_com');
   resetStore();
 });
 
@@ -87,7 +82,7 @@ describe('loadSettings — photoHeight', () => {
   });
 
   it('loads values from the current backend environment only', async () => {
-    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-b.example.com');
+    (getCurrentDataScopeKey as jest.Mock).mockResolvedValue('env_https_server_b_example_com');
     Storage.getString.mockImplementation((key: string) => {
       if (key === scopedKey(SERVER_A_SCOPE, 'settings:photoHeight')) return Promise.resolve('compact');
       if (key === scopedKey(SERVER_B_SCOPE, 'settings:photoHeight')) return Promise.resolve('large');

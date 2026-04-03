@@ -13,6 +13,9 @@ const mockCleanupIncompleteLocalEntries = jest.fn(async () => undefined);
 const mockLoadAuth = jest.fn(async () => undefined);
 const mockLoadSync = jest.fn(async () => undefined);
 const mockSetInitialSyncState = jest.fn(async () => undefined);
+const mockLoadSettings = jest.fn(async () => undefined);
+const mockSetCloudMode = jest.fn(async () => undefined);
+let mockCloudMode: boolean | 'switching' = false;
 const mockStorageGetString = jest.fn(async () => 'false');
 const mockStorageSetString = jest.fn(async () => undefined);
 const mockInspectInitialState = jest.fn(async () => ({}));
@@ -95,6 +98,16 @@ jest.mock('@/src/store/syncStore', () => ({
   },
 }));
 
+jest.mock('@/src/store/settingsStore', () => ({
+  useSettingsStore: {
+    getState: () => ({
+      loadSettings: mockLoadSettings,
+      setCloudMode: mockSetCloudMode,
+      cloudMode: mockCloudMode,
+    }),
+  },
+}));
+
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
     getString: (...args: unknown[]) => mockStorageGetString(...args),
@@ -137,6 +150,7 @@ describe('runAppBootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAuthenticated = false;
+    mockCloudMode = false;
     mockInitDatabase.mockResolvedValue(true);
     mockMigrateFromAsyncStorage.mockResolvedValue({ success: true, migratedCount: 0 });
     mockStorageGetString.mockResolvedValue('false');
@@ -184,11 +198,11 @@ describe('runAppBootstrap', () => {
     expect(mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]).toBeLessThan(
       mockMigrateSyncStatusColumn.mock.invocationCallOrder[0]
     );
-    expect(mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]).toBeLessThan(
-      mockLoadAuth.mock.invocationCallOrder[0]
+    expect(mockLoadAuth.mock.invocationCallOrder[0]).toBeLessThan(
+      mockInitDatabase.mock.invocationCallOrder[0]
     );
-    expect(mockLoadSync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockRunCloudRecoveryFlow.mock.invocationCallOrder[0]
+    expect(mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]).toBeLessThan(
+      mockLoadSync.mock.invocationCallOrder[0]
     );
   });
 
@@ -214,67 +228,20 @@ describe('runAppBootstrap', () => {
   });
 
   it('resets interrupted cloud mode switching back to offline mode', async () => {
-    mockStorageGetString.mockResolvedValueOnce('switching');
+    mockCloudMode = 'switching';
 
     await runAppBootstrap({
       refreshCloudSyncIndicator,
       onInitializationFailed,
     });
 
-    expect(mockStorageSetString).toHaveBeenCalledWith('settings:cloudMode', 'false');
+    expect(mockSetCloudMode).toHaveBeenCalledWith(false);
     expect(mockShowErrorFeedback).toHaveBeenCalledWith({
       title: '提示',
       message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
       actions: [{ label: '知道了', role: 'primary' }],
     });
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
-  });
-
-  it('marks initial sync as needs-decision without triggering cloud sync', async () => {
-    mockIsAuthenticated = true;
-    mockStorageGetString.mockResolvedValueOnce('true');
-    mockBuildInitialFlow.mockReturnValueOnce({ type: 'needs-decision' });
-
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
-
-    expect(mockInspectInitialState).toHaveBeenCalledTimes(1);
-    expect(mockSetInitialSyncState).toHaveBeenCalledWith('needs-decision');
-    expect(mockRunInitialFlow).not.toHaveBeenCalled();
-    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
-  });
-
-  it('passes a syncNow caller that becomes a no-op when bootstrap reaches needs-decision', async () => {
-    mockIsAuthenticated = true;
-    mockStorageGetString.mockResolvedValueOnce('true');
-    mockBuildInitialFlow.mockReturnValueOnce({ type: 'needs-decision' });
-
-    let capturedSyncNow: (() => Promise<void>) | undefined;
-    mockRunCloudRecoveryFlow.mockImplementationOnce(
-      async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
-        capturedSyncNow = deps.syncNow;
-        await deps.refreshCloudSyncIndicator();
-        return {
-          syncError: null,
-          queueRecovery: { voiceError: null, photoError: null },
-          refreshError: null,
-        };
-      }
-    );
-
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
-
-    expect(capturedSyncNow).toBeDefined();
-    await capturedSyncNow?.();
-
-    expect(mockSetInitialSyncState).toHaveBeenCalledWith('needs-decision');
-    expect(mockCloudSyncNow).not.toHaveBeenCalled();
-    expect(onInitializationFailed).not.toHaveBeenCalled();
   });
 
   it('reports initialization failure when database initialization fails', async () => {

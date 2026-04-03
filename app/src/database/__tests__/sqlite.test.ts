@@ -5,26 +5,21 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseSync: (...args: unknown[]) => mockOpenDatabaseSync(...args),
 }));
 
-jest.mock('@/src/services/backendEnvironmentService', () => ({
-  getCurrentServerUrlSync: jest.fn(() => 'https://server-a.example.com'),
-  getServerKey: jest.fn((url: string) =>
-    url === 'https://server-b.example.com'
-      ? 'env_https_server_b_example_com'
-      : 'env_https_server_a_example_com'
-  ),
+jest.mock('@/src/services/workspaceService', () => ({
+  getCurrentDataScopeKeySync: jest.fn(() => 'env_https_server_a_example_com'),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
   logger: { log: jest.fn(), error: jest.fn() },
 }));
 
-import { getCurrentServerUrlSync } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { getDatabaseName, initDatabase, openDatabase, resetDatabase } from '../sqlite';
 
 describe('sqlite environment isolation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_a_example_com');
     mockOpenDatabaseSync.mockImplementation((name: string) => ({
       name,
       closeSync: jest.fn(),
@@ -64,7 +59,7 @@ describe('sqlite environment isolation', () => {
   it('reopens the database when backend environment changes', () => {
     const dbA = openDatabase();
 
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-b.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_b_example_com');
     const dbB = openDatabase();
 
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(1, 'MemoryCapsule-env_https_server_a_example_com.db');
@@ -75,7 +70,7 @@ describe('sqlite environment isolation', () => {
   it('switching environment should not synchronously close the previous database handle', () => {
     const dbA = openDatabase() as { closeSync?: jest.Mock };
 
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-b.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_b_example_com');
     openDatabase();
 
     expect(dbA.closeSync).not.toHaveBeenCalled();

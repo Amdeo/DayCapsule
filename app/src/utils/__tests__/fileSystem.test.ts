@@ -7,13 +7,8 @@ jest.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///cache/',
 }));
 
-jest.mock('@/src/services/backendEnvironmentService', () => ({
-  getCurrentServerUrlSync: jest.fn(() => 'https://server-a.example.com'),
-  getServerKey: jest.fn((url: string) =>
-    url === 'https://server-b.example.com'
-      ? 'env_https_server_b_example_com'
-      : 'env_https_server_a_example_com'
-  ),
+jest.mock('@/src/services/workspaceService', () => ({
+  getCurrentDataScopeKeySync: jest.fn(() => 'env_https_server_a_example_com'),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -21,13 +16,13 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import * as FileSystem from 'expo-file-system/legacy';
-import { getCurrentServerUrlSync } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { deleteFile, getDirectorySize, getFileInfo, getMediaPaths, getStorageStats } from '../fileSystem';
 
 describe('deleteFile', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_a_example_com');
   });
 
   it('returns the reported file size when file info includes size', async () => {
@@ -81,7 +76,7 @@ describe('deleteFile', () => {
   });
 
   it('updates media paths when backend environment changes', () => {
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-b.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_b_example_com');
 
     expect(getMediaPaths().voiceCompressed).toBe(
       'file:///cache/environments/env_https_server_b_example_com/media/voice/compressed/'
@@ -92,7 +87,7 @@ describe('deleteFile', () => {
 describe('getStorageStats', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getCurrentServerUrlSync as jest.Mock).mockReturnValue('https://server-a.example.com');
+    (getCurrentDataScopeKeySync as jest.Mock).mockReturnValue('env_https_server_a_example_com');
   });
 
   it('returns available disk bytes when Expo reports free storage', async () => {

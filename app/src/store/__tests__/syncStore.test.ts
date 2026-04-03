@@ -27,16 +27,11 @@ jest.mock('@/src/utils/storage', () => ({
   withScope: jest.fn((scope: string, key: string) => `${scope}:${key}`),
 }));
 
-jest.mock('@/src/services/backendEnvironmentService', () => ({
-  getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
-  getServerKey: jest.fn((url: string) =>
-    url === 'https://server-b.example.com'
-      ? 'env_https_server_b_example_com'
-      : 'env_https_server_a_example_com'
-  ),
+jest.mock('@/src/services/workspaceService', () => ({
+  getCurrentDataScopeKey: jest.fn().mockResolvedValue('env_https_server_a_example_com'),
 }));
 
-import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
+import { getCurrentDataScopeKey } from '@/src/services/workspaceService';
 
 const SERVER_A_SCOPE = 'env_https_server_a_example_com';
 const SERVER_B_SCOPE = 'env_https_server_b_example_com';
@@ -54,7 +49,7 @@ describe('syncStore', () => {
     (Storage.delete as jest.Mock).mockImplementation(async (key: string) => {
       mockStorage.delete(key);
     });
-    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
+    (getCurrentDataScopeKey as jest.Mock).mockResolvedValue('env_https_server_a_example_com');
     useSyncStore.setState({
       syncCursor: 0,
       lastSyncAt: null,
@@ -94,7 +89,7 @@ describe('syncStore', () => {
   });
 
   it('loads sync state from the current backend environment only', async () => {
-    (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-b.example.com');
+    (getCurrentDataScopeKey as jest.Mock).mockResolvedValue('env_https_server_b_example_com');
     (Storage.getString as jest.Mock).mockImplementation(async (key: string) => {
       switch (key) {
         case scopedKey(SERVER_A_SCOPE, 'cloudSync:cursor'):
