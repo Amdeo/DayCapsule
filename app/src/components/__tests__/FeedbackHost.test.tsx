@@ -46,30 +46,40 @@ describe('FeedbackHost', () => {
     });
   });
 
-  it('renders nothing when the store has no current feedback request', () => {
+  it('renders nothing when hidden', () => {
     const screen = render(<FeedbackHost />);
 
     expect(screen.queryByTestId('feedback-host-action-0')).toBeNull();
   });
 
-  it('renders the current feedback request from store state', () => {
-    useErrorFeedbackStore.getState().show({
-      title: '初始化失败',
-      message: '应用启动遇到问题，请重启应用。',
-      actions: [{ label: '知道了', role: 'primary' }],
-    });
-
+  it('renders after the store shows a feedback request', () => {
     const screen = render(<FeedbackHost />);
+
+    act(() => {
+      useErrorFeedbackStore.getState().show({
+        title: '初始化失败',
+        message: '应用启动遇到问题，请重启应用。',
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    });
 
     expect(screen.getByText('初始化失败')).toBeTruthy();
   });
 
   it('dismisses the current request before running the wrapped action', async () => {
-    const actionSpy = jest.fn();
+    const callOrder: string[] = [];
     useErrorFeedbackStore.getState().show({
       title: '网络异常',
       message: '请稍后重试',
-      actions: [{ label: '重试', role: 'primary', onPress: actionSpy }],
+      actions: [
+        {
+          label: '重试',
+          role: 'primary',
+          onPress: jest.fn(() => {
+            callOrder.push(useErrorFeedbackStore.getState().current ? 'action-before-dismiss' : 'dismissed');
+          }),
+        },
+      ],
     });
 
     const screen = render(<FeedbackHost />);
@@ -78,12 +88,12 @@ describe('FeedbackHost', () => {
       fireEvent.press(screen.getByTestId('feedback-host-action-0'));
     });
 
-    expect(actionSpy).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(['dismissed']);
     expect(useErrorFeedbackStore.getState().current).toBeNull();
     expect(screen.queryByText('网络异常')).toBeNull();
   });
 
-  it('dismisses the current request from the modal dismiss callback', () => {
+  it('closes after dismiss is triggered', () => {
     useErrorFeedbackStore.getState().show({
       title: '初始化失败',
       actions: [{ label: '知道了', role: 'primary' }],
@@ -93,6 +103,7 @@ describe('FeedbackHost', () => {
     fireEvent.press(screen.getByTestId('feedback-host-dismiss'));
 
     expect(useErrorFeedbackStore.getState().current).toBeNull();
+    expect(screen.queryByText('初始化失败')).toBeNull();
   });
 
   it('dismisses and logs when a wrapped action rejects', async () => {
@@ -117,6 +128,34 @@ describe('FeedbackHost', () => {
     ).resolves.toBeUndefined();
 
     expect(useErrorFeedbackStore.getState().current).toBeNull();
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      '[FeedbackHost] feedback action failed:',
+      actionError
+    );
+  });
+
+  it('dismisses before logging when a wrapped action throws synchronously', async () => {
+    const actionError = new Error('同步按钮同步抛错');
+    const actionSpy = jest.fn(() => {
+      expect(useErrorFeedbackStore.getState().current).toBeNull();
+      throw actionError;
+    });
+    useErrorFeedbackStore.getState().show({
+      title: '网络异常',
+      actions: [{ label: '重试', role: 'primary', onPress: actionSpy }],
+    });
+
+    const screen = render(<FeedbackHost />);
+
+    await expect(
+      act(async () => {
+        fireEvent.press(screen.getByTestId('feedback-host-action-0'));
+      })
+    ).resolves.toBeUndefined();
+
+    expect(actionSpy).toHaveBeenCalledTimes(1);
+    expect(useErrorFeedbackStore.getState().current).toBeNull();
+    expect(screen.queryByText('网络异常')).toBeNull();
     expect(mockLoggerError).toHaveBeenCalledWith(
       '[FeedbackHost] feedback action failed:',
       actionError

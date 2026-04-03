@@ -75,8 +75,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const closeLogin = React.useCallback(() => {
     setShowLogin(false);
     setLoginIntent(null);
-    useConfirmDialogStore.getState().dismiss();
-    useErrorFeedbackStore.getState().dismiss();
   }, []);
 
   const {
@@ -140,8 +138,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   }, [closeLogin, enableCloudMode, loginIntent]);
 
   const handleClose = React.useCallback(() => {
-    useConfirmDialogStore.getState().dismiss();
-    useErrorFeedbackStore.getState().dismiss();
     onClose();
   }, [onClose]);
 

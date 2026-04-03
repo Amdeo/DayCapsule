@@ -1,26 +1,38 @@
+const mockShow = jest.fn();
+const mockHide = jest.fn();
+const mockGetState = jest.fn(() => ({
+  show: mockShow,
+  hide: mockHide,
+}));
+
+jest.mock('@/src/store/cloudSyncMonitorStore', () => ({
+  useCloudSyncMonitorStore: {
+    getState: (...args: unknown[]) => mockGetState(...args),
+  },
+}));
+
 import { hideCloudSyncMonitor, showCloudSyncMonitor } from '../showCloudSyncMonitor';
-import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 
 describe('showCloudSyncMonitor', () => {
   beforeEach(() => {
-    useCloudSyncMonitorStore.setState({
-      activeRun: null,
-      lastRunSummary: null,
-      isVisible: false,
+    jest.clearAllMocks();
+    mockGetState.mockReturnValue({
+      show: mockShow,
+      hide: mockHide,
     });
   });
 
-  it('shows the cloud sync monitor', () => {
+  it('delegates showing to the cloud sync monitor store service contract', () => {
     showCloudSyncMonitor();
 
-    expect(useCloudSyncMonitorStore.getState().isVisible).toBe(true);
+    expect(mockShow).toHaveBeenCalledTimes(1);
+    expect(mockHide).not.toHaveBeenCalled();
   });
 
-  it('hides the cloud sync monitor', () => {
-    useCloudSyncMonitorStore.getState().show();
-
+  it('delegates hiding to the cloud sync monitor store service contract', () => {
     hideCloudSyncMonitor();
 
-    expect(useCloudSyncMonitorStore.getState().isVisible).toBe(false);
+    expect(mockHide).toHaveBeenCalledTimes(1);
+    expect(mockShow).not.toHaveBeenCalled();
   });
 });
