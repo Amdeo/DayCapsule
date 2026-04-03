@@ -1,178 +1,37 @@
+/**
+ * 云同步服务
+ * 负责本地与服务端之间的条目同步、冲突解决和媒体校验
+ */
+
 import { getApiClient, ApiError } from '@/src/services/apiClient';
 import * as DB from '@/src/database/operations';
 import type { Entry } from '@/src/types/entry';
 import { useMediaRepairStore } from '@/src/store/mediaRepairStore';
-import { useSyncStore, type InitialSyncState } from '@/src/store/syncStore';
+import { useSyncStore } from '@/src/store/syncStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
-import { createCloudMediaSyncService, type MediaValidationRun } from './cloudMediaSyncService';
+import { createCloudMediaSyncService } from './cloudMediaSyncService';
 import { showPhotoRepairPrompt } from './showPhotoRepairPrompt';
 import { logger } from '@/src/utils/logger';
 import { normalizeCloudMediaItem } from '@/src/utils/mediaUtils';
+import type { SyncStatus, SyncServiceApi, ServerEntryPayload, ServerChangePayload, ConflictPayload, SyncResponsePayload, SyncResult } from './sync/syncTypes';
+import {
+  parseTags,
+  parseMedia,
+  parseTimestamp,
+  buildChangeId,
+  mapEntryToServer,
+  hasRemoteMedia,
+  normalizeMediaValidationRun,
+} from './sync/syncSerializer';
+
+export type { SyncStatus, SyncServiceApi };
 
 const SYNC_BATCH_SIZE = 5;
-
-export interface SyncStatus {
-  lastSyncAt: number | null;
-  lastSyncError: string | null;
-  initialSyncState: InitialSyncState;
-  pendingEntries: number;
-  pendingUploads: number;
-  uploadingEntries: number;
-  failedEntries: number;
-  conflictCopies: number;
-}
-
-export interface SyncServiceApi {
-  syncNow: () => Promise<void>;
-  getStatus: () => Promise<SyncStatus>;
-}
-
-type SyncResult = {
-  changeId: string;
-  status: 'applied' | 'conflicted' | 'ignored';
-  entryId: string;
-};
-
-type ServerEntryPayload = {
-  id: string;
-  type: Entry['type'];
-  content?: string;
-  tags?: string[] | string | null;
-  media?: Entry['media'] | string | null;
-  recordingStatus?: Entry['recordingStatus'] | null;
-  recordingDuration?: number | null;
-  createdAt?: string;
-  updatedAt?: string;
-  syncStatus?: Entry['syncStatus'] | null;
-  userId?: string | null;
-};
-
-type ServerChangePayload = {
-  changeId: number;
-  op: 'create' | 'update' | 'delete';
-  entry: ServerEntryPayload;
-};
-
-type ConflictPayload = {
-  changeId: string;
-  entryId: string;
-  reason: string;
-  serverEntry: ServerEntryPayload;
-  clientEntry: ServerEntryPayload;
-};
-
-type SyncResponsePayload = {
-  newCursor: number;
-  results: SyncResult[];
-  serverChanges: ServerChangePayload[];
-  conflicts: ConflictPayload[];
-};
 
 let inFlightSync: Promise<void> | null = null;
 let pendingSyncRequested = false;
 let queuedSyncPromise: Promise<void> | null = null;
-
-function parseTags(tags: ServerEntryPayload['tags']): string[] {
-  if (Array.isArray(tags)) return tags;
-  if (typeof tags !== 'string' || tags.trim() === '') return [];
-
-  try {
-    const parsed = JSON.parse(tags);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function parseMedia(
-  media: ServerEntryPayload['media'],
-  fallback?: Entry['media']
-): NonNullable<Entry['media']> {
-  if (Array.isArray(media)) return media;
-  if (typeof media !== 'string' || media.trim() === '') return fallback ?? [];
-
-  try {
-    const parsed = JSON.parse(media);
-    return Array.isArray(parsed) ? parsed : (fallback ?? []);
-  } catch {
-    return fallback ?? [];
-  }
-}
-
-function parseTimestamp(raw?: string): number | undefined {
-  if (!raw) return undefined;
-  const parsed = Date.parse(raw);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function buildChangeId(entry: Entry): string {
-  const op = entry.syncOp === 'delete' || entry.syncStatus === 'pending_delete'
-    ? 'delete'
-    : (entry.syncOp ?? 'update');
-  const version = entry.updatedAt ?? entry.baseUpdatedAt ?? entry.timestamp;
-  return `${entry.id}:${op}:${version}`;
-}
-
-function mapEntryToServer(entry: Entry) {
-  return {
-    id: entry.id,
-    type: entry.type,
-    content: entry.content,
-    tags: JSON.stringify(entry.tags ?? []),
-    media: JSON.stringify(
-      (entry.media ?? []).map((item) => ({
-        ...item,
-        uri: item.remoteUri ?? item.uri,
-        thumbnail: item.remoteThumbnail ?? item.thumbnail,
-      }))
-    ),
-    recordingStatus: entry.recordingStatus ?? null,
-    recordingDuration: entry.recordingDuration ?? null,
-    createdAt: entry.timestamp ? new Date(entry.timestamp).toISOString() : undefined,
-    updatedAt: entry.updatedAt ? new Date(entry.updatedAt).toISOString() : undefined,
-    syncStatus: entry.syncStatus,
-  };
-}
-
-const REMOTE_URI_RE = /^(?:https?:\/\/|\/api\/media(?:\/|$))/i;
-
-function isRemoteMediaUri(uri: string | undefined): boolean {
-  return !!uri && REMOTE_URI_RE.test(uri);
-}
-
-function hasRemoteMedia(entry: Entry): boolean {
-  return (entry.media ?? []).some((media) =>
-    isRemoteMediaUri(media.remoteUri)
-    || isRemoteMediaUri(media.uri)
-    || isRemoteMediaUri(media.remoteThumbnail)
-    || isRemoteMediaUri(media.thumbnail)
-  );
-}
-
-function normalizeMediaValidationRun(
-  run: MediaValidationRun | undefined,
-  total: number
-): MediaValidationRun {
-  if (run?.summary) {
-    return run;
-  }
-
-  return {
-    summary: {
-      status: 'failed',
-      total,
-      downloaded: 0,
-      missing: 0,
-      failed: total,
-      suspect: 0,
-      repairable: 0,
-      lastError: 'Media validation returned no result',
-      lastValidatedAt: Date.now(),
-    },
-    issues: [],
-  };
-}
 
 export function createCloudSyncService(): SyncServiceApi {
   const api = getApiClient();
@@ -184,8 +43,7 @@ export function createCloudSyncService(): SyncServiceApi {
   };
 
   const collectPendingChanges = async () => {
-    const pending = await DB.getEntriesBySyncStatus(['pending', 'failed', 'pending_delete']);
-    return pending;
+    return DB.getEntriesBySyncStatus(['pending', 'failed', 'pending_delete']);
   };
 
   const mapServerEntryToLocal = async (serverEntry: ServerEntryPayload): Promise<Entry | null> => {
@@ -244,17 +102,13 @@ export function createCloudSyncService(): SyncServiceApi {
       const existing = await DB.getEntryById(entry.id);
 
       if (change.op === 'delete') {
-        if (existing) {
-          await DB.deleteEntry(entry.id);
-        }
+        if (existing) await DB.deleteEntry(entry.id);
         continue;
       }
 
       const mapped = await mapServerEntryToLocal(entry);
       if (!mapped) continue;
-      if (hasRemoteMedia(mapped)) {
-        mediaValidationEntries.push(mapped);
-      }
+      if (hasRemoteMedia(mapped)) mediaValidationEntries.push(mapped);
 
       if (existing) {
         await DB.updateEntry(entry.id, mapped);
@@ -308,7 +162,7 @@ export function createCloudSyncService(): SyncServiceApi {
     let currentCursor = syncCursor;
     const validationEntries: Entry[] = [];
     const batchStarts = pending.length > 0
-      ? Array.from({ length: Math.ceil(pending.length / SYNC_BATCH_SIZE) }, (_, index) => index * SYNC_BATCH_SIZE)
+      ? Array.from({ length: Math.ceil(pending.length / SYNC_BATCH_SIZE) }, (_, i) => i * SYNC_BATCH_SIZE)
       : [0];
 
     monitor.setPhase('sync-entries', 2);
@@ -322,7 +176,6 @@ export function createCloudSyncService(): SyncServiceApi {
         const changeId = buildChangeId(entry);
         batchPendingByChangeId.set(changeId, entry);
         batchPendingByEntryId.set(entry.id, entry);
-
         return {
           changeId,
           op: entry.syncOp === 'delete' || entry.syncStatus === 'pending_delete'
@@ -335,14 +188,14 @@ export function createCloudSyncService(): SyncServiceApi {
         };
       });
 
-      const body = {
+      const data = await api.post<SyncResponsePayload>('/sync', {
         cursor: currentCursor,
         deviceId: 'mobile',
         clientChanges,
-      };
+      });
 
-      const data = await api.post<SyncResponsePayload>('/sync', body);
-      const { appliedEntryIds: serverAppliedEntryIds, mediaValidationEntries } = await applyServerChanges(data.serverChanges ?? []);
+      const { appliedEntryIds: serverAppliedEntryIds, mediaValidationEntries } =
+        await applyServerChanges(data.serverChanges ?? []);
       validationEntries.push(...mediaValidationEntries);
 
       if (data.conflicts?.length) {
@@ -352,7 +205,6 @@ export function createCloudSyncService(): SyncServiceApi {
             validationEntries.push(conflictEntry);
           }
         }
-
         logger.warn('[cloudSync] 冲突数:', data.conflicts.length);
       }
 
@@ -374,10 +226,9 @@ export function createCloudSyncService(): SyncServiceApi {
       monitor.updateMediaProgress(validationEntries.length, validationEntries.length, null);
       await useSyncStore.getState().setMediaValidationSummary(mediaValidationRun.summary);
       useMediaRepairStore.getState().replaceIssues(mediaValidationRun.issues);
-      if (mediaValidationRun.issues.length > 0) {
-        showPhotoRepairPrompt();
-      }
+      if (mediaValidationRun.issues.length > 0) showPhotoRepairPrompt();
     }
+
     await useSyncStore.getState().markSyncSuccess(Date.now());
   };
 
@@ -409,19 +260,11 @@ export function createCloudSyncService(): SyncServiceApi {
 
       try {
         await performSyncNow();
-        monitor.finishRun({
-          status: 'success',
-          failedPhase: null,
-          failedItems: [],
-        });
+        monitor.finishRun({ status: 'success', failedPhase: null, failedItems: [] });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown sync error';
         await useSyncStore.getState().markSyncFailure(message);
-        monitor.finishRun({
-          status: 'failed',
-          failedPhase: 'sync-entries',
-          failedItems: [],
-        });
+        monitor.finishRun({ status: 'failed', failedPhase: 'sync-entries', failedItems: [] });
 
         if (error instanceof ApiError) {
           logger.error('[cloudSync] syncNow ApiError:', error.code, error.message, error.status);
@@ -431,8 +274,8 @@ export function createCloudSyncService(): SyncServiceApi {
         throw error;
       } finally {
         await useSyncStore.getState().markSyncFinished();
-        await useCloudSyncIndicatorStore.getState().refresh().catch((refreshError) => {
-          logger.warn('[cloudSync] refresh indicator after sync failed:', refreshError);
+        await useCloudSyncIndicatorStore.getState().refresh().catch((err) => {
+          logger.warn('[cloudSync] refresh indicator after sync failed:', err);
         });
         inFlightSync = null;
       }
@@ -450,7 +293,9 @@ export function createCloudSyncService(): SyncServiceApi {
       DB.getAllEntries(),
     ]);
 
-    const conflictCopies = allEntries.filter((entry) => entry.syncStatus === 'conflict-local-copy' || !!entry.conflictedCopyOf).length;
+    const conflictCopies = allEntries.filter(
+      (entry) => entry.syncStatus === 'conflict-local-copy' || !!entry.conflictedCopyOf
+    ).length;
 
     return {
       lastSyncAt,
@@ -464,8 +309,5 @@ export function createCloudSyncService(): SyncServiceApi {
     };
   };
 
-  return {
-    syncNow,
-    getStatus,
-  };
+  return { syncNow, getStatus };
 }
