@@ -7,6 +7,10 @@ import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
 import { Platform } from 'react-native';
 import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
+import {
+  getActiveAccountRefSync,
+  getUserAuthKeys,
+} from '@/src/services/accountRegistryService';
 import { withScope } from '@/src/utils/storage';
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -94,6 +98,15 @@ export function createApiClient(baseURL: string): ApiClient {
       return key;
     }
 
+    const activeRef = getActiveAccountRefSync();
+    if (activeRef?.userId) {
+      const keys = getUserAuthKeys(currentServerUrl, activeRef.userId);
+      if (key === 'auth:token') return keys.tokenKey;
+      if (key === 'auth:refreshToken') return keys.refreshTokenKey;
+      if (key === 'auth:user') return keys.userKey;
+    }
+
+    // fallback: server-scoped（未登录时或 key 不是 auth key）
     return withScope(getServerKey(currentServerUrl), key);
   };
 
