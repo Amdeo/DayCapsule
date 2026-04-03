@@ -2,7 +2,7 @@ import { Storage } from '@/src/utils/storage';
 import { buildDataScopeKey } from '@/src/services/workspaceService';
 import {
   getServerKey,
-  getCurrentServerUrl,
+  getCurrentServerUrlSync,
   getRecentServerUrls,
 } from '@/src/services/backendEnvironmentService';
 import { logger } from '@/src/utils/logger';
@@ -17,7 +17,7 @@ export interface AccountEntry {
   addedAt: number;
 }
 
-interface ActiveAccountRef {
+export interface ActiveAccountRef {
   serverUrl: string;
   userId: string;
 }
@@ -128,7 +128,10 @@ async function migrateOneServer(serverUrl: string, currentServerUrl: string | nu
   try {
     user = JSON.parse(userJson) as OldAuthUser;
   } catch {
-    logger.warn('[accountRegistryService] 迁移：解析旧 user JSON 失败', serverUrl);
+    logger.warn('[accountRegistryService] 迁移：解析旧 user JSON 失败，清理旧 key', serverUrl);
+    await Storage.delete(oldTokenKey);
+    await Storage.delete(oldRefreshKey);
+    await Storage.delete(oldUserKey);
     return;
   }
 
@@ -160,11 +163,9 @@ export async function migrateAuthKeysToUserScoped(): Promise<void> {
     const done = await Storage.getString(MIGRATION_V2_KEY);
     if (done === 'done') return;
 
-    const [recentUrls, currentServerUrl] = await Promise.all([
-      getRecentServerUrls(),
-      getCurrentServerUrl(),
-    ]);
+    const currentServerUrl = getCurrentServerUrlSync();
 
+    const recentUrls = await getRecentServerUrls();
     const allUrls = Array.from(new Set([...recentUrls, ...(currentServerUrl ? [currentServerUrl] : [])]));
 
     for (const serverUrl of allUrls) {

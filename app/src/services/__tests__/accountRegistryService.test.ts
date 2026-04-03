@@ -56,7 +56,7 @@ import {
 } from '../accountRegistryService';
 import { Storage } from '@/src/utils/storage';
 import {
-  getCurrentServerUrl,
+  getCurrentServerUrlSync,
   getServerKey,
   getRecentServerUrls,
 } from '@/src/services/backendEnvironmentService';
@@ -243,7 +243,7 @@ describe('migrateAuthKeysToUserScoped', () => {
       (url: string) => `env_${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`,
     );
     (getRecentServerUrls as jest.Mock).mockResolvedValue([SERVER_A]);
-    (getCurrentServerUrl as jest.Mock).mockResolvedValue(SERVER_A);
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue(SERVER_A);
   });
 
   it('skips migration if already done', async () => {
