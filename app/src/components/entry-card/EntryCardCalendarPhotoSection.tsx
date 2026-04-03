@@ -35,7 +35,7 @@ function CalendarPhotoImage({ photo, style }: CalendarPhotoImageProps) {
     <Image
       source={{ uri: sourceUri }}
       style={style}
-      resizeMode="cover"
+      contentFit="cover"
       onError={handleError}
     />
   );

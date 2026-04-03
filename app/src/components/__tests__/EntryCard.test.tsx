@@ -848,10 +848,10 @@ describe('EntryCard photo edge-to-edge', () => {
   });
 
   describe('照片固定高度裁剪显示', () => {
-    it('图片使用 resizeMode cover', () => {
+    it('图片使用 contentFit cover', () => {
       render(<EntryCard entry={photoEntry} onDelete={jest.fn()} />);
       const img = screen.getByTestId('photo-image-0');
-      expect(img.props.resizeMode).toBe('cover');
+      expect(img.props.contentFit).toBe('cover');
     });
 
     it('图片高度等于档位值（default=280）', () => {

@@ -68,7 +68,7 @@ export function SinglePhoto({
           { width: '100%', height: maxPhotoHeight, backgroundColor: '#ECE7E0' },
           photoImageRadius,
         ]}
-        resizeMode="cover"
+        contentFit="cover"
         onError={handleError}
       />
     </Pressable>
@@ -103,7 +103,7 @@ export function GridCell({ testID, photo, cellSize, onPress }: GridCellProps) {
       <Image
         source={{ uri: sourceUri }}
         style={{ width: cellSize, height: cellSize }}
-        resizeMode="cover"
+        contentFit="cover"
         onError={handleError}
       />
     </Pressable>
@@ -150,7 +150,7 @@ export function TwoPhotoCell({
         testID={imageTestID}
         source={{ uri: sourceUri }}
         style={cellStyle}
-        resizeMode="cover"
+        contentFit="cover"
         onError={handleError}
       />
     </Pressable>

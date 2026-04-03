@@ -50,7 +50,7 @@ export function ImageViewerScene({
           <Animated.Image
             source={{ uri: imageUri }}
             style={heroAnimatedStyle}
-            resizeMode="contain"
+            contentFit="contain"
             onError={handleImageError}
           />
         ) : null}
@@ -62,7 +62,7 @@ export function ImageViewerScene({
                 <Image
                   source={{ uri: imageUri }}
                   style={[styles.image, { width: screenWidth, height: screenHeight }]}
-                  resizeMode="contain"
+                  contentFit="contain"
                   onError={handleImageError}
                 />
               </Animated.View>
