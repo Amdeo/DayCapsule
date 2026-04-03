@@ -11,7 +11,7 @@ type CloudSyncStatusButtonProps = {
 };
 
 export function CloudSyncStatusButton({ uiState, onPress }: CloudSyncStatusButtonProps) {
-  const { breathe, rotation } = useCloudSyncStatusButtonAnimation(uiState);
+  const { breathe, rotation, floatY, completionScale } = useCloudSyncStatusButtonAnimation(uiState);
 
   return (
     <Pressable
@@ -25,6 +25,8 @@ export function CloudSyncStatusButton({ uiState, onPress }: CloudSyncStatusButto
           uiState={uiState}
           breathe={breathe}
           rotation={rotation}
+          floatY={floatY}
+          completionScale={completionScale}
         />
       </View>
     </Pressable>

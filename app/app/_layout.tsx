@@ -80,6 +80,7 @@ export default function RootLayout() {
 
   // 初始化文件系统和音频系统
   useEffect(() => {
+    useCloudSyncIndicatorStore.getState().init();
     void runAppBootstrap({
       refreshCloudSyncIndicator,
       onInitializationFailed: () => {
@@ -112,6 +113,8 @@ export default function RootLayout() {
       const isReachable = state.isConnected === true && state.isInternetReachable !== false;
       const wasReachable = wasNetworkReachableRef.current;
       wasNetworkReachableRef.current = isReachable;
+
+      useCloudSyncIndicatorStore.getState().setNetworkReachable(isReachable);
 
       if (wasReachable === false && isReachable) {
         void runPendingCloudRecovery('网络恢复时');
