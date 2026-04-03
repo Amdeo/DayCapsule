@@ -37,10 +37,10 @@ export function useSettingsPageDisableCloudMode({
               void (async () => {
                 try {
                   await switchToLocalOnly();
-                } catch (err: any) {
+                } catch (err: unknown) {
                   showErrorFeedback({
                     title: '切换失败',
-                    message: err?.message ?? '操作失败',
+                    message: err instanceof Error ? err.message : '操作失败',
                     actions: [{ label: '知道了', role: 'primary' }],
                   });
                   await setCloudMode(true);
@@ -76,10 +76,10 @@ export function useSettingsPageDisableCloudMode({
                     });
                   }
                   await switchToLocalOnly();
-                } catch (err: any) {
+                } catch (err: unknown) {
                   showErrorFeedback({
                     title: '同步失败',
-                    message: err?.message,
+                    message: err instanceof Error ? err.message : undefined,
                     actions: [{ label: '知道了', role: 'primary' }],
                   });
                   await setCloudMode(true);
@@ -114,10 +114,10 @@ export function useSettingsPageDisableCloudMode({
                 await DB.restoreEntries(entries);
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
-              } catch (err: any) {
+              } catch (err: unknown) {
                 showErrorFeedback({
                   title: '同步失败',
-                  message: err?.message,
+                  message: err instanceof Error ? err.message : undefined,
                   actions: [{ label: '知道了', role: 'primary' }],
                 });
                 await setCloudMode(true);
@@ -154,10 +154,10 @@ export function useSettingsPageDisableCloudMode({
                 }
                 await useEntryStore.getState().loadEntries();
                 await setCloudMode(false);
-              } catch (err: any) {
+              } catch (err: unknown) {
                 showErrorFeedback({
                   title: '同步失败',
-                  message: err?.message,
+                  message: err instanceof Error ? err.message : undefined,
                   actions: [{ label: '知道了', role: 'primary' }],
                 });
                 await setCloudMode(true);

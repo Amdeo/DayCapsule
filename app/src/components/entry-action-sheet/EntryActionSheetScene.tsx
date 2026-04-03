@@ -2,6 +2,8 @@ import React from 'react';
 import type { GestureResponderHandlers } from 'react-native';
 import { Modal, Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import type { AnimatedStyle } from 'react-native-reanimated';
+import type { ViewStyle } from 'react-native';
 import {
   EntryActionSheetConfirm,
   EntryActionSheetMenu,
@@ -15,8 +17,8 @@ interface EntryActionSheetSceneProps {
   typeColor: string;
   bottomInset: number;
   panHandlers: GestureResponderHandlers;
-  backdropStyle: any;
-  sheetStyle: any;
+  backdropStyle: AnimatedStyle<ViewStyle>;
+  sheetStyle: AnimatedStyle<ViewStyle>;
   onClose: () => void;
   onEdit: () => void;
   onDeleteRequest: () => void;

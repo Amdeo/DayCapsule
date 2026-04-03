@@ -187,7 +187,7 @@ export function useBackupPageController({
         tone: 'accent',
         actions: [{ label: '知道了', role: 'primary' }],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       showErrorFeedback(buildBackupImportFailedFeedback(error));
     } finally {
       setIsImporting(false);

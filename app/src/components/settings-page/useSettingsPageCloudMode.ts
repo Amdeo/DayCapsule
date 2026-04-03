@@ -40,7 +40,7 @@ export function useSettingsPageCloudMode({
           actions: [{ label: '知道了', role: 'primary' }],
         });
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorFeedback(buildCloudModeToggleFailedFeedback(e, '操作失败'));
       await setCloudMode(false);
     }
@@ -74,7 +74,7 @@ export function useSettingsPageCloudMode({
         const source = flow.type === 'restoring' ? 'cloud' : 'local';
         await finishEnableCloud(source);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorFeedback(buildCloudModeToggleFailedFeedback(e, '请检查网络连接'));
       await setCloudMode(false);
     } finally {
@@ -86,10 +86,10 @@ export function useSettingsPageCloudMode({
     setIsSwitchingMode(true);
     try {
       await runDisableCloudModeFlow();
-    } catch (e: any) {
+    } catch (e: unknown) {
       showErrorFeedback({
         title: '操作失败',
-        message: e?.message,
+        message: e instanceof Error ? e.message : undefined,
         actions: [{ label: '知道了', role: 'primary' }],
       });
       await setCloudMode(true);

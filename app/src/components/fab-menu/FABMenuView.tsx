@@ -3,6 +3,9 @@ import React from 'react';
 import type { GestureResponderHandlers } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import type { AnimatedStyle } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
+import type { ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { LastAddType } from '@/src/store/settingsStore';
 import { FanOptionButton } from './FanOptionButton';
@@ -13,14 +16,14 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 interface FABMenuViewProps {
   isExpanded: boolean;
-  fanProgress: any;
-  hoveredIndex: any;
+  fanProgress: SharedValue<number>;
+  hoveredIndex: SharedValue<number>;
   panHandlers: GestureResponderHandlers;
   fabIcon: IoniconName;
   fabBgColor: string;
   lastAddType: LastAddType | null;
-  backdropAnimatedStyle: any;
-  fabTranslateYStyle: any;
+  backdropAnimatedStyle: AnimatedStyle<ViewStyle>;
+  fabTranslateYStyle: AnimatedStyle<ViewStyle>;
   onCloseFan: () => void;
 }
 

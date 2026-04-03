@@ -1,5 +1,7 @@
 import type React from 'react';
-import type { Image } from 'react-native';
+import type { Image, ImageStyle, ViewStyle } from 'react-native';
+import type { AnimatedStyle } from 'react-native-reanimated';
+import type { ComposedGesture } from 'react-native-gesture-handler';
 
 export type ImageViewerPhase =
   | 'idle'
@@ -23,10 +25,10 @@ export interface ImageViewerSceneProps {
   bottomInset: number;
   screenWidth: number;
   screenHeight: number;
-  backdropAnimatedStyle: any;
-  heroAnimatedStyle: any;
-  imageAnimatedStyle: any;
-  composedGesture: any;
+  backdropAnimatedStyle: AnimatedStyle<ViewStyle>;
+  heroAnimatedStyle: AnimatedStyle<ImageStyle>;
+  imageAnimatedStyle: AnimatedStyle<ViewStyle>;
+  composedGesture: ComposedGesture;
   onRequestClose: () => void;
   onCloseActionSheet: () => void;
   onSaveToAlbum: () => void | Promise<void>;

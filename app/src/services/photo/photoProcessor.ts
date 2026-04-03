@@ -15,7 +15,7 @@ const createMediaError = (
   return error;
 };
 
-export async function resizeImage(
+async function resizeImage(
   uri: string,
   resize: { width?: number; height?: number },
   options: { compress?: number } = {}

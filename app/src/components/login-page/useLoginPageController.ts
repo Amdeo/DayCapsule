@@ -64,7 +64,7 @@ export function useLoginPageController({ login, onSuccess, register }: UseLoginP
       }
       resetForm();
       onSuccess();
-    } catch (e: any) {
+    } catch (e: unknown) {
       logger.warn('[LoginPage] Auth failed:', e);
       showErrorFeedback(buildLoginFailedFeedback(e, isRegister));
     } finally {
