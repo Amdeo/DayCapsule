@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Swipeable } from 'react-native-gesture-handler';
 import { logger } from '@/src/utils/logger';
-import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
+import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '@/src/components/entry-action-sheet/entryActionSheetConfig';
 
 const ACTION_SHEET_OPEN_DELAY = 100;
 

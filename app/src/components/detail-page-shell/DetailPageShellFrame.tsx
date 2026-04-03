@@ -52,6 +52,7 @@ export function DetailPageShellFrame({
             contentContainerStyle,
           ]}
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
         >
           {children}
         </ScrollView>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SIDEBAR_MENU_ITEMS, type SidebarAction } from './sidebarConfig';
 import { sidebarStyles as styles } from './Sidebar.styles';
@@ -26,19 +26,18 @@ export function SidebarPanel({
           <Text style={styles.headerTitle}>菜单</Text>
           <Text style={styles.headerSubtitle}>快速进入统计、同步和系统设置</Text>
         </View>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <Pressable onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#4A4A4A" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.menuList}>
         {SIDEBAR_MENU_ITEMS.map((item) => (
           <React.Fragment key={item.action}>
             {item.dividerBefore ? <View style={styles.divider} /> : null}
-            <TouchableOpacity
+            <Pressable
               testID={`sidebar-menu-${item.action}`}
               style={styles.menuItem}
-              activeOpacity={0.7}
               onPress={() => onPressMenuItem(item.action)}
             >
               <View style={styles.menuIconContainer}>
@@ -51,7 +50,7 @@ export function SidebarPanel({
               <View style={styles.menuChevronContainer}>
                 <Ionicons name="chevron-forward" size={16} color="#C8CFDB" />
               </View>
-            </TouchableOpacity>
+            </Pressable>
           </React.Fragment>
         ))}
       </View>

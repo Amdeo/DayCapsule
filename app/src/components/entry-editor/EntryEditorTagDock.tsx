@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +41,7 @@ export function EntryEditorTagDock({
           {commonTags.map((tag) => {
             const selected = currentTagsList.includes(tag);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={tag}
                 style={[styles.commonChip, selected && styles.commonChipSelected]}
                 onPress={() => (selected ? onRemoveTag(tag) : onAddSuggestion(tag))}
@@ -54,7 +54,7 @@ export function EntryEditorTagDock({
                 >
                   {tag}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -82,14 +82,14 @@ export function EntryEditorTagDock({
       {suggestions.length > 0 ? (
         <View style={styles.suggestionsRow}>
           {suggestions.map((tag) => (
-            <TouchableOpacity
+            <Pressable
               key={tag}
               style={styles.suggestionChip}
               onPress={() => onAddSuggestion(tag)}
             >
               <Ionicons name="add" size={13} color="#8F7AC8" />
               <Text style={styles.suggestionChipText}>{tag}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
       ) : null}

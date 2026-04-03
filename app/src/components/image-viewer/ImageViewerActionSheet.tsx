@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { imageViewerStyles as styles } from './ImageViewer.styles';
 
 interface ImageViewerActionSheetProps {
@@ -30,29 +30,26 @@ export function ImageViewerActionSheet({
       />
       <View style={[styles.actionSheet, { paddingBottom: bottomInset + 8 }]}> 
         <View style={styles.actionSheetHandle} />
-        <TouchableOpacity
+        <Pressable
           style={styles.actionSheetItem}
           onPress={onSaveToAlbum}
-          activeOpacity={0.7}
         >
           <Text style={styles.actionSheetItemText}>保存到相册</Text>
-        </TouchableOpacity>
+        </Pressable>
         <View style={styles.actionSheetDivider} />
-        <TouchableOpacity
+        <Pressable
           style={styles.actionSheetItem}
           onPress={onShare}
-          activeOpacity={0.7}
         >
           <Text style={styles.actionSheetItemText}>分享</Text>
-        </TouchableOpacity>
+        </Pressable>
         <View style={styles.actionSheetGap} />
-        <TouchableOpacity
+        <Pressable
           style={styles.actionSheetItem}
           onPress={onClose}
-          activeOpacity={0.7}
         >
           <Text style={styles.actionSheetCancelText}>取消</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

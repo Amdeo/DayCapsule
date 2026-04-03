@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { entryActionSheetStyles as styles } from './EntryActionSheet.styles';
 
@@ -22,34 +22,34 @@ export function EntryActionSheetMenu({
   return (
     <>
       <View testID="action-sheet-option-group" style={styles.optionGroup}>
-        <TouchableOpacity
+        <Pressable
           testID="action-sheet-edit"
           style={styles.optionRow}
           onPress={onEdit}
         >
           <Ionicons name="pencil-outline" size={20} color="#8E8E93" />
           <Text style={styles.optionText}>编辑</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         <View style={styles.divider} />
 
-        <TouchableOpacity
+        <Pressable
           testID="action-sheet-delete"
           style={styles.optionRow}
           onPress={onDeleteRequest}
         >
           <Ionicons name="trash-outline" size={20} color="#FF3B30" />
           <Text style={styles.deleteText}>删除</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <TouchableOpacity
+      <Pressable
         testID="action-sheet-cancel"
         style={styles.cancelButton}
         onPress={onClose}
       >
         <Text style={styles.cancelText}>取消</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 }
@@ -63,21 +63,21 @@ export function EntryActionSheetConfirm({
       <Text style={styles.confirmTitle}>确认删除这条记录？</Text>
       <Text style={styles.confirmSubtitle}>此操作无法撤销</Text>
 
-      <TouchableOpacity
+      <Pressable
         testID="action-sheet-confirm-delete"
         style={styles.confirmDeleteButton}
         onPress={onConfirmDelete}
       >
         <Text style={styles.confirmDeleteText}>删除</Text>
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity
+      <Pressable
         testID="action-sheet-confirm-cancel"
         style={styles.confirmCancelButton}
         onPress={onCancel}
       >
         <Text style={styles.cancelText}>取消</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

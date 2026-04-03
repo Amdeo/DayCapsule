@@ -3,7 +3,7 @@ import {
   ActivityIndicator,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   View,
 } from 'react-native';
 import { loginPageStyles as styles } from './LoginPage.styles';
@@ -68,7 +68,7 @@ export function LoginPageForm({
         <Text style={styles.hint}>密码要求：8-64位，含大小写字母和数字</Text>
       ) : null}
 
-      <TouchableOpacity
+      <Pressable
         testID="login-page-submit-button"
         accessibilityState={{ disabled: isLoading }}
         style={[styles.button, isLoading && styles.buttonDisabled]}
@@ -82,13 +82,13 @@ export function LoginPageForm({
             <Text style={styles.buttonText}>{isRegister ? '注册' : '登录'}</Text>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity style={styles.switchButton} onPress={onToggleMode}>
+      <Pressable style={styles.switchButton} onPress={onToggleMode}>
         <Text style={styles.switchText}>
           {isRegister ? '已有账户？登录' : '没有账户？注册'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

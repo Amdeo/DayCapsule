@@ -2,12 +2,11 @@ import React from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   Text,
   View,
 } from 'react-native';
-import { Entry } from '../types/entry';
+import { Entry } from '@/src/types/entry';
 import { EntryEditorContent } from './entry-editor/EntryEditorContent';
 import { EntryEditorTagDock } from './entry-editor/EntryEditorTagDock';
 import { entryEditorStyles as styles } from './entry-editor/EntryEditor.styles';
@@ -49,7 +48,7 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
     <Modal visible transparent animationType="fade" onRequestClose={handleRequestClose}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable
           testID="entry-editor-backdrop"

@@ -2,7 +2,7 @@
  * 时间处理工具函数
  */
 
-import { Entry } from '../types/entry';
+import { Entry } from '@/src/types/entry';
 
 /**
  * 时间分组类型

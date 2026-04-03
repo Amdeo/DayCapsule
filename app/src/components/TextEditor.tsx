@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TextEditorBody } from './text-editor/TextEditorBody';
@@ -51,7 +50,7 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
     >
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.backdrop} onPress={handleCancel} />
 

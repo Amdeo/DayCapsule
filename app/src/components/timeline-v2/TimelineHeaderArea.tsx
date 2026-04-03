@@ -1,6 +1,6 @@
 import React from 'react';
-import { SearchBar } from '../SearchBar';
-import { SearchOverlay } from '../SearchOverlay';
+import { SearchBar } from '@/src/components/SearchBar';
+import { SearchOverlay } from '@/src/components/SearchOverlay';
 import { TimelineActiveFiltersBar } from './TimelineActiveFiltersBar';
 import { TimelineViewModeToggle } from './TimelineViewModeToggle';
 import type { ViewMode } from './timelineTypes';

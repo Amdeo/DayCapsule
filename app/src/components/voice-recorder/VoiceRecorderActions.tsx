@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { voiceRecorderStyles as styles } from './VoiceRecorder.styles';
 
@@ -31,11 +31,10 @@ export function VoiceRecorderActions({
   return (
     <View style={styles.actions}>
       {!isRecording && !recordingUri ? (
-        <TouchableOpacity
+        <Pressable
           style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
           onPress={onStart}
           disabled={isLoading}
-          activeOpacity={0.8}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -45,13 +44,12 @@ export function VoiceRecorderActions({
               <Text style={styles.primaryBtnText}>开始录音</Text>
             </>
           )}
-        </TouchableOpacity>
+        </Pressable>
       ) : isRecording ? (
         <>
-          <TouchableOpacity
+          <Pressable
             style={styles.secondaryBtn}
             onPress={isPaused ? onResume : onPause}
-            activeOpacity={0.8}
           >
             <Ionicons
               name={isPaused ? 'play' : 'pause'}
@@ -59,12 +57,11 @@ export function VoiceRecorderActions({
               color="#4A4A4A"
             />
             <Text style={styles.secondaryBtnText}>{isPaused ? '继续' : '暂停'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={[styles.stopBtn, isLoading && styles.btnDisabled]}
             onPress={onStop}
             disabled={isLoading}
-            activeOpacity={0.8}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -74,26 +71,24 @@ export function VoiceRecorderActions({
                 <Text style={styles.primaryBtnText}>停止</Text>
               </>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </>
       ) : (
         <>
-          <TouchableOpacity
+          <Pressable
             style={styles.secondaryBtn}
             onPress={onRetry}
-            activeOpacity={0.8}
           >
             <Ionicons name="refresh" size={20} color="#4A4A4A" />
             <Text style={styles.secondaryBtnText}>重新录制</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={styles.primaryBtn}
             onPress={onSave}
-            activeOpacity={0.8}
           >
             <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             <Text style={styles.primaryBtnText}>保存</Text>
-          </TouchableOpacity>
+          </Pressable>
         </>
       )}
     </View>

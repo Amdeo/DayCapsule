@@ -1,8 +1,8 @@
 import React from 'react';
-import { AboutPage } from '../AboutPage';
-import { HelpPage } from '../HelpPage';
-import { LoginPage } from '../LoginPage';
-import { TagManagementPage } from '../TagManagementPage';
+import { AboutPage } from '@/src/components/AboutPage';
+import { HelpPage } from '@/src/components/HelpPage';
+import { LoginPage } from '@/src/components/LoginPage';
+import { TagManagementPage } from '@/src/components/TagManagementPage';
 
 interface SettingsPageDialogsProps {
   showTagMgmt: boolean;

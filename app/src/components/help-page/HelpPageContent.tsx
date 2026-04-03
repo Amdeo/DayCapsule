@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { HelpFaqItem } from './HelpFaqItem';
 import {
@@ -27,13 +27,13 @@ export function HelpPageContent() {
         <Text style={styles.contactText}>
           如果您遇到问题或有功能建议，欢迎通过以下方式联系我们：
         </Text>
-        <TouchableOpacity
+        <Pressable
           style={styles.contactButton}
           onPress={() => Linking.openURL(`mailto:${HELP_SUPPORT_EMAIL}`)}
         >
           <Ionicons name="mail-outline" size={18} color="#6A89CC" />
           <Text style={styles.contactButtonText}>发送反馈邮件</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

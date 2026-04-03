@@ -1,8 +1,8 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
-import { CalendarTimelineItem } from '../CalendarTimelineItem';
+import { CalendarTimelineItem } from '@/src/components/CalendarTimelineItem';
 import { calendarViewStyles as styles } from './CalendarView.styles';
 import { getCalendarContentTitle } from './calendarViewHelpers';
 import type { CalendarDayGroup } from './calendarViewTypes';
@@ -81,13 +81,13 @@ export function CalendarViewContent({
           )}
         </Text>
         {selectedKey ? (
-          <TouchableOpacity
+          <Pressable
             testID="calendar-deselect-btn"
             onPress={onClearSelection}
             style={styles.deselectBtn}
           >
             <Text style={styles.deselectText}>✕ 取消</Text>
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
       </View>
 

@@ -8,7 +8,7 @@ import {
   type SectionListProps,
 } from 'react-native';
 import type { Entry } from '@/src/types/entry';
-import { CalendarView } from '../CalendarView';
+import { CalendarView } from '@/src/components/CalendarView';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { TimelineTransitionLoader } from './TimelineTransitionLoader';
 import type { TimeSection, ViewMode } from './timelineTypes';

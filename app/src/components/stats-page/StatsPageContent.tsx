@@ -13,7 +13,7 @@ export function StatsPageContent() {
   const { stats } = useStatsPageController();
 
   return (
-    <ScrollView testID="stats-page-root" showsVerticalScrollIndicator={false}>
+    <ScrollView testID="stats-page-root" showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic">
       <StatsOverviewSection stats={stats} />
       <StatsTimeSection stats={stats} />
       <StatsTrendSection stats={stats} />

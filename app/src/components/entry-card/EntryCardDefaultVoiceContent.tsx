@@ -1,8 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Entry } from '@/src/types/entry';
-import WaveformAnimation from '../WaveformAnimation';
+import WaveformAnimation from '@/src/components/WaveformAnimation';
 import { entryCardStyles as styles } from './EntryCard.styles';
 import {
   formatEntryCardDuration,
@@ -41,17 +41,16 @@ export function EntryCardDefaultVoiceContent({
     return (
       <View style={styles.recordingContainer}>
         <View style={styles.recordingCompact}>
-          <TouchableOpacity
+          <Pressable
             testID={`voice-stop-button-${entry.id}`}
             style={[styles.stopButtonCompact, (isProcessing || isStopping) && styles.buttonDisabled]}
             disabled={isProcessing || isStopping}
-            activeOpacity={0.7}
             onPress={() => {
               void onRunStopRecording(entry.id, isStopping);
             }}
           >
             <Ionicons name="stop" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={styles.recordingCenter}>
             <View style={styles.waveformCompact}>
@@ -117,14 +116,13 @@ export function EntryCardDefaultVoiceContent({
     return (
       <View style={styles.voiceCard}>
         <View style={styles.voicePlayRow}>
-          <TouchableOpacity
+          <Pressable
             testID={`voice-processing-button-${entry.id}`}
             style={[styles.voicePlayBtn, styles.voicePlayBtnDisabled]}
             disabled
-            activeOpacity={1}
           >
             <Ionicons name="hourglass-outline" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={styles.voiceWaveform}>
             <WaveformAnimation isRecording={false} color="#D9D9D9" />
@@ -194,18 +192,17 @@ export function EntryCardDefaultVoiceContent({
           </View>
         ) : (
           <>
-            <TouchableOpacity
+            <Pressable
               testID={isPlayingAudio ? `voice-stop-playback-button-${entry.id}` : `voice-play-button-${entry.id}`}
               style={styles.voicePlayBtn}
               onPress={isPlayingAudio ? onStopAudio : onPlayAudio}
-              activeOpacity={0.8}
             >
               {isPlayingAudio ? (
                 <Ionicons name="stop" size={22} color="#FFFFFF" />
               ) : (
                 <Ionicons name="play" size={24} color="#FFFFFF" style={{ marginLeft: 3 }} />
               )}
-            </TouchableOpacity>
+            </Pressable>
 
             <View style={styles.voiceWaveform}>
               <WaveformAnimation

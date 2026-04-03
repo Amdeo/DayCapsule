@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, TouchableOpacity } from 'react-native';
+import { Animated, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TimelineScrollTopButtonProps {
@@ -34,11 +34,10 @@ export function TimelineScrollTopButton({
         transform: [{ scale }],
       }}
     >
-      <TouchableOpacity
+      <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        activeOpacity={0.8}
         style={{
           width: 56,
           height: 56,
@@ -54,7 +53,7 @@ export function TimelineScrollTopButton({
         }}
       >
         <Ionicons name="arrow-up" size={24} color="#6A89CC" />
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 }

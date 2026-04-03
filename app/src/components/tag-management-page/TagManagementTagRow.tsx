@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   type GestureResponderHandlers,
-  TouchableOpacity,
+  Pressable,
   View,
   Text,
   Animated,
@@ -50,13 +50,13 @@ export function TagManagementTagRow({
           </View>
           <Text style={styles.tagName}>#{tag}</Text>
         </View>
-        <TouchableOpacity
+        <Pressable
           testID={`preset-tag-delete-${index}`}
           onPress={() => onDelete(tag)}
           hitSlop={8}
         >
           <Ionicons name="close-circle" size={20} color="#E57373" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </Animated.View>
   );

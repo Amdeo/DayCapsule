@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ScrollView } from 'react-native';
-import { Entry } from '../types/entry';
+import { Entry } from '@/src/types/entry';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarViewContent } from './calendar-view/CalendarViewContent';
@@ -59,6 +59,7 @@ export function CalendarView({
       style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
+      contentInsetAdjustmentBehavior="automatic"
     >
       <CalendarViewHeader
         year={year}

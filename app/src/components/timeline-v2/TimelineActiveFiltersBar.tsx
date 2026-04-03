@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, Pressable, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { filterBarStyles as styles } from './Timeline.v2.styles';
@@ -54,28 +54,28 @@ export function TimelineActiveFiltersBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        <TouchableOpacity style={styles.resultBadge} onPress={onOpenSearch}>
+        <Pressable style={styles.resultBadge} onPress={onOpenSearch}>
           <Ionicons name="search" size={13} color="#6A89CC" />
           <Text style={styles.resultText}>{resultCount} 条</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         {searchQuery.trim() ? (
           <View style={styles.chip}>
             <Text style={styles.chipText} numberOfLines={1}>
               "{searchQuery}"
             </Text>
-            <TouchableOpacity onPress={onClearQuery} hitSlop={6}>
+            <Pressable onPress={onClearQuery} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ) : null}
 
         {filterType !== 'all' ? (
           <View style={styles.chip}>
             <Text style={styles.chipText}>{TYPE_LABEL[filterType] ?? filterType}</Text>
-            <TouchableOpacity onPress={onClearType} hitSlop={6}>
+            <Pressable onPress={onClearType} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ) : null}
 
@@ -84,25 +84,25 @@ export function TimelineActiveFiltersBar({
             <Text style={styles.chipText}>
               {DATE_LABEL[filterDateRange] ?? filterDateRange}
             </Text>
-            <TouchableOpacity onPress={onClearDate} hitSlop={6}>
+            <Pressable onPress={onClearDate} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ) : null}
 
         {selectedTags.map((tag) => (
           <View key={tag} style={styles.chip}>
             <Text style={styles.chipText}>#{tag}</Text>
-            <TouchableOpacity onPress={() => onClearTag(tag)} hitSlop={6}>
+            <Pressable onPress={() => onClearTag(tag)} hitSlop={6}>
               <Ionicons name="close" size={13} color="#6A89CC" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
       </ScrollView>
 
-      <TouchableOpacity style={styles.clearAll} onPress={onClearAll}>
+      <Pressable style={styles.clearAll} onPress={onClearAll}>
         <Ionicons name="close-circle" size={18} color="#A3A3A3" />
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 }

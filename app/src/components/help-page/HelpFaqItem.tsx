@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { helpPageStyles as styles } from './HelpPage.styles';
 
@@ -12,9 +12,8 @@ export function HelpFaqItem({ question, answer }: HelpFaqItemProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.faqItem}
-      activeOpacity={0.7}
       onPress={() => setOpen((value) => !value)}
     >
       <View style={styles.faqHeader}>
@@ -26,6 +25,6 @@ export function HelpFaqItem({ question, answer }: HelpFaqItemProps) {
         />
       </View>
       {open && <Text style={styles.faqA}>{answer}</Text>}
-    </TouchableOpacity>
+    </Pressable>
   );
 }

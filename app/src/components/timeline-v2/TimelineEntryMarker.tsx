@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import { formatHHMM } from '@/src/utils/timeUtils';
-import { EntryCard } from '../EntryCard';
+import { EntryCard } from '@/src/components/EntryCard';
 import { getTimelineEntryAccentColor } from './timelineAppearance';
 
 interface TimelineEntryMarkerProps {

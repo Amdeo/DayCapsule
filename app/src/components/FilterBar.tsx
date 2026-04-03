@@ -5,8 +5,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
-import { useEntryStore } from '../store/entryStore';
-import { useEntryFilterUIStore } from '../store/entryFilterUIStore';
+import { useEntryStore } from '@/src/store/entryStore';
+import { useEntryFilterUIStore } from '@/src/store/entryFilterUIStore';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import {
   FilterBarDateSection,

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Entry } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
-import WaveformAnimation from '../WaveformAnimation';
+import WaveformAnimation from '@/src/components/WaveformAnimation';
 import { entryCardStyles as styles } from './EntryCard.styles';
 import { EntryCardCalendarTags } from './EntryCardCalendarMeta';
 import {
@@ -47,16 +47,15 @@ export function EntryCardCalendarVoiceSection({
         style={styles.calendarRecordingCard}
       >
         <View style={styles.calendarRecordingHeader}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.calendarStopButton, (isProcessing || isStopping) && styles.buttonDisabled]}
             disabled={isProcessing || isStopping}
-            activeOpacity={0.7}
             onPress={() => {
               void onRunStopRecording(entry.id, isStopping);
             }}
           >
             <View style={styles.stopIconCompact} />
-          </TouchableOpacity>
+          </Pressable>
           <View style={styles.calendarVoiceTrack}>
             <View style={styles.calendarVoiceTrackRow}>
               <View style={styles.calendarVoiceTrackActive}>
@@ -87,14 +86,13 @@ export function EntryCardCalendarVoiceSection({
     return (
       <View style={styles.calendarVoiceCard}>
         <View style={styles.calendarVoiceHeader}>
-          <TouchableOpacity
+          <Pressable
             testID={`calendar-voice-processing-button-${entry.id}`}
             style={[styles.calendarVoicePlayBtn, styles.buttonDisabled]}
             disabled
-            activeOpacity={1}
           >
             <Ionicons name="hourglass-outline" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          </Pressable>
           <View style={styles.calendarVoiceTrack}>
             <View style={styles.calendarVoiceTrackRow}>
               <View style={styles.calendarVoiceTrackActive}>
@@ -132,18 +130,17 @@ export function EntryCardCalendarVoiceSection({
           </View>
         ) : (
           <>
-            <TouchableOpacity
+            <Pressable
               testID={`calendar-voice-play-button-${entry.id}`}
               style={styles.calendarVoicePlayBtn}
               onPress={isPlayingAudio ? onStopAudio : onPlayAudio}
-              activeOpacity={0.85}
             >
               {isPlayingAudio ? (
                 <Ionicons name="stop" size={20} color="#FFFFFF" />
               ) : (
                 <Ionicons name="play" size={22} color="#FFFFFF" style={{ marginLeft: 2 }} />
               )}
-            </TouchableOpacity>
+            </Pressable>
             <View style={styles.calendarVoiceTrack}>
               <View style={styles.calendarVoiceTrackRow}>
                 <View style={styles.calendarVoiceTrackActive}>

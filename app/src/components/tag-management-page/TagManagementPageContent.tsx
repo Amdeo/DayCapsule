@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TextInput, TouchableOpacity, View, Animated } from 'react-native';
+import { Text, TextInput, Pressable, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
 import { MAX_TAGS } from './tagManagementConfig';
@@ -38,14 +38,14 @@ export function TagManagementPageContent({
 }: TagManagementPageContentProps) {
   return (
     <View testID="tag-management-root">
-      <TouchableOpacity
+      <Pressable
         testID="tag-management-reset-button"
         style={styles.resetRow}
         onPress={onReset}
       >
         <Ionicons name="refresh" size={18} color="#6A89CC" />
         <Text style={styles.resetText}>恢复初始预制标签</Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>当前预制标签</Text>
@@ -77,14 +77,14 @@ export function TagManagementPageContent({
           returnKeyType="done"
           onSubmitEditing={onAdd}
         />
-        <TouchableOpacity
+        <Pressable
           testID="tag-management-add-button"
           style={[styles.addButton, atLimit && styles.addButtonDisabled]}
           onPress={onAdd}
           disabled={atLimit}
         >
           <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

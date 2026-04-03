@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { backupPageStyles as styles } from './BackupPage.styles';
 import {

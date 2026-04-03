@@ -1,4 +1,4 @@
-import { Platform, Share } from 'react-native';
+import { Share } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 
@@ -48,7 +48,7 @@ export function useImageViewerActions({
 
     try {
       await Share.share(
-        Platform.OS === 'ios' ? { url: imageUri } : { message: imageUri },
+        process.env.EXPO_OS === 'ios' ? { url: imageUri } : { message: imageUri },
       );
     } catch (error) {
       if (error instanceof Error && error.message === 'cancelled') {

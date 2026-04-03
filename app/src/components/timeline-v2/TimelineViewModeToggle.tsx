@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ViewMode } from './timelineTypes';
 import { viewModeToggleStyles as styles } from './Timeline.v2.styles';
@@ -26,11 +26,10 @@ export function TimelineViewModeToggle({
       {VIEW_MODES.map(({ mode, icon, label }) => {
         const active = current === mode;
         return (
-          <TouchableOpacity
+          <Pressable
             key={mode}
             style={[styles.tab, active && styles.tabActive]}
             onPress={() => onChange(mode)}
-            activeOpacity={0.7}
           >
             <Ionicons
               name={icon}
@@ -40,7 +39,7 @@ export function TimelineViewModeToggle({
             <Text style={[styles.label, active && styles.labelActive]}>
               {label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>

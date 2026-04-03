@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import { calendarViewStyles as styles } from './CalendarView.styles';
 import { CALENDAR_TYPE_COLORS } from './calendarViewHelpers';
@@ -38,7 +38,7 @@ export function CalendarViewGrid({
         const isOtherSelected = selectedKey !== null && key !== selectedKey;
 
         return (
-          <TouchableOpacity
+          <Pressable
             key={key}
             style={[
               styles.dayCell,
@@ -46,7 +46,6 @@ export function CalendarViewGrid({
               isToday && !isSelected && styles.dayCellToday,
             ]}
             onPress={() => onDayPress(day)}
-            activeOpacity={0.7}
           >
             <Text
               style={[
@@ -82,7 +81,7 @@ export function CalendarViewGrid({
                 })}
               </View>
             ) : null}
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>

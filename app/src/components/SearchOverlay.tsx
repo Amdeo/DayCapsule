@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,7 +84,7 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
     >
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.container}>
           {/* 搜索输入框 */}
@@ -120,6 +119,7 @@ export function SearchOverlay({ visible, onClose, onSearch }: SearchOverlayProps
             style={styles.scroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            contentInsetAdjustmentBehavior="automatic"
           >
             <SearchOverlayTypeSection value={localType} onChange={setLocalType} />
             <SearchOverlayDateSection value={localDate} onChange={setLocalDate} />

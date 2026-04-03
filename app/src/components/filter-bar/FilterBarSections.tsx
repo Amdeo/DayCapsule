@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FilterBarAnimatedButton } from './FilterBarAnimatedButton';
 import { filterBarStyles as styles } from './FilterBar.styles';
@@ -21,9 +21,9 @@ export function FilterBarHeader({ onClose }: { onClose?: () => void }) {
   return (
     <View style={styles.headerRow}>
       <Text style={styles.headerTitle}>筛选</Text>
-      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+      <Pressable onPress={onClose} style={styles.closeButton}>
         <Ionicons name="chevron-up" size={20} color="#737373" />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
