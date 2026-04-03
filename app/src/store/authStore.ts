@@ -1,14 +1,26 @@
 /**
  * Auth Store — 用户认证状态管理
- * token 持久化到 MMKV，启动时自动恢复
+ * token 持久化到 MMKV（user-scoped），启动时自动恢复
  */
 
 import { create } from 'zustand';
 import { Storage, withScope } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import {
+  getCurrentServerUrl,
+  getServerKey,
+  setCurrentServerUrl,
+} from '@/src/services/backendEnvironmentService';
 import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
+import {
+  getUserAuthKeys,
+  getAccountTokens,
+  registerAccount,
+  setActiveAccount,
+  removeAccount,
+  getActiveAccountRef,
+} from '@/src/services/accountRegistryService';
 
 interface AuthUser {
   id: string;
@@ -26,6 +38,7 @@ interface AuthState {
   logout(): Promise<void>;
   refreshAuth(): Promise<boolean>;
   loadAuth(): Promise<void>;
+  switchAccount(serverUrl: string, userId: string): Promise<void>;
 }
 
 interface AuthResponse {
@@ -34,30 +47,34 @@ interface AuthResponse {
   refreshToken: string;
 }
 
-const getScopedAuthKey = async (key: string): Promise<string> => {
+const getAuthKeys = async () => {
   const serverUrl = await getCurrentServerUrl();
-  return withScope(getServerKey(serverUrl), key);
+  const activeRef = await getActiveAccountRef();
+  if (!activeRef?.userId) {
+    const scope = getServerKey(serverUrl ?? '');
+    return {
+      tokenKey: withScope(scope, 'auth:token'),
+      refreshTokenKey: withScope(scope, 'auth:refreshToken'),
+      userKey: withScope(scope, 'auth:user'),
+    };
+  }
+  return getUserAuthKeys(serverUrl ?? '', activeRef.userId);
 };
 
 const persistTokens = async (token: string, refreshToken: string, user: AuthUser) => {
-  const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
-    getScopedAuthKey('auth:token'),
-    getScopedAuthKey('auth:refreshToken'),
-    getScopedAuthKey('auth:user'),
-  ]);
+  const serverUrl = await getCurrentServerUrl();
+  const { tokenKey, refreshTokenKey, userKey } = getUserAuthKeys(serverUrl, user.id);
   await Promise.all([
     Storage.setString(tokenKey, token),
     Storage.setString(refreshTokenKey, refreshToken),
     Storage.setObject(userKey, user),
   ]);
+  await registerAccount({ serverUrl, userId: user.id, email: user.email, addedAt: Date.now() });
+  await setActiveAccount(serverUrl, user.id);
 };
 
 const clearTokens = async () => {
-  const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
-    getScopedAuthKey('auth:token'),
-    getScopedAuthKey('auth:refreshToken'),
-    getScopedAuthKey('auth:user'),
-  ]);
+  const { tokenKey, refreshTokenKey, userKey } = await getAuthKeys();
   await Promise.all([
     Storage.delete(tokenKey),
     Storage.delete(refreshTokenKey),
@@ -101,10 +118,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ user, token: data.token, refreshToken: data.refreshToken, isAuthenticated: true });
     await persistTokens(data.token, data.refreshToken, user);
+    await persistWorkspaceUserId(user.id);
     logger.log('✅ 注册成功:', email);
   },
 
   logout: async () => {
+    const activeRef = await getActiveAccountRef();
+    if (activeRef) {
+      await removeAccount(activeRef.serverUrl, activeRef.userId);
+    }
+    await Storage.delete('accounts:active');
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
     await clearTokens();
     await clearWorkspaceUserId();
@@ -122,10 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         refreshToken: rt,
       });
       set({ token: data.token, refreshToken: data.refreshToken });
-      const [tokenKey, refreshTokenKey] = await Promise.all([
-        getScopedAuthKey('auth:token'),
-        getScopedAuthKey('auth:refreshToken'),
-      ]);
+      const { tokenKey, refreshTokenKey } = await getAuthKeys();
       await Storage.setString(tokenKey, data.token);
       await Storage.setString(refreshTokenKey, data.refreshToken);
       return true;
@@ -136,16 +156,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loadAuth: async () => {
-    const [tokenKey, refreshTokenKey, userKey] = await Promise.all([
-      getScopedAuthKey('auth:token'),
-      getScopedAuthKey('auth:refreshToken'),
-      getScopedAuthKey('auth:user'),
-    ]);
-    const [token, refreshToken, user] = await Promise.all([
-      Storage.getString(tokenKey),
-      Storage.getString(refreshTokenKey),
-      Storage.getObject<AuthUser>(userKey),
-    ]);
+    const serverUrl = await getCurrentServerUrl();
+    const activeRef = await getActiveAccountRef();
+    if (!activeRef?.userId) {
+      set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+      return;
+    }
+    const { token, refreshToken } = await getAccountTokens(serverUrl, activeRef.userId);
+    const { userKey } = getUserAuthKeys(serverUrl, activeRef.userId);
+    const user = await Storage.getObject<AuthUser>(userKey);
 
     if (token && user) {
       set({ user, token, refreshToken, isAuthenticated: true });
@@ -155,5 +174,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+  },
+
+  switchAccount: async (serverUrl: string, userId: string) => {
+    const { token, refreshToken } = await getAccountTokens(serverUrl, userId);
+    if (!token) {
+      throw new Error('该账号凭证已失效，请重新登录');
+    }
+    const { userKey } = getUserAuthKeys(serverUrl, userId);
+    const user = await Storage.getObject<AuthUser>(userKey);
+    if (!user) {
+      throw new Error('账号信息不存在');
+    }
+
+    const currentServerUrl = await getCurrentServerUrl();
+    if (serverUrl !== currentServerUrl) {
+      await setCurrentServerUrl(serverUrl);
+    }
+
+    await setActiveAccount(serverUrl, userId);
+    await persistWorkspaceUserId(userId);
+
+    set({
+      user,
+      token,
+      refreshToken: refreshToken ?? null,
+      isAuthenticated: true,
+    });
+
+    useAppLifecycleStore.getState().triggerRestart();
   },
 }));
