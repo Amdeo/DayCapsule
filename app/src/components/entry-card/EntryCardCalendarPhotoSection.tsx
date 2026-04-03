@@ -1,15 +1,45 @@
 import React from 'react';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Text, Pressable, View } from 'react-native';
-import type { Entry } from '@/src/types/entry';
+import { ActivityIndicator, Text, Pressable, View } from 'react-native';
+import type { Entry, MediaInfo } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
-import { PhotoService } from '@/src/services/photoService';
+import { usePhotoSource } from '@/src/hooks/usePhotoSource';
 import { entryCardStyles as styles } from './EntryCard.styles';
 import {
   EntryCardCalendarTags,
   EntryCardCalendarTranscription,
 } from './EntryCardCalendarMeta';
+
+interface CalendarPhotoImageProps {
+  photo: MediaInfo;
+  style: object | object[];
+}
+
+function CalendarPhotoImage({ photo, style }: CalendarPhotoImageProps) {
+  const { sourceUri, missing, pendingHydration, handleError } = usePhotoSource(photo, 'thumbnail');
+
+  if (pendingHydration) {
+    return (
+      <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECE7E0' }]}>
+        <ActivityIndicator size="small" color="#A68D68" />
+      </View>
+    );
+  }
+
+  if (missing) {
+    return <View style={[style, { backgroundColor: '#ECE7E0' }]} />;
+  }
+
+  return (
+    <Image
+      source={{ uri: sourceUri }}
+      style={style}
+      resizeMode="cover"
+      onError={handleError}
+    />
+  );
+}
 
 interface EntryCardCalendarPhotoSectionProps {
   entry: Entry;
@@ -116,10 +146,9 @@ function EntryCardCalendarPhotoBody({
           onPress={() => onImagePress(0)}
           testID={`calendar-photo-primary-${entry.id}`}
         >
-          <Image
-            source={{ uri: PhotoService.getPreferredPhotoUri(photo, 'thumbnail') }}
+          <CalendarPhotoImage
+            photo={photo}
             style={[styles.calendarSinglePhoto, { height: resolvedPhotoHeight }]}
-            resizeMode="cover"
           />
         </Pressable>
       </View>
@@ -142,11 +171,7 @@ function EntryCardCalendarPhotoBody({
           ]}
           testID={`calendar-photo-double-primary-${entry.id}`}
         >
-          <Image
-            source={{ uri: PhotoService.getPreferredPhotoUri(primary, 'thumbnail') }}
-            style={styles.calendarPhotoImage}
-            resizeMode="cover"
-          />
+          <CalendarPhotoImage photo={primary} style={styles.calendarPhotoImage} />
         </Pressable>
 
         <Pressable
@@ -157,11 +182,7 @@ function EntryCardCalendarPhotoBody({
           ]}
           testID={`calendar-photo-double-secondary-${entry.id}`}
         >
-          <Image
-            source={{ uri: PhotoService.getPreferredPhotoUri(secondary, 'thumbnail') }}
-            style={styles.calendarPhotoImage}
-            resizeMode="cover"
-          />
+          <CalendarPhotoImage photo={secondary} style={styles.calendarPhotoImage} />
         </Pressable>
       </View>
     );
@@ -180,11 +201,7 @@ function EntryCardCalendarPhotoBody({
         style={styles.calendarPhotoPrimary}
         testID={`calendar-photo-primary-${entry.id}`}
       >
-        <Image
-          source={{ uri: PhotoService.getPreferredPhotoUri(primary, 'thumbnail') }}
-          style={styles.calendarPhotoImage}
-          resizeMode="cover"
-        />
+        <CalendarPhotoImage photo={primary} style={styles.calendarPhotoImage} />
       </Pressable>
 
       <View style={styles.calendarPhotoSecondaryColumn}>
@@ -194,11 +211,7 @@ function EntryCardCalendarPhotoBody({
             style={styles.calendarPhotoSecondaryCell}
             testID={`calendar-photo-secondary-cell-1-${entry.id}`}
           >
-            <Image
-              source={{ uri: PhotoService.getPreferredPhotoUri(secondary, 'thumbnail') }}
-              style={styles.calendarPhotoImage}
-              resizeMode="cover"
-            />
+            <CalendarPhotoImage photo={secondary} style={styles.calendarPhotoImage} />
           </Pressable>
         ) : (
           <View style={styles.calendarPhotoSecondaryCell} />
@@ -210,11 +223,7 @@ function EntryCardCalendarPhotoBody({
             style={styles.calendarPhotoSecondaryCell}
             testID={`calendar-photo-secondary-cell-2-${entry.id}`}
           >
-            <Image
-              source={{ uri: PhotoService.getPreferredPhotoUri(tertiary, 'thumbnail') }}
-              style={styles.calendarPhotoImage}
-              resizeMode="cover"
-            />
+            <CalendarPhotoImage photo={tertiary} style={styles.calendarPhotoImage} />
             {overflow > 0 ? (
               <View style={styles.calendarPhotoOverflowMask}>
                 <Text style={styles.calendarPhotoOverflowText}>+{overflow}</Text>

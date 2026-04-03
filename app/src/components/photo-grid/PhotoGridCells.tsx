@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import type { MediaInfo } from '@/src/types/entry';
-import { PhotoService } from '@/src/services/photoService';
 import { photoGridStyles as styles } from './PhotoGrid.styles';
 import type { PhotoImageRadiusStyle } from './photoGridTypes';
-import { isPhotoMediaPendingHydration } from '@/src/utils/mediaAvailability';
+import { usePhotoSource } from '@/src/hooks/usePhotoSource';
 
 interface SinglePhotoProps {
   photo: MediaInfo;
@@ -30,40 +29,6 @@ interface TwoPhotoCellProps {
   height: number;
   imageRadiusStyle: PhotoImageRadiusStyle;
   onPress: () => void;
-}
-
-function usePhotoSource(
-  photo: MediaInfo,
-  kind: 'thumbnail' | 'full' = 'thumbnail'
-) {
-  const [sourceUri, setSourceUri] = useState(() =>
-    PhotoService.getPreferredPhotoUri(photo, kind)
-  );
-  const [missing, setMissing] = useState(() => sourceUri.length === 0);
-  const pendingHydration = isPhotoMediaPendingHydration(photo);
-
-  useEffect(() => {
-    const nextSourceUri = PhotoService.getPreferredPhotoUri(photo, kind);
-    setSourceUri(nextSourceUri);
-    setMissing(nextSourceUri.length === 0);
-  }, [kind, photo.remoteThumbnail, photo.remoteUri, photo.thumbnail, photo.uri]);
-
-  const handleError = () => {
-    const fallbackUri = PhotoService.getFallbackPhotoUri(photo, sourceUri, kind);
-    if (fallbackUri && fallbackUri !== sourceUri) {
-      setSourceUri(fallbackUri);
-      return;
-    }
-
-    setMissing(true);
-  };
-
-  return {
-    sourceUri,
-    missing,
-    pendingHydration,
-    handleError,
-  };
 }
 
 export function SinglePhoto({
