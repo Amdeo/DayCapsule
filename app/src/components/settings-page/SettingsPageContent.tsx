@@ -9,13 +9,15 @@ import {
   SETTINGS_SWITCH_TRACK_COLORS,
 } from './SettingsPage.styles';
 import { SettingsAccountSyncSection } from './SettingsAccountSyncSection';
+import { SettingsAdvancedSection } from './SettingsAdvancedSection';
 import { SettingButton, SettingItem } from './SettingRow';
-import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
-import { SettingsOverviewCard } from './SettingsOverviewCard';
-import { SettingsSection } from './SettingsSection';
-import { SettingsSegmentedSelector } from './SettingsSegmentedSelector';
 import { SettingsDataStorageSection } from './SettingsDataStorageSection';
 import { SettingsE2ESyncLab } from './SettingsE2ESyncLab';
+import { SettingsGroupCard } from './SettingsGroupCard';
+import { SettingsPhotoHeightSelector } from './SettingsPhotoHeightSelector';
+import { SettingsProfileCard } from './SettingsProfileCard';
+import { SettingsSection } from './SettingsSection';
+import { SettingsSegmentedSelector } from './SettingsSegmentedSelector';
 import {
   CALENDAR_DENSITY_OPTIONS,
   CARD_SPACING_OPTIONS,
@@ -81,7 +83,6 @@ export function SettingsPageContent({
   usedSpace,
   entryCount,
   photoCount,
-  voiceCount,
   currentServerUrl,
   backendDraftUrl,
   recentServerUrls,
@@ -116,12 +117,14 @@ export function SettingsPageContent({
 }: SettingsPageContentProps) {
   return (
     <>
-      <SettingsOverviewCard
+      <SettingsProfileCard
         isAuthenticated={isAuthenticated}
         userEmail={userEmail}
         cloudMode={cloudMode}
-        currentServerUrl={currentServerUrl}
+        entryCount={entryCount}
+        photoCount={photoCount}
         usedSpace={usedSpace}
+        onShowLogin={onShowLogin}
       />
 
       <SettingsAccountSyncSection
@@ -129,6 +132,79 @@ export function SettingsPageContent({
         userEmail={userEmail}
         cloudMode={cloudMode}
         isSwitchingMode={isSwitchingMode}
+        onCloudModeToggle={onCloudModeToggle}
+        onShowSyncStatus={onShowSyncStatus}
+        onLogout={onLogout}
+        onShowLogin={onShowLogin}
+      />
+
+      <SettingsSection title="外观">
+        <SettingsGroupCard>
+          <SettingItem
+            icon="notifications"
+            title="推送通知"
+            subtitle="接收提醒和更新"
+            rightComponent={(
+              <Switch
+                testID="settings-switch-notifications"
+                value={notifications}
+                onValueChange={onNotificationsChange}
+                trackColor={SETTINGS_SWITCH_TRACK_COLORS}
+                thumbColor="#FFFFFF"
+              />
+            )}
+          />
+          <SettingsSegmentedSelector
+            icon="albums"
+            title="卡片间距"
+            subtitle="调整记录卡片之间的间距"
+            options={CARD_SPACING_OPTIONS}
+            value={cardSpacing}
+            onChange={onCardSpacingChange}
+          />
+          <SettingsSegmentedSelector
+            icon="calendar-outline"
+            title="日历密度"
+            subtitle="调整日历视图中卡片和时间轴的疏密程度"
+            options={CALENDAR_DENSITY_OPTIONS}
+            value={calendarDensity}
+            onChange={onCalendarDensityChange}
+          />
+          <SettingsPhotoHeightSelector
+            value={photoHeight}
+            onChange={onPhotoHeightChange}
+          />
+        </SettingsGroupCard>
+      </SettingsSection>
+
+      <SettingsDataStorageSection
+        highQualityPhotos={highQualityPhotos}
+        onHighQualityPhotosChange={onHighQualityPhotosChange}
+        onOpenTagManagement={onOpenTagManagement}
+        onClearCache={onClearCache}
+        onResetSettings={onResetSettings}
+      />
+
+      <SettingsSection title="关于与支持">
+        <SettingsGroupCard>
+          <SettingButton
+            icon="help-circle"
+            title="帮助与反馈"
+            subtitle="查看常见问题并联系支持"
+            testID="settings-open-help"
+            onPress={onOpenHelp}
+          />
+          <SettingButton
+            icon="information-circle"
+            title="关于"
+            subtitle="查看应用信息与技术栈"
+            testID="settings-open-about"
+            onPress={onOpenAbout}
+          />
+        </SettingsGroupCard>
+      </SettingsSection>
+
+      <SettingsAdvancedSection
         currentServerUrl={currentServerUrl}
         backendDraftUrl={backendDraftUrl}
         recentServerUrls={recentServerUrls}
@@ -136,102 +212,11 @@ export function SettingsPageContent({
         backendTestErrorMessage={backendTestErrorMessage}
         isSavingBackendServer={isSavingBackendServer}
         canSaveBackendServer={canSaveBackendServer}
-        onCloudModeToggle={onCloudModeToggle}
-        onShowSyncStatus={onShowSyncStatus}
-        onLogout={onLogout}
-        onShowLogin={onShowLogin}
         onBackendDraftUrlChange={onBackendDraftUrlChange}
         onTestBackendServer={onTestBackendServer}
         onSaveBackendServer={onSaveBackendServer}
         onSelectRecentBackendServer={onSelectRecentBackendServer}
       />
-
-      <SettingsSection title="提醒">
-        <SettingItem
-          icon="notifications"
-          title="推送通知"
-          subtitle="接收提醒和更新"
-          rightComponent={(
-            <Switch
-              testID="settings-switch-notifications"
-              value={notifications}
-              onValueChange={onNotificationsChange}
-              trackColor={SETTINGS_SWITCH_TRACK_COLORS}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        />
-      </SettingsSection>
-
-      <SettingsSection title="内容显示">
-        <SettingsSegmentedSelector
-          icon="albums"
-          title="卡片间距"
-          subtitle="调整记录卡片之间的间距"
-          options={CARD_SPACING_OPTIONS}
-          value={cardSpacing}
-          onChange={onCardSpacingChange}
-        />
-        <SettingsSegmentedSelector
-          icon="calendar-outline"
-          title="日历内容区密度"
-          subtitle="调整日历视图中卡片和时间轴的疏密程度"
-          options={CALENDAR_DENSITY_OPTIONS}
-          value={calendarDensity}
-          onChange={onCalendarDensityChange}
-        />
-        <SettingsPhotoHeightSelector
-          value={photoHeight}
-          onChange={onPhotoHeightChange}
-        />
-      </SettingsSection>
-
-      <SettingsDataStorageSection
-        highQualityPhotos={highQualityPhotos}
-        usedSpace={usedSpace}
-        entryCount={entryCount}
-        photoCount={photoCount}
-        voiceCount={voiceCount}
-        onHighQualityPhotosChange={onHighQualityPhotosChange}
-        onClearCache={onClearCache}
-      />
-
-      <SettingsSection title="标签管理">
-        <SettingButton
-          icon="pricetag"
-          title="预制标签管理"
-          subtitle="管理可快速选择的预制标签"
-          testID="settings-open-tag-management"
-          onPress={onOpenTagManagement}
-        />
-      </SettingsSection>
-
-      <SettingsSection title="支持">
-        <SettingButton
-          icon="help-circle"
-          title="帮助与反馈"
-          subtitle="查看常见问题并联系支持"
-          testID="settings-open-help"
-          onPress={onOpenHelp}
-        />
-        <SettingButton
-          icon="information-circle"
-          title="关于"
-          subtitle="查看应用信息与技术栈"
-          testID="settings-open-about"
-          onPress={onOpenAbout}
-        />
-      </SettingsSection>
-
-      <SettingsSection title="危险操作">
-        <SettingButton
-          icon="refresh"
-          title="重置设置"
-          subtitle="恢复默认设置"
-          onPress={onResetSettings}
-          danger
-        />
-      </SettingsSection>
 
       {showE2ESyncLab ? (
         <SettingsE2ESyncLab
