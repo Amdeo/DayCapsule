@@ -36,6 +36,9 @@ export async function runAppBootstrap(
       VoiceService.initializeAudio().then(() => logger.log('✅ 音频系统初始化成功')),
     ]);
 
+    await useAuthStore.getState().loadAuth();
+    logger.log('✅ 认证状态已加载');
+
     const dbSuccess = await initDatabase();
     if (!dbSuccess) {
       throw new Error('数据库初始化失败');
@@ -79,7 +82,6 @@ export async function runAppBootstrap(
       logger.warn('⚠️ 启动时清理未完成本地 entry 失败:', cleanupError);
     });
 
-    await useAuthStore.getState().loadAuth();
     await useSyncStore.getState().load();
     await useSettingsStore.getState().loadSettings();
 
@@ -106,14 +108,9 @@ export async function runAppBootstrap(
 
         if (flow.type === 'restoring') {
           await bootstrap.runInitialFlow('cloud');
-        } else if (flow.type === 'backing-up') {
-          await bootstrap.runInitialFlow('local');
-        } else if (flow.type === 'needs-decision') {
-          await useSyncStore.getState().setInitialSyncState('needs-decision');
         }
-        if (flow.type !== 'needs-decision') {
-          shouldSyncCloud = true;
-        }
+        // backing-up / needs-decision / ready → 正常增量同步即可
+        shouldSyncCloud = true;
       } catch (syncError) {
         logger.warn('⚠️ 启动时云同步失败:', syncError);
       }
