@@ -3,6 +3,7 @@ import { AboutPage } from '@/src/components/AboutPage';
 import { HelpPage } from '@/src/components/HelpPage';
 import { LoginPage } from '@/src/components/LoginPage';
 import { TagManagementPage } from '@/src/components/TagManagementPage';
+import { CloudSyncMonitorHost } from '@/src/components/cloud-sync-monitor/CloudSyncMonitorHost';
 
 interface SettingsPageDialogsProps {
   showTagMgmt: boolean;
@@ -29,6 +30,7 @@ export function SettingsPageDialogs({
 }: SettingsPageDialogsProps) {
   return (
     <>
+      <CloudSyncMonitorHost />
       <TagManagementPage visible={showTagMgmt} onClose={onCloseTagManagement} />
       <HelpPage visible={showHelp} onClose={onCloseHelp} />
       <AboutPage visible={showAbout} onClose={onCloseAbout} />
