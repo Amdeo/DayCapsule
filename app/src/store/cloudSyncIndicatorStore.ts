@@ -80,16 +80,27 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set) 
       const summary = await DB.getCloudSyncIndicatorSummary();
       const { isSyncing, lastSyncError, lastMediaValidationSummary } = useSyncStore.getState();
 
-      set({
-        ...summary,
-        uiState: resolveUiState(summary, {
-          isAuthenticated,
-          cloudMode,
-          isSyncing,
-          lastSyncError,
-          mediaValidationStatus: lastMediaValidationSummary?.status ?? null,
-        }),
+      const mediaValidationStatus = lastMediaValidationSummary?.status ?? null;
+      const uiState = resolveUiState(summary, {
+        isAuthenticated,
+        cloudMode,
+        isSyncing,
+        lastSyncError,
+        mediaValidationStatus,
       });
+
+      logger.log('[cloudSyncIndicator] refresh →', {
+        uiState,
+        isSyncing,
+        lastSyncError,
+        mediaValidationStatus,
+        pendingEntries: summary.pendingEntries,
+        pendingUploads: summary.pendingUploads,
+        uploadingEntries: summary.uploadingEntries,
+        failedEntries: summary.failedEntries,
+      });
+
+      set({ ...summary, uiState });
     } catch (error) {
       logger.warn('[cloudSyncIndicatorStore] refresh failed:', error);
     }

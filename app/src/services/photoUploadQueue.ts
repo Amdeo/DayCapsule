@@ -1,7 +1,6 @@
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import type { UploadFileOptions, UploadFileResponse } from '@/src/services/apiClient';
 import {
-  buildPhotoLogPayload,
   buildPhotoUploadMetadata,
   mergePhotoUploadResult,
 } from '@/src/services/photoIntegrityService';
@@ -55,19 +54,7 @@ async function uploadPhotoMedia(
     }
 
     const uploadMetadata = buildPhotoUploadMetadata(item);
-    logger.log('photo.upload.start', buildPhotoLogPayload({
-      entryId,
-      localMediaId: item.metadata?.localMediaId,
-      localUri: item.uri,
-      mimeType: item.mimeType,
-      size: item.size,
-      width: item.metadata?.width,
-      height: item.metadata?.height,
-      sourceHash: item.metadata?.sourceHash,
-      persistedHash: item.metadata?.persistedHash,
-      integrityStatus: item.metadata?.integrityStatus,
-      integrityReason: item.metadata?.integrityReason ?? null,
-    }));
+    logger.log('[photo] upload.start', { entryId, localMediaId: item.metadata?.localMediaId, mimeType: item.mimeType, size: item.size });
     const upload = await deps.uploadMedia(item.uri, {
       metadata: uploadMetadata,
     });
@@ -78,21 +65,7 @@ async function uploadPhotoMedia(
     }
 
     const uploadedItem = mergePhotoUploadResult(item, upload);
-    logger.log('photo.upload.finish', buildPhotoLogPayload({
-      entryId,
-      localMediaId: uploadedItem.metadata?.localMediaId,
-      localUri: uploadedItem.uri,
-      remoteUri: uploadedItem.remoteUri,
-      mimeType: uploadedItem.mimeType,
-      size: uploadedItem.size,
-      width: uploadedItem.metadata?.width,
-      height: uploadedItem.metadata?.height,
-      sourceHash: uploadedItem.metadata?.sourceHash,
-      persistedHash: uploadedItem.metadata?.persistedHash,
-      remoteHash: uploadedItem.metadata?.remoteHash,
-      integrityStatus: uploadedItem.metadata?.integrityStatus,
-      integrityReason: uploadedItem.metadata?.integrityReason ?? null,
-    }));
+    logger.log('[photo] upload.finish', { entryId, localMediaId: uploadedItem.metadata?.localMediaId, remoteUri: uploadedItem.remoteUri, size: uploadedItem.size });
     uploaded.push(uploadedItem);
   }
 
