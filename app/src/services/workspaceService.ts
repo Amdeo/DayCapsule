@@ -4,9 +4,12 @@ import {
   getCurrentServerUrlSync,
   getServerKey,
 } from '@/src/services/backendEnvironmentService';
-import { useAuthStore } from '@/src/store/authStore';
+import { Storage, withScope } from '@/src/utils/storage';
 
 const LOCAL_SCOPE = 'local';
+
+const getUserIdKey = (serverUrl: string): string =>
+  withScope(getServerKey(serverUrl), 'workspace:currentUserId');
 
 export function buildDataScopeKey(serverUrl: string, userId: string): string {
   return `${getServerKey(serverUrl)}_${userId}`;
@@ -14,14 +17,16 @@ export function buildDataScopeKey(serverUrl: string, userId: string): string {
 
 export function getCurrentDataScopeKeySync(): string {
   const serverUrl = getCurrentServerUrlSync();
-  const userId = useAuthStore.getState().user?.id;
-  if (!serverUrl || !userId) return LOCAL_SCOPE;
+  if (!serverUrl) return LOCAL_SCOPE;
+  const userId = Storage.getStringSync(getUserIdKey(serverUrl));
+  if (!userId) return LOCAL_SCOPE;
   return buildDataScopeKey(serverUrl, userId);
 }
 
 export async function getCurrentDataScopeKey(): Promise<string> {
   const serverUrl = await getCurrentServerUrl();
-  const userId = useAuthStore.getState().user?.id;
-  if (!serverUrl || !userId) return LOCAL_SCOPE;
+  if (!serverUrl) return LOCAL_SCOPE;
+  const userId = await Storage.getString(getUserIdKey(serverUrl));
+  if (!userId) return LOCAL_SCOPE;
   return buildDataScopeKey(serverUrl, userId);
 }
