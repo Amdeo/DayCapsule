@@ -8,6 +8,7 @@ import { Storage, withScope } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
 import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
 
 interface AuthUser {
   id: string;
@@ -64,6 +65,18 @@ const clearTokens = async () => {
   ]);
 };
 
+const persistWorkspaceUserId = async (userId: string) => {
+  const serverUrl = await getCurrentServerUrl();
+  const key = withScope(getServerKey(serverUrl), 'workspace:currentUserId');
+  await Storage.setString(key, userId);
+};
+
+const clearWorkspaceUserId = async () => {
+  const serverUrl = await getCurrentServerUrl();
+  const key = withScope(getServerKey(serverUrl), 'workspace:currentUserId');
+  await Storage.delete(key);
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
@@ -77,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ user, token: data.token, refreshToken: data.refreshToken, isAuthenticated: true });
     await persistTokens(data.token, data.refreshToken, user);
+    await persistWorkspaceUserId(user.id);
     logger.log('✅ 登录成功:', email);
   },
 
@@ -93,6 +107,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
     await clearTokens();
+    await clearWorkspaceUserId();
+    useAppLifecycleStore.getState().triggerRestart();
     logger.log('✅ 已退出登录');
   },
 
@@ -133,6 +149,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (token && user) {
       set({ user, token, refreshToken, isAuthenticated: true });
+      await persistWorkspaceUserId(user.id);
       logger.log('✅ 已恢复登录状态:', user.email);
       return;
     }

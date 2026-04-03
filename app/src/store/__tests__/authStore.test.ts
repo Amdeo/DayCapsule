@@ -34,6 +34,13 @@ jest.mock('@/src/services/apiClient', () => ({
   }),
 }));
 
+const mockTriggerRestart = jest.fn();
+jest.mock('@/src/store/appLifecycleStore', () => ({
+  useAppLifecycleStore: {
+    getState: () => ({ triggerRestart: mockTriggerRestart }),
+  },
+}));
+
 import { useAuthStore } from '../authStore';
 import { Storage } from '@/src/utils/storage';
 import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
@@ -51,6 +58,7 @@ const resetStore = () => useAuthStore.setState({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockTriggerRestart.mockClear();
   (getCurrentServerUrl as jest.Mock).mockResolvedValue('https://server-a.example.com');
   resetStore();
 });
@@ -161,5 +169,57 @@ describe('authStore', () => {
       refreshToken: 'refresh-b',
       user: { id: 'u2', email: 'saved-b@test.com' },
     });
+  });
+
+  it('login writes userId to MMKV workspace key', async () => {
+    mockPost.mockResolvedValueOnce({
+      user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
+      token: 'access-123',
+      refreshToken: 'refresh-456',
+    });
+
+    await useAuthStore.getState().login('test@test.com', 'Password1');
+
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'workspace:currentUserId'),
+      'u1',
+    );
+  });
+
+  it('loadAuth writes userId to MMKV workspace key on success', async () => {
+    (Storage.getString as jest.Mock).mockImplementation((key: string) => {
+      if (key === scopedKey(SERVER_A_SCOPE, 'auth:token')) return Promise.resolve('tok');
+      if (key === scopedKey(SERVER_A_SCOPE, 'auth:refreshToken')) return Promise.resolve('rt');
+      return Promise.resolve(null);
+    });
+    (Storage.getObject as jest.Mock).mockImplementation((key: string) => {
+      if (key === scopedKey(SERVER_A_SCOPE, 'auth:user')) {
+        return Promise.resolve({ id: 'u99', email: 'x@test.com' });
+      }
+      return Promise.resolve(null);
+    });
+
+    await useAuthStore.getState().loadAuth();
+
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'workspace:currentUserId'),
+      'u99',
+    );
+  });
+
+  it('logout clears userId MMKV key and triggers restart', async () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'test@test.com' },
+      token: 'tok',
+      refreshToken: 'rt',
+      isAuthenticated: true,
+    });
+
+    await useAuthStore.getState().logout();
+
+    expect(Storage.delete).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'workspace:currentUserId'),
+    );
+    expect(mockTriggerRestart).toHaveBeenCalledTimes(1);
   });
 });
