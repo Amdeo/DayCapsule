@@ -100,3 +100,9 @@ thumbs/
 .superpowers
 backend/data/uploads/
 .debug/
+
+# OpenCode tool config
+opencode.json
+
+# Python cache
+__pycache__/

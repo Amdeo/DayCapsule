@@ -157,6 +157,12 @@ Usage notes:
 <location>global</location>
 </skill>
 
+<skill>
+<name>codex-orchestration</name>
+<description>Use when executing implementation tasks (single large task OR 2+ independent tasks) where the user wants to visually observe AI working via tmux + interactive codex panels, saving main session tokens. Prerequisites: tmux and codex CLI installed, agent running inside a tmux session.</description>
+<location>project</location>
+</skill>
+
 </available_skills>
 <!-- SKILLS_TABLE_END -->
 
