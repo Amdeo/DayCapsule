@@ -138,9 +138,9 @@ export function useTextEntryDetailPageController({
   const initialTagsInput = useMemo(() => entry?.tags?.join(', ') ?? '', [entry]);
 
   const canSave = useMemo(() => {
-    if (!entry || isSaving) return false;
+    if (!isEditing || !entry || isSaving) return false;
     return editContent !== entry.content || editTagsInput !== initialTagsInput;
-  }, [editContent, editTagsInput, entry, initialTagsInput, isSaving]);
+  }, [editContent, editTagsInput, entry, initialTagsInput, isEditing, isSaving]);
 
   if (!entry) return null;
 
