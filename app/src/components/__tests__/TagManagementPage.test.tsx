@@ -78,26 +78,32 @@ jest.mock('../DetailPageShell', () => ({
 jest.mock('react-native-draggable-flatlist', () => {
   const React = require('react');
   const { View } = require('react-native');
+  const MockDraggableFlatList = ({
+    data,
+    renderItem,
+    onDragEnd,
+  }: {
+    data: string[];
+    renderItem: (params: { item: string; getIndex: () => number; drag: () => void; isActive: boolean }) => React.ReactNode;
+    onDragEnd: (params: { data: string[]; from: number; to: number }) => void;
+  }) => {
+    capturedOnDragEnd = onDragEnd;
+    return (
+      <View>
+        {data.map((item: string, index: number) =>
+          (
+            <React.Fragment key={item}>
+              {renderItem({ item, getIndex: () => index, drag: jest.fn(), isActive: false })}
+            </React.Fragment>
+          ),
+        )}
+      </View>
+    );
+  };
+
   return {
     __esModule: true,
-    DraggableFlatList: ({
-      data,
-      renderItem,
-      onDragEnd,
-    }: {
-      data: string[];
-      renderItem: (params: { item: string; getIndex: () => number; drag: () => void; isActive: boolean }) => React.ReactNode;
-      onDragEnd: (params: { data: string[]; from: number; to: number }) => void;
-    }) => {
-      capturedOnDragEnd = onDragEnd;
-      return (
-        <View>
-          {data.map((item: string, index: number) =>
-            renderItem({ item, getIndex: () => index, drag: jest.fn(), isActive: false }),
-          )}
-        </View>
-      );
-    },
+    default: MockDraggableFlatList,
     ScaleDecorator: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
   };
 });

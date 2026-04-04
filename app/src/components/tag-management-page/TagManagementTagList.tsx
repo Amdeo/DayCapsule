@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
-import {
-  DraggableFlatList,
+import DraggableFlatList, {
   type RenderItemParams,
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
