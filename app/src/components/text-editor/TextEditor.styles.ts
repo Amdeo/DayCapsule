@@ -121,15 +121,21 @@ export const textEditorStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '500',
   },
-  tagToolbarMore: {
+  tagToolbarToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: '#F0EDEA',
+    backgroundColor: '#EDE9F8',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D8D0F0',
   },
-  tagToolbarMoreText: {
+  tagToolbarToggleText: {
     fontSize: 12,
-    color: '#9E9084',
+    color: '#8B7AC8',
+    fontWeight: '600',
   },
   // Suggestions row (shown in collapsed toolbar when suggestions exist)
   tagSuggestionRow: {
@@ -162,6 +168,17 @@ export const textEditorStyles = StyleSheet.create({
   tagPanel: {
     paddingHorizontal: 16,
     paddingBottom: 8,
+  },
+  tagPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  tagPanelHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6F6257',
   },
   tagPanelSectionLabel: {
     fontSize: 11,

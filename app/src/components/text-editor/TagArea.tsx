@@ -84,10 +84,11 @@ export function TagArea({
                 </Pressable>
               );
             })}
-            <Pressable style={styles.tagToolbarMore} onPress={onToggleTagPanel}>
-              <Text style={styles.tagToolbarMoreText}>…</Text>
-            </Pressable>
           </ScrollView>
+          <Pressable style={styles.tagToolbarToggle} onPress={onToggleTagPanel}>
+            <Text style={styles.tagToolbarToggleText}>展开</Text>
+            <Ionicons name="chevron-down" size={12} color="#8B7AC8" />
+          </Pressable>
         </View>
         {suggestions.length > 0 && (
           <View style={styles.tagSuggestionRow}>
@@ -111,6 +112,17 @@ export function TagArea({
   return (
     <View style={styles.tagPanel}>
       {hiddenInput}
+      {/* Panel header with collapse button */}
+      <View style={styles.tagPanelHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="pricetag-outline" size={14} color="#A491D3" />
+          <Text style={styles.tagPanelHeaderTitle}>标签</Text>
+        </View>
+        <Pressable style={styles.tagToolbarToggle} onPress={onToggleTagPanel}>
+          <Text style={styles.tagToolbarToggleText}>收起</Text>
+          <Ionicons name="chevron-up" size={12} color="#8B7AC8" />
+        </Pressable>
+      </View>
       {currentTagsList.length > 0 && (
         <>
           <Text style={styles.tagPanelSectionLabel}>已选</Text>
@@ -186,7 +198,7 @@ export function TagArea({
       )}
 
       <Pressable style={styles.tagPanelCollapseRow} onPress={onToggleTagPanel}>
-        <Text style={styles.tagPanelCollapseText}>收起 ▴</Text>
+        <Text style={styles.tagPanelCollapseText}>— 收起 —</Text>
       </Pressable>
     </View>
   );
