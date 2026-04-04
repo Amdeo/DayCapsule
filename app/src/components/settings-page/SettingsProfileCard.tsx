@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 interface SettingsProfileCardProps {
   isAuthenticated: boolean;
   userEmail?: string;
-  cloudMode: boolean | 'switching';
   entryCount: number;
   photoCount: number;
   usedSpace: string;
@@ -15,18 +14,6 @@ interface SettingsProfileCardProps {
 function getAvatarLetter(email?: string): string {
   if (!email) return '?';
   return email.charAt(0).toUpperCase();
-}
-
-function getSyncDotColor(cloudMode: boolean | 'switching'): string {
-  if (cloudMode === true) return '#34D399';
-  if (cloudMode === 'switching') return '#FBBF24';
-  return '#9CA3AF';
-}
-
-function getSyncLabel(cloudMode: boolean | 'switching'): string {
-  if (cloudMode === true) return '云端同步';
-  if (cloudMode === 'switching') return '切换中...';
-  return '本地存储';
 }
 
 interface StatCardProps {
@@ -46,7 +33,6 @@ function StatCard({ value, label }: StatCardProps) {
 export function SettingsProfileCard({
   isAuthenticated,
   userEmail,
-  cloudMode,
   entryCount,
   photoCount,
   usedSpace,
@@ -61,7 +47,7 @@ export function SettingsProfileCard({
           </View>
           <View style={styles.unauthText}>
             <Text style={styles.unauthTitle}>未登录</Text>
-            <Text style={styles.unauthSubtitle}>登录后可使用云端同步</Text>
+            <Text style={styles.unauthSubtitle}>未登录时仅显示本地数据</Text>
           </View>
           <Pressable style={styles.loginButton} onPress={onShowLogin}>
             <Text style={styles.loginButtonText}>登录</Text>
@@ -85,8 +71,8 @@ export function SettingsProfileCard({
             {userEmail ?? '已登录'}
           </Text>
           <View style={styles.syncRow}>
-            <View style={[styles.syncDot, { backgroundColor: getSyncDotColor(cloudMode) }]} />
-            <Text style={styles.syncLabel}>{getSyncLabel(cloudMode)}</Text>
+            <View style={[styles.syncDot, { backgroundColor: '#34D399' }]} />
+            <Text style={styles.syncLabel}>账号同步（本地优先）</Text>
           </View>
         </View>
       </View>

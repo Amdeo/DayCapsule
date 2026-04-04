@@ -19,9 +19,9 @@ describe('SettingsPage assembly', () => {
 
     expect(screen.getByTestId('settings-page-root')).toBeTruthy();
     expect(screen.getByTestId('settings-open-login')).toBeTruthy();
-    expect(screen.getByText('账户与云同步')).toBeTruthy();
+    expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
-    expect(screen.getByText('登录后可使用云端同步功能')).toBeTruthy();
+    expect(screen.getByText('登录后可同步账号数据')).toBeTruthy();
     expect(screen.getByText('日历密度')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
   });
@@ -48,7 +48,7 @@ describe('SettingsPage assembly', () => {
   it('renders the regrouped settings sections and support entries', async () => {
     const { screen } = await renderSettingsPage();
 
-    expect(screen.getByText('账户与云同步')).toBeTruthy();
+    expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByText('外观')).toBeTruthy();
     expect(screen.getByText('数据管理')).toBeTruthy();
     expect(screen.getByText('关于与支持')).toBeTruthy();

@@ -7,26 +7,10 @@ import {
   triggerLatestLoginSuccess,
 } from '../helpers/renderSettingsPage';
 
-type LatestSettingsPageContentProps = null | {
-  isAuthenticated: boolean;
-  userEmail?: string;
-  cloudMode: boolean | 'switching';
-  isSwitchingMode: boolean;
-  usedSpace: string;
-  onCloudModeToggle: (value: boolean) => void | Promise<void>;
-  onShowSyncStatus: () => void | Promise<void>;
-  onLogout: () => void;
-  onShowLogin: () => void;
-};
-
-let latestSettingsPageContentProps: LatestSettingsPageContentProps = null;
-
 jest.mock('../../settings-page/SettingsPageContent', () => ({
   SettingsPageContent: (props: any) => {
     const React = require('react');
-    const { Text, Switch, View } = require('react-native');
-
-    latestSettingsPageContentProps = props;
+    const { Text, View } = require('react-native');
 
     return (
       <View testID="settings-page-content-mock">
@@ -34,13 +18,8 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
         {props.isAuthenticated ? (
           <>
             <Text>{props.userEmail}</Text>
-            <Switch
-              testID="settings-switch-cloud-mode"
-              value={props.cloudMode === true}
-              onValueChange={props.onCloudModeToggle}
-              disabled={props.cloudMode === 'switching' || props.isSwitchingMode}
-            />
             <Text onPress={props.onShowSyncStatus}>同步状态</Text>
+            <Text onPress={props.onSwitchAccount}>切换账号</Text>
             <Text onPress={props.onLogout}>退出登录</Text>
           </>
         ) : (
@@ -53,7 +32,6 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
 
 describe('SettingsPage account auth', () => {
   beforeEach(() => {
-    latestSettingsPageContentProps = null;
     resetRenderSettingsPageMocks();
   });
 
@@ -72,31 +50,18 @@ describe('SettingsPage account auth', () => {
     expect(screen.queryByText('退出登录')).toBeNull();
   });
 
-  it('opens login dialog (instead of enabling cloud mode) when unauthenticated users try to enable cloud mode', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: false, cloudMode: false });
-    await settleInitialEffects(screen);
-
-    expect(latestSettingsPageContentProps).toBeTruthy();
-
-    await act(async () => {
-      await latestSettingsPageContentProps?.onCloudModeToggle(true);
-    });
-
-    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
-    expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
-  });
-
-  it('shows email, sync status, and logout when authenticated', async () => {
+  it('shows email, sync status, switch account and logout when authenticated', async () => {
     const { screen } = await renderSettingsPage({ authenticated: true, userEmail: 'tester@example.com' });
     await settleInitialEffects(screen);
 
     expect(screen.getByText('tester@example.com')).toBeTruthy();
     expect(screen.getByText('同步状态')).toBeTruthy();
+    expect(screen.getByText('切换账号')).toBeTruthy();
     expect(screen.getByText('退出登录')).toBeTruthy();
   });
 
   it('does not call logout when the user cancels the logout confirmation', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
+    const { screen, mocks } = await renderSettingsPage({ authenticated: true });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
@@ -119,8 +84,8 @@ describe('SettingsPage account auth', () => {
     expect(mocks.auth.logout).not.toHaveBeenCalled();
   });
 
-  it('calls logout only when confirmed in offline mode', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: false });
+  it('calls logout only when confirmed', async () => {
+    const { screen, mocks } = await renderSettingsPage({ authenticated: true });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
@@ -139,49 +104,18 @@ describe('SettingsPage account auth', () => {
     await waitFor(() => {
       expect(mocks.auth.logout).toHaveBeenCalledTimes(1);
     });
-    expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
-    expect(mocks.entries.loadEntries).not.toHaveBeenCalled();
   });
 
-  it('in cloud mode, logout confirmation disables cloud mode then reloads entries then logs out', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: true, cloudMode: true });
+  it('opens the login dialog from the real settings entry when unauthenticated', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
-    fireEvent.press(screen.getByText('退出登录'));
+    fireEvent.press(screen.getByTestId('settings-open-login'));
 
-    await waitFor(() => {
-      expect(mocks.showConfirmDialog).toHaveBeenCalled();
-    });
-
-    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
-    const confirm = actions.find((action) => action.label === '退出');
-
-    await act(async () => {
-      await confirm?.onPress?.();
-    });
-
-    await waitFor(() => {
-      expect(mocks.settings.setCloudMode).toHaveBeenNthCalledWith(1, false);
-      expect(mocks.entries.loadEntries).toHaveBeenCalledTimes(1);
-      expect(mocks.auth.logout).toHaveBeenCalledTimes(1);
-    });
-
-    const setCloudModeOrder = (mocks.settings.setCloudMode as jest.Mock).mock.invocationCallOrder[0];
-    const loadEntriesOrder = (mocks.entries.loadEntries as jest.Mock).mock.invocationCallOrder[0];
-    const logoutOrder = (mocks.auth.logout as jest.Mock).mock.invocationCallOrder[0];
-
-    expect(setCloudModeOrder).toBeLessThan(loadEntriesOrder);
-    expect(loadEntriesOrder).toBeLessThan(logoutOrder);
+    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });
 
-  it("disables cloud mode switch when cloudMode is 'switching'", async () => {
-    const { screen } = await renderSettingsPage({ authenticated: true, cloudMode: 'switching' });
-    await settleInitialEffects(screen);
-
-    expect(screen.getByTestId('settings-switch-cloud-mode').props.disabled).toBe(true);
-  });
-
-  it('closes login dialog on account login success without enabling cloud mode', async () => {
+  it('closes login dialog on account login success', async () => {
     const { screen, mocks } = await renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
@@ -197,26 +131,5 @@ describe('SettingsPage account auth', () => {
       expect(screen.queryByTestId('settings-login-dialog')).toBeNull();
     });
     expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
-  });
-
-  it('closes login dialog and enables cloud mode when login was triggered by cloud gating', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: false, cloudMode: false });
-    await settleInitialEffects(screen);
-
-    await act(async () => {
-      await latestSettingsPageContentProps?.onCloudModeToggle(true);
-    });
-
-    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
-
-    await act(async () => {
-      await triggerLatestLoginSuccess();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('settings-login-dialog')).toBeNull();
-    });
-
-    expect(mocks.settings.setCloudMode).toHaveBeenCalledWith('switching');
   });
 });

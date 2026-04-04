@@ -1,5 +1,5 @@
 import React from 'react';
-import { SettingButton } from './SettingRow';
+import { SettingButton, SettingItem } from './SettingRow';
 import { SettingsAdvancedSection } from './SettingsAdvancedSection';
 import { SettingsGroupCard } from './SettingsGroupCard';
 import { SettingsSection } from './SettingsSection';
@@ -46,7 +46,7 @@ export function SettingsAccountSyncSection({
   onSelectRecentBackendServer,
 }: SettingsAccountSyncSectionProps) {
   return (
-    <SettingsSection title="账户与云同步">
+    <SettingsSection title="账户与同步">
       <SettingsAdvancedSection
         currentServerUrl={currentServerUrl}
         backendDraftUrl={backendDraftUrl}
@@ -65,6 +65,11 @@ export function SettingsAccountSyncSection({
       <SettingsGroupCard>
         {isAuthenticated ? (
           <>
+            <SettingItem
+              icon="cloud-done"
+              title="账号同步"
+              subtitle="已启用，本地优先写入并在稍后同步"
+            />
             <SettingButton
               icon="cloud-done"
               title="同步状态"
@@ -96,7 +101,7 @@ export function SettingsAccountSyncSection({
           <SettingButton
             icon="person-add"
             title="登录 / 注册"
-            subtitle="登录后可使用云端同步功能"
+            subtitle="登录后可同步账号数据"
             testID="settings-open-login"
             onPress={onShowLogin}
           />

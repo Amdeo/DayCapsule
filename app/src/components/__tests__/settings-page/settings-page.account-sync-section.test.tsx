@@ -13,37 +13,45 @@ jest.mock('@expo/vector-icons', () => {
 
 describe('SettingsAccountSyncSection', () => {
   it('renders authenticated account and sync controls with stable visible behavior', () => {
-    const onCloudModeToggle = jest.fn();
     const onShowSyncStatus = jest.fn();
+    const onSwitchAccount = jest.fn();
     const onLogout = jest.fn();
     const onShowLogin = jest.fn();
 
     const screen = render(
       <SettingsAccountSyncSection
         isAuthenticated
-        userEmail="tester@example.com"
-        cloudMode={false}
-        isSwitchingMode={false}
-        onCloudModeToggle={onCloudModeToggle}
         onShowSyncStatus={onShowSyncStatus}
+        onSwitchAccount={onSwitchAccount}
         onLogout={onLogout}
         onShowLogin={onShowLogin}
+        currentServerUrl="https://server-a.example.com"
+        backendDraftUrl="https://server-a.example.com"
+        recentServerUrls={[]}
+        backendTestStatus="idle"
+        backendTestErrorMessage={null}
+        isSavingBackendServer={false}
+        canSaveBackendServer={false}
+        onBackendDraftUrlChange={jest.fn()}
+        onTestBackendServer={jest.fn()}
+        onSaveBackendServer={jest.fn()}
+        onSelectRecentBackendServer={jest.fn()}
       />
     );
 
-    expect(screen.getByText('账户与云同步')).toBeTruthy();
-    expect(screen.getByText('云端模式')).toBeTruthy();
-    expect(screen.getByText('数据存储在本地')).toBeTruthy();
-    expect(screen.getByTestId('settings-switch-cloud-mode')).toBeTruthy();
+    expect(screen.getByText('账户与同步')).toBeTruthy();
+    expect(screen.getByText('账号同步')).toBeTruthy();
+    expect(screen.getByText('已启用，本地优先写入并在稍后同步')).toBeTruthy();
     expect(screen.getByTestId('settings-show-sync-status')).toBeTruthy();
+    expect(screen.getByText('切换账号')).toBeTruthy();
     expect(screen.getByText('退出登录')).toBeTruthy();
 
-    fireEvent(screen.getByTestId('settings-switch-cloud-mode'), 'valueChange', true);
     fireEvent.press(screen.getByTestId('settings-show-sync-status'));
+    fireEvent.press(screen.getByText('切换账号'));
     fireEvent.press(screen.getByText('退出登录'));
 
-    expect(onCloudModeToggle).toHaveBeenCalledWith(true);
     expect(onShowSyncStatus).toHaveBeenCalledTimes(1);
+    expect(onSwitchAccount).toHaveBeenCalledTimes(1);
     expect(onLogout).toHaveBeenCalledTimes(1);
     expect(onShowLogin).not.toHaveBeenCalled();
   });
