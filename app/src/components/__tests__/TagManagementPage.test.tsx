@@ -1,5 +1,5 @@
 import React from 'react';
-import { PanResponder, Text } from 'react-native';
+import { View } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { TagManagementPage } from '../TagManagementPage';
 import { MAX_TAGS } from '../tag-management-page/tagManagementConfig';
@@ -12,7 +12,6 @@ const mockAddCommonTag = jest.fn();
 const mockRemoveCommonTag = jest.fn();
 const mockResetToDefaults = jest.fn();
 const mockReorderCommonTags = jest.fn();
-const responderConfigs: any[] = [];
 
 const defaultStoreState = {
   tags: ['工作', '学习', '旅行'],
@@ -20,6 +19,7 @@ const defaultStoreState = {
 };
 
 let mockStoreState = { ...defaultStoreState };
+let capturedOnDragEnd: ((params: { data: string[]; from: number; to: number }) => void) | null = null;
 
 function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {}) {
   mockStoreState = { ...defaultStoreState, ...overrides };
@@ -32,7 +32,7 @@ function pressLatestConfirmButton(text: string) {
 
 function resetTagManagementMocks() {
   jest.clearAllMocks();
-  responderConfigs.length = 0;
+  capturedOnDragEnd = null;
   setMockCommonTagsState();
 }
 
@@ -75,29 +75,38 @@ jest.mock('../DetailPageShell', () => ({
   },
 }));
 
+jest.mock('react-native-draggable-flatlist', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    NestableDraggableFlatList: ({
+      data,
+      renderItem,
+      onDragEnd,
+    }: {
+      data: string[];
+      renderItem: (params: { item: string; getIndex: () => number; drag: () => void; isActive: boolean }) => React.ReactNode;
+      onDragEnd: (params: { data: string[]; from: number; to: number }) => void;
+    }) => {
+      capturedOnDragEnd = onDragEnd;
+      return (
+        <View>
+          {data.map((item: string, index: number) =>
+            renderItem({ item, getIndex: () => index, drag: jest.fn(), isActive: false }),
+          )}
+        </View>
+      );
+    },
+    NestableScrollContainer: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    ScaleDecorator: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+  };
+});
+
 describe('TagManagementPage preset tags', () => {
   beforeEach(() => {
     resetTagManagementMocks();
-    jest.useFakeTimers();
     setMockCommonTagsState({ tags: ['工作', '学习', '旅行'], isLoaded: true });
-    jest.spyOn(PanResponder, 'create').mockImplementation((config: any) => {
-      responderConfigs.push(config);
-      return {
-        panHandlers: {
-          onStartShouldSetResponder: config.onStartShouldSetPanResponder,
-          onMoveShouldSetResponder: config.onMoveShouldSetPanResponder,
-          onResponderGrant: config.onPanResponderGrant,
-          onResponderMove: config.onPanResponderMove,
-          onResponderRelease: config.onPanResponderRelease,
-          onResponderTerminate: config.onPanResponderTerminate,
-        },
-      } as any;
-    });
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
   });
 
   it('renders preset tags management copy', () => {
@@ -232,71 +241,21 @@ describe('TagManagementPage preset tags', () => {
     expect(mockResetToDefaults).toHaveBeenCalledTimes(1);
   });
 
-  it('reorders preset tags after dragging across a row threshold', async () => {
+  it('reorders preset tags when onDragEnd is called with different from/to', async () => {
     render(<TagManagementPage visible onClose={() => {}} />);
 
-    act(() => {
-      responderConfigs[0].onPanResponderGrant();
-      jest.advanceTimersByTime(200);
-    });
-
-    act(() => {
-      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
-    });
-
     await act(async () => {
-      await responderConfigs[0].onPanResponderRelease();
+      capturedOnDragEnd?.({ data: ['学习', '旅行', '工作'], from: 0, to: 2 });
     });
 
     expect(mockReorderCommonTags).toHaveBeenCalledWith(0, 2);
   });
 
-  it('does not reorder when drag never crosses a row threshold', async () => {
+  it('does not reorder when from equals to', async () => {
     render(<TagManagementPage visible onClose={jest.fn()} />);
 
-    act(() => {
-      responderConfigs[0].onPanResponderGrant();
-      jest.advanceTimersByTime(200);
-      responderConfigs[0].onPanResponderMove(null, { dy: 20 });
-    });
-
     await act(async () => {
-      await responderConfigs[0].onPanResponderRelease();
-    });
-
-    expect(mockReorderCommonTags).not.toHaveBeenCalled();
-  });
-
-  it('reorders preset tags when dragging is terminated after crossing a row threshold', async () => {
-    render(<TagManagementPage visible onClose={jest.fn()} />);
-
-    act(() => {
-      responderConfigs[0].onPanResponderGrant();
-      jest.advanceTimersByTime(200);
-    });
-
-    act(() => {
-      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
-    });
-
-    await act(async () => {
-      await responderConfigs[0].onPanResponderTerminate();
-    });
-
-    expect(mockReorderCommonTags).toHaveBeenCalledWith(0, 2);
-  });
-
-  it('does not reorder when dragging is terminated before the long-press threshold is reached', async () => {
-    render(<TagManagementPage visible onClose={jest.fn()} />);
-
-    act(() => {
-      responderConfigs[0].onPanResponderGrant();
-      jest.advanceTimersByTime(100);
-      responderConfigs[0].onPanResponderMove(null, { dy: 104 });
-    });
-
-    await act(async () => {
-      await responderConfigs[0].onPanResponderTerminate();
+      capturedOnDragEnd?.({ data: ['工作', '学习', '旅行'], from: 1, to: 1 });
     });
 
     expect(mockReorderCommonTags).not.toHaveBeenCalled();

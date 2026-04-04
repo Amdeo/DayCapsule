@@ -1,64 +1,41 @@
-import React from 'react';
-import { Animated, PanResponder } from 'react-native';
+import React, { useCallback } from 'react';
+import {
+  NestableDraggableFlatList,
+  type RenderItemParams,
+  type DragEndParams,
+} from 'react-native-draggable-flatlist';
 import { TagManagementTagRow } from './TagManagementTagRow';
-import { ROW_HEIGHT } from './tagManagementConfig';
-import type { DragState } from './useTagManagementController';
 
 interface TagManagementTagListProps {
   tags: string[];
-  dragState: DragState | null;
-  dragTranslationY: Animated.Value;
   onDelete: (tag: string) => void;
-  createPanResponderConfig: (
-    tag: string,
-    index: number,
-  ) => Parameters<typeof PanResponder.create>[0];
+  onDragEnd: (params: DragEndParams<string>) => void;
 }
 
 export function TagManagementTagList({
   tags,
-  dragState,
-  dragTranslationY,
   onDelete,
-  createPanResponderConfig,
+  onDragEnd,
 }: TagManagementTagListProps) {
+  const renderItem = useCallback(
+    ({ item, getIndex, drag, isActive }: RenderItemParams<string>) => (
+      <TagManagementTagRow
+        tag={item}
+        index={getIndex() ?? 0}
+        isActive={isActive}
+        drag={drag}
+        onDelete={onDelete}
+      />
+    ),
+    [onDelete],
+  );
+
   return (
-    <>
-      {tags.map((tag, index) => {
-        const isActive = dragState?.tag === tag;
-        let shiftedTop = index * ROW_HEIGHT;
-
-        if (dragState && !isActive) {
-          if (
-            dragState.fromIndex < dragState.toIndex &&
-            index > dragState.fromIndex &&
-            index <= dragState.toIndex
-          ) {
-            shiftedTop -= ROW_HEIGHT;
-          } else if (
-            dragState.fromIndex > dragState.toIndex &&
-            index >= dragState.toIndex &&
-            index < dragState.fromIndex
-          ) {
-            shiftedTop += ROW_HEIGHT;
-          }
-        }
-
-        const panResponder = PanResponder.create(createPanResponderConfig(tag, index));
-
-        return (
-          <TagManagementTagRow
-            key={tag}
-            tag={tag}
-            index={index}
-            shiftedTop={shiftedTop}
-            isActive={isActive}
-            dragTranslationY={dragTranslationY}
-            panHandlers={panResponder.panHandlers}
-            onDelete={onDelete}
-          />
-        );
-      })}
-    </>
+    <NestableDraggableFlatList
+      data={tags}
+      keyExtractor={(item) => item}
+      renderItem={renderItem}
+      onDragEnd={onDragEnd}
+    />
   );
 }
