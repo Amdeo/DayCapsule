@@ -180,8 +180,12 @@ export async function getDirectorySize(dirUri: string): Promise<number> {
       })
     );
     return sizes.reduce((sum, s) => sum + s, 0);
-  } catch (error) {
-    logger.error('Failed to get directory size:', error);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("doesn't exist") || msg.includes('does not exist')) {
+      return 0;
+    }
+    logger.warn('Failed to get directory size:', error);
     return 0;
   }
 }
