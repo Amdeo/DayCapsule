@@ -7,7 +7,7 @@
 当前仓库可核对的部署相关文件：
 
 - 根目录 `docker-compose.yml`
-- 根目录 `nginx.conf`
+- `deploy/backend/nginx.conf`
 - `backend/internal/config/config.go`
 - `deploy/backend/docker-compose.template.yml`
 - `deploy/backend/README.template.md`
@@ -29,10 +29,10 @@
 - `nginx`
   - 使用 `nginx:alpine`
   - 容器名为 `daycapsule-nginx`
-  - 读取根目录 `nginx.conf`
+  - 读取 `deploy/backend/nginx.conf`
   - 对外暴露 `${PORT:-8080}`
 
-`nginx.conf` 当前会：
+`deploy/backend/nginx.conf` 当前会：
 
 - 将 `/health` 代理到 `http://api/health`
 - 将其余请求代理到 `http://api`
@@ -43,7 +43,7 @@
 仓库根目录部署对应的文件：
 
 - `docker-compose.yml`
-- `nginx.conf`
+- `deploy/backend/nginx.conf`
 - `backend/internal/config/config.go`
 
 发布包模板对应的文件：
@@ -82,7 +82,7 @@
 
 ## 最小部署路径
 
-当前仓库根目录部署路径由根目录 `docker-compose.yml` 与根目录 `nginx.conf` 组成。
+当前仓库根目录部署路径由根目录 `docker-compose.yml` 与 `deploy/backend/nginx.conf` 组成。
 
 示例：
 
@@ -124,6 +124,7 @@ curl http://127.0.0.1:8080/health
 
 - `./data:/app/data`
 - `./logs:/app/logs`
+- `./deploy/backend/nginx.conf:/etc/nginx/nginx.conf:ro`
 
 ## 发布包模板相关文件
 
@@ -142,6 +143,6 @@ curl http://127.0.0.1:8080/health
 部署相关文件：
 
 - `docker-compose.yml`
-- `nginx.conf`
+- `deploy/backend/nginx.conf`
 - `deploy/backend/docker-compose.template.yml`
 - `deploy/backend/README.template.md`

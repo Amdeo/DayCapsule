@@ -13,7 +13,7 @@ bash "$ROOT_DIR/scripts/build-backend-deploy-bundle.sh" "$OUTPUT_DIR" "$IMAGE_RE
 
 test -f "$OUTPUT_DIR/docker-compose.yml"
 test -f "$OUTPUT_DIR/.env.example"
-test -f "$OUTPUT_DIR/nginx.conf"
+test -f "$OUTPUT_DIR/deploy/backend/nginx.conf"
 test -f "$OUTPUT_DIR/README.md"
 
 grep -F "$IMAGE_REF" "$OUTPUT_DIR/docker-compose.yml" >/dev/null

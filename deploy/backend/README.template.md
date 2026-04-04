@@ -6,7 +6,7 @@ This bundle deploys backend image `__BACKEND_IMAGE__`.
 
 - `docker-compose.yml`
 - `.env.example`
-- `nginx.conf`
+- `deploy/backend/nginx.conf`
 
 ## Quick Start
 
@@ -35,6 +35,8 @@ BASE_URL=http://YOUR_SERVER_IP:8080
 mkdir -p data logs
 docker compose up -d
 ```
+
+Keep the `deploy/backend/nginx.conf` path exactly as packaged so the compose file can mount it.
 
 ## Upgrade
 

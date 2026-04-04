@@ -13,9 +13,9 @@
 │   ├── package.json      # 项目脚本
 │   └── app.json          # Expo 配置
 ├── backend/              # 后端服务
+├── deploy/backend/       # 部署模板、环境示例与 nginx 配置
 ├── docs/                 # 项目文档
 ├── docker-compose.yml    # 部署编排
-├── nginx.conf            # 反向代理配置
 └── .env.example          # 环境变量模板
 ```
 
@@ -69,6 +69,6 @@
 根目录部署入口：
 
 - `docker-compose.yml`
-- `nginx.conf`
+- `deploy/backend/nginx.conf`
 - `.env.example`
 - `docs/BACKEND_DEPLOYMENT.md`

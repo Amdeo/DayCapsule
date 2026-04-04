@@ -14,6 +14,7 @@ RELEASE_VERSION="$3"
 REGISTRY_HOST="${IMAGE_REF%%/*}"
 
 mkdir -p "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR/deploy/backend"
 
 sed \
   -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
@@ -30,6 +31,6 @@ sed \
   > "$OUTPUT_DIR/README.md"
 
 cp "$ROOT_DIR/deploy/backend/.env.example" "$OUTPUT_DIR/.env.example"
-cp "$ROOT_DIR/nginx.conf" "$OUTPUT_DIR/nginx.conf"
+cp "$ROOT_DIR/deploy/backend/nginx.conf" "$OUTPUT_DIR/deploy/backend/nginx.conf"
 
 echo "Deploy bundle generated at $OUTPUT_DIR"

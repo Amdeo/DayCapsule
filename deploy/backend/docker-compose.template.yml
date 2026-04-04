@@ -23,7 +23,7 @@ services:
     ports:
       - "${PORT:-__PORT__}:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/backend/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
     networks:

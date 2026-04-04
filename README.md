@@ -28,9 +28,9 @@
 │   ├── package.json             # 应用依赖与项目脚本
 │   └── app.json                 # Expo 应用配置
 ├── backend/                     # 仓库内后端服务
+├── deploy/backend/              # 部署模板、环境示例与 nginx 配置
 ├── docs/                        # README 进一步指向的项目文档
 ├── docker-compose.yml           # 根目录部署编排文件
-├── nginx.conf                   # 根目录反向代理配置
 └── .env.example                 # 根目录环境变量模板
 ```
 
