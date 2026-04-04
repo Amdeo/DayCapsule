@@ -52,6 +52,8 @@ export function LoginPageForm({
         value={password}
         onChangeText={onChangePassword}
         secureTextEntry
+        textContentType={isRegister ? 'newPassword' : 'password'}
+        autoComplete={isRegister ? 'new-password' : 'current-password'}
       />
       {isRegister ? (
         <TextInput
@@ -61,6 +63,8 @@ export function LoginPageForm({
           value={confirmPassword}
           onChangeText={onChangeConfirmPassword}
           secureTextEntry
+          textContentType="newPassword"
+          autoComplete="new-password"
         />
       ) : null}
 
