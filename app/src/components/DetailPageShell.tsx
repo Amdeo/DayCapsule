@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetailPageShellFrame } from './detail-page-shell/DetailPageShellFrame';
 import { detailPageShellStyles as styles } from './detail-page-shell/DetailPageShell.styles';
 import { useDetailPageShellController } from './detail-page-shell/useDetailPageShellController';
+import { ConfirmDialogHost } from './ConfirmDialogHost';
+import { FeedbackHost } from './FeedbackHost';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
 
@@ -72,6 +74,8 @@ export function DetailPageShell({
             </DetailPageShellFrame>
           </Animated.View>
         )}
+        <ConfirmDialogHost />
+        <FeedbackHost />
       </GestureHandlerRootView>
     </Modal>
   );

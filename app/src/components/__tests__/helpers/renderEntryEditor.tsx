@@ -31,6 +31,9 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
 }));
 
+jest.mock('../../ConfirmDialogHost', () => ({ ConfirmDialogHost: () => null }));
+jest.mock('../../FeedbackHost', () => ({ FeedbackHost: () => null }));
+
 type EntryEditorProps = React.ComponentProps<typeof EntryEditor>;
 
 export const defaultEntry: Entry = {

@@ -11,6 +11,7 @@ import { EntryEditorContent } from './entry-editor/EntryEditorContent';
 import { EntryEditorTagDock } from './entry-editor/EntryEditorTagDock';
 import { entryEditorStyles as styles } from './entry-editor/EntryEditor.styles';
 import { useEntryEditorController } from './entry-editor/useEntryEditorController';
+import { ConfirmDialogHost } from './ConfirmDialogHost';
 
 interface EntryEditorProps {
   visible: boolean;
@@ -97,6 +98,7 @@ export function EntryEditor({ visible, entry, onSave, onClose }: EntryEditorProp
           />
         </View>
       </KeyboardAvoidingView>
+      <ConfirmDialogHost />
     </Modal>
   );
 }

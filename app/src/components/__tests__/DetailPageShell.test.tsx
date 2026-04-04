@@ -17,6 +17,9 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+jest.mock('../ConfirmDialogHost', () => ({ ConfirmDialogHost: () => null }));
+jest.mock('../FeedbackHost', () => ({ FeedbackHost: () => null }));
+
 describe('DetailPageShell', () => {
   beforeEach(() => {
     jest.useFakeTimers();
