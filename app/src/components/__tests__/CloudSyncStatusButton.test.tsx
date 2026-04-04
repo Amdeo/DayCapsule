@@ -23,26 +23,31 @@ describe('CloudSyncStatusButton', () => {
     });
   });
 
-  it('renders static cloud with green dot for synced state', () => {
+  it('renders synced icon state without spinner', () => {
     const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
 
     expect(screen.getByTestId('cloud-sync-shell')).toBeTruthy();
-    expect(screen.getByTestId('cloud-sync-dot-synced')).toBeTruthy();
-    expect(screen.getByText('cloud-outline')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-icon-synced')).toBeTruthy();
+    expect(screen.getByText('cloud-done-outline')).toBeTruthy();
     expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
-  });
-
-  it('renders static cloud with orange dot for pending state', () => {
-    const screen = render(<CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />);
-
-    expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
     expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
   });
 
-  it('renders static cloud with red dot for failed state', () => {
+  it('renders pending icon state without legacy dot markers', () => {
+    const screen = render(<CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />);
+
+    expect(screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
+    expect(screen.getByText('cloud-upload-outline')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
+  });
+
+  it('renders failed icon state without legacy dot markers', () => {
     const screen = render(<CloudSyncStatusButton uiState="failed" onPress={jest.fn()} />);
 
-    expect(screen.getByTestId('cloud-sync-dot-failed')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-icon-failed')).toBeTruthy();
+    expect(screen.getByText('cloud-offline-outline')).toBeTruthy();
+    expect(screen.queryByTestId('cloud-sync-dot-failed')).toBeNull();
     expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
   });
 

@@ -1,6 +1,9 @@
-import { StyleSheet } from 'react-native';
+import {
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
-export const tagManagementPageStyles = StyleSheet.create({
+export const tagManagementPageStyles = {
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -110,4 +113,4 @@ export const tagManagementPageStyles = StyleSheet.create({
   addButtonTextDisabled: {
     color: '#A3A3A3',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

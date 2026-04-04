@@ -1,5 +1,11 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  Text,
+  View,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AccountSwitcherItemProps {
@@ -49,7 +55,7 @@ export function AccountSwitcherItem({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -83,4 +89,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 2,
   },
-});
+} satisfies {
+  container: ViewStyle;
+  avatar: ViewStyle;
+  avatarText: TextStyle;
+  info: ViewStyle;
+  email: TextStyle;
+  hostname: TextStyle;
+};

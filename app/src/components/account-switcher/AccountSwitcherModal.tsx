@@ -3,9 +3,10 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { AccountEntry, ActiveAccountRef } from '@/src/services/accountRegistryService';
@@ -99,7 +100,7 @@ function AddAccountButton({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -152,4 +153,15 @@ const styles = StyleSheet.create({
     color: '#6A89CC',
     fontWeight: '500',
   },
-});
+} satisfies {
+  overlay: ViewStyle;
+  card: ViewStyle;
+  header: ViewStyle;
+  title: TextStyle;
+  closeButton: ViewStyle;
+  divider: ViewStyle;
+  list: ViewStyle;
+  separator: ViewStyle;
+  addButton: ViewStyle;
+  addButtonText: TextStyle;
+};

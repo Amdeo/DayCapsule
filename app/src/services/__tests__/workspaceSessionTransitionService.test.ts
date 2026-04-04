@@ -1,9 +1,10 @@
 const mockGetCurrentServerUrl = jest.fn(async () => 'https://server-a.example.com');
 const mockSetCurrentServerUrl = jest.fn(async () => undefined);
+const mockClearCurrentServerUrl = jest.fn(async () => undefined);
 const mockStorageGetString = jest.fn(async () => null);
 const mockStorageSetString = jest.fn(async () => undefined);
 const mockStorageDelete = jest.fn(async () => undefined);
-const mockGetActiveAccountRef = jest.fn(async () => null);
+const mockStorageGetObject = jest.fn(async () => null);
 const mockSetActiveAccount = jest.fn(async () => undefined);
 const mockClearActiveAccount = jest.fn(async () => undefined);
 const mockPrepareScopeRuntime = jest.fn(async () => ({
@@ -17,10 +18,12 @@ const mockLoadSettings = jest.fn(async () => undefined);
 const mockLoadEntries = jest.fn(async () => undefined);
 const mockRefreshIndicator = jest.fn(async () => undefined);
 const mockSetSessionTransitioning = jest.fn();
+const mockSetCurrentScopeKey = jest.fn();
 
 jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: (...args: unknown[]) => mockGetCurrentServerUrl(...args),
   setCurrentServerUrl: (...args: unknown[]) => mockSetCurrentServerUrl(...args),
+  clearCurrentServerUrl: (...args: unknown[]) => mockClearCurrentServerUrl(...args),
   getServerKey: jest.fn((url: string) =>
     url === 'https://server-b.example.com'
       ? 'env_https_server_b_example_com'
@@ -31,6 +34,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
     getString: (...args: unknown[]) => mockStorageGetString(...args),
+    getObject: (...args: unknown[]) => mockStorageGetObject(...args),
     setString: (...args: unknown[]) => mockStorageSetString(...args),
     delete: (...args: unknown[]) => mockStorageDelete(...args),
   },
@@ -38,7 +42,6 @@ jest.mock('@/src/utils/storage', () => ({
 }));
 
 jest.mock('@/src/services/accountRegistryService', () => ({
-  getActiveAccountRef: (...args: unknown[]) => mockGetActiveAccountRef(...args),
   setActiveAccount: (...args: unknown[]) => mockSetActiveAccount(...args),
   clearActiveAccount: (...args: unknown[]) => mockClearActiveAccount(...args),
 }));
@@ -81,7 +84,13 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
 }));
 
 jest.mock('@/src/services/workspaceSessionState', () => ({
-  setSessionTransitioning: (...args: unknown[]) => mockSetSessionTransitioning(...args),
+  LOCAL_SCOPE_KEY: 'local',
+  useWorkspaceSessionStore: {
+    getState: () => ({
+      setSessionTransitioning: mockSetSessionTransitioning,
+      setCurrentScopeKey: mockSetCurrentScopeKey,
+    }),
+  },
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -89,15 +98,15 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import {
-  transitionToAccountScope,
-  transitionToLocalScope,
+  switchActiveAccountScope,
+  returnToLocalScopeAfterLogout,
 } from '../workspaceSessionTransitionService';
 
 describe('workspaceSessionTransitionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetCurrentServerUrl.mockResolvedValue('https://server-a.example.com');
-    mockGetActiveAccountRef.mockResolvedValue({ serverUrl: 'https://server-a.example.com', userId: 'u1' });
+    mockStorageGetObject.mockResolvedValue({ serverUrl: 'https://server-a.example.com', userId: 'u1' });
     mockStorageGetString.mockResolvedValue(null);
     mockPrepareScopeRuntime.mockResolvedValue({
       prepared: true,
@@ -107,7 +116,7 @@ describe('workspaceSessionTransitionService', () => {
   });
 
   it('prepares account scope and refreshes scoped runtime in order', async () => {
-    await transitionToAccountScope({
+    await switchActiveAccountScope({
       serverUrl: 'https://server-b.example.com',
       userId: 'u2',
     });
@@ -134,7 +143,7 @@ describe('workspaceSessionTransitionService', () => {
     mockLoadEntries.mockRejectedValueOnce(new Error('load entries failed'));
 
     await expect(
-      transitionToAccountScope({
+      switchActiveAccountScope({
         serverUrl: 'https://server-b.example.com',
         userId: 'u2',
       })
@@ -147,7 +156,7 @@ describe('workspaceSessionTransitionService', () => {
   });
 
   it('clears active account and workspace user id when returning to local scope', async () => {
-    await transitionToLocalScope();
+    await returnToLocalScopeAfterLogout();
 
     expect(mockClearActiveAccount).toHaveBeenCalledTimes(1);
     expect(mockStorageDelete).toHaveBeenCalledWith(

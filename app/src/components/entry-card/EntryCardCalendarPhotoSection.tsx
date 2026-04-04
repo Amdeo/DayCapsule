@@ -2,6 +2,7 @@ import React from 'react';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Text, Pressable, View } from 'react-native';
+import type { ViewStyle } from 'react-native';
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import type { CalendarDensity } from '@/src/store/settingsStore';
 import { usePhotoSource } from '@/src/hooks/usePhotoSource';
@@ -16,19 +17,29 @@ interface CalendarPhotoImageProps {
   style: object | object[];
 }
 
+const CALENDAR_PHOTO_LOADING_STYLE: ViewStyle = {
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#ECE7E0',
+};
+
+const CALENDAR_PHOTO_MISSING_STYLE: ViewStyle = {
+  backgroundColor: '#ECE7E0',
+};
+
 function CalendarPhotoImage({ photo, style }: CalendarPhotoImageProps) {
   const { sourceUri, missing, pendingHydration, handleError } = usePhotoSource(photo, 'thumbnail');
 
   if (pendingHydration) {
     return (
-      <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECE7E0' }]}>
+      <View style={[style, CALENDAR_PHOTO_LOADING_STYLE]}>
         <ActivityIndicator size="small" color="#A68D68" />
       </View>
     );
   }
 
   if (missing) {
-    return <View style={[style, { backgroundColor: '#ECE7E0' }]} />;
+    return <View style={[style, CALENDAR_PHOTO_MISSING_STYLE]} />;
   }
 
   return (

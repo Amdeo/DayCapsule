@@ -1,11 +1,14 @@
-import { StyleSheet } from 'react-native';
+import {
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
 export const SETTINGS_SWITCH_TRACK_COLORS = {
   false: '#D1D1D1',
   true: '#6A89CC',
 } as const;
 
-export const settingsPageStyles = StyleSheet.create({
+export const settingsPageStyles = {
   groupCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -198,9 +201,9 @@ export const settingsPageStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;
 
-export const segmentedSelectorStyles = StyleSheet.create({
+export const segmentedSelectorStyles = {
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -257,9 +260,9 @@ export const segmentedSelectorStyles = StyleSheet.create({
     color: '#6A89CC',
     fontWeight: '600',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;
 
-export const photoHeightSelectorStyles = StyleSheet.create({
+export const photoHeightSelectorStyles = {
   container: {
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -333,4 +336,4 @@ export const photoHeightSelectorStyles = StyleSheet.create({
   optionValueSelected: {
     color: '#77C9D4',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

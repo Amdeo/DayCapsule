@@ -1,4 +1,4 @@
-import { View, Pressable } from 'react-native';
+import { View, Pressable, type ViewStyle } from 'react-native';
 import { memo, useState, type ComponentProps } from 'react';
 import Animated from 'react-native-reanimated';
 import { Timeline } from '@/src/components/Timeline.v2';
@@ -7,8 +7,8 @@ import { TextEditor } from '@/src/components/TextEditor';
 import { useDrawerAnimation, MAIN_TRANSLATE_X } from '@/src/components/home/useDrawerAnimation';
 import { useHomeScreenController } from '@/src/components/home/useHomeScreenController';
 
-const HOME_SCREEN_ROOT_STYLE = { flex: 1 };
-const DRAWER_OVERLAY_STYLE = { left: MAIN_TRANSLATE_X };
+const getDrawerOverlayStyle = (): ViewStyle => ({ left: MAIN_TRANSLATE_X });
+const getHomeScreenRootStyle = (): ViewStyle => ({ flex: 1 });
 
 const StableTimeline = memo(Timeline);
 
@@ -45,7 +45,7 @@ export default function HomeScreen() {
     <View
       testID="home-screen-root"
       className="flex-1 bg-home-mask"
-      style={HOME_SCREEN_ROOT_STYLE}
+      style={getHomeScreenRootStyle()}
     >
       <Animated.View className="flex-1" style={mainContentStyle}>
         <StableTimeline
@@ -70,7 +70,7 @@ export default function HomeScreen() {
         <Pressable
           onPress={closeDrawer}
           className="absolute bottom-0 right-0 top-0 z-[5]"
-          style={DRAWER_OVERLAY_STYLE}
+          style={getDrawerOverlayStyle()}
         />
       )}
     </View>

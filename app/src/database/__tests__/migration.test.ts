@@ -32,6 +32,7 @@ jest.mock('react-native-mmkv', () => ({
 
 jest.mock('@/src/database/sqlite', () => ({
   getDatabase: jest.fn(() => mockDb),
+  getDatabaseScopeKey: jest.fn(() => null),
 }));
 
 jest.mock('../operations', () => ({

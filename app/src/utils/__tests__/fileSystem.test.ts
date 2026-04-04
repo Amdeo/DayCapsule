@@ -51,6 +51,7 @@ describe('deleteFile', () => {
   it('sums directory file sizes and falls back to zero for missing sizes', async () => {
     (FileSystem.readDirectoryAsync as jest.Mock).mockResolvedValue(['first.jpg', 'second.jpg']);
     (FileSystem.getInfoAsync as jest.Mock)
+      .mockResolvedValueOnce({ exists: true, isDirectory: true })
       .mockResolvedValueOnce({ exists: true, isDirectory: false, size: 10 })
       .mockResolvedValueOnce({ exists: true, isDirectory: false });
 

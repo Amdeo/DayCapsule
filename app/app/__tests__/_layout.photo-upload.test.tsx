@@ -165,7 +165,9 @@ jest.mock('@/src/store/appLifecycleStore', () => ({
 jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   useCloudSyncIndicatorStore: {
     getState: () => ({
+      init: jest.fn(),
       refresh: jest.fn(async () => undefined),
+      setNetworkReachable: jest.fn(),
     }),
   },
 }));

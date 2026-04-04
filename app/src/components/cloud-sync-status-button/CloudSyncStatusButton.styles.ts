@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { type ViewStyle } from 'react-native';
 
-export const cloudSyncStatusButtonStyles = StyleSheet.create({
+export const cloudSyncStatusButtonStyles = {
   button: {
     width: 48,
     height: 48,
@@ -29,4 +29,8 @@ export const cloudSyncStatusButtonStyles = StyleSheet.create({
     borderColor: 'rgba(106, 137, 204, 0.18)',
     borderTopColor: '#6A89CC',
   },
-});
+} satisfies {
+  button: ViewStyle;
+  cloudWrap: ViewStyle;
+  syncRing: ViewStyle;
+};

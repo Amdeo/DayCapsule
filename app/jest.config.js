@@ -12,6 +12,8 @@ module.exports = {
   moduleNameMapper: {
     ...(jestExpoPreset.moduleNameMapper ?? {}),
     '^@/(.*)$': '<rootDir>/$1',
+    '^@sentry/react-native$': '<rootDir>/__mocks__/@sentry/react-native.js',
+    '^expo-notifications$': '<rootDir>/__mocks__/expo-notifications.js',
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^react-native-worklets$': '<rootDir>/__mocks__/react-native-worklets.js',
     '^react-native-mmkv$': '<rootDir>/__mocks__/react-native-mmkv.js',

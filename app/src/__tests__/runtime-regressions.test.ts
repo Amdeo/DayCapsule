@@ -303,7 +303,9 @@ jest.mock('@/src/store/commonTagsStore', () => ({
 jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   useCloudSyncIndicatorStore: {
     getState: () => ({
+      init: jest.fn(),
       refresh: jest.fn(async () => undefined),
+      setNetworkReachable: jest.fn(),
     }),
   },
 }));

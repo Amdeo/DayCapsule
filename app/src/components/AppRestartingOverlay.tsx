@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  ActivityIndicator,
+  Text,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
 export function AppRestartingOverlay() {
   return (
@@ -10,9 +16,13 @@ export function AppRestartingOverlay() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -23,4 +33,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
   },
-});
+} satisfies {
+  container: ViewStyle;
+  text: TextStyle;
+};
