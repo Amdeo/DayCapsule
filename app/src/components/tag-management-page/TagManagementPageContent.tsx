@@ -1,6 +1,5 @@
 import React from 'react';
 import { Text, TextInput, Pressable, View } from 'react-native';
-import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import type { DragEndParams } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
@@ -29,8 +28,7 @@ export function TagManagementPageContent({
   onDragEnd,
 }: TagManagementPageContentProps) {
   return (
-    <NestableScrollContainer>
-      <View testID="tag-management-root">
+    <View testID="tag-management-root">
         <Pressable
           testID="tag-management-reset-button"
           style={styles.resetRow}
@@ -76,8 +74,7 @@ export function TagManagementPageContent({
           >
             <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
           </Pressable>
-        </View>
       </View>
-    </NestableScrollContainer>
+    </View>
   );
 }

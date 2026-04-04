@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import {
-  NestableDraggableFlatList,
+  DraggableFlatList,
   type RenderItemParams,
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
@@ -31,11 +31,12 @@ export function TagManagementTagList({
   );
 
   return (
-    <NestableDraggableFlatList
+    <DraggableFlatList
       data={tags}
       keyExtractor={(item) => item}
       renderItem={renderItem}
       onDragEnd={onDragEnd}
+      scrollEnabled={false}
     />
   );
 }

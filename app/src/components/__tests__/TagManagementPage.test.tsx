@@ -80,7 +80,7 @@ jest.mock('react-native-draggable-flatlist', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    NestableDraggableFlatList: ({
+    DraggableFlatList: ({
       data,
       renderItem,
       onDragEnd,
@@ -98,7 +98,6 @@ jest.mock('react-native-draggable-flatlist', () => {
         </View>
       );
     },
-    NestableScrollContainer: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
     ScaleDecorator: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
   };
 });
