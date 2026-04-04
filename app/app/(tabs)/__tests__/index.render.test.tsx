@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { BackHandler } from 'react-native';
-import HomeScreen from '../index';
 import { VoiceService } from '@/src/services/voiceService';
 
 const mockLoadEntries = jest.fn().mockResolvedValue(undefined);
@@ -18,6 +17,16 @@ const mockLoadSettings = jest.fn().mockResolvedValue(undefined);
 const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 let mockGetStateEntries: Array<{ id: string }> = [];
 let mockCloudMode = false;
+
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  getWorkspaceSessionStateSnapshot: () => ({
+    isAuthenticated: mockCloudMode,
+    currentScopeKey: mockCloudMode ? 'scope:user-1' : 'local',
+    isTransitioning: false,
+    isAccountScopeActive: mockCloudMode,
+    canRunCloudSync: mockCloudMode,
+  }),
+}));
 
 const mockUseEntryStoreImpl = jest.fn(() => ({
   loadEntries: mockLoadEntries,
@@ -136,6 +145,8 @@ jest.mock('@/src/utils/logger', () => ({
 jest.mock('@/src/utils/fileSystem', () => ({
   deleteFile: jest.fn().mockResolvedValue(undefined),
 }));
+
+const HomeScreen = require('../index').default;
 
 describe('HomeScreen render shell', () => {
   beforeEach(() => {

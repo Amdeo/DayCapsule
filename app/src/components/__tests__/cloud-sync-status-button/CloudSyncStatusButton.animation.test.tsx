@@ -35,7 +35,7 @@ describe('CloudSyncStatusButton animation lifecycle', () => {
 
   it('进入 syncing 时启动两组 loop 并调用各自 start', () => {
     const screen = render(
-      <CloudSyncStatusButton uiState="pending" onPress={jest.fn()} />,
+      <CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />,
     );
 
     loopSpy.mockClear();
