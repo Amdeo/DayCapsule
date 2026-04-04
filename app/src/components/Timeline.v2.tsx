@@ -76,7 +76,6 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
     handlePressOut,
     closeViewingEntry,
     closeEditingEntry,
-    handleDetailEdit,
     revealFab,
   } = useTimelineController({
     updateEntry,
@@ -203,7 +202,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
         viewingEntry={viewingEntry}
         editingEntry={editingEntry}
         onCloseViewing={closeViewingEntry}
-        onDetailEdit={handleDetailEdit}
+        onSaveTextDetail={handleSaveEdit}
         onSaveEdit={handleSaveEdit}
         onCloseEditing={closeEditingEntry}
       />

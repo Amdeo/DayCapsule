@@ -7,7 +7,7 @@ interface TimelineDialogsProps {
   viewingEntry: Entry | null;
   editingEntry: Entry | null;
   onCloseViewing: () => void;
-  onDetailEdit: (entry: Entry) => void;
+  onSaveTextDetail: (id: string, content: string, tags: string[]) => void | Promise<void>;
   onSaveEdit: (id: string, content: string, tags: string[]) => void;
   onCloseEditing: () => void;
 }
@@ -16,7 +16,7 @@ export function TimelineDialogs({
   viewingEntry,
   editingEntry,
   onCloseViewing,
-  onDetailEdit,
+  onSaveTextDetail,
   onSaveEdit,
   onCloseEditing,
 }: TimelineDialogsProps) {
@@ -26,7 +26,7 @@ export function TimelineDialogs({
         visible={viewingEntry !== null}
         entry={viewingEntry}
         onClose={onCloseViewing}
-        onEdit={onDetailEdit}
+        onSave={onSaveTextDetail}
       />
 
       <EntryEditor

@@ -23,7 +23,6 @@ export function useTimelineController({
     handleEditEntry,
     closeViewingEntry,
     closeEditingEntry,
-    handleDetailEdit,
   } = useTimelineEntryDetailState();
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -174,7 +173,6 @@ export function useTimelineController({
     handlePressOut,
     closeViewingEntry,
     closeEditingEntry,
-    handleDetailEdit,
     revealFab,
   };
 }
