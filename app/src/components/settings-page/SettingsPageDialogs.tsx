@@ -4,6 +4,7 @@ import { HelpPage } from '@/src/components/HelpPage';
 import { LoginPage } from '@/src/components/LoginPage';
 import { TagManagementPage } from '@/src/components/TagManagementPage';
 import { CloudSyncMonitorHost } from '@/src/components/cloud-sync-monitor/CloudSyncMonitorHost';
+import { ConfirmDialogHost } from '@/src/components/ConfirmDialogHost';
 import { AccountSwitcherModal } from '@/src/components/account-switcher/AccountSwitcherModal';
 import type { AccountEntry, ActiveAccountRef } from '@/src/services/accountRegistryService';
 
@@ -46,6 +47,7 @@ export function SettingsPageDialogs({
 }: SettingsPageDialogsProps) {
   return (
     <>
+      <ConfirmDialogHost />
       <CloudSyncMonitorHost />
       <TagManagementPage visible={showTagMgmt} onClose={onCloseTagManagement} />
       <HelpPage visible={showHelp} onClose={onCloseHelp} />
