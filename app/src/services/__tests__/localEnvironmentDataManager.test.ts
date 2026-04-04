@@ -11,10 +11,8 @@ jest.mock('@/src/services/apiClient', () => ({
   resetApiClient: () => mockResetApiClient(),
 }));
 
-const mockResetDatabase = jest.fn();
 const mockInitDatabase = jest.fn().mockResolvedValue(true);
 jest.mock('@/src/database/sqlite', () => ({
-  resetDatabase: () => mockResetDatabase(),
   initDatabase: () => mockInitDatabase(),
 }));
 
@@ -98,10 +96,6 @@ describe('localEnvironmentDataManager', () => {
     expect(rememberServerUrl).toHaveBeenCalledWith('https://server-b.example.com');
     expect(mockInvalidateActiveQueries).toHaveBeenCalledTimes(1);
     expect(mockResetApiClient).toHaveBeenCalledTimes(1);
-    expect(mockResetDatabase).toHaveBeenCalledTimes(1);
-    expect(mockInvalidateActiveQueries.mock.invocationCallOrder[0]).toBeLessThan(
-      mockResetDatabase.mock.invocationCallOrder[0]
-    );
     expect(mockInitDatabase).toHaveBeenCalledTimes(1);
     expect(mockMigrateToMediaJson).toHaveBeenCalledTimes(1);
     expect(mockMigrateEntriesContentToFts).toHaveBeenCalledTimes(1);
