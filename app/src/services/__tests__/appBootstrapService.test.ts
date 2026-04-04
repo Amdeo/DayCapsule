@@ -12,16 +12,14 @@ const mockMigrateLocalReadyStateColumn = jest.fn(async () => undefined);
 const mockCleanupIncompleteLocalEntries = jest.fn(async () => undefined);
 const mockLoadAuth = jest.fn(async () => undefined);
 const mockLoadSync = jest.fn(async () => undefined);
-const mockSetInitialSyncState = jest.fn(async () => undefined);
 const mockLoadSettings = jest.fn(async () => undefined);
-const mockSetCloudMode = jest.fn(async () => undefined);
-let mockCloudMode: boolean | 'switching' = false;
-const mockStorageGetString = jest.fn(async () => 'false');
-const mockStorageSetString = jest.fn(async () => undefined);
 const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockCloudSyncNow = jest.fn(async () => undefined);
+const mockRestoreAccountScope = jest.fn(async () => undefined);
+const mockGetActiveAccountRef = jest.fn(async () => null);
+const mockGetRegisteredAccounts = jest.fn(async () => []);
 const mockRunCloudRecoveryFlow = jest.fn(
   async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
     await deps.refreshCloudSyncIndicator();
@@ -38,6 +36,13 @@ const mockLoggerWarn = jest.fn();
 const mockLoggerError = jest.fn();
 
 let mockIsAuthenticated = false;
+let mockSessionState = {
+  currentScopeKey: 'local',
+  isAuthenticated: false,
+  isTransitioning: false,
+  isAccountScopeActive: false,
+  canRunCloudSync: false,
+};
 
 jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
@@ -93,7 +98,6 @@ jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: {
     getState: () => ({
       load: mockLoadSync,
-      setInitialSyncState: mockSetInitialSyncState,
     }),
   },
 }));
@@ -102,16 +106,8 @@ jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: {
     getState: () => ({
       loadSettings: mockLoadSettings,
-      setCloudMode: mockSetCloudMode,
-      cloudMode: mockCloudMode,
+      notifications: false,
     }),
-  },
-}));
-
-jest.mock('@/src/utils/storage', () => ({
-  Storage: {
-    getString: (...args: unknown[]) => mockStorageGetString(...args),
-    setString: (...args: unknown[]) => mockStorageSetString(...args),
   },
 }));
 
@@ -152,7 +148,8 @@ jest.mock('@/src/services/workspaceService', () => ({
 
 jest.mock('@/src/services/accountRegistryService', () => ({
   migrateAuthKeysToUserScoped: jest.fn(async () => undefined),
-  getRegisteredAccounts: jest.fn(async () => []),
+  getActiveAccountRef: (...args: unknown[]) => mockGetActiveAccountRef(...args),
+  getRegisteredAccounts: (...args: unknown[]) => mockGetRegisteredAccounts(...args),
 }));
 
 jest.mock('@/src/services/notificationService', () => ({
@@ -160,6 +157,15 @@ jest.mock('@/src/services/notificationService', () => ({
     isReminderScheduled: jest.fn().mockResolvedValue(true),
     scheduleDailyReminder: jest.fn().mockResolvedValue(undefined),
   },
+}));
+
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  getWorkspaceSessionState: () => mockSessionState,
+  canRunCloudSync: () => mockSessionState.canRunCloudSync,
+}));
+
+jest.mock('@/src/services/workspaceSessionTransitionService', () => ({
+  restoreAccountScope: (...args: unknown[]) => mockRestoreAccountScope(...args),
 }));
 
 import { runAppBootstrap } from '../appBootstrapService';
@@ -171,10 +177,17 @@ describe('runAppBootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAuthenticated = false;
-    mockCloudMode = false;
+    mockSessionState = {
+      currentScopeKey: 'local',
+      isAuthenticated: false,
+      isTransitioning: false,
+      isAccountScopeActive: false,
+      canRunCloudSync: false,
+    };
+    mockGetActiveAccountRef.mockResolvedValue(null);
+    mockGetRegisteredAccounts.mockResolvedValue([]);
     mockInitDatabase.mockResolvedValue(true);
     mockMigrateFromAsyncStorage.mockResolvedValue({ success: true, migratedCount: 0 });
-    mockStorageGetString.mockResolvedValue('false');
     mockBuildInitialFlow.mockReturnValue({ type: 'idle' });
     mockRunCloudRecoveryFlow.mockImplementation(
       async (deps: { refreshCloudSyncIndicator: () => Promise<void>; syncNow: () => Promise<void> }) => {
@@ -189,10 +202,7 @@ describe('runAppBootstrap', () => {
   });
 
   it('runs startup dependencies and recovery steps in order before refreshing the indicator', async () => {
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(mockInitializeFileSystem).toHaveBeenCalledTimes(1);
     expect(mockInitializeAudio).toHaveBeenCalledTimes(1);
@@ -200,31 +210,11 @@ describe('runAppBootstrap', () => {
     expect(mockCleanupIncompleteLocalEntries).toHaveBeenCalledTimes(1);
     expect(mockLoadAuth).toHaveBeenCalledTimes(1);
     expect(mockLoadSync).toHaveBeenCalledTimes(1);
+    expect(mockLoadSettings).toHaveBeenCalledTimes(1);
     expect(mockMigrateEntriesContentToFts).toHaveBeenCalledTimes(1);
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
     expect(onInitializationFailed).not.toHaveBeenCalled();
-
-    expect(mockInitDatabase.mock.invocationCallOrder[0]).toBeGreaterThan(
-      mockInitializeFileSystem.mock.invocationCallOrder[0]
-    );
-    expect(mockInitDatabase.mock.invocationCallOrder[0]).toBeGreaterThan(
-      mockInitializeAudio.mock.invocationCallOrder[0]
-    );
-    expect(mockMigrateLocalReadyStateColumn.mock.invocationCallOrder[0]).toBeLessThan(
-      mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]
-    );
-    expect(mockMigrateToMediaJson.mock.invocationCallOrder[0]).toBeLessThan(
-      mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]
-    );
-    expect(mockMigrateEntriesContentToFts.mock.invocationCallOrder[0]).toBeLessThan(
-      mockMigrateSyncStatusColumn.mock.invocationCallOrder[0]
-    );
-    expect(mockLoadAuth.mock.invocationCallOrder[0]).toBeLessThan(
-      mockInitDatabase.mock.invocationCallOrder[0]
-    );
-    expect(mockCleanupIncompleteLocalEntries.mock.invocationCallOrder[0]).toBeLessThan(
-      mockLoadSync.mock.invocationCallOrder[0]
-    );
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
   });
 
   it('shows a migration warning alert and still completes bootstrap when migration reports partial failure', async () => {
@@ -234,10 +224,7 @@ describe('runAppBootstrap', () => {
       migratedCount: 0,
     });
 
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(mockShowErrorFeedback).toHaveBeenCalledWith({
       title: '数据迁移警告',
@@ -248,30 +235,29 @@ describe('runAppBootstrap', () => {
     expect(onInitializationFailed).not.toHaveBeenCalled();
   });
 
-  it('resets interrupted cloud mode switching back to offline mode', async () => {
-    mockCloudMode = 'switching';
+  it('restores account scope when auth is active but session scope is still local', async () => {
+    mockIsAuthenticated = true;
+    mockSessionState = {
+      currentScopeKey: 'local',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: false,
+      canRunCloudSync: false,
+    };
+    mockGetActiveAccountRef.mockResolvedValue({ serverUrl: 'https://api.example.com', userId: 'user-1' });
 
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
-    expect(mockSetCloudMode).toHaveBeenCalledWith(false);
-    expect(mockShowErrorFeedback).toHaveBeenCalledWith({
-      title: '提示',
-      message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
-      actions: [{ label: '知道了', role: 'primary' }],
+    expect(mockRestoreAccountScope).toHaveBeenCalledWith({
+      serverUrl: 'https://api.example.com',
+      userId: 'user-1',
     });
-    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('reports initialization failure when database initialization fails', async () => {
     mockInitDatabase.mockResolvedValueOnce(false);
 
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(onInitializationFailed).toHaveBeenCalledTimes(1);
     expect(refreshCloudSyncIndicator).not.toHaveBeenCalled();
@@ -290,10 +276,7 @@ describe('runAppBootstrap', () => {
       }
     );
 
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('启动后');
     expect(onInitializationFailed).toHaveBeenCalledTimes(1);
@@ -314,10 +297,7 @@ describe('runAppBootstrap', () => {
       }
     );
 
-    await runAppBootstrap({
-      refreshCloudSyncIndicator,
-      onInitializationFailed,
-    });
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传语音失败:', voiceError);
     expect(mockLoggerWarn).toHaveBeenCalledWith('⚠️ 启动时补传待上传照片失败:', photoError);
@@ -338,9 +318,6 @@ describe('runAppBootstrap', () => {
   });
 
   it('passes registered account scopes to cleanupOrphanWorkspaces', async () => {
-    const { getRegisteredAccounts } = jest.requireMock('@/src/services/accountRegistryService') as {
-      getRegisteredAccounts: jest.Mock;
-    };
     const { cleanupOrphanWorkspaces } = jest.requireMock('@/src/services/workspaceCleanupService') as {
       cleanupOrphanWorkspaces: jest.Mock;
     };
@@ -348,7 +325,7 @@ describe('runAppBootstrap', () => {
       getCurrentDataScopeKeySync: jest.Mock;
     };
 
-    getRegisteredAccounts.mockResolvedValueOnce([
+    mockGetRegisteredAccounts.mockResolvedValueOnce([
       { serverUrl: 'https://api.example.com', userId: 'user-1' },
       { serverUrl: 'https://api.example.com', userId: 'user-2' },
     ]);

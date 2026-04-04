@@ -7,10 +7,24 @@ import {
   triggerLatestLoginSuccess,
 } from '../helpers/renderSettingsPage';
 
+type LatestSettingsPageContentProps = null | {
+  isAuthenticated: boolean;
+  userEmail?: string;
+  usedSpace: string;
+  onShowSyncStatus: () => void | Promise<void>;
+  onSwitchAccount?: () => void | Promise<void>;
+  onLogout: () => void;
+  onShowLogin: () => void;
+};
+
+let latestSettingsPageContentProps: LatestSettingsPageContentProps = null;
+
 jest.mock('../../settings-page/SettingsPageContent', () => ({
   SettingsPageContent: (props: any) => {
     const React = require('react');
     const { Text, View } = require('react-native');
+
+    latestSettingsPageContentProps = props;
 
     return (
       <View testID="settings-page-content-mock">
@@ -18,7 +32,7 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
         {props.isAuthenticated ? (
           <>
             <Text>{props.userEmail}</Text>
-            <Text onPress={props.onShowSyncStatus}>同步状态</Text>
+            <Text testID="settings-show-sync-status" onPress={props.onShowSyncStatus}>同步状态</Text>
             <Text onPress={props.onSwitchAccount}>切换账号</Text>
             <Text onPress={props.onLogout}>退出登录</Text>
           </>
@@ -32,6 +46,7 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
 
 describe('SettingsPage account auth', () => {
   beforeEach(() => {
+    latestSettingsPageContentProps = null;
     resetRenderSettingsPageMocks();
   });
 
@@ -104,6 +119,8 @@ describe('SettingsPage account auth', () => {
     await waitFor(() => {
       expect(mocks.auth.logout).toHaveBeenCalledTimes(1);
     });
+    expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
+    expect(mocks.entries.loadEntries).not.toHaveBeenCalled();
   });
 
   it('opens the login dialog from the real settings entry when unauthenticated', async () => {
@@ -115,8 +132,8 @@ describe('SettingsPage account auth', () => {
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });
 
-  it('closes login dialog on account login success', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: false });
+  it('closes login dialog on login success', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: false });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByTestId('settings-open-login'));
@@ -130,6 +147,12 @@ describe('SettingsPage account auth', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('settings-login-dialog')).toBeNull();
     });
-    expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
+  });
+
+  it('does not render the legacy account mode switch', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: true });
+    await settleInitialEffects(screen);
+
+    expect(screen.queryByTestId('settings-switch-cloud-mode')).toBeNull();
   });
 });

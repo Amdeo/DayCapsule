@@ -40,7 +40,6 @@ const resetStore = () =>
     photoHeight: 'default',
     calendarDensity: 'default',
     lastAddType: null,
-    cloudMode: false,
     isLoaded: false,
   });
 
@@ -209,27 +208,5 @@ describe('resetSettings — lastAddType', () => {
 
     expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'settings:lastAddType'));
     expect(useSettingsStore.getState().lastAddType).toBeNull();
-  });
-});
-
-describe('cloudMode', () => {
-  it('defaults to false', () => {
-    expect(useSettingsStore.getState().cloudMode).toBe(false);
-  });
-
-  it('setCloudMode persists to MMKV', async () => {
-    await useSettingsStore.getState().setCloudMode('switching');
-    expect(Storage.setString).toHaveBeenCalledWith(
-      scopedKey(SERVER_A_SCOPE, 'settings:cloudMode'),
-      'switching'
-    );
-    expect(useSettingsStore.getState().cloudMode).toBe('switching');
-
-    await useSettingsStore.getState().setCloudMode(true);
-    expect(Storage.setString).toHaveBeenCalledWith(
-      scopedKey(SERVER_A_SCOPE, 'settings:cloudMode'),
-      'true'
-    );
-    expect(useSettingsStore.getState().cloudMode).toBe(true);
   });
 });
