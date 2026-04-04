@@ -6,7 +6,7 @@ import {
   setCurrentServerUrl,
 } from '@/src/services/backendEnvironmentService';
 import { resetApiClient } from '@/src/services/apiClient';
-import { initDatabase, resetDatabase } from '@/src/database/sqlite';
+import { initDatabase } from '@/src/database/sqlite';
 import {
   migrateCloudSyncCoreColumns,
   migrateEntriesContentToFts,
@@ -37,7 +37,6 @@ const reloadEnvironmentState = async (): Promise<void> => {
 const initializeEnvironmentRuntime = async (): Promise<void> => {
   resetApiClient();
   useEntryStore.getState().invalidateActiveQueries();
-  resetDatabase();
   const databaseReady = await initDatabase();
   if (!databaseReady) {
     throw new Error('初始化数据库失败');
