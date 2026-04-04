@@ -14,6 +14,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/$1',
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^react-native-worklets$': '<rootDir>/__mocks__/react-native-worklets.js',
+    '^react-native-mmkv$': '<rootDir>/__mocks__/react-native-mmkv.js',
+    '^@react-native-async-storage/async-storage$': '<rootDir>/__mocks__/@react-native-async-storage/async-storage.js',
   },
   testMatch: [
     '**/__tests__/**/*.{spec,test}.{ts,tsx}',
