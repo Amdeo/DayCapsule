@@ -10,10 +10,14 @@ export type CloudSyncIndicatorUiState =
   | 'syncing'
   | 'synced'
   | 'pending'
-  | 'failed';
+  | 'failed'
+  | 'offline';
 
 interface CloudSyncIndicatorState extends DB.CloudSyncIndicatorSummary {
   uiState: CloudSyncIndicatorUiState;
+  isNetworkReachable: boolean;
+  setNetworkReachable: (reachable: boolean) => void;
+  init: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -30,7 +34,7 @@ function resolveUiState(
     isAuthenticated: boolean;
     cloudMode: boolean | 'switching';
     isSyncing: boolean;
-    lastSyncError: string | null;
+    isNetworkReachable: boolean;
     mediaValidationStatus: ReturnType<typeof useSyncStore.getState>['lastMediaValidationSummary'] extends infer T
       ? T extends { status: infer S } ? S | null : null
       : null;
@@ -44,50 +48,86 @@ function resolveUiState(
     return 'syncing';
   }
 
-  if (
-    options.lastSyncError
-    || summary.failedEntries > 0
+  const hasPendingContent = summary.pendingEntries > 0 || summary.pendingUploads > 0;
+  const hasFailedContent =
+    summary.failedEntries > 0
     || options.mediaValidationStatus === 'partial'
-    || options.mediaValidationStatus === 'failed'
-  ) {
+    || options.mediaValidationStatus === 'failed';
+
+  if (!options.isNetworkReachable && (hasPendingContent || hasFailedContent)) {
+    return 'offline';
+  }
+
+  if (hasFailedContent) {
     return 'failed';
   }
 
-  if (summary.pendingEntries > 0 || summary.pendingUploads > 0) {
+  if (hasPendingContent) {
     return 'pending';
   }
 
   return 'synced';
 }
 
-export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set) => ({
+let unsubscribeSyncStore: (() => void) | null = null;
+
+export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set, get) => ({
   ...EMPTY_SUMMARY,
   uiState: 'hidden',
+  isNetworkReachable: true,
+
+  setNetworkReachable: (reachable) => {
+    set({ isNetworkReachable: reachable });
+    get().refresh().catch((err) => {
+      logger.warn('[cloudSyncIndicatorStore] refresh after network change failed:', err);
+    });
+  },
+
+  init: () => {
+    if (unsubscribeSyncStore) return;
+
+    let prevIsSyncing = useSyncStore.getState().isSyncing;
+    unsubscribeSyncStore = useSyncStore.subscribe((state) => {
+      if (state.isSyncing !== prevIsSyncing) {
+        prevIsSyncing = state.isSyncing;
+        get().refresh().catch((err) => {
+          logger.warn('[cloudSyncIndicatorStore] refresh after isSyncing change failed:', err);
+        });
+      }
+    });
+  },
 
   refresh: async () => {
     const { isAuthenticated } = useAuthStore.getState();
     const { cloudMode } = useSettingsStore.getState();
 
     if (!isAuthenticated || cloudMode !== true) {
-      set({
-        ...EMPTY_SUMMARY,
-        uiState: 'hidden',
-      });
+      set({ ...EMPTY_SUMMARY, uiState: 'hidden' });
       return;
     }
 
     try {
       const summary = await DB.getCloudSyncIndicatorSummary();
       const { isSyncing, lastSyncError, lastMediaValidationSummary } = useSyncStore.getState();
+      const { isNetworkReachable } = get();
+
+      // 清除陈旧错误：有 lastSyncError 但 DB 中无失败条目且网络可达
+      if (lastSyncError && summary.failedEntries === 0 && isNetworkReachable) {
+        useSyncStore.getState().markSyncSuccess().catch((err) => {
+          logger.warn('[cloudSyncIndicatorStore] failed to clear stale error:', err);
+        });
+      }
 
       const mediaValidationStatus = lastMediaValidationSummary?.status ?? null;
       const uiState = resolveUiState(summary, {
         isAuthenticated,
         cloudMode,
         isSyncing,
-        lastSyncError,
+        isNetworkReachable,
         mediaValidationStatus,
       });
+
+      set({ ...summary, uiState });
 
       logger.log('[cloudSyncIndicator] refresh →', {
         uiState,
@@ -100,7 +140,6 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set) 
         failedEntries: summary.failedEntries,
       });
 
-      set({ ...summary, uiState });
     } catch (error) {
       logger.warn('[cloudSyncIndicatorStore] refresh failed:', error);
     }

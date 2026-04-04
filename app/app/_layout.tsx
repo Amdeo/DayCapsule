@@ -88,6 +88,7 @@ export default function RootLayout() {
   const clearRestart = useAppLifecycleStore((s) => s.clearRestart);
 
   const runBootstrap = useCallback(async () => {
+    useCloudSyncIndicatorStore.getState().init();
     await runAppBootstrap({
       refreshCloudSyncIndicator,
       onInitializationFailed: () => {
@@ -134,6 +135,8 @@ export default function RootLayout() {
       const isReachable = state.isConnected === true && state.isInternetReachable !== false;
       const wasReachable = wasNetworkReachableRef.current;
       wasNetworkReachableRef.current = isReachable;
+
+      useCloudSyncIndicatorStore.getState().setNetworkReachable(isReachable);
 
       if (wasReachable === false && isReachable) {
         void runPendingCloudRecovery('网络恢复时');
