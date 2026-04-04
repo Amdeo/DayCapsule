@@ -6,7 +6,11 @@
 import { Storage } from '@/src/utils/storage';
 import { logger } from '@/src/utils/logger';
 import { Platform } from 'react-native';
-import { getCurrentServerUrlSync, getServerKey } from '@/src/services/backendEnvironmentService';
+import {
+  getCurrentServerUrlSync,
+  getServerKey,
+  SERVER_URL_REQUIRED_MESSAGE,
+} from '@/src/services/backendEnvironmentService';
 import {
   getActiveAccountRefSync,
   getUserAuthKeys,
@@ -366,11 +370,12 @@ const resolveApiBaseURL = (): string => {
   }
 
   const configuredBaseURL = process.env.EXPO_PUBLIC_API_URL;
-  if (!configuredBaseURL) {
-    logger.warn('[apiClient] EXPO_PUBLIC_API_URL 未设置，回退到 http://localhost:8080/api');
+  if (configuredBaseURL) {
+    return normalizeApiBaseURL(configuredBaseURL);
   }
 
-  return normalizeApiBaseURL(configuredBaseURL ?? 'http://localhost:8080/api');
+  logger.warn('[apiClient] No backend server configured for API client');
+  throw new Error(SERVER_URL_REQUIRED_MESSAGE);
 };
 
 export function getApiClient(): ApiClient {

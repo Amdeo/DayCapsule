@@ -2,7 +2,12 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: jest.fn().mockResolvedValue('https://server-a.example.com'),
   getCurrentServerUrlSync: jest.fn(() => 'https://server-a.example.com'),
   getServerKey: jest.fn((url: string) => 'env_https_server_a_example_com'),
+  isServerUrlNotConfiguredError: jest.fn((error: unknown) =>
+    error instanceof Error && error.message === 'No server URL configured'
+  ),
 }));
+
+import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
 
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
@@ -76,5 +81,11 @@ describe('getCurrentDataScopeKey', () => {
   it('returns scoped key when userId present', async () => {
     (Storage.getString as jest.Mock).mockResolvedValue('user-xyz');
     await expect(getCurrentDataScopeKey()).resolves.toBe('env_https_server_a_example_com_user-xyz');
+  });
+
+  it('returns local when server url is not configured', async () => {
+    (getCurrentServerUrl as jest.Mock).mockRejectedValueOnce(new Error('No server URL configured'));
+
+    await expect(getCurrentDataScopeKey()).resolves.toBe('local');
   });
 });

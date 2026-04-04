@@ -4,9 +4,25 @@ import { CloudSyncMonitorHost } from '../cloud-sync-monitor/CloudSyncMonitorHost
 import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 import { useSyncStore } from '@/src/store/syncStore';
 
+const mockSyncNow = jest.fn().mockResolvedValue(undefined);
+const mockShowErrorFeedback = jest.fn();
+
 jest.mock('@/src/services/cloudSyncService', () => ({
   createCloudSyncService: () => ({
-    syncNow: jest.fn().mockResolvedValue(undefined),
+    syncNow: (...args: unknown[]) => mockSyncNow(...args),
+  }),
+}));
+
+jest.mock('@/src/services/showErrorFeedback', () => ({
+  showErrorFeedback: (...args: unknown[]) => mockShowErrorFeedback(...args),
+}));
+
+jest.mock('@/src/services/errorFeedbackPresets', () => ({
+  buildCloudSyncFailedFeedback: (error: unknown) => ({
+    title: '云同步失败',
+    message: error instanceof Error ? error.message : 'unknown',
+    dedupeKey: 'cloud-sync-failed',
+    actions: [{ label: '知道了', role: 'primary' }],
   }),
 }));
 
@@ -42,6 +58,7 @@ jest.mock('../cloud-sync-monitor/CloudSyncMonitorModal', () => ({
 
 describe('CloudSyncMonitorHost', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     useCloudSyncMonitorStore.setState({
       activeRun: null,
       lastRunSummary: null,
@@ -99,5 +116,26 @@ describe('CloudSyncMonitorHost', () => {
 
     expect(useCloudSyncMonitorStore.getState().isVisible).toBe(false);
     expect(screen.queryByTestId('cloud-sync-monitor-modal')).toBeNull();
+  });
+
+  it('shows feedback when sync now fails after dismissing the modal', async () => {
+    mockSyncNow.mockRejectedValueOnce(new Error('未配置后端地址，请先在设置中配置服务器地址'));
+    const screen = render(<CloudSyncMonitorHost />);
+
+    act(() => {
+      useCloudSyncMonitorStore.getState().show();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('cloud-sync-now-button'));
+    });
+
+    expect(useCloudSyncMonitorStore.getState().isVisible).toBe(false);
+    expect(mockShowErrorFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '云同步失败',
+        message: '未配置后端地址，请先在设置中配置服务器地址',
+      }),
+    );
   });
 });

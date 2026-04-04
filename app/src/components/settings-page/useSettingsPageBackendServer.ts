@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getCurrentServerUrl,
   getRecentServerUrls,
+  isServerUrlNotConfiguredError,
   normalizeServerUrl,
 } from '@/src/services/backendEnvironmentService';
 import { testBackendConnection } from '@/src/services/backendConnectionService';
@@ -26,10 +27,16 @@ export function useSettingsPageBackendServer({ visible }: UseSettingsPageBackend
   const [isSavingBackendServer, setIsSavingBackendServer] = useState(false);
 
   const loadBackendState = useCallback(async () => {
-    const [nextCurrentServerUrl, nextRecentServerUrls] = await Promise.all([
-      getCurrentServerUrl(),
-      getRecentServerUrls(),
-    ]);
+    const nextRecentServerUrls = await getRecentServerUrls();
+    let nextCurrentServerUrl = '';
+
+    try {
+      nextCurrentServerUrl = await getCurrentServerUrl();
+    } catch (error) {
+      if (!isServerUrlNotConfiguredError(error)) {
+        throw error;
+      }
+    }
 
     setCurrentServerUrl(nextCurrentServerUrl);
     setBackendDraftUrl(nextCurrentServerUrl);

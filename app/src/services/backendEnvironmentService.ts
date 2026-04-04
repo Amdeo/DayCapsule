@@ -3,6 +3,8 @@ import { Storage } from '@/src/utils/storage';
 const CURRENT_SERVER_URL_KEY = 'backend:currentServerUrl';
 const RECENT_SERVER_URLS_KEY = 'backend:recentServerUrls';
 const RECENT_SERVER_URLS_LIMIT = 5;
+export const NO_SERVER_URL_CONFIGURED_ERROR = 'No server URL configured';
+export const SERVER_URL_REQUIRED_MESSAGE = '未配置后端地址，请先在设置中配置服务器地址';
 let currentServerUrlCache: string | null = null;
 
 const ensureUrl = (value: string): URL => {
@@ -39,11 +41,14 @@ export const getServerKey = (url: string): string => {
 const getFallbackServerUrl = (): string => {
   const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (!envApiUrl) {
-    throw new Error('No server URL configured');
+    throw new Error(NO_SERVER_URL_CONFIGURED_ERROR);
   }
 
   return buildServerUrlFromUrl(envApiUrl);
 };
+
+export const isServerUrlNotConfiguredError = (error: unknown): boolean =>
+  error instanceof Error && error.message === NO_SERVER_URL_CONFIGURED_ERROR;
 
 export const getCurrentServerUrl = async (): Promise<string> => {
   const storedUrl = await Storage.getString(CURRENT_SERVER_URL_KEY);
@@ -98,6 +103,36 @@ export const getRecentServerUrls = async (): Promise<string[]> => {
   }
 
   return recentUrls;
+};
+
+export const restoreCurrentServerUrlFromRecent = async (): Promise<string | null> => {
+  const recentUrls = await getRecentServerUrls();
+  for (const candidate of recentUrls) {
+    const recentServerUrl = candidate?.trim();
+    if (!recentServerUrl) {
+      continue;
+    }
+
+    try {
+      const normalizedUrl = normalizeServerUrl(recentServerUrl);
+      await setCurrentServerUrl(normalizedUrl);
+      return normalizedUrl;
+    } catch {
+      continue;
+    }
+  }
+
+  try {
+    const fallbackUrl = getFallbackServerUrl();
+    await setCurrentServerUrl(fallbackUrl);
+    return fallbackUrl;
+  } catch (error) {
+    if (isServerUrlNotConfiguredError(error)) {
+      currentServerUrlCache = null;
+      return null;
+    }
+    throw error;
+  }
 };
 
 export const rememberServerUrl = async (url: string): Promise<void> => {

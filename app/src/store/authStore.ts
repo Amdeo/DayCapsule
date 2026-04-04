@@ -7,7 +7,12 @@ import { create } from 'zustand';
 import { Storage, withScope } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
+import {
+  getCurrentServerUrl,
+  getServerKey,
+  isServerUrlNotConfiguredError,
+  SERVER_URL_REQUIRED_MESSAGE,
+} from '@/src/services/backendEnvironmentService';
 import { activateAuthenticatedAccount } from '@/src/services/authActivationService';
 import {
   getUserAuthKeys,
@@ -67,6 +72,17 @@ const EMPTY_AUTH_STATE = {
   isAuthenticated: false,
 } as const;
 
+const ensureConfiguredServerUrl = async (): Promise<string> => {
+  try {
+    return await getCurrentServerUrl();
+  } catch (error) {
+    if (isServerUrlNotConfiguredError(error)) {
+      throw new Error(SERVER_URL_REQUIRED_MESSAGE);
+    }
+    throw error;
+  }
+};
+
 const clearTokens = async () => {
   const { tokenKey, refreshTokenKey, userKey } = await getAuthKeys();
   await Promise.all([
@@ -80,8 +96,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   ...EMPTY_AUTH_STATE,
 
   login: async (email, password) => {
+    const serverUrl = await ensureConfiguredServerUrl();
     const client = getApiClient();
-    const serverUrl = await getCurrentServerUrl();
     const data = await client.post<AuthResponse>('/auth/login', { email, password });
     const user: AuthUser = { id: data.user.id, email: data.user.email };
     const previousState = get();
@@ -99,8 +115,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   register: async (email, password) => {
+    const serverUrl = await ensureConfiguredServerUrl();
     const client = getApiClient();
-    const serverUrl = await getCurrentServerUrl();
     const data = await client.post<AuthResponse>('/auth/register', { email, password });
     const user: AuthUser = { id: data.user.id, email: data.user.email };
     const previousState = get();

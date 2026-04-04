@@ -2,6 +2,7 @@ import { cleanupOrphanWorkspaces } from '@/src/services/workspaceCleanupService'
 import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { LOCAL_SCOPE_KEY } from '@/src/services/workspaceSessionState';
 import { resetApiClient } from '@/src/services/apiClient';
+import { restoreCurrentServerUrlFromRecent } from '@/src/services/backendEnvironmentService';
 import { initDatabase, resetDatabase } from '@/src/database/sqlite';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
@@ -41,6 +42,7 @@ export async function resetAppToInitialState(): Promise<void> {
 
   await clearWorkspaceDirectories(scopesToClear);
   await clearPersistedStateExceptRecentServerUrls();
+  await restoreCurrentServerUrlFromRecent();
   await cleanupOrphanWorkspaces([LOCAL_SCOPE_KEY]);
 
   const databaseReady = await initDatabase();

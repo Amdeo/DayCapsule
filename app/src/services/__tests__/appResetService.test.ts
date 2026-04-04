@@ -27,6 +27,11 @@ jest.mock('@/src/services/apiClient', () => ({
   resetApiClient: jest.fn(),
 }));
 
+const mockRestoreCurrentServerUrlFromRecent = jest.fn(async () => 'https://recent.example.com');
+jest.mock('@/src/services/backendEnvironmentService', () => ({
+  restoreCurrentServerUrlFromRecent: (...args: unknown[]) => mockRestoreCurrentServerUrlFromRecent(...args),
+}));
+
 jest.mock('@/src/database/sqlite', () => ({
   initDatabase: jest.fn().mockResolvedValue(true),
   resetDatabase: jest.fn(),
@@ -84,6 +89,7 @@ describe('appResetService', () => {
     (initDatabase as jest.Mock).mockResolvedValue(true);
     mockLoadAuth.mockResolvedValue(undefined);
     mockLoadCommonTags.mockResolvedValue(undefined);
+    mockRestoreCurrentServerUrlFromRecent.mockResolvedValue('https://recent.example.com');
   });
 
   it('clears all persisted state except recent server urls and reloads runtime state', async () => {
@@ -102,6 +108,7 @@ describe('appResetService', () => {
     expect(Storage.delete).toHaveBeenCalledWith('local:settings:notifications');
     expect(Storage.delete).toHaveBeenCalledWith('common_tags');
     expect(Storage.delete).not.toHaveBeenCalledWith('backend:recentServerUrls');
+    expect(mockRestoreCurrentServerUrlFromRecent).toHaveBeenCalledTimes(1);
     expect(cleanupOrphanWorkspaces).toHaveBeenCalledWith(['local']);
     expect(initDatabase).toHaveBeenCalledTimes(1);
     expect(ensureDirectories).toHaveBeenCalledTimes(1);
@@ -127,5 +134,15 @@ describe('appResetService', () => {
 
     expect(mockLoadAuth).not.toHaveBeenCalled();
     expect(mockLoadCommonTags).not.toHaveBeenCalled();
+  });
+
+  it('still succeeds when no server url can be restored after reset', async () => {
+    mockRestoreCurrentServerUrlFromRecent.mockResolvedValueOnce(null);
+
+    await expect(resetAppToInitialState()).resolves.toBeUndefined();
+
+    expect(mockRestoreCurrentServerUrlFromRecent).toHaveBeenCalledTimes(1);
+    expect(mockLoadAuth).toHaveBeenCalledTimes(1);
+    expect(mockLoadCommonTags).toHaveBeenCalledTimes(1);
   });
 });

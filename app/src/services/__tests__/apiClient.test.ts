@@ -24,6 +24,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
       ? 'env_https_two_example_com'
       : 'env_https_server_example_com'
   ),
+  SERVER_URL_REQUIRED_MESSAGE: '未配置后端地址，请先在设置中配置服务器地址',
 }));
 
 // Mock global fetch
@@ -295,6 +296,16 @@ describe('apiClient', () => {
       'https://fallback.example.com/api/entries',
       expect.objectContaining({ method: 'GET' }),
     );
+    process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
+  });
+
+  it('throws a clear error when neither current backend server nor env fallback exists', async () => {
+    const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = '';
+    (getCurrentServerUrlSync as jest.Mock).mockReturnValue(null);
+
+    expect(() => getApiClient()).toThrow('未配置后端地址，请先在设置中配置服务器地址');
+
     process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
   });
 });

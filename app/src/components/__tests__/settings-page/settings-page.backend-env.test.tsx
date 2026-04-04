@@ -82,4 +82,20 @@ describe('SettingsPage backend environment', () => {
 
     expect(screen.getByText('当前生效地址：https://server-a.example.com')).toBeTruthy();
   });
+
+  it('still opens backend settings when current server url is not configured', async () => {
+    const backendEnvironmentService = jest.requireMock('@/src/services/backendEnvironmentService') as {
+      getCurrentServerUrl: jest.Mock;
+    };
+    backendEnvironmentService.getCurrentServerUrl.mockRejectedValueOnce(
+      new Error('No server URL configured')
+    );
+
+    const { screen } = await renderSettingsPage();
+
+    fireEvent.press(screen.getByTestId('settings-open-backend-server'));
+
+    expect(await screen.findByText('最近使用')).toBeTruthy();
+    expect(screen.getByTestId('settings-backend-save-button').props.accessibilityState.disabled).toBe(true);
+  });
 });

@@ -3,6 +3,8 @@ import { CloudSyncMonitorModal } from '@/src/components/cloud-sync-monitor/Cloud
 import { useCloudSyncMonitorStore } from '@/src/store/cloudSyncMonitorStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
+import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { buildCloudSyncFailedFeedback } from '@/src/services/errorFeedbackPresets';
 
 export function CloudSyncMonitorHost() {
   const isVisible = useCloudSyncMonitorStore((state) => state.isVisible);
@@ -14,7 +16,13 @@ export function CloudSyncMonitorHost() {
 
   const handleSyncNow = React.useCallback(() => {
     hide();
-    void createCloudSyncService().syncNow();
+    void (async () => {
+      try {
+        await createCloudSyncService().syncNow();
+      } catch (error) {
+        showErrorFeedback(buildCloudSyncFailedFeedback(error));
+      }
+    })();
   }, [hide]);
 
   if (!isVisible) {

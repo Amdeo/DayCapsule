@@ -19,10 +19,14 @@ jest.mock('@/src/utils/logger', () => ({
 
 const mockGetCurrentServerUrl = jest.fn().mockResolvedValue('https://server-a.example.com');
 const mockGetCurrentServerUrlSync = jest.fn(() => 'https://server-a.example.com');
+const mockIsServerUrlNotConfiguredError = jest.fn((error: unknown) =>
+  error instanceof Error && error.message === 'No server URL configured'
+);
 
 jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: (...args: unknown[]) => mockGetCurrentServerUrl(...args),
   getCurrentServerUrlSync: (...args: unknown[]) => mockGetCurrentServerUrlSync(...args),
+  isServerUrlNotConfiguredError: (...args: unknown[]) => mockIsServerUrlNotConfiguredError(...args),
   getServerKey: jest.fn((url: string) =>
     url === 'https://server-b.example.com'
       ? 'env_https_server_b_example_com'
@@ -81,6 +85,7 @@ jest.mock('@/src/services/workspaceSessionTransitionService', () => ({
 
 import { useAuthStore } from '../authStore';
 import { Storage } from '@/src/utils/storage';
+import { SERVER_URL_REQUIRED_MESSAGE } from '@/src/services/backendEnvironmentService';
 
 const SERVER_A = 'https://server-a.example.com';
 const SERVER_B = 'https://server-b.example.com';
@@ -173,6 +178,26 @@ describe('authStore', () => {
     await expect(useAuthStore.getState().login('test@test.com', 'Password1')).rejects.toThrow('enter failed');
 
     expect(mockRollbackActivation).not.toHaveBeenCalled();
+  });
+
+  it('login throws a friendly error when server url is not configured', async () => {
+    mockGetCurrentServerUrl.mockRejectedValueOnce(new Error('No server URL configured'));
+
+    await expect(useAuthStore.getState().login('test@test.com', 'Password1')).rejects.toThrow(
+      SERVER_URL_REQUIRED_MESSAGE,
+    );
+
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('register throws a friendly error when server url is not configured', async () => {
+    mockGetCurrentServerUrl.mockRejectedValueOnce(new Error('No server URL configured'));
+
+    await expect(useAuthStore.getState().register('new@test.com', 'Password1')).rejects.toThrow(
+      SERVER_URL_REQUIRED_MESSAGE,
+    );
+
+    expect(mockPost).not.toHaveBeenCalled();
   });
 
   it('logout clears in-memory auth state and returns to local scope without deleting account cache', async () => {

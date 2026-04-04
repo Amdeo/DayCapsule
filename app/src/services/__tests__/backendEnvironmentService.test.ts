@@ -20,8 +20,10 @@ import {
   getCurrentServerUrlSync,
   getRecentServerUrls,
   getServerKey,
+  isServerUrlNotConfiguredError,
   normalizeServerUrl,
   rememberServerUrl,
+  restoreCurrentServerUrlFromRecent,
   setCurrentServerUrl,
 } from '../backendEnvironmentService';
 
@@ -115,5 +117,56 @@ describe('backendEnvironmentService', () => {
     (Storage.getObject as jest.Mock).mockResolvedValueOnce(null);
 
     await expect(getRecentServerUrls()).resolves.toEqual([]);
+  });
+
+  it('restores current server url from the most recent server after reset', async () => {
+    (Storage.getObject as jest.Mock).mockResolvedValueOnce([
+      'https://recent.example.com',
+      'https://older.example.com',
+    ]);
+
+    await expect(restoreCurrentServerUrlFromRecent()).resolves.toBe('https://recent.example.com');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      'backend:currentServerUrl',
+      'https://recent.example.com',
+    );
+  });
+
+  it('returns null when neither recent server nor fallback env is available', async () => {
+    const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = '';
+    (Storage.getObject as jest.Mock).mockResolvedValueOnce(null);
+
+    await expect(restoreCurrentServerUrlFromRecent()).resolves.toBeNull();
+
+    process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
+  });
+
+  it('skips invalid recent urls and restores the first valid one', async () => {
+    (Storage.getObject as jest.Mock).mockResolvedValueOnce([
+      'not-a-url',
+      'https://valid.example.com/api/',
+    ]);
+
+    await expect(restoreCurrentServerUrlFromRecent()).resolves.toBe('https://valid.example.com');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      'backend:currentServerUrl',
+      'https://valid.example.com',
+    );
+  });
+
+  it('detects the no server url configured error reliably', async () => {
+    const originalApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = '';
+
+    let thrown: unknown;
+    try {
+      await getCurrentServerUrl();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(isServerUrlNotConfiguredError(thrown)).toBe(true);
+    process.env.EXPO_PUBLIC_API_URL = originalApiUrl;
   });
 });

@@ -265,6 +265,9 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: jest.fn(async () => mockBackendState.currentServerUrl),
   getCurrentServerUrlSync: jest.fn(() => mockBackendState.currentServerUrl),
   getRecentServerUrls: jest.fn(async () => mockBackendState.recentServerUrls),
+  isServerUrlNotConfiguredError: jest.fn((error: unknown) =>
+    error instanceof Error && error.message === 'No server URL configured'
+  ),
   normalizeServerUrl: (url: string) => url.trim().replace(/\/+$/, ''),
   getServerKey: jest.fn((url: string) => url.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '')),
 }));

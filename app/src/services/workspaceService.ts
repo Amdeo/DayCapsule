@@ -3,6 +3,7 @@ import {
   getCurrentServerUrl,
   getCurrentServerUrlSync,
   getServerKey,
+  isServerUrlNotConfiguredError,
 } from '@/src/services/backendEnvironmentService';
 import { Storage, withScope } from '@/src/utils/storage';
 
@@ -24,7 +25,15 @@ export function getCurrentDataScopeKeySync(): string {
 }
 
 export async function getCurrentDataScopeKey(): Promise<string> {
-  const serverUrl = await getCurrentServerUrl();
+  let serverUrl: string;
+  try {
+    serverUrl = await getCurrentServerUrl();
+  } catch (error) {
+    if (isServerUrlNotConfiguredError(error)) {
+      return LOCAL_SCOPE;
+    }
+    throw error;
+  }
   if (!serverUrl) return LOCAL_SCOPE;
   const userId = await Storage.getString(getUserIdKey(serverUrl));
   if (!userId) return LOCAL_SCOPE;
