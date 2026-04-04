@@ -170,21 +170,19 @@ export async function deleteDirectory(dirUri: string): Promise<void> {
  */
 export async function getDirectorySize(dirUri: string): Promise<number> {
   try {
+    const info = await FileSystem.getInfoAsync(dirUri);
+    if (!info.exists) return 0;
     const files = await FileSystem.readDirectoryAsync(dirUri);
     const sizes = await Promise.all(
       files.map(async (file) => {
         const fileUri = `${dirUri}${file}`;
-        const info = await FileSystem.getInfoAsync(fileUri);
-        if (info.isDirectory) return getDirectorySize(fileUri);
-        return getExistingEntrySize(info);
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (fileInfo.isDirectory) return getDirectorySize(fileUri);
+        return getExistingEntrySize(fileInfo);
       })
     );
     return sizes.reduce((sum, s) => sum + s, 0);
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes("doesn't exist") || msg.includes('does not exist')) {
-      return 0;
-    }
     logger.warn('Failed to get directory size:', error);
     return 0;
   }
