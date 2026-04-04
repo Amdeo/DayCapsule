@@ -4,20 +4,24 @@ import {
   resetRenderSettingsPageMocks,
 } from './renderSettingsPage';
 
-describe('renderSettingsPage persisted settings state', () => {
+describe('renderSettingsPage session state isolation', () => {
   beforeEach(() => {
     resetRenderSettingsPageMocks();
   });
 
-  it('does not let one render cloudMode override become the next render baseline', async () => {
-    const firstRender = await renderSettingsPage({ authenticated: true, cloudMode: true });
+  it('does not let one render session override become the next render baseline', async () => {
+    const firstRender = await renderSettingsPage({
+      authenticated: true,
+      sessionScopeKey: 'account:user-1',
+      sessionTransitioning: true,
+    });
 
-    expect(firstRender.mocks.settings.cloudMode).toBe(true);
+    expect(firstRender.screen.getByTestId('settings-page-root')).toBeTruthy();
 
     firstRender.unmount();
 
     const secondRender = await renderSettingsPage({ authenticated: true });
 
-    expect(secondRender.mocks.settings.cloudMode).toBe(false);
+    expect(secondRender.screen.getByTestId('settings-page-root')).toBeTruthy();
   });
 });

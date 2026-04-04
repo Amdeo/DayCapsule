@@ -18,7 +18,6 @@ const mockDefaultPersistedSettings = {
   cardSpacing: 'default',
   photoHeight: 'default',
   calendarDensity: 'default',
-  cloudMode: false as boolean | 'switching',
 };
 
 const mockDefaultCloudSyncSnapshot = {
@@ -60,6 +59,12 @@ let mockPersistedSettings = { ...mockDefaultPersistedSettings };
 let mockShowE2ESyncLab = false;
 let previousE2ESyncLabEnv = process.env.EXPO_PUBLIC_E2E_SYNC_LAB;
 let latestLoginPageProps: LoginPageProps | null = null;
+let mockSessionSnapshot = {
+  currentScopeKey: 'local',
+  isTransitioning: false,
+  isAccountScopeActive: false,
+  canRunCloudSync: false,
+};
 
 const mockSettingsState = {
   ...mockDefaultPersistedSettings,
@@ -84,10 +89,6 @@ const mockSettingsState = {
   setCalendarDensity: jest.fn(async (value: 'comfortable' | 'default' | 'compact') => {
     mockPersistedSettings.calendarDensity = value;
     mockSettingsState.calendarDensity = value;
-  }),
-  setCloudMode: jest.fn(async (value: boolean | 'switching') => {
-    mockPersistedSettings.cloudMode = value;
-    mockSettingsState.cloudMode = value;
   }),
   resetSettings: jest.fn(async () => {
     mockPersistedSettings = { ...mockDefaultPersistedSettings };
@@ -189,18 +190,8 @@ jest.mock('@/src/store/authStore', () => ({
 }));
 
 jest.mock('@/src/services/workspaceSessionState', () => ({
-  getWorkspaceSessionState: () => ({
-    currentScopeKey:
-      mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true
-        ? 'account'
-        : 'local',
-    isAuthenticated: mockAuthState.isAuthenticated,
-    isTransitioning: mockSettingsState.cloudMode === 'switching',
-    isAccountScopeActive: mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true,
-    canRunCloudSync: mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true,
-  }),
-  useWorkspaceSessionRuntimeStore: (selector: (state: { isTransitioning: boolean }) => unknown) =>
-    selector({ isTransitioning: mockSettingsState.cloudMode === 'switching' }),
+  buildWorkspaceSessionSnapshot: () => mockSessionSnapshot,
+  getWorkspaceSessionStateSync: () => mockSessionSnapshot,
 }));
 
 jest.mock('@/src/store/syncStore', () => ({
@@ -378,10 +369,11 @@ jest.mock('../../LoginPage', () => ({
 export interface RenderSettingsPageOptions {
   visible?: boolean;
   authenticated?: boolean;
-  cloudMode?: boolean | 'switching';
   entries?: Array<{ id: string; type: string; media?: Array<{ uri?: string }> }>;
   userEmail?: string | null;
   e2eSyncLab?: boolean;
+  sessionScopeKey?: string;
+  sessionTransitioning?: boolean;
   props?: Partial<SettingsPageProps>;
 }
 
@@ -400,6 +392,12 @@ export function resetRenderSettingsPageMocks() {
     ...mockDefaultPersistedSettings,
     isLoaded: true,
   });
+  mockSessionSnapshot = {
+    currentScopeKey: 'local',
+    isTransitioning: false,
+    isAccountScopeActive: false,
+    canRunCloudSync: false,
+  };
   Object.assign(mockAuthState, {
     user: null,
     isAuthenticated: false,
@@ -459,10 +457,11 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
   const {
     visible = true,
     authenticated = false,
-    cloudMode,
     entries = [],
     userEmail = authenticated ? 'tester@example.com' : null,
     e2eSyncLab = false,
+    sessionScopeKey,
+    sessionTransitioning = false,
     props = {},
   } = options;
 
@@ -484,9 +483,14 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
 
   Object.assign(mockSettingsState, {
     ...mockPersistedSettings,
-    cloudMode: cloudMode ?? mockPersistedSettings.cloudMode,
     isLoaded: true,
   });
+  mockSessionSnapshot = {
+    currentScopeKey: sessionScopeKey ?? (authenticated ? 'account' : 'local'),
+    isTransitioning: sessionTransitioning,
+    isAccountScopeActive: authenticated && (sessionScopeKey ?? 'account') !== 'local',
+    canRunCloudSync: authenticated && !sessionTransitioning && (sessionScopeKey ?? 'account') !== 'local',
+  };
 
   Object.assign(mockEntryStoreState, {
     entries,

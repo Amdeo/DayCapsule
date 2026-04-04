@@ -25,7 +25,8 @@ describe('renderHomeScreen stability contract', () => {
     const firstRender = renderHomeScreen();
     const secondRender = renderHomeScreen({
       entries: [travelEntry],
-      cloudMode: true,
+      authenticated: true,
+      accountScopeActive: true,
       cloudSyncUiState: 'pending',
     });
 
@@ -36,7 +37,7 @@ describe('renderHomeScreen stability contract', () => {
 
     expect(secondRender.screen.getByTestId('timeline-entry-entry-travel-1')).toBeTruthy();
     expect(secondRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(secondRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
 
     await act(async () => {
       await secondRender.spies.applySearchFilters({
@@ -56,12 +57,12 @@ describe('renderHomeScreen stability contract', () => {
     expect(firstRender.screen.queryByTestId('timeline-data-state')).toBeNull();
     expect(firstRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
     expect(firstRender.screen.queryByTestId('cloud-sync-button')).toBeNull();
-    expect(firstRender.screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
+    expect(firstRender.screen.queryByTestId('cloud-sync-icon-pending')).toBeNull();
 
     expect(secondRender.screen.getByTestId('timeline-empty-state')).toBeTruthy();
     expect(secondRender.screen.queryByTestId('timeline-entry-entry-travel-1')).toBeNull();
     expect(secondRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(secondRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(secondRender.screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
 
     firstRender.screen.unmount();
     secondRender.screen.unmount();

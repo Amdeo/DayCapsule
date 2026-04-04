@@ -17,7 +17,6 @@ const mockInspectInitialState = jest.fn(async () => ({}));
 const mockBuildInitialFlow = jest.fn(() => ({ type: 'idle' }));
 const mockRunInitialFlow = jest.fn(async () => undefined);
 const mockCloudSyncNow = jest.fn(async () => undefined);
-const mockRestoreAccountScope = jest.fn(async () => undefined);
 const mockGetActiveAccountRef = jest.fn(async () => null);
 const mockGetRegisteredAccounts = jest.fn(async () => []);
 const mockRunCloudRecoveryFlow = jest.fn(
@@ -160,12 +159,7 @@ jest.mock('@/src/services/notificationService', () => ({
 }));
 
 jest.mock('@/src/services/workspaceSessionState', () => ({
-  getWorkspaceSessionState: () => mockSessionState,
-  canRunCloudSync: () => mockSessionState.canRunCloudSync,
-}));
-
-jest.mock('@/src/services/workspaceSessionTransitionService', () => ({
-  restoreAccountScope: (...args: unknown[]) => mockRestoreAccountScope(...args),
+  buildWorkspaceSessionSnapshot: () => mockSessionState,
 }));
 
 import { runAppBootstrap } from '../appBootstrapService';
@@ -235,23 +229,20 @@ describe('runAppBootstrap', () => {
     expect(onInitializationFailed).not.toHaveBeenCalled();
   });
 
-  it('restores account scope when auth is active but session scope is still local', async () => {
+  it('uses account session state to decide whether cloud recovery should run', async () => {
     mockIsAuthenticated = true;
     mockSessionState = {
-      currentScopeKey: 'local',
+      currentScopeKey: 'account',
       isAuthenticated: true,
       isTransitioning: false,
-      isAccountScopeActive: false,
-      canRunCloudSync: false,
+      isAccountScopeActive: true,
+      canRunCloudSync: true,
     };
-    mockGetActiveAccountRef.mockResolvedValue({ serverUrl: 'https://api.example.com', userId: 'user-1' });
 
     await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
-    expect(mockRestoreAccountScope).toHaveBeenCalledWith({
-      serverUrl: 'https://api.example.com',
-      userId: 'user-1',
-    });
+    expect(mockInspectInitialState).toHaveBeenCalledTimes(1);
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
   it('reports initialization failure when database initialization fails', async () => {

@@ -255,11 +255,20 @@ jest.mock('@/src/store/authStore', () => ({
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: {
     getState: () => ({
-      cloudMode: true,
       loadSettings: jest.fn().mockResolvedValue(undefined),
       lastAddType: 'text',
     }),
   },
+}));
+
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  buildWorkspaceSessionSnapshot: () => ({
+    currentScopeKey: 'local',
+    isAuthenticated: false,
+    isTransitioning: false,
+    isAccountScopeActive: false,
+    canRunCloudSync: false,
+  }),
 }));
 
 jest.mock('@/src/store/syncStore', () => ({

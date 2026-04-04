@@ -69,14 +69,14 @@ jest.mock('@/src/services/authActivationService', () => ({
   activateAuthenticatedAccount: (...args: unknown[]) => mockActivateAuthenticatedAccount(...args),
 }));
 
-const mockEnterAccountScopeAfterLogin = jest.fn(async () => undefined);
-const mockLeaveAccountScopeAfterLogout = jest.fn(async () => undefined);
-const mockSwitchAccountScope = jest.fn(async () => undefined);
+const mockRestoreAccountScopeFromPersistedAuth = jest.fn(async () => undefined);
+const mockReturnToLocalScopeAfterLogout = jest.fn(async () => undefined);
+const mockSwitchActiveAccountScope = jest.fn(async () => undefined);
 
 jest.mock('@/src/services/workspaceSessionTransitionService', () => ({
-  enterAccountScopeAfterLogin: (...args: unknown[]) => mockEnterAccountScopeAfterLogin(...args),
-  leaveAccountScopeAfterLogout: (...args: unknown[]) => mockLeaveAccountScopeAfterLogout(...args),
-  switchAccountScope: (...args: unknown[]) => mockSwitchAccountScope(...args),
+  restoreAccountScopeFromPersistedAuth: (...args: unknown[]) => mockRestoreAccountScopeFromPersistedAuth(...args),
+  returnToLocalScopeAfterLogout: (...args: unknown[]) => mockReturnToLocalScopeAfterLogout(...args),
+  switchActiveAccountScope: (...args: unknown[]) => mockSwitchActiveAccountScope(...args),
 }));
 
 import { useAuthStore } from '../authStore';
@@ -114,7 +114,7 @@ describe('authStore', () => {
     expect(state.token).toBeNull();
   });
 
-  it('login delegates activation and enters account scope', async () => {
+  it('login delegates activation and leaves scope transition to activation service', async () => {
     mockPost.mockResolvedValueOnce({
       user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
       token: 'access-123',
@@ -136,10 +136,10 @@ describe('authStore', () => {
         user: { id: 'u1', email: 'test@test.com' },
       }),
     );
-    expect(mockEnterAccountScopeAfterLogin).toHaveBeenCalledWith({ serverUrl: SERVER_A, userId: 'u1' });
+    expect(mockRestoreAccountScopeFromPersistedAuth).not.toHaveBeenCalled();
   });
 
-  it('register stores user and enters account scope', async () => {
+  it('register stores user through activation service', async () => {
     mockPost.mockResolvedValueOnce({
       user: { id: 'u2', email: 'new@test.com', createdAt: '2026-01-01' },
       token: 'access-789',
@@ -154,20 +154,25 @@ describe('authStore', () => {
       token: 'access-789',
       refreshToken: 'refresh-012',
     });
-    expect(mockEnterAccountScopeAfterLogin).toHaveBeenCalledWith({ serverUrl: SERVER_A, userId: 'u2' });
+    expect(mockActivateAuthenticatedAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serverUrl: SERVER_A,
+        user: { id: 'u2', email: 'new@test.com' },
+      }),
+    );
   });
 
-  it('rolls back auth activation when entering account scope fails during login', async () => {
+  it('propagates activation failure during login', async () => {
     mockPost.mockResolvedValueOnce({
       user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
       token: 'access-123',
       refreshToken: 'refresh-456',
     });
-    mockEnterAccountScopeAfterLogin.mockRejectedValueOnce(new Error('enter failed'));
+    mockActivateAuthenticatedAccount.mockRejectedValueOnce(new Error('enter failed'));
 
     await expect(useAuthStore.getState().login('test@test.com', 'Password1')).rejects.toThrow('enter failed');
 
-    expect(mockRollbackActivation).toHaveBeenCalledTimes(1);
+    expect(mockRollbackActivation).not.toHaveBeenCalled();
   });
 
   it('logout clears in-memory auth state and returns to local scope without deleting account cache', async () => {
@@ -187,8 +192,7 @@ describe('authStore', () => {
       refreshToken: null,
       isAuthenticated: false,
     });
-    expect(mockLeaveAccountScopeAfterLogout).toHaveBeenCalledWith(SERVER_A);
-    expect(Storage.delete).not.toHaveBeenCalledWith('accounts:active');
+    expect(mockReturnToLocalScopeAfterLogout).toHaveBeenCalledTimes(1);
   });
 
   it('loadAuth restores from account registry using activeRef', async () => {
@@ -209,7 +213,11 @@ describe('authStore', () => {
       refreshToken: 'saved-refresh',
       user: { id: 'u1', email: 'saved@test.com' },
     });
-    expect(Storage.setString).not.toHaveBeenCalled();
+    expect(mockRestoreAccountScopeFromPersistedAuth).toHaveBeenCalledWith({
+      serverUrl: SERVER_A,
+      userId: 'u1',
+      onFailureResetAuthState: expect.any(Function),
+    });
   });
 
   it('loadAuth returns unauthenticated when no activeRef', async () => {
@@ -231,7 +239,11 @@ describe('authStore', () => {
 
     await useAuthStore.getState().switchAccount(SERVER_B, 'u2');
 
-    expect(mockSwitchAccountScope).toHaveBeenCalledWith({ serverUrl: SERVER_B, userId: 'u2' });
+    expect(mockSwitchActiveAccountScope).toHaveBeenCalledWith({
+      serverUrl: SERVER_B,
+      userId: 'u2',
+      onFailureRestoreAuthState: expect.any(Function),
+    });
     expect(useAuthStore.getState()).toMatchObject({
       isAuthenticated: true,
       token: 'tok-b',

@@ -24,7 +24,13 @@ const mockLoggerWarn = jest.fn();
 const mockLoggerError = jest.fn();
 
 let mockIsAuthenticated = false;
-let mockCloudMode = false;
+let mockSessionState = {
+  currentScopeKey: 'local',
+  isAuthenticated: false,
+  isTransitioning: false,
+  isAccountScopeActive: false,
+  canRunCloudSync: false,
+};
 let mockEntries: Array<{ id: string }> = [];
 
 jest.mock('@/src/services/backupService', () => ({
@@ -70,12 +76,8 @@ jest.mock('@/src/store/authStore', () => ({
   },
 }));
 
-jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: {
-    getState: () => ({
-      cloudMode: mockCloudMode,
-    }),
-  },
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  buildWorkspaceSessionSnapshot: () => mockSessionState,
 }));
 
 jest.mock('@/src/store/entryStore', () => ({
@@ -104,7 +106,13 @@ describe('appLifecycleService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAuthenticated = false;
-    mockCloudMode = false;
+    mockSessionState = {
+      currentScopeKey: 'local',
+      isAuthenticated: false,
+      isTransitioning: false,
+      isAccountScopeActive: false,
+      canRunCloudSync: false,
+    };
     mockEntries = [];
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
@@ -130,7 +138,13 @@ describe('appLifecycleService', () => {
 
   it('runs cloud recovery steps in order and refreshes indicator with the post-action label', async () => {
     mockIsAuthenticated = true;
-    mockCloudMode = true;
+    mockSessionState = {
+      currentScopeKey: 'account:user-1',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      canRunCloudSync: true,
+    };
 
     const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
 
@@ -139,7 +153,7 @@ describe('appLifecycleService', () => {
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
-  it('passes a gated syncNow closure into the shared flow so cloud sync is skipped without auth and cloud mode', async () => {
+  it('passes a gated syncNow closure into the shared flow so cloud sync is skipped without an active account scope', async () => {
     mockRunCloudRecoveryFlow.mockImplementationOnce(
       async (deps: {
         syncNow: () => Promise<void>;
@@ -187,7 +201,13 @@ describe('appLifecycleService', () => {
 
   it('reuses the in-flight recovery promise so concurrent triggers only run once', async () => {
     mockIsAuthenticated = true;
-    mockCloudMode = true;
+    mockSessionState = {
+      currentScopeKey: 'account:user-1',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      canRunCloudSync: true,
+    };
 
     let resolveFlow: (() => void) | undefined;
     mockRunCloudRecoveryFlow.mockImplementation(

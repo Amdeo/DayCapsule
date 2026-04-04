@@ -3,6 +3,7 @@ const mockUnregisterAccount = jest.fn().mockResolvedValue(undefined);
 const mockStorageSetString = jest.fn().mockResolvedValue(undefined);
 const mockStorageSetObject = jest.fn().mockResolvedValue(undefined);
 const mockStorageDelete = jest.fn().mockResolvedValue(undefined);
+const mockEnterAccountScopeAfterLogin = jest.fn().mockResolvedValue('scope:server:u1');
 
 jest.mock('@/src/services/accountRegistryService', () => ({
   getUserAuthKeys: jest.fn((serverUrl: string, userId: string) => ({
@@ -26,6 +27,10 @@ jest.mock('@/src/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), log: jest.fn() },
 }));
 
+jest.mock('@/src/services/workspaceSessionTransitionService', () => ({
+  enterAccountScopeAfterLogin: (...args: unknown[]) => mockEnterAccountScopeAfterLogin(...args),
+}));
+
 import { activateAuthenticatedAccount } from '../authActivationService';
 
 describe('authActivationService', () => {
@@ -40,6 +45,7 @@ describe('authActivationService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockEnterAccountScopeAfterLogin.mockResolvedValue('scope:server:u1');
   });
 
   it('persists auth state and registry data in order', async () => {
@@ -65,10 +71,15 @@ describe('authActivationService', () => {
     expect(mockRegisterAccount).toHaveBeenCalledWith(
       expect.objectContaining({ serverUrl, userId: 'u1', email: 'tester@example.com' })
     );
+    expect(mockEnterAccountScopeAfterLogin).toHaveBeenCalledWith({
+      serverUrl,
+      userId: 'u1',
+      onFailureResetAuthState: expect.any(Function),
+    });
     expect(restoreAuthState).not.toHaveBeenCalled();
   });
 
-  it('compensates when second-phase commit fails after token persistence', async () => {
+  it('compensates when registry persistence fails before scope entry', async () => {
     const commitAuthState = jest.fn();
     const restoreAuthState = jest.fn();
     mockRegisterAccount.mockRejectedValueOnce(new Error('registry failed'));
@@ -85,6 +96,26 @@ describe('authActivationService', () => {
 
     expect(commitAuthState).toHaveBeenCalledTimes(1);
     expect(restoreAuthState).toHaveBeenCalledWith(previousState);
+    expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:token`);
+    expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:refresh`);
+    expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:user`);
+  });
+
+  it('rolls back persisted auth data when entering account scope fails', async () => {
+    const commitAuthState = jest.fn();
+    const restoreAuthState = jest.fn();
+    mockEnterAccountScopeAfterLogin.mockRejectedValueOnce(new Error('transition failed'));
+
+    await expect(activateAuthenticatedAccount({
+      serverUrl,
+      user,
+      token: 'token-1',
+      refreshToken: 'refresh-1',
+      previousAuthState: previousState,
+      commitAuthState,
+      restoreAuthState,
+    })).rejects.toThrow('transition failed');
+
     expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:token`);
     expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:refresh`);
     expect(mockStorageDelete).toHaveBeenCalledWith(`${serverUrl}:u1:user`);

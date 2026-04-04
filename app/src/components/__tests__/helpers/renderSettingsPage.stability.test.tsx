@@ -22,7 +22,10 @@ describe('renderSettingsPage stability', () => {
     }));
 
     try {
-      const renderPromise = renderSettingsPage({ authenticated: true, cloudMode: true });
+      const renderPromise = renderSettingsPage({
+        authenticated: true,
+        sessionScopeKey: 'account:user-1',
+      });
       const settleState = await Promise.race([
         renderPromise.then(() => 'resolved' as const),
         new Promise<'timeout'>((resolve) => {

@@ -188,7 +188,7 @@ describe('HomeScreen timeline interactions', () => {
   });
 
   it('shows branded feedback when starting a local recording fails from home quick add', async () => {
-    const { spies } = renderHomeScreen({ cloudMode: false });
+    const { spies } = renderHomeScreen({ authenticated: false, accountScopeActive: false });
 
     spies.addEntry.mockRejectedValueOnce(new Error('mic busy'));
 
@@ -204,7 +204,7 @@ describe('HomeScreen timeline interactions', () => {
   });
 
   it('shows branded feedback when saving a text entry fails from home quick add', async () => {
-    const { screen, spies } = renderHomeScreen({ cloudMode: false });
+    const { screen, spies } = renderHomeScreen({ authenticated: false, accountScopeActive: false });
 
     spies.addEntry.mockRejectedValueOnce(new Error('db write failed'));
 
@@ -229,7 +229,8 @@ describe('HomeScreen timeline interactions', () => {
   it('shows branded feedback when stopping a local recording fails from the home timeline', async () => {
     const renderHome = renderHomeScreen({
       entries: [recordingVoiceEntry],
-      cloudMode: false,
+      authenticated: false,
+      accountScopeActive: false,
     });
     const { screen, spies } = renderHome;
 

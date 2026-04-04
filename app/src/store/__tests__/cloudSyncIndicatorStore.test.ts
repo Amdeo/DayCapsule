@@ -4,7 +4,13 @@ import * as DB from '@/src/database/operations';
 import { logger } from '@/src/utils/logger';
 
 let mockIsAuthenticated = true;
-let mockCloudMode: boolean | 'switching' = true;
+let mockSessionState = {
+  currentScopeKey: 'account:user-1',
+  isAuthenticated: true,
+  isTransitioning: false,
+  isAccountScopeActive: true,
+  canRunCloudSync: true,
+};
 
 jest.mock('@/src/utils/storage', () => ({
   Storage: {
@@ -22,12 +28,8 @@ jest.mock('@/src/store/authStore', () => ({
   },
 }));
 
-jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: {
-    getState: () => ({
-      cloudMode: mockCloudMode,
-    }),
-  },
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  buildWorkspaceSessionSnapshot: () => mockSessionState,
 }));
 
 jest.mock('@/src/database/operations', () => ({
@@ -53,7 +55,13 @@ describe('cloudSyncIndicatorStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAuthenticated = true;
-    mockCloudMode = true;
+    mockSessionState = {
+      currentScopeKey: 'account:user-1',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      canRunCloudSync: true,
+    };
     useSyncStore.setState({
       syncCursor: 0,
       lastSyncAt: null,
@@ -72,7 +80,7 @@ describe('cloudSyncIndicatorStore', () => {
     });
   });
 
-  it('returns hidden when cloud mode is disabled', async () => {
+  it('returns hidden when account scope is inactive', async () => {
     useCloudSyncIndicatorStore.setState({
       pendingEntries: 3,
       pendingUploads: 2,
@@ -80,7 +88,13 @@ describe('cloudSyncIndicatorStore', () => {
       failedEntries: 1,
       uiState: 'failed',
     });
-    mockCloudMode = false;
+    mockSessionState = {
+      currentScopeKey: 'local',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: false,
+      canRunCloudSync: false,
+    };
 
     await useCloudSyncIndicatorStore.getState().refresh();
 
@@ -93,7 +107,7 @@ describe('cloudSyncIndicatorStore', () => {
     });
   });
 
-  it('returns hidden and clears stale counts when cloud mode is switching', async () => {
+  it('returns hidden and clears stale counts when session is transitioning', async () => {
     useCloudSyncIndicatorStore.setState({
       pendingEntries: 5,
       pendingUploads: 4,
@@ -101,7 +115,13 @@ describe('cloudSyncIndicatorStore', () => {
       failedEntries: 2,
       uiState: 'pending',
     });
-    mockCloudMode = 'switching';
+    mockSessionState = {
+      currentScopeKey: 'account:user-1',
+      isAuthenticated: true,
+      isTransitioning: true,
+      isAccountScopeActive: true,
+      canRunCloudSync: false,
+    };
 
     await useCloudSyncIndicatorStore.getState().refresh();
 
@@ -116,6 +136,13 @@ describe('cloudSyncIndicatorStore', () => {
 
   it('returns hidden when the user is not authenticated', async () => {
     mockIsAuthenticated = false;
+    mockSessionState = {
+      currentScopeKey: 'local',
+      isAuthenticated: false,
+      isTransitioning: false,
+      isAccountScopeActive: false,
+      canRunCloudSync: false,
+    };
 
     await useCloudSyncIndicatorStore.getState().refresh();
 

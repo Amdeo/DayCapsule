@@ -75,51 +75,15 @@ describe('SettingsPage account auth', () => {
     expect(screen.getByText('退出登录')).toBeTruthy();
   });
 
-  it('does not call logout when the user cancels the logout confirmation', async () => {
+  it('calls logout directly from the authenticated settings entry', async () => {
     const { screen, mocks } = await renderSettingsPage({ authenticated: true });
     await settleInitialEffects(screen);
 
     fireEvent.press(screen.getByText('退出登录'));
-
-    await waitFor(() => {
-      expect(mocks.showConfirmDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '退出登录',
-          message: expect.any(String),
-        }),
-      );
-    });
-
-    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
-    const cancel = actions.find((action) => action.label === '取消');
-    await act(async () => {
-      await cancel?.onPress?.();
-    });
-
-    expect(mocks.auth.logout).not.toHaveBeenCalled();
-  });
-
-  it('calls logout only when confirmed', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: true });
-    await settleInitialEffects(screen);
-
-    fireEvent.press(screen.getByText('退出登录'));
-
-    await waitFor(() => {
-      expect(mocks.showConfirmDialog).toHaveBeenCalled();
-    });
-
-    const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void }>;
-    const confirm = actions.find((action) => action.label === '退出');
-
-    await act(async () => {
-      await confirm?.onPress?.();
-    });
 
     await waitFor(() => {
       expect(mocks.auth.logout).toHaveBeenCalledTimes(1);
     });
-    expect(mocks.settings.setCloudMode).not.toHaveBeenCalled();
     expect(mocks.entries.loadEntries).not.toHaveBeenCalled();
   });
 

@@ -119,8 +119,6 @@ export function SettingsPageContent({
       <SettingsProfileCard
         isAuthenticated={isAuthenticated}
         userEmail={userEmail}
-        isAccountScopeActive={isAccountScopeActive}
-        isTransitioning={isTransitioning}
         entryCount={entryCount}
         photoCount={photoCount}
         usedSpace={usedSpace}

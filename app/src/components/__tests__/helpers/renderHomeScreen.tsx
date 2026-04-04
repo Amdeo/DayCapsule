@@ -59,7 +59,9 @@ export interface RenderHomeScreenOptions {
   allTags?: string[];
   commonTags?: string[];
   cloudSyncUiState?: CloudUiState;
-  cloudMode?: boolean;
+  authenticated?: boolean;
+  accountScopeActive?: boolean;
+  sessionTransitioning?: boolean;
   loadEntriesImplementation?: () => Promise<void>;
   loadSettingsImplementation?: () => Promise<void>;
   loadCommonTagsImplementation?: () => Promise<void>;
@@ -576,8 +578,15 @@ const mockUseEntryFilterUiStore = Object.assign(
 
 const mockSettingsState = {
   loadSettings: mockLoadSettings,
-  cloudMode: false,
   cardSpacing: 'default' as const,
+};
+let mockIsAuthenticated = false;
+let mockSessionState = {
+  currentScopeKey: 'local',
+  isAuthenticated: false,
+  isTransitioning: false,
+  isAccountScopeActive: false,
+  canRunCloudSync: false,
 };
 
 const mockUseSettingsStore = Object.assign(
@@ -626,6 +635,19 @@ jest.mock('@/src/store/entryFilterUIStore', () => ({
 jest.mock('@/src/store/settingsStore', () => ({
   useSettingsStore: mockUseSettingsStore,
   SPACING_VALUES: { compact: 8, default: 12, loose: 16 },
+}));
+
+jest.mock('@/src/store/authStore', () => ({
+  useAuthStore: {
+    getState: () => ({
+      isAuthenticated: mockIsAuthenticated,
+    }),
+  },
+}));
+
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  buildWorkspaceSessionSnapshot: () => mockSessionState,
+  getWorkspaceSessionStateSync: () => mockSessionState,
 }));
 
 jest.mock('@/src/store/commonTagsStore', () => ({
@@ -729,10 +751,17 @@ export function renderHomeScreen(options: RenderHomeScreenOptions = {}) {
   cloudSyncUiStates.set(entryStore, options.cloudSyncUiState ?? 'hidden');
   defaultMockEntryStore = entryStore;
   defaultMockEntryFilterUiStore = filterUiStore;
+  mockIsAuthenticated = options.authenticated ?? false;
+  mockSessionState = {
+    currentScopeKey: options.accountScopeActive ? 'account:user-1' : 'local',
+    isAuthenticated: mockIsAuthenticated,
+    isTransitioning: options.sessionTransitioning ?? false,
+    isAccountScopeActive: options.accountScopeActive ?? false,
+    canRunCloudSync: (options.accountScopeActive ?? false) && !(options.sessionTransitioning ?? false),
+  };
 
   Object.assign(mockSettingsState, {
     loadSettings: jest.fn(options.loadSettingsImplementation ?? (async () => undefined)),
-    cloudMode: options.cloudMode ?? false,
     cardSpacing: 'default',
   });
 

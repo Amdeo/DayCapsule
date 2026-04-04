@@ -23,7 +23,8 @@ const travelEntry = {
 describe('renderHomeScreen helper state isolation', () => {
   it('does not let a later render reset an earlier render\'s cloud sync ui state on rerender', async () => {
     const firstRender = renderHomeScreen({
-      cloudMode: true,
+      authenticated: true,
+      accountScopeActive: true,
       cloudSyncUiState: 'pending',
     });
 

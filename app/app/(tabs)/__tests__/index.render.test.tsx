@@ -18,16 +18,6 @@ const mockLoadCommonTags = jest.fn().mockResolvedValue(undefined);
 let mockGetStateEntries: Array<{ id: string }> = [];
 let mockCloudMode = false;
 
-jest.mock('@/src/services/workspaceSessionState', () => ({
-  getWorkspaceSessionStateSnapshot: () => ({
-    isAuthenticated: mockCloudMode,
-    currentScopeKey: mockCloudMode ? 'scope:user-1' : 'local',
-    isTransitioning: false,
-    isAccountScopeActive: mockCloudMode,
-    canRunCloudSync: mockCloudMode,
-  }),
-}));
-
 const mockUseEntryStoreImpl = jest.fn(() => ({
   loadEntries: mockLoadEntries,
   addEntry: mockAddEntry,
@@ -77,6 +67,13 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
 }));
 
 jest.mock('@/src/services/workspaceSessionState', () => ({
+  buildWorkspaceSessionSnapshot: () => ({
+    currentScopeKey: mockCloudMode ? 'server_user-1' : 'local',
+    isAuthenticated: mockCloudMode,
+    isTransitioning: false,
+    isAccountScopeActive: mockCloudMode,
+    canRunCloudSync: mockCloudMode,
+  }),
   getWorkspaceSessionStateSync: () => ({
     currentScopeKey: mockCloudMode ? 'server_user-1' : 'local',
     isAuthenticated: mockCloudMode,

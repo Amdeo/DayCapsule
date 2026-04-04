@@ -4,10 +4,10 @@
  */
 
 import { create } from 'zustand';
-import { Storage } from '@/src/utils/storage';
+import { Storage, withScope } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
-import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
+import { getCurrentServerUrl, getServerKey } from '@/src/services/backendEnvironmentService';
 import { activateAuthenticatedAccount } from '@/src/services/authActivationService';
 import {
   getUserAuthKeys,

@@ -63,22 +63,26 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   },
 }));
 
-let mockCloudMode: boolean | 'switching' = false;
-jest.mock('@/src/store/settingsStore', () => {
-  const useSettingsStore = Object.assign(
-    () => ({ cloudMode: mockCloudMode }),
-    {
-      getState: () => ({ cloudMode: mockCloudMode }),
-      setState: (partial: { cloudMode?: boolean | 'switching' }) => {
-        if (partial.cloudMode !== undefined) {
-          mockCloudMode = partial.cloudMode;
-        }
-      },
-    },
-  );
+let mockCanRunCloudSync = false;
+let mockIsAuthenticated = false;
 
-  return { useSettingsStore };
-});
+jest.mock('@/src/store/settingsStore', () => ({
+  useSettingsStore: {
+    setState: jest.fn(),
+  },
+}));
+
+jest.mock('@/src/store/authStore', () => ({
+  useAuthStore: {
+    getState: () => ({
+      isAuthenticated: mockIsAuthenticated,
+    }),
+  },
+}));
+
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  canRunCloudSync: jest.fn(() => mockCanRunCloudSync),
+}));
 
 jest.mock('@/src/utils/logger', () => ({
   logger: {
@@ -92,7 +96,6 @@ jest.mock('@/src/utils/logger', () => ({
 
 import { useEntryStore } from '../entryStore';
 import { useEntryFilterUIStore } from '../entryFilterUIStore';
-import { useSettingsStore } from '../settingsStore';
 import * as DB from '@/src/database/operations';
 import { deleteFile } from '@/src/utils/fileSystem';
 
@@ -142,7 +145,8 @@ describe('entryStore', () => {
       selectedTags: [],
     });
     jest.resetAllMocks();
-    mockCloudMode = false;
+    mockCanRunCloudSync = false;
+    mockIsAuthenticated = false;
     mockDataSource.getEntriesPage.mockResolvedValue([]);
     mockDataSource.getEntryCount.mockResolvedValue(0);
     mockDataSource.addEntry.mockImplementation((entry) =>
@@ -169,7 +173,10 @@ describe('entryStore', () => {
     (DB.getPhotoEntriesBySyncStatus as jest.Mock).mockResolvedValue([]);
     (deleteFile as jest.Mock).mockResolvedValue(undefined);
     mockRefreshCloudSyncIndicator.mockResolvedValue(undefined);
-    useSettingsStore.setState({ cloudMode: false });
+    const { canRunCloudSync } = jest.requireMock('@/src/services/workspaceSessionState') as {
+      canRunCloudSync: jest.Mock;
+    };
+    canRunCloudSync.mockImplementation(() => mockCanRunCloudSync);
   });
 
   it('不再暴露 playback-only 状态 currentPlayingId', () => {
@@ -581,8 +588,9 @@ describe('entryStore', () => {
       ).rejects.toThrow('数据库错误');
     });
 
-    it('cloudMode 关闭时应该把误传入的 pending 状态归一化为 synced', async () => {
-      useSettingsStore.setState({ cloudMode: false });
+    it('未启用账号同步时应该把误传入的 pending 状态归一化为 synced', async () => {
+      mockCanRunCloudSync = false;
+      mockIsAuthenticated = false;
       (DB.addEntry as jest.Mock).mockResolvedValueOnce({
         id: 'local-entry-offline',
         type: 'text',
@@ -605,8 +613,9 @@ describe('entryStore', () => {
       }));
     });
 
-    it('cloudMode 开启时也应该通过 DB.addEntry 本地写入', async () => {
-      useSettingsStore.setState({ cloudMode: true });
+    it('启用账号同步时也应该通过 DB.addEntry 本地写入', async () => {
+      mockCanRunCloudSync = true;
+      mockIsAuthenticated = true;
       (DB.addEntry as jest.Mock).mockResolvedValueOnce({
         id: 'local-entry-2',
         type: 'text',
@@ -631,8 +640,9 @@ describe('entryStore', () => {
   // ─── updateEntry ───────────────────────────────────────────────────────────
 
   describe('updateEntry', () => {
-    it('cloudMode 开启时应该通过 DB.updateEntry 并保留语音上传状态', async () => {
-      useSettingsStore.setState({ cloudMode: true });
+    it('启用账号同步时应该通过 DB.updateEntry 并保留语音上传状态', async () => {
+      mockCanRunCloudSync = true;
+      mockIsAuthenticated = true;
       useEntryStore.setState({
         entries: [
           {
@@ -680,8 +690,9 @@ describe('entryStore', () => {
       expect(mockDataSource.deleteEntry).toHaveBeenCalledWith('1');
     });
 
-    it('cloudMode 开启时应该把 synced 记录标记为 pending_delete，而不是调用远端删除', async () => {
-      useSettingsStore.setState({ cloudMode: true });
+    it('启用账号同步时应该把 synced 记录标记为 pending_delete，而不是调用远端删除', async () => {
+      mockCanRunCloudSync = true;
+      mockIsAuthenticated = true;
       useEntryStore.setState({
         entries: [
           { id: '1', type: 'text', content: '记录1', timestamp: 1700000000000, syncStatus: 'synced' },
@@ -703,7 +714,8 @@ describe('entryStore', () => {
         deleteFile: jest.Mock;
       };
 
-      useSettingsStore.setState({ cloudMode: true });
+      mockCanRunCloudSync = true;
+      mockIsAuthenticated = true;
       useEntryStore.setState({
         entries: [
           {
@@ -743,7 +755,8 @@ describe('entryStore', () => {
         deleteFile: jest.Mock;
       };
 
-      useSettingsStore.setState({ cloudMode: true });
+      mockCanRunCloudSync = true;
+      mockIsAuthenticated = true;
       useEntryStore.setState({
         entries: [
           {
