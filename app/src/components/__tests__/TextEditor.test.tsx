@@ -59,7 +59,7 @@ describe('TextEditor', () => {
     const screen = render(<TextEditor visible onSave={jest.fn()} onCancel={jest.fn()} />);
 
     expect(screen.getByTestId('text-editor-sheet')).toBeTruthy();
-    expect(screen.getByText('添加文字记录')).toBeTruthy();
+    expect(screen.getByText('新记录')).toBeTruthy();
   });
 
   it('keeps save disabled until content is entered', () => {

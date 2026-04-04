@@ -1,13 +1,7 @@
 import React from 'react';
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  Pressable,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, TextInput, View } from 'react-native';
 import { textEditorStyles as styles } from './TextEditor.styles';
+import { TagArea } from './TagArea';
 
 interface TextEditorBodyProps {
   content: string;
@@ -15,10 +9,12 @@ interface TextEditorBodyProps {
   commonTags: string[];
   currentTagsList: string[];
   suggestions: string[];
+  tagPanelExpanded: boolean;
   onChangeContent: (value: string) => void;
   onChangeTagsInput: (value: string) => void;
-  onAddSuggestion: (tag: string) => void;
+  onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
+  onToggleTagPanel: () => void;
 }
 
 export function TextEditorBody({
@@ -27,101 +23,45 @@ export function TextEditorBody({
   commonTags,
   currentTagsList,
   suggestions,
+  tagPanelExpanded,
   onChangeContent,
   onChangeTagsInput,
-  onAddSuggestion,
+  onAddTag,
   onRemoveTag,
+  onToggleTagPanel,
 }: TextEditorBodyProps) {
   return (
     <ScrollView
       style={styles.scrollView}
-      contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
-      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.typeTag}>
-        <Ionicons name="document-text" size={16} color="#6A89CC" />
-        <Text style={styles.typeText}>文本</Text>
+      <View style={styles.contentPadding}>
+        <View style={styles.contentCard}>
+          <TextInput
+            testID="text-editor-content-input"
+            style={styles.contentInput}
+            value={content}
+            onChangeText={onChangeContent}
+            placeholder="写点什么..."
+            placeholderTextColor="#C0B8B0"
+            multiline
+            textAlignVertical="top"
+            autoFocus
+          />
+        </View>
       </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>内容</Text>
-        <TextInput
-          testID="text-editor-content-input"
-          style={styles.textInput}
-          value={content}
-          onChangeText={onChangeContent}
-          placeholder="输入内容..."
-          placeholderTextColor="#A3A3A3"
-          multiline
-          numberOfLines={6}
-          textAlignVertical="top"
-          autoFocus
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.label}>标签</Text>
-        {commonTags.length > 0 ? (
-          <View style={styles.commonTagsRow}>
-            {commonTags.map((tag) => {
-              const selected = currentTagsList.includes(tag);
-              return (
-                <Pressable
-                  key={tag}
-                  style={[styles.commonChip, selected && styles.commonChipSelected]}
-                  onPress={() => (selected ? onRemoveTag(tag) : onAddSuggestion(tag))}
-                >
-                  <Text
-                    style={[
-                      styles.commonChipText,
-                      selected && styles.commonChipTextSelected,
-                    ]}
-                  >
-                    {tag}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-        <TextInput
-          testID="text-editor-tags-input"
-          style={styles.input}
-          value={tagsInput}
-          onChangeText={onChangeTagsInput}
-          placeholder="用逗号分隔多个标签，如：生活, 工作"
-          placeholderTextColor="#A3A3A3"
-        />
-        {tagsInput.length > 0 ? (
-          <View style={styles.tagsPreview}>
-            {tagsInput
-              .split(',')
-              .map((tag) => tag.trim())
-              .filter((tag) => tag.length > 0)
-              .map((tag, index) => (
-                <View key={`${tag}-${index}`} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-          </View>
-        ) : null}
-        {suggestions.length > 0 ? (
-          <View style={styles.suggestionsRow}>
-            <Text style={styles.suggestionsLabel}>建议：</Text>
-            {suggestions.map((tag) => (
-              <Pressable
-                key={tag}
-                style={styles.suggestionChip}
-                onPress={() => onAddSuggestion(tag)}
-              >
-                <Ionicons name="add" size={13} color="#6A89CC" />
-                <Text style={styles.suggestionChipText}>{tag}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-      </View>
+      <TagArea
+        commonTags={commonTags}
+        currentTagsList={currentTagsList}
+        suggestions={suggestions}
+        tagsInput={tagsInput}
+        tagPanelExpanded={tagPanelExpanded}
+        onAddTag={onAddTag}
+        onRemoveTag={onRemoveTag}
+        onToggleTagPanel={onToggleTagPanel}
+        onChangeTagsInput={onChangeTagsInput}
+      />
     </ScrollView>
   );
 }

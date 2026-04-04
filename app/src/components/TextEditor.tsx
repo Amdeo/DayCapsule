@@ -26,12 +26,14 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
     commonTags,
     currentTagsList,
     canSave,
+    tagPanelExpanded,
     setContent,
     setTagsInput,
     handleAddSuggestion,
     handleRemoveTag,
     handleSave,
     handleCancel,
+    toggleTagPanel,
   } = useTextEditorController({
     onSave,
     onCancel,
@@ -55,10 +57,14 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
         <Pressable style={styles.backdrop} onPress={handleCancel} />
 
         <View testID="text-editor-sheet" style={styles.editor}>
+          <View style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+          </View>
+
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>添加文字记录</Text>
+            <Text style={styles.headerTitle}>新记录</Text>
             <Pressable onPress={handleCancel} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#4A4A4A" />
+              <Ionicons name="close" size={16} color="#6F6257" />
             </Pressable>
           </View>
 
@@ -68,10 +74,12 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
             commonTags={commonTags}
             currentTagsList={currentTagsList}
             suggestions={suggestions}
+            tagPanelExpanded={tagPanelExpanded}
             onChangeContent={setContent}
             onChangeTagsInput={setTagsInput}
-            onAddSuggestion={handleAddSuggestion}
+            onAddTag={handleAddSuggestion}
             onRemoveTag={handleRemoveTag}
+            onToggleTagPanel={toggleTagPanel}
           />
           <TextEditorFooter
             canSave={canSave}

@@ -14,7 +14,7 @@ export function TextEditorFooter({
   onSave,
 }: TextEditorFooterProps) {
   return (
-    <View style={styles.footer}>
+    <View style={styles.footer} testID="text-editor-footer">
       <Pressable
         style={[styles.button, styles.cancelButton]}
         onPress={onCancel}

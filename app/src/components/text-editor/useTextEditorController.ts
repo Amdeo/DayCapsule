@@ -15,6 +15,7 @@ export function useTextEditorController({
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [tagPanelExpanded, setTagPanelExpanded] = useState(false);
   const { tags: commonTags, isLoaded: tagsLoaded, loadCommonTags } = useCommonTagsStore();
 
   useEffect(() => {
@@ -61,10 +62,13 @@ export function useTextEditorController({
     });
   }, []);
 
+  const toggleTagPanel = useCallback(() => setTagPanelExpanded((v) => !v), []);
+
   const resetEditor = useCallback(() => {
     setContent('');
     setTagsInput('');
     setSuggestions([]);
+    setTagPanelExpanded(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -112,11 +116,13 @@ export function useTextEditorController({
     commonTags,
     currentTagsList,
     canSave,
+    tagPanelExpanded,
     setContent,
     setTagsInput,
     handleAddSuggestion,
     handleRemoveTag,
     handleSave,
     handleCancel,
+    toggleTagPanel,
   };
 }
