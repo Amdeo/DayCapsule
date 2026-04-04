@@ -2,9 +2,9 @@ import type { Entry } from '@/src/types/entry';
 
 export const buildPendingInsertEntry = (
   entry: Omit<Entry, 'id' | 'timestamp'>,
-  cloudMode: boolean
+  canRunCloudSync: boolean
 ): Omit<Entry, 'id' | 'timestamp'> => {
-  if (!cloudMode) {
+  if (!canRunCloudSync) {
     return {
       ...entry,
       syncStatus: 'synced',
@@ -28,9 +28,9 @@ export const buildPendingInsertEntry = (
 
 export const buildPendingUpdate = (
   updates: Partial<Entry>,
-  cloudMode: boolean
+  canRunCloudSync: boolean
 ): Partial<Entry> => {
-  if (!cloudMode) {
+  if (!canRunCloudSync) {
     return {
       ...updates,
       syncStatus: updates.syncStatus ? 'synced' : updates.syncStatus,

@@ -8,6 +8,7 @@ import { useEntryStore } from '@/src/store/entryStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { VoiceService } from '@/src/services/voiceService';
 import { PhotoService } from '@/src/services/photoService';
 import type { PhotoResult } from '@/src/services/photoService';
@@ -36,6 +37,7 @@ import {
 } from '@/src/services/homeVoiceFlow';
 import { handlePhotoSelectForTest } from '@/src/services/homePhotoFlow';
 import { usePendingActionStore } from '@/src/store/pendingActionStore';
+import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
 
 const RECORDING_DURATION_POLL_MS = 250;
 
@@ -65,8 +67,8 @@ export function useHomeScreenController() {
     });
   }, []);
 
-  const isCloudModeEnabled = useCallback(
-    () => useSettingsStore.getState().cloudMode === true,
+  const isAccountSyncEnabled = useCallback(
+    () => buildWorkspaceSessionSnapshot(useAuthStore.getState().isAuthenticated).canRunCloudSync,
     []
   );
 
@@ -144,14 +146,14 @@ export function useHomeScreenController() {
   const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
       const photoCreationPolicy = uploadSyncOrchestration.current.getPhotoCreationPolicy(
-        isCloudModeEnabled()
+        isAccountSyncEnabled()
       );
       await handlePhotoSelectForTest(results, {
         addLocalEntry,
         updateLocalEntry,
         deleteEntry,
         preparePhotoEntryMedia: (photoResults) => preparePhotoEntryMediaService(photoResults, {
-          savePhoto: isCloudModeEnabled()
+          savePhoto: isAccountSyncEnabled()
             ? PhotoService.savePhotoToCache.bind(PhotoService)
             : PhotoService.savePhotoToStorage.bind(PhotoService),
           fingerprintPhotoFile,
@@ -169,7 +171,7 @@ export function useHomeScreenController() {
         actions: [{ label: '知道了', role: 'primary' }],
       });
     }
-  }, [addLocalEntry, deleteEntry, isCloudModeEnabled, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addLocalEntry, deleteEntry, isAccountSyncEnabled, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => {
     switch (type) {
@@ -187,7 +189,7 @@ export function useHomeScreenController() {
         let createdEntryId: string | null = null;
         try {
           assertCanStartVoiceRecordingForTest(currentRecordingIdRef.current);
-          if (isCloudModeEnabled()) {
+          if (isAccountSyncEnabled()) {
             const tempEntry = await startCloudVoiceRecordingForTest({
               startRecording: VoiceService.startRecording.bind(VoiceService),
               createLocalEntry: addLocalEntry,
@@ -238,14 +240,14 @@ export function useHomeScreenController() {
         break;
       }
     }
-  }, [addEntry, addLocalEntry, deleteEntry, handlePhotoSelectArr, isCloudModeEnabled, startRecordingTimer]);
+  }, [addEntry, addLocalEntry, deleteEntry, handlePhotoSelectArr, isAccountSyncEnabled, startRecordingTimer]);
 
   const handleStopRecording = useCallback(async (id: string) => {
     clearRecordingTimerForTest(recordingTimerRef);
     try {
-      if (isCloudModeEnabled()) {
+      if (isAccountSyncEnabled()) {
         const shouldEnqueueUpload = uploadSyncOrchestration.current.shouldEnqueueVoiceUpload(
-          isCloudModeEnabled()
+          isAccountSyncEnabled()
         );
         await finalizeCloudVoiceRecordingForTest(id, {
           stopRecording: VoiceService.stopRecording.bind(VoiceService),
@@ -278,7 +280,7 @@ export function useHomeScreenController() {
     } finally {
       currentRecordingIdRef.current = null;
     }
-  }, [completeRecording, deleteEntry, isCloudModeEnabled, updateLocalEntry]);
+  }, [completeRecording, deleteEntry, isAccountSyncEnabled, updateLocalEntry]);
 
   const handleTextSave = useCallback(async (content: string, tags: string[]) => {
     try {

@@ -10,14 +10,15 @@ import { logger } from '@/src/utils/logger';
 import * as DB from '@/src/database/operations';
 import { cancelVoiceUpload } from '@/src/services/voiceUploadQueue';
 import { cancelPhotoUpload } from '@/src/services/photoUploadQueue';
-import { useSettingsStore } from '@/src/store/settingsStore';
 import { useCloudSyncIndicatorStore } from '@/src/store/cloudSyncIndicatorStore';
 import { useEntryFilterUIStore } from '@/src/store/entryFilterUIStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { buildFilters, buildQueryKey, mergeUniqueById } from './__internal__/entryStoreUtils';
 import { buildPendingInsertEntry, buildPendingUpdate } from './__internal__/entrySyncMapper';
 import { deleteLocalMediaFiles } from './__internal__/entryMediaCleanup';
 import { executeFirstPageQuery, PAGE_SIZE } from './__internal__/entryFirstPageQuery';
 import type { EntryStore } from './__internal__/entryStoreTypes';
+import { canRunCloudSync } from '@/src/services/workspaceSessionState';
 
 const refreshCloudSyncIndicator = (): void => {
   void useCloudSyncIndicatorStore.getState().refresh().catch((error) => {
@@ -84,7 +85,10 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
   /** 添加记录：写 DB 后 prepend 到内存头部 */
   addEntry: async (entry) => {
     try {
-      const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
+      const nextEntry = buildPendingInsertEntry(
+        entry,
+        canRunCloudSync(useAuthStore.getState().isAuthenticated)
+      );
       const newEntry = await DB.addEntry(nextEntry);
       set((s) => ({ entries: [newEntry, ...s.entries] }));
       refreshCloudSyncIndicator();
@@ -97,7 +101,10 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
 
   addLocalEntry: async (entry) => {
     try {
-      const nextEntry = buildPendingInsertEntry(entry, useSettingsStore.getState().cloudMode === true);
+      const nextEntry = buildPendingInsertEntry(
+        entry,
+        canRunCloudSync(useAuthStore.getState().isAuthenticated)
+      );
       const newEntry = await DB.addEntry(nextEntry);
       set((s) => ({ entries: [newEntry, ...s.entries.filter((e) => e.id !== newEntry.id)] }));
       refreshCloudSyncIndicator();
@@ -112,7 +119,10 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
   /** 更新记录：写 DB 后 map 更新内存 */
   updateEntry: async (id, updates) => {
     try {
-      const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
+      const nextUpdates = buildPendingUpdate(
+        updates,
+        canRunCloudSync(useAuthStore.getState().isAuthenticated)
+      );
       await DB.updateEntry(id, nextUpdates);
       set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e)) }));
       refreshCloudSyncIndicator();
@@ -125,7 +135,10 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
 
   updateLocalEntry: async (id, updates) => {
     try {
-      const nextUpdates = buildPendingUpdate(updates, useSettingsStore.getState().cloudMode === true);
+      const nextUpdates = buildPendingUpdate(
+        updates,
+        canRunCloudSync(useAuthStore.getState().isAuthenticated)
+      );
       await DB.updateEntry(id, nextUpdates);
       set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e)) }));
       refreshCloudSyncIndicator();
@@ -153,7 +166,7 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
         (existingEntry?.type === 'voice' || existingEntry?.type === 'photo') &&
         (existingEntry.syncStatus === 'pending_upload' || existingEntry.syncStatus === 'uploading');
       const shouldSoftDeleteForCloud =
-        useSettingsStore.getState().cloudMode === true &&
+        canRunCloudSync(useAuthStore.getState().isAuthenticated) &&
         !!existingEntry &&
         !shouldDeleteLocallyOnly &&
         existingEntry.syncStatus === 'synced';

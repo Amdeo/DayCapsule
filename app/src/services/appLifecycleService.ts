@@ -6,8 +6,8 @@ import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueReco
 import { createCloudRecoveryFlowService } from '@/src/services/cloudRecoveryFlowService';
 import { useEntryStore } from '@/src/store/entryStore';
 import { useAuthStore } from '@/src/store/authStore';
-import { useSettingsStore } from '@/src/store/settingsStore';
 import { logger } from '@/src/utils/logger';
+import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
 
 export interface CloudRecoveryDependencies {
   refreshCloudSyncIndicator: (label: string) => Promise<void>;
@@ -40,8 +40,9 @@ export function createCloudRecoveryRunner(
     }
 
     pendingRecovery = (async () => {
-      const shouldSyncCloud =
-        useAuthStore.getState().isAuthenticated && useSettingsStore.getState().cloudMode === true;
+      const shouldSyncCloud = buildWorkspaceSessionSnapshot(
+        useAuthStore.getState().isAuthenticated
+      ).canRunCloudSync;
 
       const recoveryResult = await createCloudRecoveryFlowService({
         syncNow: async () => {

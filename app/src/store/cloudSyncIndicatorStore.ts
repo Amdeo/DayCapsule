@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import * as DB from '@/src/database/operations';
 import { useAuthStore } from '@/src/store/authStore';
-import { useSettingsStore } from '@/src/store/settingsStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { logger } from '@/src/utils/logger';
+import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
 
 export type CloudSyncIndicatorUiState =
   | 'hidden'
@@ -31,8 +31,7 @@ const EMPTY_SUMMARY: DB.CloudSyncIndicatorSummary = {
 function resolveUiState(
   summary: DB.CloudSyncIndicatorSummary,
   options: {
-    isAuthenticated: boolean;
-    cloudMode: boolean | 'switching';
+    canRunCloudSync: boolean;
     isSyncing: boolean;
     isNetworkReachable: boolean;
     mediaValidationStatus: ReturnType<typeof useSyncStore.getState>['lastMediaValidationSummary'] extends infer T
@@ -40,7 +39,7 @@ function resolveUiState(
       : null;
   },
 ): CloudSyncIndicatorUiState {
-  if (!options.isAuthenticated || options.cloudMode !== true) {
+  if (!options.canRunCloudSync) {
     return 'hidden';
   }
 
@@ -99,9 +98,9 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set, 
 
   refresh: async () => {
     const { isAuthenticated } = useAuthStore.getState();
-    const { cloudMode } = useSettingsStore.getState();
+    const session = buildWorkspaceSessionSnapshot(isAuthenticated);
 
-    if (!isAuthenticated || cloudMode !== true) {
+    if (!session.canRunCloudSync) {
       set({ ...EMPTY_SUMMARY, uiState: 'hidden' });
       return;
     }
@@ -120,8 +119,7 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set, 
 
       const mediaValidationStatus = lastMediaValidationSummary?.status ?? null;
       const uiState = resolveUiState(summary, {
-        isAuthenticated,
-        cloudMode,
+        canRunCloudSync: session.canRunCloudSync,
         isSyncing,
         isNetworkReachable,
         mediaValidationStatus,
@@ -131,6 +129,7 @@ export const useCloudSyncIndicatorStore = create<CloudSyncIndicatorState>((set, 
 
       logger.log('[cloudSyncIndicator] refresh →', {
         uiState,
+        canRunCloudSync: session.canRunCloudSync,
         isSyncing,
         lastSyncError,
         mediaValidationStatus,

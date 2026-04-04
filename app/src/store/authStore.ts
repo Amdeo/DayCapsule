@@ -4,23 +4,21 @@
  */
 
 import { create } from 'zustand';
-import { Storage, withScope } from '@/src/utils/storage';
+import { Storage } from '@/src/utils/storage';
 import { getApiClient } from '@/src/services/apiClient';
 import { logger } from '@/src/utils/logger';
-import {
-  getCurrentServerUrl,
-  getServerKey,
-  setCurrentServerUrl,
-} from '@/src/services/backendEnvironmentService';
+import { getCurrentServerUrl } from '@/src/services/backendEnvironmentService';
 import { activateAuthenticatedAccount } from '@/src/services/authActivationService';
-import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
 import {
   getUserAuthKeys,
   getAccountTokens,
-  setActiveAccount,
-  removeAccount,
   getActiveAccountRef,
 } from '@/src/services/accountRegistryService';
+import {
+  restoreAccountScopeFromPersistedAuth,
+  returnToLocalScopeAfterLogout,
+  switchActiveAccountScope,
+} from '@/src/services/workspaceSessionTransitionService';
 
 interface AuthUser {
   id: string;
@@ -62,6 +60,13 @@ const getAuthKeys = async () => {
   return getUserAuthKeys(serverUrl ?? '', activeRef.userId);
 };
 
+const EMPTY_AUTH_STATE = {
+  user: null,
+  token: null,
+  refreshToken: null,
+  isAuthenticated: false,
+} as const;
+
 const clearTokens = async () => {
   const { tokenKey, refreshTokenKey, userKey } = await getAuthKeys();
   await Promise.all([
@@ -71,23 +76,8 @@ const clearTokens = async () => {
   ]);
 };
 
-const persistWorkspaceUserId = async (userId: string) => {
-  const serverUrl = await getCurrentServerUrl();
-  const key = withScope(getServerKey(serverUrl), 'workspace:currentUserId');
-  await Storage.setString(key, userId);
-};
-
-const clearWorkspaceUserId = async () => {
-  const serverUrl = await getCurrentServerUrl();
-  const key = withScope(getServerKey(serverUrl), 'workspace:currentUserId');
-  await Storage.delete(key);
-};
-
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: null,
-  refreshToken: null,
-  isAuthenticated: false,
+  ...EMPTY_AUTH_STATE,
 
   login: async (email, password) => {
     const client = getApiClient();
@@ -128,14 +118,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    const activeRef = await getActiveAccountRef();
-    if (activeRef) {
-      await removeAccount(activeRef.serverUrl, activeRef.userId);
-    }
-    await Storage.delete('accounts:active');
-    set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
-    await clearWorkspaceUserId();
-    useAppLifecycleStore.getState().triggerRestart();
+    set(EMPTY_AUTH_STATE);
+    await returnToLocalScopeAfterLogout();
     logger.log('✅ 已退出登录');
   },
 
@@ -160,24 +144,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loadAuth: async () => {
-    const serverUrl = await getCurrentServerUrl();
     const activeRef = await getActiveAccountRef();
     if (!activeRef?.userId) {
-      set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+      set(EMPTY_AUTH_STATE);
+      await returnToLocalScopeAfterLogout();
       return;
     }
-    const { token, refreshToken } = await getAccountTokens(serverUrl, activeRef.userId);
-    const { userKey } = getUserAuthKeys(serverUrl, activeRef.userId);
+    const { token, refreshToken } = await getAccountTokens(activeRef.serverUrl, activeRef.userId);
+    const { userKey } = getUserAuthKeys(activeRef.serverUrl, activeRef.userId);
     const user = await Storage.getObject<AuthUser>(userKey);
 
     if (token && user) {
       set({ user, token, refreshToken, isAuthenticated: true });
-      await persistWorkspaceUserId(user.id);
+      await restoreAccountScopeFromPersistedAuth({
+        serverUrl: activeRef.serverUrl,
+        userId: user.id,
+        onFailureResetAuthState: () => set(EMPTY_AUTH_STATE),
+      });
       logger.log('✅ 已恢复登录状态:', user.email);
       return;
     }
 
-    set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+    set(EMPTY_AUTH_STATE);
+    await returnToLocalScopeAfterLogout();
   },
 
   switchAccount: async (serverUrl: string, userId: string) => {
@@ -191,16 +180,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('账号信息不存在');
     }
 
-    const currentServerUrl = await getCurrentServerUrl();
-    if (serverUrl !== currentServerUrl) {
-      // 先清旧 server 的 workspace userId，再切换服务器
-      await clearWorkspaceUserId();
-      await setCurrentServerUrl(serverUrl);
-    }
-
-    await setActiveAccount(serverUrl, userId);
-    await persistWorkspaceUserId(userId);
-
+    const previousState = get();
     set({
       user,
       token,
@@ -208,6 +188,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
     });
 
-    useAppLifecycleStore.getState().triggerRestart();
+    await switchActiveAccountScope({
+      serverUrl,
+      userId,
+      onFailureRestoreAuthState: () => set(previousState),
+    });
   },
 }));

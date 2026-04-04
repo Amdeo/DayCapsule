@@ -25,8 +25,8 @@ import {
 interface SettingsPageContentProps {
   isAuthenticated: boolean;
   userEmail?: string;
-  cloudMode: boolean | 'switching';
-  isSwitchingMode: boolean;
+  isAccountScopeActive: boolean;
+  isTransitioning: boolean;
   notifications: boolean;
   highQualityPhotos: boolean;
   cardSpacing: CardSpacing;
@@ -44,7 +44,6 @@ interface SettingsPageContentProps {
   isSavingBackendServer: boolean;
   canSaveBackendServer: boolean;
   showE2ESyncLab?: boolean;
-  onCloudModeToggle: (value: boolean) => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
   onSwitchAccount: () => void;
   onLogout: () => void;
@@ -73,8 +72,8 @@ interface SettingsPageContentProps {
 export function SettingsPageContent({
   isAuthenticated,
   userEmail,
-  cloudMode,
-  isSwitchingMode,
+  isAccountScopeActive,
+  isTransitioning,
   notifications,
   highQualityPhotos,
   cardSpacing,
@@ -91,7 +90,6 @@ export function SettingsPageContent({
   isSavingBackendServer,
   canSaveBackendServer,
   showE2ESyncLab,
-  onCloudModeToggle,
   onShowSyncStatus,
   onSwitchAccount,
   onLogout,
@@ -121,7 +119,8 @@ export function SettingsPageContent({
       <SettingsProfileCard
         isAuthenticated={isAuthenticated}
         userEmail={userEmail}
-        cloudMode={cloudMode}
+        isAccountScopeActive={isAccountScopeActive}
+        isTransitioning={isTransitioning}
         entryCount={entryCount}
         photoCount={photoCount}
         usedSpace={usedSpace}
@@ -130,9 +129,8 @@ export function SettingsPageContent({
 
       <SettingsAccountSyncSection
         isAuthenticated={isAuthenticated}
-        cloudMode={cloudMode}
-        isSwitchingMode={isSwitchingMode}
-        onCloudModeToggle={onCloudModeToggle}
+        isAccountScopeActive={isAccountScopeActive}
+        isTransitioning={isTransitioning}
         onShowSyncStatus={onShowSyncStatus}
         onSwitchAccount={onSwitchAccount}
         onLogout={onLogout}

@@ -1,18 +1,11 @@
-import { Storage, withScope } from '@/src/utils/storage';
-import { getServerKey } from '@/src/services/backendEnvironmentService';
+import { Storage } from '@/src/utils/storage';
 import {
-  clearActiveAccount,
-  getActiveAccountRef,
   getUserAuthKeys,
   registerAccount,
-  setActiveAccount,
   unregisterAccount,
 } from '@/src/services/accountRegistryService';
-import { prepareScopeRuntime } from '@/src/services/scopeRuntimeService';
-import { useEntryStore } from '@/src/store/entryStore';
+import { enterAccountScopeAfterLogin } from '@/src/services/workspaceSessionTransitionService';
 import { logger } from '@/src/utils/logger';
-
-const ACTIVE_ACCOUNT_KEY = 'accounts:active';
 
 export interface ActivatableAuthUser {
   id: string;
@@ -36,14 +29,6 @@ interface ActivateAuthenticatedAccountParams {
   restoreAuthState: (previousState: ActivatableAuthState) => void;
 }
 
-async function restoreWorkspaceUserId(key: string, previousValue: string | null): Promise<void> {
-  if (previousValue) {
-    await Storage.setString(key, previousValue);
-    return;
-  }
-  await Storage.delete(key);
-}
-
 async function safeCompensate(label: string, action: () => Promise<void>): Promise<void> {
   try {
     await action();
@@ -61,23 +46,12 @@ export async function activateAuthenticatedAccount({
   commitAuthState,
   restoreAuthState,
 }: ActivateAuthenticatedAccountParams): Promise<string> {
-  const prepareResult = await prepareScopeRuntime({ serverUrl, userId: user.id });
-  if (!prepareResult.prepared) {
-    throw new Error(prepareResult.failureReason ?? '账号数据作用域初始化失败');
-  }
-
-  useEntryStore.getState().invalidateActiveQueries();
-
-  const previousActiveAccount = await getActiveAccountRef();
-  const workspaceUserIdKey = withScope(getServerKey(serverUrl), 'workspace:currentUserId');
-  const previousWorkspaceUserId = await Storage.getString(workspaceUserIdKey);
   const { tokenKey, refreshTokenKey, userKey } = getUserAuthKeys(serverUrl, user.id);
 
   let authCommitted = false;
   let tokensPersisted = false;
   let accountRegistered = false;
-  let activeAccountCommitted = false;
-  let workspaceCommitted = false;
+  let enteredAccountScope = false;
 
   try {
     commitAuthState({
@@ -98,31 +72,26 @@ export async function activateAuthenticatedAccount({
     await registerAccount({ serverUrl, userId: user.id, email: user.email, addedAt: Date.now() });
     accountRegistered = true;
 
-    await setActiveAccount(serverUrl, user.id);
-    activeAccountCommitted = true;
+    const targetScopeKey = await enterAccountScopeAfterLogin({
+      serverUrl,
+      userId: user.id,
+      onFailureResetAuthState: () => {
+        restoreAuthState({
+          user: null,
+          token: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        });
+      },
+    });
+    enteredAccountScope = true;
 
-    await Storage.setString(workspaceUserIdKey, user.id);
-    workspaceCommitted = true;
-
-    return prepareResult.targetScopeKey;
+    return targetScopeKey;
   } catch (error) {
-    await safeCompensate('workspaceUserId', async () => {
-      if (workspaceCommitted) {
-        await restoreWorkspaceUserId(workspaceUserIdKey, previousWorkspaceUserId);
-      }
-    });
-
-    await safeCompensate('activeAccount', async () => {
-      if (!activeAccountCommitted) {
-        return;
-      }
-      if (previousActiveAccount) {
-        await setActiveAccount(previousActiveAccount.serverUrl, previousActiveAccount.userId);
-        return;
-      }
-      await clearActiveAccount();
-      await Storage.delete(ACTIVE_ACCOUNT_KEY);
-    });
+    if (enteredAccountScope) {
+      logger.error('[authActivationService] Activation failed after scope transition:', error);
+      throw error;
+    }
 
     await safeCompensate('accountRegistry', async () => {
       if (accountRegistered) {

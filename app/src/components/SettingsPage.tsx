@@ -17,12 +17,12 @@ import { showPhotoRepairPrompt } from '@/src/services/showPhotoRepairPrompt';
 import { DetailPageShell } from './DetailPageShell';
 import { useAuthStore } from '@/src/store/authStore';
 import { SettingsPageContent } from './settings-page/SettingsPageContent';
-import { useSettingsPageCloudMode } from './settings-page/useSettingsPageCloudMode';
 import { useSettingsPageController } from './settings-page/useSettingsPageController';
 import { SettingsPageDialogs } from './settings-page/SettingsPageDialogs';
 import { useAccountSwitcher } from './settings-page/useAccountSwitcher';
 import { useConfirmDialogStore } from '@/src/store/confirmDialogStore';
 import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
+import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -47,17 +47,15 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setPhotoHeight: savePhotoHeight,
     calendarDensity,
     setCalendarDensity: saveCalendarDensity,
-    cloudMode,
-    setCloudMode,
     resetSettings,
   } = useSettingsStore();
 
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { isAccountScopeActive, isTransitioning } = buildWorkspaceSessionSnapshot(isAuthenticated);
   const [showLogin, setShowLogin] = React.useState(false);
   const [showHelp, setShowHelp] = React.useState(false);
   const [showAbout, setShowAbout] = React.useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = React.useState(false);
-  const [loginIntent, setLoginIntent] = React.useState<'account' | 'cloud-gating' | null>(null);
 
   const { accounts, activeRef, isSwitching, handleSwitch } = useAccountSwitcher();
 
@@ -71,28 +69,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setShowAbout(true);
   }, []);
 
-  const openLogin = React.useCallback((intent: 'account' | 'cloud-gating' = 'account') => {
-    setLoginIntent(intent);
+  const openLogin = React.useCallback(() => {
     setShowLogin(true);
   }, []);
 
   const closeLogin = React.useCallback(() => {
     setShowLogin(false);
-    setLoginIntent(null);
   }, []);
-
-  const {
-    isSwitchingMode,
-    enableCloudMode,
-    handleCloudModeToggle,
-    handleLogout,
-  } = useSettingsPageCloudMode({
-    isAuthenticated,
-    cloudMode,
-    setCloudMode,
-    logout,
-    onRequireLogin: () => openLogin('cloud-gating'),
-  });
 
   const {
     usedSpace,
@@ -134,12 +117,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   });
 
   const handleLoginSuccess = React.useCallback(async () => {
-    const intent = loginIntent;
     closeLogin();
-    if (intent === 'cloud-gating') {
-      await enableCloudMode();
-    }
-  }, [closeLogin, enableCloudMode, loginIntent]);
+  }, [closeLogin]);
 
   const handleClose = React.useCallback(() => {
     onClose();
@@ -151,8 +130,8 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
         <SettingsPageContent
           isAuthenticated={isAuthenticated}
           userEmail={user?.email}
-          cloudMode={cloudMode}
-          isSwitchingMode={isSwitchingMode}
+          isAccountScopeActive={isAccountScopeActive}
+          isTransitioning={isTransitioning}
           notifications={notifications}
           highQualityPhotos={highQualityPhotos}
           cardSpacing={cardSpacing}
@@ -170,13 +149,12 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           isSavingBackendServer={isSavingBackendServer}
           canSaveBackendServer={canSaveBackendServer}
           showE2ESyncLab={showE2ESyncLab}
-          onCloudModeToggle={handleCloudModeToggle}
           onShowSyncStatus={() => {
             showCloudSyncMonitor();
           }}
           onSwitchAccount={() => setShowAccountSwitcher(true)}
-          onLogout={handleLogout}
-          onShowLogin={() => openLogin('account')}
+          onLogout={logout}
+          onShowLogin={openLogin}
           onNotificationsChange={handleNotifications}
           onHighQualityPhotosChange={handleHighQualityPhotos}
           onCardSpacingChange={handleCardSpacing}
@@ -213,7 +191,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onCloseAccountSwitcher={() => setShowAccountSwitcher(false)}
           onLoginSuccess={handleLoginSuccess}
           onSwitchAccount={handleSwitch}
-          onAddAccount={() => openLogin('account')}
+          onAddAccount={openLogin}
         />
       </View>
     </DetailPageShell>

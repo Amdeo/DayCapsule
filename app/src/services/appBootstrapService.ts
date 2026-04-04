@@ -20,6 +20,7 @@ import { migrateAuthKeysToUserScoped, getRegisteredAccounts } from '@/src/servic
 import { useAuthStore } from '@/src/store/authStore';
 import { useSyncStore } from '@/src/store/syncStore';
 import { useSettingsStore } from '@/src/store/settingsStore';
+import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
 import { createSyncBootstrapService } from '@/src/services/syncBootstrapService';
 import { createCloudSyncService } from '@/src/services/cloudSyncService';
 import { createUploadQueueRecoveryService } from '@/src/services/uploadQueueRecoveryService';
@@ -104,23 +105,14 @@ export async function runAppBootstrap(
       }
     }
 
-    const cloudMode = useSettingsStore.getState().cloudMode;
     const isAuthenticated = useAuthStore.getState().isAuthenticated;
-    if (cloudMode === 'switching') {
-      logger.warn('⚠️ 检测到上次云端模式切换未完成，重置为离线模式');
-      await useSettingsStore.getState().setCloudMode(false);
-      showErrorFeedback({
-        title: '提示',
-        message: '上次云端模式切换未完成，已恢复为离线模式。您可以在设置中重新切换。',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
-    }
+    const session = buildWorkspaceSessionSnapshot(isAuthenticated);
 
     let shouldSyncCloud = false;
 
-    if (cloudMode === true && isAuthenticated) {
+    if (session.canRunCloudSync) {
       try {
-        logger.log('✅ 恢复云端模式，执行本地优先同步初始化');
+        logger.log('✅ 恢复账号 scope，执行本地优先同步初始化');
         const bootstrap = createSyncBootstrapService();
         const inspection = await bootstrap.inspectInitialState();
         const flow = bootstrap.buildInitialFlow(inspection);
