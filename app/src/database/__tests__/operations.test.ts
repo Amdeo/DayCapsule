@@ -12,6 +12,7 @@ const mockDb = {
 
 jest.mock('@/src/database/sqlite', () => ({
   getDatabase: jest.fn(() => mockDb),
+  getDatabaseScopeKey: jest.fn(() => null),
 }));
 
 jest.mock('@/src/utils/logger', () => ({
@@ -1612,6 +1613,42 @@ describe('database/operations', () => {
         uploadingEntries: 1,
         failedEntries: 1,
       });
+    });
+
+    it('returns zero summary and logs warn when PRAGMA table_info(entries) is empty', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([]);
+
+      const summary = await getCloudSyncIndicatorSummary();
+
+      expect(summary).toEqual({
+        pendingEntries: 0,
+        pendingUploads: 0,
+        uploadingEntries: 0,
+        failedEntries: 0,
+      });
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[syncQueries] cloud sync indicator degraded: entries table is not ready'
+      );
+    });
+
+    it('returns zero summary and logs warn when the aggregate query hits no such table: entries', async () => {
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        { name: 'id' },
+        { name: 'sync_status' },
+      ]);
+      mockDb.getFirstAsync.mockRejectedValueOnce(new Error('no such table: entries'));
+
+      const summary = await getCloudSyncIndicatorSummary();
+
+      expect(summary).toEqual({
+        pendingEntries: 0,
+        pendingUploads: 0,
+        uploadingEntries: 0,
+        failedEntries: 0,
+      });
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[syncQueries] cloud sync indicator degraded: no such table: entries'
+      );
     });
   });
 

@@ -12,11 +12,11 @@ import {
   getServerKey,
   setCurrentServerUrl,
 } from '@/src/services/backendEnvironmentService';
+import { activateAuthenticatedAccount } from '@/src/services/authActivationService';
 import { useAppLifecycleStore } from '@/src/store/appLifecycleStore';
 import {
   getUserAuthKeys,
   getAccountTokens,
-  registerAccount,
   setActiveAccount,
   removeAccount,
   getActiveAccountRef,
@@ -62,18 +62,6 @@ const getAuthKeys = async () => {
   return getUserAuthKeys(serverUrl ?? '', activeRef.userId);
 };
 
-const persistTokens = async (token: string, refreshToken: string, user: AuthUser) => {
-  const serverUrl = await getCurrentServerUrl();
-  const { tokenKey, refreshTokenKey, userKey } = getUserAuthKeys(serverUrl, user.id);
-  await Promise.all([
-    Storage.setString(tokenKey, token),
-    Storage.setString(refreshTokenKey, refreshToken),
-    Storage.setObject(userKey, user),
-  ]);
-  await registerAccount({ serverUrl, userId: user.id, email: user.email, addedAt: Date.now() });
-  await setActiveAccount(serverUrl, user.id);
-};
-
 const clearTokens = async () => {
   const { tokenKey, refreshTokenKey, userKey } = await getAuthKeys();
   await Promise.all([
@@ -103,23 +91,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     const client = getApiClient();
+    const serverUrl = await getCurrentServerUrl();
     const data = await client.post<AuthResponse>('/auth/login', { email, password });
     const user: AuthUser = { id: data.user.id, email: data.user.email };
+    const previousState = get();
 
-    set({ user, token: data.token, refreshToken: data.refreshToken, isAuthenticated: true });
-    await persistTokens(data.token, data.refreshToken, user);
-    await persistWorkspaceUserId(user.id);
+    await activateAuthenticatedAccount({
+      serverUrl,
+      user,
+      token: data.token,
+      refreshToken: data.refreshToken,
+      previousAuthState: previousState,
+      commitAuthState: (nextState) => set(nextState),
+      restoreAuthState: (restoredState) => set(restoredState),
+    });
     logger.log('✅ 登录成功:', email);
   },
 
   register: async (email, password) => {
     const client = getApiClient();
+    const serverUrl = await getCurrentServerUrl();
     const data = await client.post<AuthResponse>('/auth/register', { email, password });
     const user: AuthUser = { id: data.user.id, email: data.user.email };
+    const previousState = get();
 
-    set({ user, token: data.token, refreshToken: data.refreshToken, isAuthenticated: true });
-    await persistTokens(data.token, data.refreshToken, user);
-    await persistWorkspaceUserId(user.id);
+    await activateAuthenticatedAccount({
+      serverUrl,
+      user,
+      token: data.token,
+      refreshToken: data.refreshToken,
+      previousAuthState: previousState,
+      commitAuthState: (nextState) => set(nextState),
+      restoreAuthState: (restoredState) => set(restoredState),
+    });
     logger.log('✅ 注册成功:', email);
   },
 

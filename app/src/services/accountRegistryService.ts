@@ -80,6 +80,18 @@ export async function setActiveAccount(serverUrl: string, userId: string): Promi
   await Storage.setObject<ActiveAccountRef>(ACTIVE_KEY, { serverUrl, userId });
 }
 
+export async function clearActiveAccount(): Promise<void> {
+  await Storage.delete(ACTIVE_KEY);
+}
+
+export async function unregisterAccount(serverUrl: string, userId: string): Promise<void> {
+  const accounts = await getRegisteredAccounts();
+  const filtered = accounts.filter(
+    a => !(a.serverUrl === serverUrl && a.userId === userId),
+  );
+  await Storage.setObject<AccountEntry[]>(REGISTRY_KEY, filtered);
+}
+
 export async function removeAccount(serverUrl: string, userId: string): Promise<void> {
   const accounts = await getRegisteredAccounts();
   const filtered = accounts.filter(

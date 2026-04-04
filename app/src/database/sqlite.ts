@@ -8,39 +8,36 @@ import { logger } from '@/src/utils/logger';
 import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 
 const DB_NAME_PREFIX = 'MemoryCapsule';
+const databaseScopeKeys = new WeakMap<SQLiteDatabase, string>();
 
 // 单例连接，避免每次调用重复打开
 let _db: SQLiteDatabase | null = null;
 let _dbName: string | null = null;
 
+export const getDatabaseNameForScope = (scopeKey: string): string =>
+  `${DB_NAME_PREFIX}-${scopeKey}.db`;
+
 export const getDatabaseName = (): string =>
-  `${DB_NAME_PREFIX}-${getCurrentDataScopeKeySync()}.db`;
+  getDatabaseNameForScope(getCurrentDataScopeKeySync());
 
 export const resetDatabase = (): void => {
   _db = null;
   _dbName = null;
 };
 
-/**
- * 打开数据库连接（单例）
- */
-export const openDatabase = (): SQLiteDatabase => {
-  const nextDbName = getDatabaseName();
-
-  if (!_db || _dbName !== nextDbName) {
-    _db = openDatabaseSync(nextDbName);
-    _dbName = nextDbName;
-  }
-  return _db;
+const registerDatabaseScope = (db: SQLiteDatabase, scopeKey: string): SQLiteDatabase => {
+  databaseScopeKeys.set(db, scopeKey);
+  return db;
 };
 
-/**
- * 初始化数据库表
- */
-export const initDatabase = async () => {
-  try {
-    const db = openDatabase();
+export const getDatabaseScopeKey = (db: SQLiteDatabase): string | null =>
+  databaseScopeKeys.get(db) ?? null;
 
+export const openDatabaseForScope = (scopeKey: string): SQLiteDatabase =>
+  registerDatabaseScope(openDatabaseSync(getDatabaseNameForScope(scopeKey)), scopeKey);
+
+const ensureDatabaseSchema = async (db: SQLiteDatabase): Promise<boolean> => {
+  try {
     // 创建 entries 表
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS entries (
@@ -115,6 +112,29 @@ export const initDatabase = async () => {
     return false;
   }
 };
+
+/**
+ * 打开数据库连接（单例）
+ */
+export const openDatabase = (): SQLiteDatabase => {
+  const nextDbName = getDatabaseName();
+  const nextScopeKey = getCurrentDataScopeKeySync();
+
+  if (!_db || _dbName !== nextDbName) {
+    _db = registerDatabaseScope(openDatabaseSync(nextDbName), nextScopeKey);
+    _dbName = nextDbName;
+  }
+  return _db;
+};
+
+export const initDatabaseForScope = async (scopeKey: string): Promise<boolean> =>
+  ensureDatabaseSchema(openDatabaseForScope(scopeKey));
+
+/**
+ * 初始化数据库表
+ */
+export const initDatabase = async (): Promise<boolean> =>
+  ensureDatabaseSchema(openDatabase());
 
 /**
  * 获取数据库实例（单例）

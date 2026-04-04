@@ -1,5 +1,5 @@
 import type { SQLiteBindValue } from 'expo-sqlite';
-import { getDatabase } from '../sqlite';
+import { getDatabase, getDatabaseScopeKey } from '../sqlite';
 import type { Entry } from '@/src/types/entry';
 
 export type EntryInsertSchemaCapabilities = {
@@ -20,20 +20,30 @@ export type EntryInsertParts = {
   values: SQLiteBindValue[];
 };
 
-let cachedColumnNames: Set<string> | null = null;
+const cachedColumnNamesByScope = new Map<string, Set<string>>();
+
+const getColumnCacheKey = (db: ReturnType<typeof getDatabase>): string =>
+  getDatabaseScopeKey(db) ?? '__ambient__';
 
 export const getTableColumns = async (
   db: ReturnType<typeof getDatabase>
 ): Promise<Set<string>> => {
+  const cacheKey = getColumnCacheKey(db);
+  const cachedColumnNames = cachedColumnNamesByScope.get(cacheKey);
   if (cachedColumnNames) return cachedColumnNames;
 
   const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
-  cachedColumnNames = new Set(tableInfo.map((col) => col.name));
-  return cachedColumnNames;
+  const columnNames = new Set(tableInfo.map((col) => col.name));
+  cachedColumnNamesByScope.set(cacheKey, columnNames);
+  return columnNames;
 };
 
-export const invalidateColumnCache = (): void => {
-  cachedColumnNames = null;
+export const invalidateColumnCache = (scopeKey?: string): void => {
+  if (scopeKey) {
+    cachedColumnNamesByScope.delete(scopeKey);
+    return;
+  }
+  cachedColumnNamesByScope.clear();
 };
 
 export const buildEntryInsertParts = (

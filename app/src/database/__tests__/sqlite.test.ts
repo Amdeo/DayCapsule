@@ -14,7 +14,16 @@ jest.mock('@/src/utils/logger', () => ({
 }));
 
 import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
-import { getDatabaseName, initDatabase, openDatabase, resetDatabase } from '../sqlite';
+import {
+  getDatabaseName,
+  getDatabaseNameForScope,
+  getDatabaseScopeKey,
+  initDatabase,
+  initDatabaseForScope,
+  openDatabase,
+  openDatabaseForScope,
+  resetDatabase,
+} from '../sqlite';
 
 describe('sqlite environment isolation', () => {
   beforeEach(() => {
@@ -56,6 +65,12 @@ describe('sqlite environment isolation', () => {
     expect(getDatabaseName()).toBe('MemoryCapsule-env_https_server_a_example_com.db');
   });
 
+  it('builds the database name for an explicit scope', () => {
+    expect(getDatabaseNameForScope('env_https_server_b_example_com_user-1')).toBe(
+      'MemoryCapsule-env_https_server_b_example_com_user-1.db'
+    );
+  });
+
   it('reopens the database when backend environment changes', () => {
     const dbA = openDatabase();
 
@@ -65,6 +80,15 @@ describe('sqlite environment isolation', () => {
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(1, 'MemoryCapsule-env_https_server_a_example_com.db');
     expect(mockOpenDatabaseSync).toHaveBeenNthCalledWith(2, 'MemoryCapsule-env_https_server_b_example_com.db');
     expect(dbA).not.toBe(dbB);
+  });
+
+  it('opens an explicit target-scope database without relying on ambient scope', () => {
+    const db = openDatabaseForScope('env_https_server_b_example_com_user-1');
+
+    expect(mockOpenDatabaseSync).toHaveBeenCalledWith(
+      'MemoryCapsule-env_https_server_b_example_com_user-1.db'
+    );
+    expect(getDatabaseScopeKey(db as any)).toBe('env_https_server_b_example_com_user-1');
   });
 
   it('switching environment should not synchronously close the previous database handle', () => {
@@ -156,5 +180,14 @@ describe('sqlite environment isolation', () => {
     expect(oldSchemaDb.execAsync.mock.calls.some(([sql]) =>
       String(sql).includes('idx_entries_sync_status ON entries(sync_status)')
     )).toBe(false);
+  });
+
+  it('can initialize an explicit target-scope database', async () => {
+    const initResult = await initDatabaseForScope('env_https_server_b_example_com_user-2');
+
+    expect(initResult).toBe(true);
+    expect(mockOpenDatabaseSync).toHaveBeenCalledWith(
+      'MemoryCapsule-env_https_server_b_example_com_user-2.db'
+    );
   });
 });

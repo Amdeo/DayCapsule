@@ -3,7 +3,7 @@
  * 所有函数均幂等，已存在则跳过
  */
 
-import { getDatabase } from '../sqlite';
+import { getDatabase, getDatabaseScopeKey } from '../sqlite';
 import { logger } from '@/src/utils/logger';
 import { invalidateColumnCache } from '../operations';
 import { migrationStore } from './legacyDataMigration';
@@ -40,8 +40,8 @@ export const migrateTagsToNormalized = async (): Promise<void> => {
   }
 };
 
-export const migrateEntriesContentToFts = async (): Promise<void> => {
-  const db = getDatabase();
+export const migrateEntriesContentToFts = async (providedDb = getDatabase()): Promise<void> => {
+  const db = providedDb;
   try {
     await db.runAsync(`
       CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
@@ -83,8 +83,9 @@ export const migrateMediaMetadataColumns = async (): Promise<void> => {
   }
 };
 
-export const migrateToMediaJson = async (): Promise<void> => {
-  const db = getDatabase();
+export const migrateToMediaJson = async (providedDb = getDatabase()): Promise<void> => {
+  const db = providedDb;
+  const scopeKey = getDatabaseScopeKey(db) ?? undefined;
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
     const hasMediaJson = tableInfo.some((col) => col.name === 'media_json');
@@ -123,7 +124,7 @@ export const migrateToMediaJson = async (): Promise<void> => {
       );
     }
 
-    invalidateColumnCache();
+    invalidateColumnCache(scopeKey);
     migrationStore.set('media_json_migrated', 'true');
     logger.log('✅ media_json 迁移完成，共处理', rows.length, '条记录');
   } catch (error) {
@@ -131,12 +132,13 @@ export const migrateToMediaJson = async (): Promise<void> => {
   }
 };
 
-export const migrateSyncStatusColumn = async (): Promise<void> => {
-  const db = getDatabase();
+export const migrateSyncStatusColumn = async (providedDb = getDatabase()): Promise<void> => {
+  const db = providedDb;
+  const scopeKey = getDatabaseScopeKey(db) ?? undefined;
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
     const columnNames = new Set(tableInfo.map(col => col.name));
-    const alreadyMarked = migrationStore.getString('sync_status_column_added') === 'true';
+    const alreadyMarked = scopeKey ? false : migrationStore.getString('sync_status_column_added') === 'true';
     const hasAllRequiredColumns =
       columnNames.has('sync_status') &&
       columnNames.has('sync_op') &&
@@ -160,7 +162,7 @@ export const migrateSyncStatusColumn = async (): Promise<void> => {
     await db.runAsync(`UPDATE entries SET sync_status = 'synced' WHERE sync_status IS NULL`);
     await db.runAsync(`UPDATE entries SET sync_op = 'update' WHERE sync_op IS NULL`);
     await db.runAsync(`CREATE INDEX IF NOT EXISTS idx_entries_sync_status ON entries(sync_status)`);
-    invalidateColumnCache();
+    invalidateColumnCache(scopeKey);
     migrationStore.set('sync_status_column_added', 'true');
     logger.log('✅ sync_status / sync_op / conflicted_copy_of 列迁移完成');
   } catch (error) {
@@ -168,12 +170,13 @@ export const migrateSyncStatusColumn = async (): Promise<void> => {
   }
 };
 
-export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
-  const db = getDatabase();
+export const migrateCloudSyncCoreColumns = async (providedDb = getDatabase()): Promise<void> => {
+  const db = providedDb;
+  const scopeKey = getDatabaseScopeKey(db) ?? undefined;
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
     const columnNames = new Set(tableInfo.map(col => col.name));
-    const alreadyMarked = migrationStore.getString('cloud_sync_core_columns_added') === 'true';
+    const alreadyMarked = scopeKey ? false : migrationStore.getString('cloud_sync_core_columns_added') === 'true';
     const hasAllRequiredColumns =
       columnNames.has('base_updated_at') &&
       columnNames.has('user_id') &&
@@ -195,7 +198,7 @@ export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
     }
 
     await db.runAsync(`UPDATE entries SET deleted = 0 WHERE deleted IS NULL`);
-    invalidateColumnCache();
+    invalidateColumnCache(scopeKey);
     migrationStore.set('cloud_sync_core_columns_added', 'true');
     logger.log('✅ cloud sync core 列迁移完成');
   } catch (error) {
@@ -203,8 +206,9 @@ export const migrateCloudSyncCoreColumns = async (): Promise<void> => {
   }
 };
 
-export const migrateLocalReadyStateColumn = async (): Promise<void> => {
-  const db = getDatabase();
+export const migrateLocalReadyStateColumn = async (providedDb = getDatabase()): Promise<void> => {
+  const db = providedDb;
+  const scopeKey = getDatabaseScopeKey(db) ?? undefined;
   try {
     const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
     const columnNames = new Set(tableInfo.map(col => col.name));
@@ -215,7 +219,7 @@ export const migrateLocalReadyStateColumn = async (): Promise<void> => {
     }
 
     await db.runAsync(`UPDATE entries SET local_ready_state = 'ready' WHERE local_ready_state IS NULL`);
-    invalidateColumnCache();
+    invalidateColumnCache(scopeKey);
     migrationStore.set('local_ready_state_column_added', 'true');
     logger.log('✅ local_ready_state 列迁移完成');
   } catch (error) {

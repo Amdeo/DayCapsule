@@ -17,6 +17,18 @@ export interface LocalSyncOverviewCounts {
   voiceCount: number;
 }
 
+const EMPTY_CLOUD_SYNC_SUMMARY: CloudSyncIndicatorSummary = {
+  pendingEntries: 0,
+  pendingUploads: 0,
+  uploadingEntries: 0,
+  failedEntries: 0,
+};
+
+const isEntriesTableMissingError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('no such table: entries');
+};
+
 export const getEntriesBySyncStatus = async (
   statuses: Array<Entry['syncStatus']>
 ): Promise<Entry[]> => {
@@ -116,29 +128,39 @@ export const getPhotoEntriesBySyncStatus = async (
 export const getCloudSyncIndicatorSummary = async (): Promise<CloudSyncIndicatorSummary> => {
   try {
     const db = getDatabase();
-    const columns = await getTableColumns(db);
-    if (!columns.has('sync_status')) {
-      return {
-        pendingEntries: 0,
-        pendingUploads: 0,
-        uploadingEntries: 0,
-        failedEntries: 0,
-      };
+    const tableInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(entries)`);
+    if (tableInfo.length === 0) {
+      logger.warn('[syncQueries] cloud sync indicator degraded: entries table is not ready');
+      return EMPTY_CLOUD_SYNC_SUMMARY;
     }
 
-    const result = await db.getFirstAsync<{
-      pending_entries?: number | null;
-      pending_uploads?: number | null;
-      uploading_entries?: number | null;
-      failed_entries?: number | null;
-    }>(
-      `SELECT
-         COALESCE(SUM(CASE WHEN sync_status IN ('pending', 'pending_delete') THEN 1 ELSE 0 END), 0) AS pending_entries,
-         COALESCE(SUM(CASE WHEN sync_status = 'pending_upload' THEN 1 ELSE 0 END), 0) AS pending_uploads,
-         COALESCE(SUM(CASE WHEN sync_status = 'uploading' THEN 1 ELSE 0 END), 0) AS uploading_entries,
-         COALESCE(SUM(CASE WHEN sync_status = 'failed' THEN 1 ELSE 0 END), 0) AS failed_entries
-       FROM entries`,
-    );
+    const columns = new Set(tableInfo.map((column) => column.name));
+    if (!columns.has('sync_status')) {
+      return EMPTY_CLOUD_SYNC_SUMMARY;
+    }
+
+    let result;
+    try {
+      result = await db.getFirstAsync<{
+        pending_entries?: number | null;
+        pending_uploads?: number | null;
+        uploading_entries?: number | null;
+        failed_entries?: number | null;
+      }>(
+        `SELECT
+           COALESCE(SUM(CASE WHEN sync_status IN ('pending', 'pending_delete') THEN 1 ELSE 0 END), 0) AS pending_entries,
+           COALESCE(SUM(CASE WHEN sync_status = 'pending_upload' THEN 1 ELSE 0 END), 0) AS pending_uploads,
+           COALESCE(SUM(CASE WHEN sync_status = 'uploading' THEN 1 ELSE 0 END), 0) AS uploading_entries,
+           COALESCE(SUM(CASE WHEN sync_status = 'failed' THEN 1 ELSE 0 END), 0) AS failed_entries
+         FROM entries`,
+      );
+    } catch (error) {
+      if (isEntriesTableMissingError(error)) {
+        logger.warn('[syncQueries] cloud sync indicator degraded: no such table: entries');
+        return EMPTY_CLOUD_SYNC_SUMMARY;
+      }
+      throw error;
+    }
 
     return {
       pendingEntries: Number(result?.pending_entries ?? 0),
@@ -148,12 +170,7 @@ export const getCloudSyncIndicatorSummary = async (): Promise<CloudSyncIndicator
     };
   } catch (error) {
     logger.error('Failed to get cloud sync indicator summary:', error);
-    return {
-      pendingEntries: 0,
-      pendingUploads: 0,
-      uploadingEntries: 0,
-      failedEntries: 0,
-    };
+    return EMPTY_CLOUD_SYNC_SUMMARY;
   }
 };
 

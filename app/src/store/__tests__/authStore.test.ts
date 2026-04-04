@@ -44,9 +44,14 @@ jest.mock('@/src/store/appLifecycleStore', () => ({
 
 const mockGetActiveAccountRef = jest.fn().mockResolvedValue(null);
 const mockGetAccountTokens = jest.fn().mockResolvedValue({ token: null, refreshToken: null });
-const mockRegisterAccount = jest.fn().mockResolvedValue(undefined);
 const mockSetActiveAccount = jest.fn().mockResolvedValue(undefined);
 const mockRemoveAccount = jest.fn().mockResolvedValue(undefined);
+const mockActivateAuthenticatedAccount = jest.fn().mockImplementation(
+  async ({ user, token, refreshToken, commitAuthState }: any) => {
+    commitAuthState({ user, token, refreshToken, isAuthenticated: true });
+    return `scope:${user.id}`;
+  },
+);
 
 jest.mock('@/src/services/accountRegistryService', () => ({
   getUserAuthKeys: jest.fn((serverUrl: string, userId: string) => {
@@ -61,10 +66,13 @@ jest.mock('@/src/services/accountRegistryService', () => ({
     };
   }),
   getAccountTokens: (...args: unknown[]) => mockGetAccountTokens(...args),
-  registerAccount: (...args: unknown[]) => mockRegisterAccount(...args),
   setActiveAccount: (...args: unknown[]) => mockSetActiveAccount(...args),
   removeAccount: (...args: unknown[]) => mockRemoveAccount(...args),
   getActiveAccountRef: () => mockGetActiveAccountRef(),
+}));
+
+jest.mock('@/src/services/authActivationService', () => ({
+  activateAuthenticatedAccount: (...args: unknown[]) => mockActivateAuthenticatedAccount(...args),
 }));
 
 import { useAuthStore } from '../authStore';
@@ -117,17 +125,17 @@ describe('authStore', () => {
     expect(state.isAuthenticated).toBe(true);
     expect(state.user).toEqual({ id: 'u1', email: 'test@test.com' });
     expect(state.token).toBe('access-123');
-    expect(Storage.setString).toHaveBeenCalledWith(
-      userScopedKey(SERVER_A_SCOPE, 'u1', 'auth:token'),
-      'access-123',
-    );
-    expect(Storage.setString).toHaveBeenCalledWith(
-      userScopedKey(SERVER_A_SCOPE, 'u1', 'auth:refreshToken'),
-      'refresh-456',
+    expect(mockActivateAuthenticatedAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serverUrl: SERVER_A,
+        user: { id: 'u1', email: 'test@test.com' },
+        token: 'access-123',
+        refreshToken: 'refresh-456',
+      }),
     );
   });
 
-  it('login calls registerAccount and setActiveAccount', async () => {
+  it('login delegates account activation to authActivationService', async () => {
     mockPost.mockResolvedValueOnce({
       user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
       token: 'access-123',
@@ -136,10 +144,7 @@ describe('authStore', () => {
 
     await useAuthStore.getState().login('test@test.com', 'Password1');
 
-    expect(mockRegisterAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ serverUrl: SERVER_A, userId: 'u1', email: 'test@test.com' }),
-    );
-    expect(mockSetActiveAccount).toHaveBeenCalledWith(SERVER_A, 'u1');
+    expect(mockActivateAuthenticatedAccount).toHaveBeenCalledTimes(1);
   });
 
   it('register stores user and tokens', async () => {
@@ -154,8 +159,32 @@ describe('authStore', () => {
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
     expect(state.user?.email).toBe('new@test.com');
-    expect(mockRegisterAccount).toHaveBeenCalled();
-    expect(mockSetActiveAccount).toHaveBeenCalled();
+    expect(mockActivateAuthenticatedAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serverUrl: SERVER_A,
+        user: { id: 'u2', email: 'new@test.com' },
+      }),
+    );
+  });
+
+  it('keeps previous auth state when activation fails during login', async () => {
+    mockPost.mockResolvedValueOnce({
+      user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
+      token: 'access-123',
+      refreshToken: 'refresh-456',
+    });
+    mockActivateAuthenticatedAccount.mockRejectedValueOnce(new Error('prepare failed'));
+
+    await expect(useAuthStore.getState().login('test@test.com', 'Password1')).rejects.toThrow(
+      'prepare failed',
+    );
+
+    expect(useAuthStore.getState()).toMatchObject({
+      user: null,
+      token: null,
+      refreshToken: null,
+      isAuthenticated: false,
+    });
   });
 
   it('logout clears state, removes account from registry, and deletes accounts:active', async () => {
@@ -242,7 +271,7 @@ describe('authStore', () => {
     });
   });
 
-  it('login writes userId to MMKV workspace key', async () => {
+  it('passes previous auth state into auth activation service during login', async () => {
     mockPost.mockResolvedValueOnce({
       user: { id: 'u1', email: 'test@test.com', createdAt: '2026-01-01' },
       token: 'access-123',
@@ -251,9 +280,15 @@ describe('authStore', () => {
 
     await useAuthStore.getState().login('test@test.com', 'Password1');
 
-    expect(Storage.setString).toHaveBeenCalledWith(
-      scopedKey(SERVER_A_SCOPE, 'workspace:currentUserId'),
-      'u1',
+    expect(mockActivateAuthenticatedAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousAuthState: expect.objectContaining({
+          user: null,
+          token: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        }),
+      }),
     );
   });
 
