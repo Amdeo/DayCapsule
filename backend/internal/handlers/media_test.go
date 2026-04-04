@@ -19,16 +19,20 @@ import (
 )
 
 type mediaHandlerStubStore struct {
-	createResp *models.MediaFile
-	createErr  error
-	lastInput  *models.MediaFileCreateInput
-}
-
-func (s *mediaHandlerStubStore) Create(userID, filename, mimeType, storagePath string, size int64) (*models.MediaFile, error) {
-	if s.createErr != nil {
-		return nil, s.createErr
-	}
-	return s.createResp, nil
+	createResp       *models.MediaFile
+	createErr        error
+	lastInput        *models.MediaFileCreateInput
+	createCalls      int
+	findByHashResp   *models.MediaFile
+	findByHashErr    error
+	findByHashCalls  int
+	lastHashUserID   string
+	lastHashValue    string
+	findByTraceResp  *models.MediaFile
+	findByTraceErr   error
+	findByTraceCalls int
+	lastTraceUserID  string
+	lastTraceValue   string
 }
 
 func (s *mediaHandlerStubStore) CreateWithMetadata(
@@ -40,6 +44,7 @@ func (s *mediaHandlerStubStore) CreateWithMetadata(
 	input models.MediaFileCreateInput,
 ) (*models.MediaFile, error) {
 	s.lastInput = &input
+	s.createCalls++
 	if s.createErr != nil {
 		return nil, s.createErr
 	}
@@ -68,6 +73,26 @@ func (s *mediaHandlerStubStore) GetByID(_ string) (*models.MediaFile, error) {
 
 func (s *mediaHandlerStubStore) Delete(_, _ string) error {
 	return nil
+}
+
+func (s *mediaHandlerStubStore) FindByUserAndHash(userID, hash string) (*models.MediaFile, error) {
+	s.findByHashCalls++
+	s.lastHashUserID = userID
+	s.lastHashValue = hash
+	if s.findByHashErr != nil {
+		return nil, s.findByHashErr
+	}
+	return s.findByHashResp, nil
+}
+
+func (s *mediaHandlerStubStore) FindByUserAndTraceID(userID, traceID string) (*models.MediaFile, error) {
+	s.findByTraceCalls++
+	s.lastTraceUserID = userID
+	s.lastTraceValue = traceID
+	if s.findByTraceErr != nil {
+		return nil, s.findByTraceErr
+	}
+	return s.findByTraceResp, nil
 }
 
 func TestMediaHandlerUpload_AttachesAccessLogSummaryOnSuccess(t *testing.T) {
@@ -137,6 +162,87 @@ func TestMediaHandlerUpload_SetsFailedStageWhenRepositoryCreateFails(t *testing.
 	}
 
 	assertMediaAccessLogField(t, ctx, "upload.failedStage", "save_record")
+}
+
+func TestMediaHandlerUpload_DedupsByTraceIDBeforeHash(t *testing.T) {
+	store := &mediaHandlerStubStore{
+		findByTraceResp: &models.MediaFile{
+			ID:               "media-trace",
+			UserID:           "user-1",
+			Filename:         "photo.jpg",
+			MimeType:         "image/jpeg",
+			SHA256:           "trace-hash-1",
+			ValidationStatus: "healthy",
+			CreatedAt:        time.Now().UTC(),
+		},
+	}
+	handler := NewMediaHandler(store, t.TempDir())
+
+	recorder, ctx := performMediaUploadRequestWithContext(t, handler, true)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", recorder.Code)
+	}
+	if store.findByTraceCalls != 1 {
+		t.Fatalf("expected trace lookup once, got %d", store.findByTraceCalls)
+	}
+	if store.lastTraceUserID != "user-1" || store.lastTraceValue != "trace-1" {
+		t.Fatalf("unexpected trace lookup args: %q %q", store.lastTraceUserID, store.lastTraceValue)
+	}
+	if store.findByHashCalls != 0 {
+		t.Fatalf("expected hash lookup to be skipped when trace match exists, got %d", store.findByHashCalls)
+	}
+	if store.createCalls != 0 {
+		t.Fatalf("expected create to be skipped on dedup, got %d", store.createCalls)
+	}
+	assertMediaAccessLogField(t, ctx, "upload.dedup", "true")
+	assertMediaAccessLogField(t, ctx, "upload.mediaId", "media-trace")
+	assertMediaAccessLogField(t, ctx, "upload.validationStatus", "healthy")
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"remoteHash":"trace-hash-1"`)) {
+		t.Fatalf("expected dedup response to include existing remoteHash, got %s", recorder.Body.String())
+	}
+}
+
+func TestMediaHandlerUpload_DedupsByHashWhenTraceMisses(t *testing.T) {
+	store := &mediaHandlerStubStore{
+		findByHashResp: &models.MediaFile{
+			ID:               "media-hash",
+			UserID:           "user-1",
+			Filename:         "photo.jpg",
+			MimeType:         "image/jpeg",
+			SHA256:           "hash-hit-1",
+			ValidationStatus: "healthy",
+			CreatedAt:        time.Now().UTC(),
+		},
+	}
+	handler := NewMediaHandler(store, t.TempDir())
+
+	recorder, ctx := performMediaUploadRequestWithContext(t, handler, true)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", recorder.Code)
+	}
+	if store.findByTraceCalls != 1 {
+		t.Fatalf("expected trace lookup once, got %d", store.findByTraceCalls)
+	}
+	if store.findByHashCalls != 1 {
+		t.Fatalf("expected hash lookup once after trace miss, got %d", store.findByHashCalls)
+	}
+	if store.lastHashUserID != "user-1" {
+		t.Fatalf("unexpected hash lookup user: %q", store.lastHashUserID)
+	}
+	if store.lastHashValue == "" {
+		t.Fatal("expected non-empty hash lookup value")
+	}
+	if store.createCalls != 0 {
+		t.Fatalf("expected create to be skipped on hash dedup, got %d", store.createCalls)
+	}
+	assertMediaAccessLogField(t, ctx, "upload.dedup", "true")
+	assertMediaAccessLogField(t, ctx, "upload.mediaId", "media-hash")
+	assertMediaAccessLogField(t, ctx, "upload.validationStatus", "healthy")
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"remoteHash":"hash-hit-1"`)) {
+		t.Fatalf("expected dedup response to include hash match, got %s", recorder.Body.String())
+	}
 }
 
 func performMediaUploadRequestWithContext(t *testing.T, handler *MediaHandler, includeFile bool) (*httptest.ResponseRecorder, *gin.Context) {
