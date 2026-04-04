@@ -188,6 +188,21 @@ jest.mock('@/src/store/authStore', () => ({
   useAuthStore: () => mockAuthState,
 }));
 
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  getWorkspaceSessionState: () => ({
+    currentScopeKey:
+      mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true
+        ? 'account'
+        : 'local',
+    isAuthenticated: mockAuthState.isAuthenticated,
+    isTransitioning: mockSettingsState.cloudMode === 'switching',
+    isAccountScopeActive: mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true,
+    canRunCloudSync: mockAuthState.isAuthenticated && mockSettingsState.cloudMode === true,
+  }),
+  useWorkspaceSessionRuntimeStore: (selector: (state: { isTransitioning: boolean }) => unknown) =>
+    selector({ isTransitioning: mockSettingsState.cloudMode === 'switching' }),
+}));
+
 jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: (selector: (state: { lastSyncError: string | null; lastMediaValidationSummary: null }) => unknown) =>
     selector({ lastSyncError: null, lastMediaValidationSummary: null }),
@@ -257,8 +272,10 @@ jest.mock('@/src/services/notificationService', () => ({
 
 jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrl: jest.fn(async () => mockBackendState.currentServerUrl),
+  getCurrentServerUrlSync: jest.fn(() => mockBackendState.currentServerUrl),
   getRecentServerUrls: jest.fn(async () => mockBackendState.recentServerUrls),
   normalizeServerUrl: (url: string) => url.trim().replace(/\/+$/, ''),
+  getServerKey: jest.fn((url: string) => url.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '')),
 }));
 
 jest.mock('@/src/services/backendConnectionService', () => ({
