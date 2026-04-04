@@ -21,6 +21,10 @@ import (
 type mediaHandlerStubStore struct {
 	createResp       *models.MediaFile
 	createErr        error
+	getByIDResp      *models.MediaFile
+	getByIDErr       error
+	lastGetUserID    string
+	lastGetMediaID   string
 	lastInput        *models.MediaFileCreateInput
 	createCalls      int
 	findByHashResp   *models.MediaFile
@@ -68,7 +72,13 @@ func (s *mediaHandlerStubStore) CreateWithMetadata(
 }
 
 func (s *mediaHandlerStubStore) GetByID(_ string) (*models.MediaFile, error) {
-	return nil, nil
+	return s.getByIDResp, s.getByIDErr
+}
+
+func (s *mediaHandlerStubStore) GetByIDForUser(userID, mediaID string) (*models.MediaFile, error) {
+	s.lastGetUserID = userID
+	s.lastGetMediaID = mediaID
+	return s.getByIDResp, s.getByIDErr
 }
 
 func (s *mediaHandlerStubStore) Delete(_, _ string) error {
@@ -242,6 +252,48 @@ func TestMediaHandlerUpload_DedupsByHashWhenTraceMisses(t *testing.T) {
 	assertMediaAccessLogField(t, ctx, "upload.validationStatus", "healthy")
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"remoteHash":"hash-hit-1"`)) {
 		t.Fatalf("expected dedup response to include hash match, got %s", recorder.Body.String())
+	}
+}
+
+func TestMediaHandlerDownload_UsesUserScopedLookup(t *testing.T) {
+	store := &mediaHandlerStubStore{
+		getByIDResp: &models.MediaFile{
+			ID:          "media-owned-1",
+			UserID:      "user-1",
+			Filename:    "owned.jpg",
+			MimeType:    "image/jpeg",
+			StoragePath: "/tmp/owned.jpg",
+		},
+	}
+	handler := NewMediaHandler(store, t.TempDir())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/media/media-owned-1", nil)
+	ctx.Params = gin.Params{{Key: "id", Value: "media-owned-1"}}
+	ctx.Set("userID", "user-1")
+
+	handler.Download(ctx)
+
+	if store.lastGetUserID != "user-1" || store.lastGetMediaID != "media-owned-1" {
+		t.Fatalf("expected user-scoped media lookup, got user=%q media=%q", store.lastGetUserID, store.lastGetMediaID)
+	}
+}
+
+func TestMediaHandlerDownload_ReturnsNotFoundWhenMediaNotOwned(t *testing.T) {
+	store := &mediaHandlerStubStore{}
+	handler := NewMediaHandler(store, t.TempDir())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/media/media-foreign-1", nil)
+	ctx.Params = gin.Params{{Key: "id", Value: "media-foreign-1"}}
+	ctx.Set("userID", "user-1")
+
+	handler.Download(ctx)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", recorder.Code)
 	}
 }
 

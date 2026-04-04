@@ -32,7 +32,7 @@ func (s *EntryService) Create(userID string, req *models.CreateEntryRequest) (*m
 
 	// Link media files to entry
 	for _, mediaID := range req.MediaIDs {
-		_ = s.mediaRepo.LinkToEntry(mediaID, entry.ID)
+		_ = s.mediaRepo.LinkToEntryForUser(userID, mediaID, entry.ID)
 	}
 
 	return s.toResponse(entry)
@@ -126,7 +126,7 @@ func (s *EntryService) toResponse(entry *models.Entry) (*models.EntryResponse, e
 	}
 
 	// Build media list from linked media files
-	media, err := s.buildMediaList(entry.ID)
+	media, err := s.buildMediaList(entry.UserID, entry.ID)
 	if err != nil {
 		media = []models.Media{}
 	}
@@ -145,8 +145,8 @@ func (s *EntryService) toResponse(entry *models.Entry) (*models.EntryResponse, e
 	}, nil
 }
 
-func (s *EntryService) buildMediaList(entryID string) ([]models.Media, error) {
-	files, err := s.mediaRepo.GetByEntryID(entryID)
+func (s *EntryService) buildMediaList(userID, entryID string) ([]models.Media, error) {
+	files, err := s.mediaRepo.GetByEntryIDForUser(userID, entryID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (s *EntryService) recoverFallbackMedia(entry *models.Entry, media []models.
 			continue
 		}
 
-		_ = s.mediaRepo.LinkToEntry(file.ID, entry.ID)
+		_ = s.mediaRepo.LinkToEntryForUser(entry.UserID, file.ID, entry.ID)
 		item.URI = fmt.Sprintf("%s/api/media/%s", s.baseURL, file.ID)
 		if item.MimeType == "" {
 			item.MimeType = file.MimeType

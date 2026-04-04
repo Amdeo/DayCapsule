@@ -440,3 +440,50 @@ func TestEntryServiceDeleteCascadesLinkedMediaRowsAndFiles(t *testing.T) {
 	assertMediaFileDeleted(t, mediaRepo, media.ID)
 	assertPathMissing(t, mediaPath)
 }
+
+func TestEntryServiceCreate_DoesNotLinkForeignUserMedia(t *testing.T) {
+	db := setupEntryTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	userRepo := repository.NewUserRepository(db)
+	owner, err := userRepo.Create("owner@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	attacker, err := userRepo.Create("attacker@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create attacker: %v", err)
+	}
+
+	entryRepo := repository.NewEntryRepository(db)
+	mediaRepo := repository.NewMediaRepository(db)
+	svc := NewEntryService(entryRepo, mediaRepo, "http://localhost:3000")
+
+	foreignMedia, err := mediaRepo.Create(owner.ID, "foreign.jpg", "image/jpeg", "/tmp/foreign.jpg", 2048)
+	if err != nil {
+		t.Fatalf("create foreign media: %v", err)
+	}
+
+	resp, err := svc.Create(attacker.ID, &models.CreateEntryRequest{
+		Type:     "photo",
+		Content:  "attempt foreign bind",
+		MediaIDs: []string{foreignMedia.ID},
+	})
+	if err != nil {
+		t.Fatalf("create attacker entry: %v", err)
+	}
+	if len(resp.Media) != 0 {
+		t.Fatalf("expected no linked media in response, got %#v", resp.Media)
+	}
+
+	storedMedia, err := mediaRepo.GetByID(foreignMedia.ID)
+	if err != nil {
+		t.Fatalf("reload foreign media: %v", err)
+	}
+	if storedMedia == nil {
+		t.Fatal("expected foreign media to still exist")
+	}
+	if storedMedia.EntryID != nil {
+		t.Fatalf("expected foreign media to remain unlinked, got entry_id=%q", *storedMedia.EntryID)
+	}
+}

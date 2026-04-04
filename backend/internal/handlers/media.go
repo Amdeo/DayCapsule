@@ -25,6 +25,7 @@ type mediaStore interface {
 		size int64,
 		input models.MediaFileCreateInput,
 	) (*models.MediaFile, error)
+	GetByIDForUser(userID, mediaID string) (*models.MediaFile, error)
 	GetByID(mediaID string) (*models.MediaFile, error)
 	Delete(userID, mediaID string) error
 	FindByUserAndHash(userID, hash string) (*models.MediaFile, error)
@@ -182,9 +183,10 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 }
 
 func (h *MediaHandler) Download(c *gin.Context) {
+	userID := c.GetString("userID")
 	mediaID := c.Param("id")
 
-	media, err := h.mediaRepo.GetByID(mediaID)
+	media, err := h.mediaRepo.GetByIDForUser(userID, mediaID)
 	if err != nil || media == nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -202,20 +204,11 @@ func (h *MediaHandler) Delete(c *gin.Context) {
 	userID := c.GetString("userID")
 	mediaID := c.Param("id")
 
-	// Get media to find storage path
-	media, err := h.mediaRepo.GetByID(mediaID)
+	media, err := h.mediaRepo.GetByIDForUser(userID, mediaID)
 	if err != nil || media == nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"error":   gin.H{"code": "NOT_FOUND", "message": "media not found"},
-		})
-		return
-	}
-
-	if media.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{
-			"success": false,
-			"error":   gin.H{"code": "FORBIDDEN", "message": "not your media"},
 		})
 		return
 	}

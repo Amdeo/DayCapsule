@@ -103,6 +103,14 @@ func (r *MediaRepository) CreateWithMetadata(
 }
 
 func (r *MediaRepository) GetByID(mediaID string) (*models.MediaFile, error) {
+	return r.getByID(r.db, mediaID, "")
+}
+
+func (r *MediaRepository) GetByIDForUser(userID, mediaID string) (*models.MediaFile, error) {
+	return r.getByID(r.db, mediaID, userID)
+}
+
+func (r *MediaRepository) getByID(queryer entryQueryRower, mediaID, userID string) (*models.MediaFile, error) {
 	query := `
 		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
 		       sha256, width, height, validation_status, validation_error, validated_at,
@@ -110,7 +118,12 @@ func (r *MediaRepository) GetByID(mediaID string) (*models.MediaFile, error) {
 		FROM media_files
 		WHERE id = ?
 	`
-	media, err := scanMediaFile(r.db.QueryRow(query, mediaID))
+	args := []interface{}{mediaID}
+	if userID != "" {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	media, err := scanMediaFile(queryer.QueryRow(query, args...))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -121,66 +134,91 @@ func (r *MediaRepository) GetByID(mediaID string) (*models.MediaFile, error) {
 }
 
 func (r *MediaRepository) LinkToEntry(mediaID, entryID string) error {
-	_, err := r.db.Exec("UPDATE media_files SET entry_id = ? WHERE id = ?", entryID, mediaID)
+	return r.LinkToEntryForUser("", mediaID, entryID)
+}
+
+func (r *MediaRepository) LinkToEntryForUser(userID, mediaID, entryID string) error {
+	return r.linkToEntry(r.db, userID, mediaID, entryID)
+}
+
+func (r *MediaRepository) linkToEntry(execer entryMediaExecer, userID, mediaID, entryID string) error {
+	query := "UPDATE media_files SET entry_id = ? WHERE id = ?"
+	args := []interface{}{entryID, mediaID}
+	if userID != "" {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	_, err := execer.Exec(query, args...)
 	return err
 }
 
 func (r *MediaRepository) LinkToEntryTx(tx *sql.Tx, mediaID, entryID string) error {
-	_, err := tx.Exec("UPDATE media_files SET entry_id = ? WHERE id = ?", entryID, mediaID)
-	return err
+	return r.LinkToEntryTxForUser(tx, "", mediaID, entryID)
+}
+
+func (r *MediaRepository) LinkToEntryTxForUser(tx *sql.Tx, userID, mediaID, entryID string) error {
+	return r.linkToEntry(tx, userID, mediaID, entryID)
 }
 
 func (r *MediaRepository) UnlinkEntryMediaExcept(entryID string, keepMediaIDs []string) error {
-	return r.unlinkEntryMediaExcept(r.db, entryID, keepMediaIDs)
+	return r.UnlinkEntryMediaExceptForUser("", entryID, keepMediaIDs)
+}
+
+func (r *MediaRepository) UnlinkEntryMediaExceptForUser(userID, entryID string, keepMediaIDs []string) error {
+	return r.unlinkEntryMediaExcept(r.db, userID, entryID, keepMediaIDs)
 }
 
 func (r *MediaRepository) UnlinkEntryMediaExceptTx(tx *sql.Tx, entryID string, keepMediaIDs []string) error {
-	return r.unlinkEntryMediaExcept(tx, entryID, keepMediaIDs)
+	return r.UnlinkEntryMediaExceptTxForUser(tx, "", entryID, keepMediaIDs)
 }
 
-func (r *MediaRepository) unlinkEntryMediaExcept(execer entryMediaExecer, entryID string, keepMediaIDs []string) error {
+func (r *MediaRepository) UnlinkEntryMediaExceptTxForUser(tx *sql.Tx, userID, entryID string, keepMediaIDs []string) error {
+	return r.unlinkEntryMediaExcept(tx, userID, entryID, keepMediaIDs)
+}
+
+func (r *MediaRepository) unlinkEntryMediaExcept(execer entryMediaExecer, userID, entryID string, keepMediaIDs []string) error {
+	baseQuery := "UPDATE media_files SET entry_id = NULL WHERE entry_id = ?"
+	baseArgs := []interface{}{entryID}
+	if userID != "" {
+		baseQuery += " AND user_id = ?"
+		baseArgs = append(baseArgs, userID)
+	}
+
 	if len(keepMediaIDs) == 0 {
-		_, err := execer.Exec("UPDATE media_files SET entry_id = NULL WHERE entry_id = ?", entryID)
+		_, err := execer.Exec(baseQuery, baseArgs...)
 		return err
 	}
 
 	placeholders := make([]string, 0, len(keepMediaIDs))
-	args := make([]interface{}, 0, len(keepMediaIDs)+1)
-	args = append(args, entryID)
+	args := make([]interface{}, 0, len(baseArgs)+len(keepMediaIDs))
+	args = append(args, baseArgs...)
 	for _, mediaID := range keepMediaIDs {
 		placeholders = append(placeholders, "?")
 		args = append(args, mediaID)
 	}
 
-	query := fmt.Sprintf(
-		"UPDATE media_files SET entry_id = NULL WHERE entry_id = ? AND id NOT IN (%s)",
-		strings.Join(placeholders, ", "),
-	)
+	query := fmt.Sprintf("%s AND id NOT IN (%s)", baseQuery, strings.Join(placeholders, ", "))
 	_, err := execer.Exec(query, args...)
 	return err
 }
 
-func (r *MediaRepository) Delete(userID, mediaID string) error {
-	result, err := r.db.Exec("DELETE FROM media_files WHERE id = ? AND user_id = ?", mediaID, userID)
-	if err != nil {
-		return err
-	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return errors.New("media not found")
-	}
-	return nil
+func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, error) {
+	return r.GetByEntryIDForUser("", entryID)
 }
 
-func (r *MediaRepository) GetByEntryID(entryID string) ([]*models.MediaFile, error) {
-	return r.getByEntryID(r.db, entryID)
+func (r *MediaRepository) GetByEntryIDForUser(userID, entryID string) ([]*models.MediaFile, error) {
+	return r.getByEntryID(r.db, userID, entryID)
 }
 
 func (r *MediaRepository) GetByEntryIDTx(tx *sql.Tx, entryID string) ([]*models.MediaFile, error) {
-	return r.getByEntryID(tx, entryID)
+	return r.GetByEntryIDTxForUser(tx, "", entryID)
 }
 
-func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string) ([]*models.MediaFile, error) {
+func (r *MediaRepository) GetByEntryIDTxForUser(tx *sql.Tx, userID, entryID string) ([]*models.MediaFile, error) {
+	return r.getByEntryID(tx, userID, entryID)
+}
+
+func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, userID, entryID string) ([]*models.MediaFile, error) {
 	query := `
 		SELECT id, user_id, entry_id, filename, mime_type, size, storage_path,
 		       sha256, width, height, validation_status, validation_error, validated_at,
@@ -188,7 +226,12 @@ func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string
 		FROM media_files
 		WHERE entry_id = ?
 	`
-	rows, err := queryer.Query(query, entryID)
+	args := []interface{}{entryID}
+	if userID != "" {
+		query += " AND user_id = ?"
+		args = append(args, userID)
+	}
+	rows, err := queryer.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +246,18 @@ func (r *MediaRepository) getByEntryID(queryer entryMediaQueryer, entryID string
 		files = append(files, m)
 	}
 	return files, rows.Err()
+}
+
+func (r *MediaRepository) Delete(userID, mediaID string) error {
+	result, err := r.db.Exec("DELETE FROM media_files WHERE id = ? AND user_id = ?", mediaID, userID)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return errors.New("media not found")
+	}
+	return nil
 }
 
 func (r *MediaRepository) DeleteByEntryID(userID, entryID string) error {

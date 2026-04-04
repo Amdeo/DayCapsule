@@ -638,16 +638,16 @@ func (s *SyncV2Service) linkEntryMedia(entry *models.Entry) ([]*models.MediaFile
 	}
 
 	mediaIDs := mediaIDsFromJSON(entry.Media)
-	existingMedia, err := s.mediaRepo.GetByEntryID(entry.ID)
+	existingMedia, err := s.mediaRepo.GetByEntryIDForUser(entry.UserID, entry.ID)
 	if err != nil {
 		return nil, err
 	}
 	removedMedia := filterRemovedMedia(existingMedia, mediaIDs)
-	if err := s.mediaRepo.UnlinkEntryMediaExcept(entry.ID, mediaIDs); err != nil {
+	if err := s.mediaRepo.UnlinkEntryMediaExceptForUser(entry.UserID, entry.ID, mediaIDs); err != nil {
 		return nil, err
 	}
 	for _, mediaID := range mediaIDs {
-		if err := s.mediaRepo.LinkToEntry(mediaID, entry.ID); err != nil {
+		if err := s.mediaRepo.LinkToEntryForUser(entry.UserID, mediaID, entry.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -660,16 +660,16 @@ func (s *SyncV2Service) linkEntryMediaTx(tx *sql.Tx, entry *models.Entry) ([]*mo
 	}
 
 	mediaIDs := mediaIDsFromJSON(entry.Media)
-	existingMedia, err := s.mediaRepo.GetByEntryIDTx(tx, entry.ID)
+	existingMedia, err := s.mediaRepo.GetByEntryIDTxForUser(tx, entry.UserID, entry.ID)
 	if err != nil {
 		return nil, err
 	}
 	removedMedia := filterRemovedMedia(existingMedia, mediaIDs)
-	if err := s.mediaRepo.UnlinkEntryMediaExceptTx(tx, entry.ID, mediaIDs); err != nil {
+	if err := s.mediaRepo.UnlinkEntryMediaExceptTxForUser(tx, entry.UserID, entry.ID, mediaIDs); err != nil {
 		return nil, err
 	}
 	for _, mediaID := range mediaIDs {
-		if err := s.mediaRepo.LinkToEntryTx(tx, mediaID, entry.ID); err != nil {
+		if err := s.mediaRepo.LinkToEntryTxForUser(tx, entry.UserID, mediaID, entry.ID); err != nil {
 			return nil, err
 		}
 	}

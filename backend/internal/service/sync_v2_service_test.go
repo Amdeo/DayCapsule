@@ -739,6 +739,65 @@ func TestSyncV2ServiceLinksMediaFilesReferencedByRemoteURI(t *testing.T) {
 	}
 }
 
+func TestSyncV2Service_DoesNotLinkForeignUserMediaReferencedByRemoteURI(t *testing.T) {
+	db := setupSyncV2TestDB(t)
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	userRepo := repository.NewUserRepository(db)
+	owner, err := userRepo.Create("media-owner@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed owner: %v", err)
+	}
+	attacker, err := userRepo.Create("media-attacker@example.com", "hashed-password")
+	if err != nil {
+		t.Fatalf("seed attacker: %v", err)
+	}
+
+	mediaRepo := repository.NewMediaRepository(db)
+	foreignMedia, err := mediaRepo.Create(owner.ID, "foreign-photo.jpg", "image/jpeg", "/tmp/foreign-photo.jpg", 4096)
+	if err != nil {
+		t.Fatalf("create foreign media: %v", err)
+	}
+
+	svc := NewSyncV2Service(repository.NewEntryRepository(db), repository.NewChangeRepository(db), mediaRepo)
+	resp, err := svc.Sync(context.Background(), attacker.ID, &SyncRequest{
+		Cursor:   0,
+		DeviceID: "device-1",
+		ClientChanges: []ClientChange{
+			{
+				ChangeID: "local-create-foreign-1",
+				Op:       "create",
+				Entry: models.Entry{
+					ID:      "entry-create-foreign-1",
+					Type:    "photo",
+					Content: "",
+					Tags:    "[]",
+					Media: fmt.Sprintf(
+						`[{"uri":"http://101.43.120.134:8081/api/media/%s","remoteUri":"http://101.43.120.134:8081/api/media/%s","mimeType":"image/jpeg","size":4096}]`,
+						foreignMedia.ID,
+						foreignMedia.ID,
+					),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("sync: %v", err)
+	}
+
+	view := decodeSyncV2Response(t, resp)
+	if len(view.Results) != 1 || view.Results[0].Status != "applied" {
+		t.Fatalf("expected applied create result, got %#v", view.Results)
+	}
+
+	entryID := getMediaEntryID(t, db, foreignMedia.ID)
+	if entryID.Valid {
+		t.Fatalf("expected foreign media to stay unlinked, got %#v", entryID)
+	}
+}
+
 func TestSyncV2ServiceUnlinksMediaFilesRemovedByUpdate(t *testing.T) {
 	db := setupSyncV2TestDB(t)
 	t.Cleanup(func() {

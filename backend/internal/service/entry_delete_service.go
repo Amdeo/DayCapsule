@@ -107,18 +107,11 @@ func (s *EntryDeleteService) getLinkedMediaFilesTx(tx *sql.Tx, userID, entryID s
 		return nil, nil
 	}
 
-	files, err := s.mediaRepo.GetByEntryIDTx(tx, entryID)
+	files, err := s.mediaRepo.GetByEntryIDTxForUser(tx, userID, entryID)
 	if err != nil {
 		return nil, err
 	}
-
-	filtered := make([]*models.MediaFile, 0, len(files))
-	for _, file := range files {
-		if file != nil && file.UserID == userID {
-			filtered = append(filtered, file)
-		}
-	}
-	return filtered, nil
+	return files, nil
 }
 
 func (s *EntryDeleteService) removeMediaFiles(files []*models.MediaFile) error {
