@@ -47,7 +47,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     setPhotoHeight: savePhotoHeight,
     calendarDensity,
     setCalendarDensity: saveCalendarDensity,
-    resetSettings,
   } = useSettingsStore();
 
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -101,7 +100,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     handleSaveBackendServer,
     handleSelectRecentBackendServer,
     handleClearCache,
-    handleResetSettings,
   } = useSettingsPageController({
     visible,
     entries,
@@ -113,7 +111,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     saveCardSpacing,
     savePhotoHeight,
     saveCalendarDensity,
-    resetSettings,
   });
 
   const handleLoginSuccess = React.useCallback(async () => {
@@ -173,7 +170,6 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onOpenTagManagement={openTagManagement}
           onOpenHelp={openHelp}
           onOpenAbout={openAbout}
-          onResetSettings={handleResetSettings}
         />
         <SettingsPageDialogs
           showTagMgmt={showTagMgmt}

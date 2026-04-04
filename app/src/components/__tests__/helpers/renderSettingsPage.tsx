@@ -149,7 +149,7 @@ export const mockShowErrorFeedback = jest.fn();
 export const mockShowCloudSyncStatusAlert = jest.fn(async (_snapshot?: unknown) => undefined);
 export const mockShowSyncRepairPrompt = jest.fn();
 export const mockSwitchBackendEnvironment = jest.fn(async () => mockBackendState.switchResult);
-export const mockClearLocalAppData = jest.fn(async () => undefined);
+export const mockResetAppToInitialState = jest.fn(async () => undefined);
 export const mockInjectSuspectRepairable = jest.fn(async () => undefined);
 export const mockInjectRepairPending = jest.fn(async () => undefined);
 export const mockInjectTextDetailFixture = jest.fn(async () => undefined);
@@ -277,8 +277,8 @@ jest.mock('@/src/services/localEnvironmentDataManager', () => ({
   switchBackendEnvironment: (...args: unknown[]) => mockSwitchBackendEnvironment(...args),
 }));
 
-jest.mock('@/src/services/localAppDataService', () => ({
-  clearLocalAppData: (...args: unknown[]) => mockClearLocalAppData(...args),
+jest.mock('@/src/services/appResetService', () => ({
+  resetAppToInitialState: (...args: unknown[]) => mockResetAppToInitialState(...args),
 }));
 
 jest.mock('@/src/services/e2eSyncLabService', () => ({
@@ -432,7 +432,7 @@ export function resetRenderSettingsPageMocks() {
     },
   });
   mockSwitchBackendEnvironment.mockResolvedValue(mockBackendState.switchResult);
-  mockClearLocalAppData.mockResolvedValue(undefined);
+  mockResetAppToInitialState.mockResolvedValue(undefined);
   mockInjectSuspectRepairable.mockResolvedValue(undefined);
   mockInjectRepairPending.mockResolvedValue(undefined);
   mockInjectTextDetailFixture.mockResolvedValue(undefined);
@@ -526,7 +526,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
       showCloudSyncMonitor: mockShowCloudSyncStatusAlert,
       showSyncRepairPrompt: mockShowSyncRepairPrompt,
       switchBackendEnvironment: mockSwitchBackendEnvironment,
-      clearLocalAppData: mockClearLocalAppData,
+      resetAppToInitialState: mockResetAppToInitialState,
       injectSuspectRepairable: mockInjectSuspectRepairable,
       injectRepairPending: mockInjectRepairPending,
       injectTextDetailFixture: mockInjectTextDetailFixture,

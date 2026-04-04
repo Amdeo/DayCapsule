@@ -7,7 +7,6 @@ import type {
 } from '@/src/store/settingsStore';
 import type { Entry } from '@/src/types/entry';
 import { NotificationService } from '@/src/services/notificationService';
-import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { useSettingsPageStorage } from './useSettingsPageStorage';
 import { useSettingsPageBackendServer } from './useSettingsPageBackendServer';
@@ -23,7 +22,6 @@ interface UseSettingsPageControllerOptions {
   saveCardSpacing: (value: CardSpacing) => void | Promise<void>;
   savePhotoHeight: (value: PhotoHeightPreset) => void | Promise<void>;
   saveCalendarDensity: (value: CalendarDensity) => void | Promise<void>;
-  resetSettings: () => void | Promise<void>;
 }
 
 export function useSettingsPageController({
@@ -37,7 +35,6 @@ export function useSettingsPageController({
   saveCardSpacing,
   savePhotoHeight,
   saveCalendarDensity,
-  resetSettings,
 }: UseSettingsPageControllerOptions) {
   const [showTagMgmt, setShowTagMgmt] = useState(false);
   const { usedSpace, refreshStorageStats, handleClearCache } = useSettingsPageStorage();
@@ -168,37 +165,6 @@ export function useSettingsPageController({
     [entries],
   );
 
-  const handleResetSettings = useCallback(() => {
-    showConfirmDialog({
-      title: '重置设置',
-      message: '确定要重置所有设置为默认值吗？',
-      actions: [
-        { label: '取消', role: 'secondary' },
-        {
-          label: '重置',
-          role: 'danger',
-          onPress: async () => {
-            try {
-              await resetSettings();
-              showErrorFeedback({
-                title: '成功',
-                message: '设置已重置',
-                tone: 'accent',
-                actions: [{ label: '知道了', role: 'primary' }],
-              });
-            } catch (error) {
-              showErrorFeedback({
-                title: '重置失败',
-                message: (error as Error).message ?? '重置设置失败',
-                actions: [{ label: '知道了', role: 'primary' }],
-              });
-            }
-          },
-        },
-      ],
-    });
-  }, [resetSettings]);
-
   const openTagManagement = useCallback(() => {
     setShowTagMgmt(true);
   }, []);
@@ -253,6 +219,5 @@ export function useSettingsPageController({
     handleSaveBackendServer,
     handleSelectRecentBackendServer,
     handleClearCache,
-    handleResetSettings,
   };
 }

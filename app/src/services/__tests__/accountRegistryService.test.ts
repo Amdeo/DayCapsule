@@ -29,6 +29,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
   getCurrentServerUrlSync: jest.fn(() => 'https://server-a.example.com'),
   getServerKey: jest.fn((url: string) => `env_${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`),
   getRecentServerUrls: jest.fn().mockResolvedValue(['https://server-a.example.com']),
+  normalizeServerUrl: jest.fn((url: string) => url.trim().replace(/\/+$/, '').toLowerCase()),
 }));
 
 jest.mock('@/src/services/workspaceService', () => ({
@@ -107,6 +108,17 @@ describe('getRegisteredAccounts', () => {
     const accounts = await getRegisteredAccounts();
     expect(accounts).toEqual([entry]);
   });
+
+  it('deduplicates duplicate stored accounts and persists the repaired registry', async () => {
+    const original = makeEntry({ email: 'old@example.com', addedAt: 1000 });
+    const newer = makeEntry({ email: 'new@example.com', addedAt: 2000 });
+    mockStorage['accounts:registry'] = [original, newer];
+
+    const accounts = await getRegisteredAccounts();
+
+    expect(accounts).toEqual([newer]);
+    expect(Storage.setObject).toHaveBeenCalledWith('accounts:registry', [newer]);
+  });
 });
 
 // ──────────────────────────────────────────────────
@@ -158,6 +170,16 @@ describe('registerAccount', () => {
     const accounts = await getRegisteredAccounts();
     expect(accounts).toHaveLength(1);
     // 后来的覆盖旧的
+    expect(accounts[0].email).toBe('new@example.com');
+  });
+
+  it('deduplicates accounts with equivalent normalized server urls', async () => {
+    await registerAccount(makeEntry({ serverUrl: 'https://server-a.example.com/' }));
+    await registerAccount(makeEntry({ serverUrl: 'https://server-a.example.com', email: 'new@example.com' }));
+
+    const accounts = await getRegisteredAccounts();
+
+    expect(accounts).toHaveLength(1);
     expect(accounts[0].email).toBe('new@example.com');
   });
 

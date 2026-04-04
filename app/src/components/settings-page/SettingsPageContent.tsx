@@ -66,7 +66,6 @@ interface SettingsPageContentProps {
   onOpenTagManagement: () => void;
   onOpenHelp: () => void;
   onOpenAbout: () => void;
-  onResetSettings: () => void;
 }
 
 export function SettingsPageContent({
@@ -112,7 +111,6 @@ export function SettingsPageContent({
   onOpenTagManagement,
   onOpenHelp,
   onOpenAbout,
-  onResetSettings,
 }: SettingsPageContentProps) {
   return (
     <>
@@ -190,7 +188,6 @@ export function SettingsPageContent({
         onHighQualityPhotosChange={onHighQualityPhotosChange}
         onOpenTagManagement={onOpenTagManagement}
         onClearCache={onClearCache}
-        onResetSettings={onResetSettings}
       />
 
       <SettingsSection title="关于与支持">

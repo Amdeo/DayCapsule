@@ -10,7 +10,6 @@ interface SettingsDataStorageSectionProps {
   onHighQualityPhotosChange: (value: boolean) => void | Promise<void>;
   onOpenTagManagement: () => void;
   onClearCache: () => void;
-  onResetSettings: () => void;
 }
 
 export function SettingsDataStorageSection({
@@ -18,7 +17,6 @@ export function SettingsDataStorageSection({
   onHighQualityPhotosChange,
   onOpenTagManagement,
   onClearCache,
-  onResetSettings,
 }: SettingsDataStorageSectionProps) {
   return (
     <SettingsSection title="数据管理">
@@ -47,15 +45,8 @@ export function SettingsDataStorageSection({
         <SettingButton
           icon="trash"
           title="清除缓存"
-          subtitle="清空本地记录、媒体和缓存"
+          subtitle="恢复 APP 初始状态"
           onPress={onClearCache}
-        />
-        <SettingButton
-          icon="refresh"
-          title="重置设置"
-          subtitle="恢复默认设置"
-          onPress={onResetSettings}
-          danger
         />
       </SettingsGroupCard>
     </SettingsSection>

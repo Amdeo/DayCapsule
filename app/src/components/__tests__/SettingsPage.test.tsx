@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, waitFor, within } from '@testing-library/react-native';
+import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
@@ -65,6 +65,8 @@ describe('SettingsPage assembly', () => {
     expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
     expect(within(dataStorageSection).getByText('清除缓存')).toBeTruthy();
+    expect(within(dataStorageSection).getByText('恢复 APP 初始状态')).toBeTruthy();
+    expect(within(dataStorageSection).queryByText('重置设置')).toBeNull();
     expect(within(accountSection).getByTestId('settings-open-backend-server')).toBeTruthy();
   });
 
@@ -199,43 +201,47 @@ describe('SettingsPage assembly', () => {
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
   });
 
-  it('confirms reset settings, then resets and shows success feedback', async () => {
+  it('confirms clearing cache, then resets app and shows success feedback', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
-    fireEvent.press(screen.getByText('重置设置'));
+    fireEvent.press(screen.getByText('清除缓存'));
 
     expect(mocks.showConfirmDialog).toHaveBeenCalledWith(expect.objectContaining({
-      title: '重置设置',
-      message: '确定要重置所有设置为默认值吗？',
+      title: '清除缓存',
+      message: '确定要清除当前设备上的本地数据并恢复到首次打开 APP 时的状态吗？这会清空记录、媒体、设置、登录状态，并将当前服务器地址恢复到默认值。最近使用过的服务器地址会保留。',
     }));
 
     const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
-    const confirm = actions.find((action) => action.label === '重置');
+    const confirm = actions.find((action) => action.label === '清除');
 
-    await confirm?.onPress?.();
+    await act(async () => {
+      await confirm?.onPress?.();
+    });
 
-    expect(mocks.settings.resetSettings).toHaveBeenCalledTimes(1);
+    expect(mocks.resetAppToInitialState).toHaveBeenCalledTimes(1);
     expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
       title: '成功',
-      message: '设置已重置',
+      message: 'APP 已恢复到初始状态',
     }));
   });
 
-  it('shows branded feedback when resetting settings fails after confirmation', async () => {
+  it('shows branded feedback when app reset fails after confirmation', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
-    mocks.settings.resetSettings.mockRejectedValueOnce(new Error('mmkv locked'));
+    mocks.resetAppToInitialState.mockRejectedValueOnce(new Error('mmkv locked'));
 
-    fireEvent.press(screen.getByText('重置设置'));
+    fireEvent.press(screen.getByText('清除缓存'));
 
     const actions = mocks.showConfirmDialog.mock.calls[0][0].actions as Array<{ label?: string; onPress?: () => void | Promise<void> }>;
-    const confirm = actions.find((action) => action.label === '重置');
+    const confirm = actions.find((action) => action.label === '清除');
 
-    await confirm?.onPress?.();
+    await act(async () => {
+      await confirm?.onPress?.();
+    });
 
-    expect(mocks.settings.resetSettings).toHaveBeenCalledTimes(1);
+    expect(mocks.resetAppToInitialState).toHaveBeenCalledTimes(1);
     expect(mocks.showErrorFeedback).toHaveBeenCalledWith(expect.objectContaining({
-      title: '重置失败',
+      title: '恢复失败',
       message: 'mmkv locked',
     }));
   });

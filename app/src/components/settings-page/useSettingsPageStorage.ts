@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { getStorageStats } from '@/src/utils/fileSystem';
-import { clearLocalAppData } from '@/src/services/localAppDataService';
+import { resetAppToInitialState } from '@/src/services/appResetService';
 import { showConfirmDialog } from '@/src/services/showConfirmDialog';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
-import { useEntryStore } from '@/src/store/entryStore';
 
 function formatUsedSpace(totalSize: number) {
   const mb = totalSize / (1024 * 1024);
@@ -25,7 +24,7 @@ export function useSettingsPageStorage() {
   const handleClearCache = useCallback(() => {
     showConfirmDialog({
       title: '清除缓存',
-      message: '确定要清除当前设备上的本地记录、媒体和缓存数据吗？后端数据不会受影响。',
+      message: '确定要清除当前设备上的本地数据并恢复到首次打开 APP 时的状态吗？这会清空记录、媒体、设置、登录状态，并将当前服务器地址恢复到默认值。最近使用过的服务器地址会保留。',
       actions: [
         { label: '取消', role: 'secondary' },
         {
@@ -36,12 +35,12 @@ export function useSettingsPageStorage() {
 
             try {
               setUsedSpace('计算中...');
-              await clearLocalAppData();
+              await resetAppToInitialState();
               clearSucceeded = true;
-            } catch {
+            } catch (error) {
               showErrorFeedback({
-                title: '清除失败',
-                message: '清理本地数据时发生错误',
+                title: '恢复失败',
+                message: error instanceof Error ? error.message : '恢复初始状态时发生错误',
                 tone: 'error',
                 actions: [{ label: '知道了', role: 'primary' }],
               });
@@ -50,29 +49,11 @@ export function useSettingsPageStorage() {
             }
 
             if (clearSucceeded) {
-              let reloadEntriesFailed = false;
-
-              try {
-                await useEntryStore.getState().loadEntries();
-              } catch {
-                reloadEntriesFailed = true;
-              }
-
               await refreshStorageStats();
-
-              if (reloadEntriesFailed) {
-                showErrorFeedback({
-                  title: '同步未完成',
-                  message: '本地数据已清除，但列表刷新失败，请稍后重试。',
-                  tone: 'error',
-                  actions: [{ label: '知道了', role: 'primary' }],
-                });
-                return;
-              }
 
               showErrorFeedback({
                 title: '成功',
-                message: '本地数据已清除',
+                message: 'APP 已恢复到初始状态',
                 tone: 'accent',
                 actions: [{ label: '知道了', role: 'primary' }],
               });

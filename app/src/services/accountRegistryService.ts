@@ -4,6 +4,7 @@ import {
   getServerKey,
   getCurrentServerUrlSync,
   getRecentServerUrls,
+  normalizeServerUrl,
 } from '@/src/services/backendEnvironmentService';
 import { logger } from '@/src/utils/logger';
 
@@ -34,6 +35,37 @@ const REGISTRY_KEY = 'accounts:registry';
 const ACTIVE_KEY = 'accounts:active';
 const MIGRATION_V2_KEY = 'migration:authKeysV2';
 
+const getAccountIdentityKey = (serverUrl: string, userId: string): string => {
+  try {
+    return `${normalizeServerUrl(serverUrl)}::${userId}`;
+  } catch {
+    return `${serverUrl}::${userId}`;
+  }
+};
+
+const isSameAccount = (
+  account: Pick<AccountEntry, 'serverUrl' | 'userId'>,
+  serverUrl: string,
+  userId: string,
+): boolean => getAccountIdentityKey(account.serverUrl, account.userId) === getAccountIdentityKey(serverUrl, userId);
+
+const dedupeAccounts = (accounts: AccountEntry[]): AccountEntry[] => {
+  const seen = new Set<string>();
+  const deduped: AccountEntry[] = [];
+
+  for (let index = accounts.length - 1; index >= 0; index -= 1) {
+    const account = accounts[index];
+    const identityKey = getAccountIdentityKey(account.serverUrl, account.userId);
+    if (seen.has(identityKey)) {
+      continue;
+    }
+    seen.add(identityKey);
+    deduped.push(account);
+  }
+
+  return deduped.reverse();
+};
+
 // ──────────────────────────────────────────────────
 // Token key 生成
 // ──────────────────────────────────────────────────
@@ -54,7 +86,16 @@ export function getUserAuthKeys(
 // ──────────────────────────────────────────────────
 export async function getRegisteredAccounts(): Promise<AccountEntry[]> {
   const accounts = await Storage.getObject<AccountEntry[]>(REGISTRY_KEY);
-  return accounts ?? [];
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+
+  const dedupedAccounts = dedupeAccounts(accounts);
+  if (dedupedAccounts.length !== accounts.length) {
+    await Storage.setObject<AccountEntry[]>(REGISTRY_KEY, dedupedAccounts);
+  }
+
+  return dedupedAccounts;
 }
 
 export async function getActiveAccountRef(): Promise<ActiveAccountRef | null> {
@@ -71,7 +112,7 @@ export function getActiveAccountRefSync(): ActiveAccountRef | null {
 export async function registerAccount(entry: AccountEntry): Promise<void> {
   const accounts = await getRegisteredAccounts();
   const filtered = accounts.filter(
-    a => !(a.serverUrl === entry.serverUrl && a.userId === entry.userId),
+    a => !isSameAccount(a, entry.serverUrl, entry.userId),
   );
   await Storage.setObject<AccountEntry[]>(REGISTRY_KEY, [...filtered, entry]);
 }
@@ -87,7 +128,7 @@ export async function clearActiveAccount(): Promise<void> {
 export async function unregisterAccount(serverUrl: string, userId: string): Promise<void> {
   const accounts = await getRegisteredAccounts();
   const filtered = accounts.filter(
-    a => !(a.serverUrl === serverUrl && a.userId === userId),
+    a => !isSameAccount(a, serverUrl, userId),
   );
   await Storage.setObject<AccountEntry[]>(REGISTRY_KEY, filtered);
 }
@@ -95,7 +136,7 @@ export async function unregisterAccount(serverUrl: string, userId: string): Prom
 export async function removeAccount(serverUrl: string, userId: string): Promise<void> {
   const accounts = await getRegisteredAccounts();
   const filtered = accounts.filter(
-    a => !(a.serverUrl === serverUrl && a.userId === userId),
+    a => !isSameAccount(a, serverUrl, userId),
   );
   await Storage.setObject<AccountEntry[]>(REGISTRY_KEY, filtered);
 
