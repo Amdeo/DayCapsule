@@ -165,6 +165,10 @@ export async function runAppBootstrap(
 
     const registeredAccounts = await getRegisteredAccounts();
     const protectedScopes = registeredAccounts.map((a) => buildDataScopeKey(a.serverUrl, a.userId));
+    // local scope 始终保护（未登录用户的本地数据）
+    if (!protectedScopes.includes('local')) {
+      protectedScopes.push('local');
+    }
     const currentScope = getCurrentDataScopeKeySync();
     if (currentScope !== 'local' && !protectedScopes.includes(currentScope)) {
       logger.warn('[bootstrap] currentScope 不在注册账号列表中，追加保护:', currentScope);
