@@ -16,9 +16,11 @@ interface DetailPageShellProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  headerLeft?: ReactNode;
   headerRight?: ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   scrollEnabled?: boolean;
+  footerContent?: ReactNode;
 }
 
 export function DetailPageShell({
@@ -26,9 +28,11 @@ export function DetailPageShell({
   title,
   onClose,
   children,
+  headerLeft,
   headerRight,
   contentContainerStyle,
   scrollEnabled = true,
+  footerContent,
 }: DetailPageShellProps) {
   const insets = useSafeAreaInsets();
   const { shouldRender, isAnimating } = useDetailPageShellController(visible);
@@ -64,11 +68,13 @@ export function DetailPageShell({
             <DetailPageShellFrame
               title={title}
               onClose={onClose}
+              headerLeft={headerLeft}
               headerRight={headerRight}
               headerTopPadding={insets.top + 20}
               scrollEnabled={scrollEnabled}
               contentContainerStyle={contentContainerStyle}
               contentBottomPadding={40 + insets.bottom}
+              footerContent={footerContent}
             >
               {children}
             </DetailPageShellFrame>

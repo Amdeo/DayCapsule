@@ -13,7 +13,7 @@ export const detailPageShellStyles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAF8F5',
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.1,

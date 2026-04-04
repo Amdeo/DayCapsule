@@ -7,33 +7,41 @@ interface DetailPageShellFrameProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  headerLeft?: ReactNode;
   headerRight?: ReactNode;
   headerTopPadding: number;
   contentBottomPadding: number;
   contentContainerStyle?: StyleProp<ViewStyle>;
   scrollEnabled: boolean;
+  footerContent?: ReactNode;
 }
 
 export function DetailPageShellFrame({
   title,
   onClose,
   children,
+  headerLeft,
   headerRight,
   headerTopPadding,
   contentBottomPadding,
   contentContainerStyle,
   scrollEnabled,
+  footerContent,
 }: DetailPageShellFrameProps) {
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <View testID="detail-page-header" style={[styles.header, { paddingTop: headerTopPadding }]}>
-        <Pressable
-          testID="detail-page-back-button"
-          onPress={onClose}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
-        </Pressable>
+        {headerLeft ? (
+          <View style={styles.backButton}>{headerLeft}</View>
+        ) : (
+          <Pressable
+            testID="detail-page-back-button"
+            onPress={onClose}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#4A4A4A" />
+          </Pressable>
+        )}
         <Text style={styles.headerTitle}>{title}</Text>
         {headerRight ? (
           <View testID="detail-page-header-right" style={styles.headerRight}>{headerRight}</View>
@@ -53,6 +61,7 @@ export function DetailPageShellFrame({
           ]}
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
         >
           {children}
         </ScrollView>
@@ -69,6 +78,8 @@ export function DetailPageShellFrame({
           {children}
         </View>
       )}
-    </>
+
+      {footerContent}
+    </View>
   );
 }
