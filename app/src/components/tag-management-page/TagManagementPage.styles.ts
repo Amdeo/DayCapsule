@@ -33,18 +33,6 @@ export const tagManagementPageStyles = StyleSheet.create({
     color: '#A3A3A3',
     marginBottom: 8,
   },
-  tagsContainer: {
-    position: 'relative',
-  },
-  positionedRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 52,
-  },
-  activeRow: {
-    zIndex: 10,
-  },
   tagRow: {
     flex: 1,
     flexDirection: 'row',
@@ -70,8 +58,8 @@ export const tagManagementPageStyles = StyleSheet.create({
     gap: 8,
   },
   dragHandle: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

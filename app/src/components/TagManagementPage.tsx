@@ -13,14 +13,11 @@ export function TagManagementPage({ visible, onClose }: TagManagementPageProps) 
     tags,
     inputValue,
     setInputValue,
-    dragState,
-    dragTranslationY,
     atLimit,
-    containerHeight,
     handleAdd,
     handleDelete,
     handleReset,
-    createPanResponderConfig,
+    handleDragEnd,
   } = useTagManagementController({ visible });
 
   return (
@@ -28,22 +25,19 @@ export function TagManagementPage({ visible, onClose }: TagManagementPageProps) 
       visible={visible}
       title="预制标签管理"
       onClose={onClose}
-      scrollEnabled={dragState == null}
+      scrollEnabled={false}
     >
       <TagManagementPageContent
         tags={tags}
         inputValue={inputValue}
-        dragState={dragState}
-        dragTranslationY={dragTranslationY}
         atLimit={atLimit}
-        containerHeight={containerHeight}
         onInputChange={setInputValue}
         onAdd={() => {
           void handleAdd();
         }}
         onDelete={handleDelete}
         onReset={handleReset}
-        createPanResponderConfig={createPanResponderConfig}
+        onDragEnd={handleDragEnd}
       />
     </DetailPageShell>
   );
