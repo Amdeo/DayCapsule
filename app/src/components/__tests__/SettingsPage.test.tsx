@@ -3,6 +3,8 @@ import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   renderSettingsPage,
   resetRenderSettingsPageMocks,
+  setMockSessionSnapshot,
+  triggerLatestLoginSuccess,
 } from './helpers/renderSettingsPage';
 
 describe('SettingsPage assembly', () => {
@@ -199,6 +201,57 @@ describe('SettingsPage assembly', () => {
     fireEvent.press(screen.getByTestId('settings-open-login'));
 
     expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+  });
+
+  it('refreshes the account switcher after login success and shows the current account immediately', async () => {
+    const { screen, mocks } = await renderSettingsPage({ authenticated: false });
+
+    mocks.accountSwitcher.refresh.mockImplementation(async () => {
+      mocks.accountSwitcher.accounts = [
+        {
+          serverUrl: 'https://server-a.example.com',
+          userId: 'user-1',
+          email: 'tester@example.com',
+          addedAt: Date.now(),
+        },
+      ];
+      mocks.accountSwitcher.activeRef = {
+        serverUrl: 'https://server-a.example.com',
+        userId: 'user-1',
+      };
+    });
+
+    fireEvent.press(screen.getByTestId('settings-open-login'));
+    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+
+    Object.assign(mocks.auth, {
+      user: { email: 'tester@example.com' },
+      isAuthenticated: true,
+    });
+    setMockSessionSnapshot({
+      currentScopeKey: 'account',
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      canRunCloudSync: true,
+    });
+
+    await act(async () => {
+      await triggerLatestLoginSuccess();
+    });
+
+    await waitFor(() => {
+      expect(mocks.accountSwitcher.refresh).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('切换账号')).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('切换账号'));
+    });
+
+    await waitFor(() => {
+      expect(mocks.accountSwitcher.refresh).toHaveBeenCalledTimes(2);
+      expect(screen.getAllByText('tester@example.com').length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   it('confirms clearing cache, then resets app and shows success feedback', async () => {

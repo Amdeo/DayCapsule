@@ -4,6 +4,9 @@ import {
 } from 'react-native';
 
 export const tagManagementPageStyles = {
+  page: {
+    flex: 1,
+  },
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -35,6 +38,12 @@ export const tagManagementPageStyles = {
     fontSize: 12,
     color: '#A3A3A3',
     marginBottom: 8,
+  },
+  tagList: {
+    flex: 1,
+  },
+  tagListContent: {
+    paddingBottom: 8,
   },
   tagRow: {
     flex: 1,

@@ -20,6 +20,7 @@ const defaultStoreState = {
 
 let mockStoreState = { ...defaultStoreState };
 let capturedOnDragEnd: ((params: { data: string[]; from: number; to: number }) => void) | null = null;
+let capturedFlatListProps: Record<string, unknown> | null = null;
 
 function setMockCommonTagsState(overrides: Partial<typeof defaultStoreState> = {}) {
   mockStoreState = { ...defaultStoreState, ...overrides };
@@ -33,6 +34,7 @@ function pressLatestConfirmButton(text: string) {
 function resetTagManagementMocks() {
   jest.clearAllMocks();
   capturedOnDragEnd = null;
+  capturedFlatListProps = null;
   setMockCommonTagsState();
 }
 
@@ -82,14 +84,21 @@ jest.mock('react-native-draggable-flatlist', () => {
     data,
     renderItem,
     onDragEnd,
+    ListHeaderComponent,
+    ListFooterComponent,
+    ...rest
   }: {
     data: string[];
     renderItem: (params: { item: string; getIndex: () => number; drag: () => void; isActive: boolean }) => React.ReactNode;
     onDragEnd: (params: { data: string[]; from: number; to: number }) => void;
+    ListHeaderComponent?: React.ReactNode;
+    ListFooterComponent?: React.ReactNode;
   }) => {
     capturedOnDragEnd = onDragEnd;
+    capturedFlatListProps = rest;
     return (
-      <View>
+      <View testID={typeof rest.testID === 'string' ? rest.testID : undefined}>
+        {ListHeaderComponent}
         {data.map((item: string, index: number) =>
           (
             <React.Fragment key={item}>
@@ -97,6 +106,7 @@ jest.mock('react-native-draggable-flatlist', () => {
             </React.Fragment>
           ),
         )}
+        {ListFooterComponent}
       </View>
     );
   };
@@ -124,6 +134,18 @@ describe('TagManagementPage preset tags', () => {
     expect(screen.getByText('这组标签会出现在快速选择区域')).toBeTruthy();
     expect(screen.getByText('恢复初始预制标签')).toBeTruthy();
     expect(screen.getByText('#工作')).toBeTruthy();
+  });
+
+  it('uses the draggable list as the single vertical scroll owner and keeps the footer actions reachable', () => {
+    const screen = render(<TagManagementPage visible onClose={() => {}} />);
+
+    expect(capturedFlatListProps).toEqual(expect.objectContaining({
+      testID: 'tag-management-tags-container',
+      scrollEnabled: true,
+    }));
+    expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
+    expect(screen.getByTestId('tag-management-add-button')).toBeTruthy();
+    expect(screen.getByTestId('tag-management-reset-button')).toBeTruthy();
   });
 
   it('does not load common tags when visible=true and isLoaded=true', () => {

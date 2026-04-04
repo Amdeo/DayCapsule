@@ -56,7 +56,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const [showAbout, setShowAbout] = React.useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = React.useState(false);
 
-  const { accounts, activeRef, isSwitching, handleSwitch } = useAccountSwitcher();
+  const {
+    accounts,
+    activeRef,
+    isSwitching,
+    handleSwitch,
+    refresh: refreshAccountSwitcher,
+  } = useAccountSwitcher();
 
   const openHelp = React.useCallback(() => {
     setShowAbout(false);
@@ -115,7 +121,13 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
 
   const handleLoginSuccess = React.useCallback(async () => {
     closeLogin();
-  }, [closeLogin]);
+    await refreshAccountSwitcher();
+  }, [closeLogin, refreshAccountSwitcher]);
+
+  const openAccountSwitcher = React.useCallback(async () => {
+    await refreshAccountSwitcher();
+    setShowAccountSwitcher(true);
+  }, [refreshAccountSwitcher]);
 
   const handleClose = React.useCallback(() => {
     onClose();
@@ -149,7 +161,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           onShowSyncStatus={() => {
             showCloudSyncMonitor();
           }}
-          onSwitchAccount={() => setShowAccountSwitcher(true)}
+          onSwitchAccount={openAccountSwitcher}
           onLogout={logout}
           onShowLogin={openLogin}
           onNotificationsChange={handleNotifications}

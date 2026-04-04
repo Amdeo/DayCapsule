@@ -65,6 +65,14 @@ let mockSessionSnapshot = {
   isAccountScopeActive: false,
   canRunCloudSync: false,
 };
+const mockAccountSwitcherState = {
+  accounts: [] as Array<{ serverUrl: string; userId: string; email: string; addedAt: number }>,
+  activeRef: null as { serverUrl: string; userId: string } | null,
+  isLoading: false,
+  isSwitching: false,
+  handleSwitch: jest.fn(),
+  refresh: jest.fn(async () => undefined),
+};
 
 const mockSettingsState = {
   ...mockDefaultPersistedSettings,
@@ -318,10 +326,7 @@ jest.mock('@/src/services/accountRegistryService', () => ({
 
 jest.mock('../../settings-page/useAccountSwitcher', () => ({
   useAccountSwitcher: jest.fn(() => ({
-    accounts: [],
-    activeRef: null,
-    isSwitching: false,
-    handleSwitch: jest.fn(),
+    ...mockAccountSwitcherState,
   })),
 }));
 
@@ -401,6 +406,14 @@ export function resetRenderSettingsPageMocks() {
     isAccountScopeActive: false,
     canRunCloudSync: false,
   };
+  Object.assign(mockAccountSwitcherState, {
+    accounts: [],
+    activeRef: null,
+    isLoading: false,
+    isSwitching: false,
+    handleSwitch: jest.fn(),
+    refresh: jest.fn(async () => undefined),
+  });
   Object.assign(mockAuthState, {
     user: null,
     isAuthenticated: false,
@@ -448,6 +461,15 @@ export function triggerLatestLoginSuccess() {
 
 export function getLatestLoginPageProps() {
   return latestLoginPageProps;
+}
+
+export function setMockSessionSnapshot(
+  next: Partial<typeof mockSessionSnapshot>
+) {
+  mockSessionSnapshot = {
+    ...mockSessionSnapshot,
+    ...next,
+  };
 }
 
 async function waitForSettingsPageToSettle(screen: ReturnType<typeof render>) {
@@ -519,6 +541,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
     mocks: {
       settings: mockSettingsState,
       auth: mockAuthState,
+      accountSwitcher: mockAccountSwitcherState,
       entries: mockEntryStoreState,
       syncBootstrap: mockSyncBootstrapService,
       cloudSync: mockCloudSyncService,

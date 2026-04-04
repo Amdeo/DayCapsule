@@ -25,7 +25,7 @@ export function TagManagementPage({ visible, onClose }: TagManagementPageProps) 
       visible={visible}
       title="预制标签管理"
       onClose={onClose}
-      scrollEnabled={true}
+      scrollEnabled={false}
     >
       <TagManagementPageContent
         tags={tags}
