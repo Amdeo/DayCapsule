@@ -30,17 +30,17 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v4
 
+      - name: 设置 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
           cache-dependency-path: app/pnpm-lock.yaml
-
-      - name: 设置 pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.0
 
       - name: 设置 Java
         uses: actions/setup-java@v4
