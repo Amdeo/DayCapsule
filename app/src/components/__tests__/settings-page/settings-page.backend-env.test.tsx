@@ -14,8 +14,7 @@ describe('SettingsPage backend environment', () => {
   it('resets backend test state after editing the draft url again', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
-    // Expand advanced section
-    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
+    fireEvent.press(screen.getByTestId('settings-open-backend-server'));
 
     const input = await screen.findByDisplayValue('https://server-a.example.com');
     fireEvent.changeText(input, 'https://server-c.example.com');
@@ -56,8 +55,7 @@ describe('SettingsPage backend environment', () => {
       expect(backendEnvironmentService.getRecentServerUrls).toHaveBeenCalledTimes(1);
     });
 
-    // Expand advanced section to see the input
-    fireEvent.press(rendered.getByTestId('settings-advanced-toggle'));
+    fireEvent.press(rendered.getByTestId('settings-open-backend-server'));
 
     expect(await rendered.findByDisplayValue('https://server-a.example.com')).toBeTruthy();
   });
@@ -66,8 +64,7 @@ describe('SettingsPage backend environment', () => {
     const { screen, mocks } = await renderSettingsPage();
     mocks.switchBackendEnvironment.mockRejectedValueOnce(new Error('timeout'));
 
-    // Expand advanced section
-    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
+    fireEvent.press(screen.getByTestId('settings-open-backend-server'));
 
     const input = await screen.findByDisplayValue('https://server-a.example.com');
     fireEvent.changeText(input, 'https://server-c.example.com');

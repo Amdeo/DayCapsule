@@ -52,18 +52,20 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByText('外观')).toBeTruthy();
     expect(screen.getByText('数据管理')).toBeTruthy();
     expect(screen.getByText('关于与支持')).toBeTruthy();
-    expect(screen.getByText('高级')).toBeTruthy();
 
     expect(screen.getByTestId('settings-open-tag-management')).toBeTruthy();
     expect(screen.getByTestId('settings-open-help')).toBeTruthy();
     expect(screen.getByTestId('settings-open-about')).toBeTruthy();
+    expect(screen.getByTestId('settings-open-backend-server')).toBeTruthy();
 
     const displaySection = screen.getByTestId('settings-section-display');
     const dataStorageSection = screen.getByTestId('settings-section-data-storage');
+    const accountSection = screen.getByTestId('settings-section-account-sync');
 
     expect(within(displaySection).queryByTestId('settings-switch-high-quality-photos')).toBeNull();
     expect(within(dataStorageSection).getByTestId('settings-switch-high-quality-photos')).toBeTruthy();
     expect(within(dataStorageSection).getByText('清除缓存')).toBeTruthy();
+    expect(within(accountSection).getByTestId('settings-open-backend-server')).toBeTruthy();
   });
 
   it('renders settings sections in fixed order', async () => {
@@ -116,13 +118,11 @@ describe('SettingsPage assembly', () => {
     const displayIndex = findSectionIndex('settings-section-display');
     const dataStorageIndex = findSectionIndex('settings-section-data-storage');
     const supportIndex = findSectionIndex('settings-section-support');
-    const advancedIndex = findSectionIndex('settings-section-advanced');
 
     expect(accountSyncIndex).toBeGreaterThanOrEqual(0);
     expect(accountSyncIndex).toBeLessThan(displayIndex);
     expect(displayIndex).toBeLessThan(dataStorageIndex);
     expect(dataStorageIndex).toBeLessThan(supportIndex);
-    expect(supportIndex).toBeLessThan(advancedIndex);
   });
 
   it('renders the profile card with storage info and account status', async () => {
@@ -243,8 +243,7 @@ describe('SettingsPage assembly', () => {
   it('shows backend save success feedback for save and switch results', async () => {
     const { screen, mocks } = await renderSettingsPage();
 
-    // Expand advanced section first
-    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
+    fireEvent.press(screen.getByTestId('settings-open-backend-server'));
 
     fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-new.example.com');
     fireEvent.press(screen.getByTestId('settings-backend-test-button'));
@@ -290,8 +289,7 @@ describe('SettingsPage assembly', () => {
 
     mocks.switchBackendEnvironment.mockRejectedValueOnce(new Error('backend offline'));
 
-    // Expand advanced section first
-    fireEvent.press(screen.getByTestId('settings-advanced-toggle'));
+    fireEvent.press(screen.getByTestId('settings-open-backend-server'));
 
     fireEvent.changeText(screen.getByTestId('settings-backend-input'), 'https://server-fail.example.com');
     fireEvent.press(screen.getByTestId('settings-backend-test-button'));

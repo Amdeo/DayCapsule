@@ -150,6 +150,54 @@ export const settingsPageStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  advancedSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  advancedSectionEmbeddedCard: {
+    marginBottom: 12,
+  },
+  advancedSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  advancedSectionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  advancedSectionHeaderText: {
+    flex: 1,
+  },
+  advancedSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 2,
+  },
+  advancedSectionSubtitle: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  advancedSectionArrowExpanded: {
+    transform: [{ rotate: '90deg' }],
+  },
+  advancedSectionContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
 });
 
 export const segmentedSelectorStyles = StyleSheet.create({

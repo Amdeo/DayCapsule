@@ -2,6 +2,7 @@ import React from 'react';
 import { Switch } from 'react-native';
 import { SETTINGS_SWITCH_TRACK_COLORS } from './SettingsPage.styles';
 import { SettingButton, SettingItem } from './SettingRow';
+import { SettingsAdvancedSection } from './SettingsAdvancedSection';
 import { SettingsGroupCard } from './SettingsGroupCard';
 import { SettingsSection } from './SettingsSection';
 
@@ -14,6 +15,17 @@ interface SettingsAccountSyncSectionProps {
   onSwitchAccount: () => void;
   onLogout: () => void;
   onShowLogin: () => void;
+  currentServerUrl: string;
+  backendDraftUrl: string;
+  recentServerUrls: string[];
+  backendTestStatus: 'idle' | 'testing' | 'success' | 'error';
+  backendTestErrorMessage: string | null;
+  isSavingBackendServer: boolean;
+  canSaveBackendServer: boolean;
+  onBackendDraftUrlChange: (value: string) => void;
+  onTestBackendServer: () => void | Promise<void>;
+  onSaveBackendServer: () => void | Promise<void>;
+  onSelectRecentBackendServer: (url: string) => void;
 }
 
 export function SettingsAccountSyncSection({
@@ -25,9 +37,35 @@ export function SettingsAccountSyncSection({
   onSwitchAccount,
   onLogout,
   onShowLogin,
+  currentServerUrl,
+  backendDraftUrl,
+  recentServerUrls,
+  backendTestStatus,
+  backendTestErrorMessage,
+  isSavingBackendServer,
+  canSaveBackendServer,
+  onBackendDraftUrlChange,
+  onTestBackendServer,
+  onSaveBackendServer,
+  onSelectRecentBackendServer,
 }: SettingsAccountSyncSectionProps) {
   return (
     <SettingsSection title="账户与云同步">
+      <SettingsAdvancedSection
+        currentServerUrl={currentServerUrl}
+        backendDraftUrl={backendDraftUrl}
+        recentServerUrls={recentServerUrls}
+        backendTestStatus={backendTestStatus}
+        backendTestErrorMessage={backendTestErrorMessage}
+        isSavingBackendServer={isSavingBackendServer}
+        canSaveBackendServer={canSaveBackendServer}
+        onBackendDraftUrlChange={onBackendDraftUrlChange}
+        onTestBackendServer={onTestBackendServer}
+        onSaveBackendServer={onSaveBackendServer}
+        onSelectRecentBackendServer={onSelectRecentBackendServer}
+        standalone={false}
+        toggleTestID="settings-open-backend-server"
+      />
       <SettingsGroupCard>
         {isAuthenticated ? (
           <>

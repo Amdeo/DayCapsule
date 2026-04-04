@@ -9,7 +9,6 @@ import {
   SETTINGS_SWITCH_TRACK_COLORS,
 } from './SettingsPage.styles';
 import { SettingsAccountSyncSection } from './SettingsAccountSyncSection';
-import { SettingsAdvancedSection } from './SettingsAdvancedSection';
 import { SettingButton, SettingItem } from './SettingRow';
 import { SettingsDataStorageSection } from './SettingsDataStorageSection';
 import { SettingsE2ESyncLab } from './SettingsE2ESyncLab';
@@ -138,6 +137,17 @@ export function SettingsPageContent({
         onSwitchAccount={onSwitchAccount}
         onLogout={onLogout}
         onShowLogin={onShowLogin}
+        currentServerUrl={currentServerUrl}
+        backendDraftUrl={backendDraftUrl}
+        recentServerUrls={recentServerUrls}
+        backendTestStatus={backendTestStatus}
+        backendTestErrorMessage={backendTestErrorMessage}
+        isSavingBackendServer={isSavingBackendServer}
+        canSaveBackendServer={canSaveBackendServer}
+        onBackendDraftUrlChange={onBackendDraftUrlChange}
+        onTestBackendServer={onTestBackendServer}
+        onSaveBackendServer={onSaveBackendServer}
+        onSelectRecentBackendServer={onSelectRecentBackendServer}
       />
 
       <SettingsSection title="外观">
@@ -205,20 +215,6 @@ export function SettingsPageContent({
           />
         </SettingsGroupCard>
       </SettingsSection>
-
-      <SettingsAdvancedSection
-        currentServerUrl={currentServerUrl}
-        backendDraftUrl={backendDraftUrl}
-        recentServerUrls={recentServerUrls}
-        backendTestStatus={backendTestStatus}
-        backendTestErrorMessage={backendTestErrorMessage}
-        isSavingBackendServer={isSavingBackendServer}
-        canSaveBackendServer={canSaveBackendServer}
-        onBackendDraftUrlChange={onBackendDraftUrlChange}
-        onTestBackendServer={onTestBackendServer}
-        onSaveBackendServer={onSaveBackendServer}
-        onSelectRecentBackendServer={onSelectRecentBackendServer}
-      />
 
       {showE2ESyncLab ? (
         <SettingsE2ESyncLab

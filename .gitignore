@@ -106,3 +106,4 @@ opencode.json
 
 # Python cache
 __pycache__/
+.omx/
