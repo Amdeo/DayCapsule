@@ -28,7 +28,7 @@ describe('renderHomeScreen helper state isolation', () => {
     });
 
     expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(firstRender.screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
 
     const secondRender = renderHomeScreen();
 
@@ -49,8 +49,8 @@ describe('renderHomeScreen helper state isolation', () => {
     expect(firstRender.stores.filterUiStore.state.selectedTags).toEqual([]);
 
     expect(firstRender.screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(firstRender.screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
-    expect(firstRender.screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
+    expect(firstRender.screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
+    expect(firstRender.screen.queryByTestId('cloud-sync-icon-synced')).toBeNull();
     expect(firstRender.screen.queryByTestId('cloud-sync-spinner')).toBeNull();
 
     firstRender.screen.unmount();

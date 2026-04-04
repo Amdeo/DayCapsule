@@ -76,6 +76,16 @@ jest.mock('@/src/store/cloudSyncIndicatorStore', () => ({
   },
 }));
 
+jest.mock('@/src/services/workspaceSessionState', () => ({
+  getWorkspaceSessionStateSync: () => ({
+    currentScopeKey: mockCloudMode ? 'server_user-1' : 'local',
+    isAuthenticated: mockCloudMode,
+    isTransitioning: false,
+    isAccountScopeActive: mockCloudMode,
+    canRunCloudSync: mockCloudMode,
+  }),
+}));
+
 jest.mock('@/src/services/voiceService', () => ({
   VoiceService: {
     prewarmAudioSystem: jest.fn().mockResolvedValue(undefined),

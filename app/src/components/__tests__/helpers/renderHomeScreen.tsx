@@ -703,7 +703,9 @@ jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
   return {
-    Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text>,
+    Ionicons: ({ name, ...props }: { name?: string; [key: string]: unknown }) => (
+      <Text {...props}>{name ?? 'icon'}</Text>
+    ),
   };
 });
 

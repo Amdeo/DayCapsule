@@ -82,6 +82,6 @@ describe('HomeScreen timeline state', () => {
     });
 
     expect(screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
   });
 });

@@ -64,7 +64,9 @@ jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
   return {
-    Ionicons: ({ name }: { name?: string }) => <Text>{name ?? 'icon'}</Text>,
+    Ionicons: ({ name, ...props }: { name?: string; [key: string]: unknown }) => (
+      <Text {...props}>{name ?? 'icon'}</Text>
+    ),
   };
 });
 
@@ -109,22 +111,22 @@ describe('Timeline home cloud sync status', () => {
     const screen = render(<Timeline />);
 
     expect(screen.getByTestId('cloud-sync-button')).toBeTruthy();
-    expect(screen.getByTestId('cloud-sync-dot-pending')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-icon-pending')).toBeTruthy();
 
     mockUiState = 'hidden';
     screen.rerender(<Timeline />);
 
     expect(screen.queryByTestId('cloud-sync-button')).toBeNull();
     expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
-    expect(screen.queryByTestId('cloud-sync-dot-synced')).toBeNull();
-    expect(screen.queryByTestId('cloud-sync-dot-pending')).toBeNull();
-    expect(screen.queryByTestId('cloud-sync-dot-failed')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-icon-synced')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-icon-pending')).toBeNull();
+    expect(screen.queryByTestId('cloud-sync-icon-failed')).toBeNull();
   });
 
   it.each([
-    ['synced', 'cloud-sync-dot-synced'],
-    ['pending', 'cloud-sync-dot-pending'],
-    ['failed', 'cloud-sync-dot-failed'],
+    ['synced', 'cloud-sync-icon-synced'],
+    ['pending', 'cloud-sync-icon-pending'],
+    ['failed', 'cloud-sync-icon-failed'],
     ['syncing', 'cloud-sync-spinner'],
   ] as const)(
     'renders the %s cloud sync state in the timeline header and opens the sync monitor',
@@ -163,6 +165,6 @@ describe('Timeline home cloud sync status', () => {
     screen.rerender(<Timeline />);
 
     expect(screen.queryByTestId('cloud-sync-spinner')).toBeNull();
-    expect(screen.getByTestId('cloud-sync-dot-synced')).toBeTruthy();
+    expect(screen.getByTestId('cloud-sync-icon-synced')).toBeTruthy();
   });
 });
