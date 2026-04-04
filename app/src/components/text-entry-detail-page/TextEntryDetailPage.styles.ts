@@ -2,18 +2,10 @@ import { StyleSheet } from 'react-native';
 
 export const textEntryDetailPageStyles = StyleSheet.create({
   contentContainer: {
-    paddingTop: 24,
-    gap: 24,
+    paddingTop: 20,
+    gap: 16,
   },
-  editButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-  },
-  editButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6A89CC',
-  },
+  // Read mode — content card
   heroBlock: {
     backgroundColor: '#FFFCF7',
     borderWidth: 1,
@@ -23,31 +15,43 @@ export const textEntryDetailPageStyles = StyleSheet.create({
     paddingVertical: 20,
   },
   contentText: {
-    fontSize: 18,
-    lineHeight: 32,
+    fontSize: 17,
+    lineHeight: 30,
     color: '#2F241E',
     letterSpacing: 0.2,
   },
+  // Edit mode — content card (matches TextEditor's contentCard)
+  editContentCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 115, 85, 0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  editContentInput: {
+    padding: 16,
+    fontSize: 16,
+    color: '#2F241E',
+    minHeight: 200,
+    lineHeight: 26,
+  },
+  // Shared meta
   metaSection: {
-    gap: 18,
+    gap: 4,
     paddingBottom: 12,
   },
-  metaRow: {
-    gap: 6,
-  },
-  metaLabel: {
+  metaText: {
     fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    color: '#9A8A7D',
+    color: '#B0A498',
+    letterSpacing: 0.3,
   },
-  metaValue: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#4A4A4A',
-  },
+  // Read mode — tags
   tagsSection: {
-    gap: 10,
+    gap: 8,
   },
   tagsWrap: {
     flexDirection: 'row',
@@ -66,5 +70,78 @@ export const textEntryDetailPageStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#7A6758',
+  },
+  // Bottom bar (fixed, outside ScrollView)
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 28,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 115, 85, 0.08)',
+    backgroundColor: '#FAF8F5',
+  },
+  editButton: {
+    backgroundColor: '#6A89CC',
+    borderRadius: 22,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  editButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  editBarRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0EDEA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#6F6257',
+  },
+  saveButton: {
+    flex: 2,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#6A89CC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#D1D1D1',
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  saveButtonTextDisabled: {
+    color: '#A3A3A3',
+  },
+  // Header elements (for edit mode)
+  headerCancelText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#8A7C70',
+  },
+  headerSaveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6A89CC',
+  },
+  headerSaveTextDisabled: {
+    color: '#C0B8B0',
   },
 });
