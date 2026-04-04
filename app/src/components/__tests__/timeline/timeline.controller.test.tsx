@@ -169,7 +169,8 @@ describe('useTimelineController', () => {
     expect(result.current.editingEntry).toBe(entry);
   });
 
-  it('waits for the detail page to close before opening the editor', () => {
+  it('saves text entry edits from the detail page through handleSaveEdit', async () => {
+    const updateEntry = jest.fn();
     const entry = {
       id: 'entry-1',
       type: 'text',
@@ -180,7 +181,7 @@ describe('useTimelineController', () => {
 
     const { result } = renderHook(() =>
       useTimelineController({
-        updateEntry: jest.fn(),
+        updateEntry,
       })
     );
 
@@ -189,26 +190,15 @@ describe('useTimelineController', () => {
     });
 
     expect(result.current.viewingEntry).toBe(entry);
-    expect(result.current.editingEntry).toBeNull();
 
-    act(() => {
-      result.current.handleDetailEdit(entry);
+    await act(async () => {
+      await result.current.handleSaveEdit('entry-1', '新内容', ['已更新']);
     });
 
-    expect(result.current.viewingEntry).toBeNull();
-    expect(result.current.editingEntry).toBeNull();
-
-    act(() => {
-      jest.advanceTimersByTime(299);
+    expect(updateEntry).toHaveBeenCalledWith('entry-1', {
+      content: '新内容',
+      tags: ['已更新'],
     });
-
-    expect(result.current.editingEntry).toBeNull();
-
-    act(() => {
-      jest.advanceTimersByTime(1);
-    });
-
-    expect(result.current.editingEntry).toBe(entry);
   });
 
 });

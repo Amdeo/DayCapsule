@@ -435,13 +435,13 @@ const mockTimelineDialogsModule = {
     viewingEntry,
     editingEntry,
     onCloseViewing,
-    onDetailEdit,
+    onSaveTextDetail,
     onCloseEditing,
   }: {
     viewingEntry: Entry | null;
     editingEntry: Entry | null;
     onCloseViewing: () => void;
-    onDetailEdit: (entry: Entry) => void;
+    onSaveTextDetail: (id: string, content: string, tags: string[]) => void | Promise<void>;
     onCloseEditing: () => void;
   }) => {
     const { Pressable } = require('react-native');
@@ -455,7 +455,7 @@ const mockTimelineDialogsModule = {
             <Text>{viewingEntry.content}</Text>
             <Pressable
               testID="timeline-text-detail-edit"
-              onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onDetailEdit(viewingEntry))}
+              onPress={runWithActiveRenderStores({ entryStore: store, filterUiStore }, () => onSaveTextDetail(viewingEntry.id, viewingEntry.content, viewingEntry.tags ?? []))}
             >
               <Text>编辑</Text>
             </Pressable>

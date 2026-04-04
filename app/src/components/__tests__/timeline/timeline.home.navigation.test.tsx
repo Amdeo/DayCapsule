@@ -111,12 +111,12 @@ jest.mock('../../TextEntryDetailPage', () => ({
   TextEntryDetailPage: ({
     visible,
     entry,
-    onEdit,
+    onSave,
     onClose,
   }: {
     visible: boolean;
     entry: Entry | null;
-    onEdit: (entry: Entry) => void;
+    onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
     onClose: () => void;
   }) => {
     const React = require('react');
@@ -125,17 +125,8 @@ jest.mock('../../TextEntryDetailPage', () => ({
     return (
       <View testID="timeline-text-detail">
         <Text>{entry.content}</Text>
-        <Pressable testID="timeline-text-detail-edit" onPress={() => onEdit(entry)}>
-          <Text>编辑</Text>
-        </Pressable>
-        <Pressable
-          testID="timeline-text-detail-edit-and-close"
-          onPress={() => {
-            onEdit(entry);
-            onClose();
-          }}
-        >
-          <Text>编辑并关闭</Text>
+        <Pressable testID="timeline-text-detail-save" onPress={() => onSave(entry.id, '已更新内容', ['已更新标签'])}>
+          <Text>保存编辑</Text>
         </Pressable>
         <Pressable testID="timeline-text-detail-close" onPress={onClose}>
           <Text>关闭</Text>
@@ -210,18 +201,18 @@ describe('Timeline home navigation', () => {
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
   });
 
-  it('flows from the detail page edit action into the entry editor', () => {
+  it('saves edits inline from the detail page through onSave', async () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+    expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
 
-    act(() => {
-      jest.advanceTimersByTime(300);
+    fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
+
+    expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
+      content: '已更新内容',
+      tags: ['已更新标签'],
     });
-
-    expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
-    expect(screen.getByTestId('timeline-entry-editor')).toBeTruthy();
   });
 
   it('does not open the text detail page for non-text entries', () => {
@@ -233,25 +224,15 @@ describe('Timeline home navigation', () => {
     expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
   });
 
-  it('saves edits back through updateEntry and closes the editor', async () => {
+  it('saves edits back through updateEntry from the detail page', async () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
-
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
-
-    fireEvent.press(screen.getByTestId('timeline-entry-editor-save'));
+    fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
 
     expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
       content: '已更新内容',
       tags: ['已更新标签'],
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
     });
   });
 
@@ -272,12 +253,12 @@ describe('Timeline home navigation', () => {
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
 
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
-    expect(screen.getByTestId('timeline-text-detail-edit')).toBeTruthy();
+    expect(screen.getByTestId('timeline-text-detail-save')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
-    expect(screen.queryByTestId('timeline-text-detail-edit')).toBeNull();
+    expect(screen.queryByTestId('timeline-text-detail-save')).toBeNull();
     expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
@@ -285,21 +266,20 @@ describe('Timeline home navigation', () => {
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
   });
 
-  it('does not open the editor after closing detail during the delayed detail-to-editor handoff', () => {
+  it('does not trigger onSave after closing the detail page', () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    fireEvent.press(screen.getByTestId('timeline-text-detail-edit-and-close'));
+    fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
-    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
+    expect(mockUpdateEntry).not.toHaveBeenCalled();
 
     act(() => {
       jest.advanceTimersByTime(300);
     });
 
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
-    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
     expect(screen.getByTestId('timeline-entry-card-entry-text-1')).toBeTruthy();
   });
 });

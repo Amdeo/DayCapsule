@@ -126,7 +126,7 @@ describe('HomeScreen timeline interactions', () => {
     expect(screen.queryByTestId('timeline-entry-entry-text-1')).toBeNull();
   });
 
-  it('returns the home timeline to a stable list state after closing detail and editor flows', () => {
+  it('returns the home timeline to a stable list state after closing detail', async () => {
     const { screen } = renderHomeScreen({
       entries: [textEntry],
     });
@@ -134,21 +134,15 @@ describe('HomeScreen timeline interactions', () => {
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
 
+    // 保存不关闭详情页（只是更新数据，详情页内部切回只读模式）
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
+    });
+    expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
+
+    // 关闭详情页后回到列表
     fireEvent.press(screen.getByTestId('timeline-text-detail-close'));
     expect(screen.queryByTestId('timeline-text-detail')).toBeNull();
-    expect(screen.getByTestId('timeline-entry-entry-text-1')).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    fireEvent.press(screen.getByTestId('timeline-text-detail-edit'));
-
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
-
-    expect(screen.getByTestId('timeline-entry-editor')).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId('timeline-entry-editor-close'));
-    expect(screen.queryByTestId('timeline-entry-editor')).toBeNull();
     expect(screen.getByTestId('timeline-entry-entry-text-1')).toBeTruthy();
   });
 
