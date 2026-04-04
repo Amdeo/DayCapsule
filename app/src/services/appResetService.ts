@@ -3,7 +3,7 @@ import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { LOCAL_SCOPE_KEY } from '@/src/services/workspaceSessionState';
 import { resetApiClient } from '@/src/services/apiClient';
 import { restoreCurrentServerUrlFromRecent } from '@/src/services/backendEnvironmentService';
-import { initDatabase, resetDatabase } from '@/src/database/sqlite';
+import { clearDatabaseForScope, initDatabase, resetDatabase } from '@/src/database/sqlite';
 import { useAuthStore } from '@/src/store/authStore';
 import { useCommonTagsStore } from '@/src/store/commonTagsStore';
 import { useEntryStore } from '@/src/store/entryStore';
@@ -40,6 +40,7 @@ export async function resetAppToInitialState(): Promise<void> {
   resetApiClient();
   resetDatabase();
 
+  await Promise.all([...scopesToClear].map((scopeKey) => clearDatabaseForScope(scopeKey)));
   await clearWorkspaceDirectories(scopesToClear);
   await clearPersistedStateExceptRecentServerUrls();
   await restoreCurrentServerUrlFromRecent();

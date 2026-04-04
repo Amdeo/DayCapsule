@@ -35,6 +35,7 @@ jest.mock('@/src/services/backendEnvironmentService', () => ({
 jest.mock('@/src/database/sqlite', () => ({
   initDatabase: jest.fn().mockResolvedValue(true),
   resetDatabase: jest.fn(),
+  clearDatabaseForScope: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/src/store/entryStore', () => ({
@@ -70,7 +71,7 @@ import { deleteDirectory, ensureDirectories } from '@/src/utils/fileSystem';
 import { getCurrentDataScopeKeySync } from '@/src/services/workspaceService';
 import { cleanupOrphanWorkspaces } from '@/src/services/workspaceCleanupService';
 import { resetApiClient } from '@/src/services/apiClient';
-import { initDatabase, resetDatabase } from '@/src/database/sqlite';
+import { initDatabase, resetDatabase, clearDatabaseForScope } from '@/src/database/sqlite';
 import { resetAppToInitialState } from '../appResetService';
 
 describe('appResetService', () => {
@@ -97,6 +98,8 @@ describe('appResetService', () => {
 
     expect(resetApiClient).toHaveBeenCalledTimes(1);
     expect(resetDatabase).toHaveBeenCalledTimes(1);
+    expect(clearDatabaseForScope).toHaveBeenCalledWith('local');
+    expect(clearDatabaseForScope).toHaveBeenCalledWith('env_https_server_a_example_com_user_1');
     expect(deleteDirectory).toHaveBeenCalledWith('file:///documents/environments/local/');
     expect(deleteDirectory).toHaveBeenCalledWith('file:///cache/environments/local/');
     expect(deleteDirectory).toHaveBeenCalledWith('file:///documents/environments/env_https_server_a_example_com_user_1/');
@@ -123,6 +126,8 @@ describe('appResetService', () => {
     await resetAppToInitialState();
 
     expect(deleteDirectory).toHaveBeenCalledTimes(2);
+    expect(clearDatabaseForScope).toHaveBeenCalledTimes(1);
+    expect(clearDatabaseForScope).toHaveBeenCalledWith('local');
     expect(deleteDirectory).toHaveBeenCalledWith('file:///documents/environments/local/');
     expect(deleteDirectory).toHaveBeenCalledWith('file:///cache/environments/local/');
   });

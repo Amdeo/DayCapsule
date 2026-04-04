@@ -25,6 +25,16 @@ export const resetDatabase = (): void => {
   _dbName = null;
 };
 
+export const clearDatabaseForScope = async (scopeKey: string): Promise<void> => {
+  const db = openDatabaseForScope(scopeKey);
+  await db.execAsync(`
+    DELETE FROM entry_tags;
+    DELETE FROM entries_fts;
+    DELETE FROM entries;
+    DELETE FROM tags;
+  `);
+};
+
 const registerDatabaseScope = (db: SQLiteDatabase, scopeKey: string): SQLiteDatabase => {
   databaseScopeKeys.set(db, scopeKey);
   return db;
