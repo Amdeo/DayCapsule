@@ -48,6 +48,8 @@ export function TagManagementPageContent({
         <Text style={styles.resetText}>恢复初始预制标签</Text>
       </Pressable>
 
+      <Text style={styles.addSectionLabel}>添加新标签</Text>
+
       <View style={styles.addRow}>
         <TextInput
           testID="tag-management-add-input"

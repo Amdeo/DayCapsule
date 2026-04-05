@@ -87,6 +87,15 @@ export const tagManagementPageStyles = {
     color: '#007AFF',
   },
 
+  // "添加新标签"小标题
+  addSectionLabel: {
+    fontSize: 13,
+    color: '#6C6C70',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+
   // 底部固定输入栏
   addRow: {
     flexDirection: 'row',
