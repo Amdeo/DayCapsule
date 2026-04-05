@@ -353,7 +353,7 @@ jobs:
           set -o pipefail
           build_log="$PWD/gradle-assemble-release.log"
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace --info assembleRelease 2>&1 | tee "$build_log"
+          ./gradlew --no-daemon --stacktrace --warn assembleRelease 2>&1 | tee "$build_log"
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             echo "=== Gradle build log path ==="
