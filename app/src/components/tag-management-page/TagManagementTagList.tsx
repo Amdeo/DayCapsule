@@ -37,8 +37,7 @@ export function TagManagementTagList({
       renderItem={renderItem}
       onDragEnd={onDragEnd}
       keyboardShouldPersistTaps="handled"
-      scrollEnabled={false}
-      nestedScrollEnabled
+      scrollEnabled
       showsVerticalScrollIndicator={false}
     />
   );

@@ -139,7 +139,7 @@ describe('TagManagementPage preset tags', () => {
 
     expect(capturedFlatListProps).toEqual(expect.objectContaining({
       testID: 'tag-management-tags-container',
-      scrollEnabled: false,
+      scrollEnabled: true,
     }));
     expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
     expect(screen.getByTestId('tag-management-add-button')).toBeTruthy();
