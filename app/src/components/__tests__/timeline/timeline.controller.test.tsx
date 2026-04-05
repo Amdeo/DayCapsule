@@ -21,8 +21,8 @@ describe('useTimelineController', () => {
     );
 
     expect(result.current.showViewToggle).toBe(false);
-    expect(result.current.viewMode).toBe('list');
-    expect(result.current.displayMode).toBe('list');
+    expect(result.current.viewMode).toBe('timeline');
+    expect(result.current.displayMode).toBe('timeline');
 
     act(() => {
       result.current.handleToggleViewMode();
@@ -35,7 +35,7 @@ describe('useTimelineController', () => {
     });
 
     expect(result.current.viewMode).toBe('calendar');
-    expect(result.current.displayMode).toBe('list');
+    expect(result.current.displayMode).toBe('timeline');
     expect(result.current.isTransitioning).toBe(true);
 
     act(() => {
@@ -46,7 +46,7 @@ describe('useTimelineController', () => {
     expect(result.current.isTransitioning).toBe(false);
   });
 
-  it('resets back to list mode immediately when closing the view switcher from calendar mode', () => {
+  it('resets back to timeline mode immediately when closing the view switcher from calendar mode', () => {
     const { result } = renderHook(() =>
       useTimelineController({
         updateEntry: jest.fn(),
@@ -74,8 +74,8 @@ describe('useTimelineController', () => {
     });
 
     expect(result.current.showViewToggle).toBe(false);
-    expect(result.current.viewMode).toBe('list');
-    expect(result.current.displayMode).toBe('list');
+    expect(result.current.viewMode).toBe('timeline');
+    expect(result.current.displayMode).toBe('timeline');
   });
 
   it('toggles the FAB hide state and scroll-top visibility from scroll direction', () => {
