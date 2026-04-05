@@ -4,32 +4,44 @@ import {
 } from 'react-native';
 
 export const tagManagementPageStyles = {
+  // 页面容器
   page: {
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
 
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+  // 页头区域容器
+  pageHeader: {
+    flexShrink: 0,
   },
 
-  // 分区说明小字（卡片顶部上方）
-  sectionLabel: {
+  // 分区标题区域
+  sectionHeader: {
+    marginBottom: 6,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
     fontSize: 13,
     color: '#6C6C70',
-    marginBottom: 6,
-    paddingLeft: 4,
   },
 
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    overflow: 'hidden',
+  // 列表容器
+  tagList: {
+    flex: 1,
+  },
+  tagListContent: {
+    paddingBottom: 8,
   },
 
+  // 标签行
   tagRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -79,21 +91,17 @@ export const tagManagementPageStyles = {
     includeFontPadding: false,
   },
 
-  // 计数提示（列表卡片下方，右对齐）
+  // 计数提示（右对齐）
   hint: {
     fontSize: 13,
     color: '#8E8E93',
     textAlign: 'right',
     marginTop: 6,
-    paddingRight: 4,
+    paddingRight: 16,
+    paddingBottom: 8,
   },
 
-  resetCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginTop: 24,
-  },
+  // 重置行
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',

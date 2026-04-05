@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TextInput, Pressable, View, ScrollView } from 'react-native';
+import { Text, TextInput, Pressable, View } from 'react-native';
 import type { DragEndParams } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
@@ -17,23 +17,6 @@ interface TagManagementPageContentProps {
   onDragEnd: (params: DragEndParams<string>) => void;
 }
 
-interface TagManagementResetCardProps {
-  onReset: () => void;
-}
-
-function TagManagementResetCard({ onReset }: TagManagementResetCardProps) {
-  return (
-    <Pressable
-      testID="tag-management-reset-button"
-      style={[styles.resetCard, styles.resetRow]}
-      onPress={onReset}
-    >
-      <Ionicons name="refresh" size={17} color="#007AFF" />
-      <Text style={styles.resetText}>恢复初始预制标签</Text>
-    </Pressable>
-  );
-}
-
 export function TagManagementPageContent({
   tags,
   inputValue,
@@ -46,29 +29,30 @@ export function TagManagementPageContent({
 }: TagManagementPageContentProps) {
   return (
     <View testID="tag-management-root" style={styles.page}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.sectionLabel}>
-          当前预制标签 · 长按拖拽可排序
-        </Text>
+      <View style={styles.pageHeader}>
+        <Pressable
+          testID="tag-management-reset-button"
+          style={styles.resetRow}
+          onPress={onReset}
+        >
+          <Ionicons name="refresh" size={18} color="#6A89CC" />
+          <Text style={styles.resetText}>恢复初始预制标签</Text>
+        </Pressable>
 
-        <View style={styles.card}>
-          <TagManagementTagList
-            tags={tags}
-            onDelete={onDelete}
-            onDragEnd={onDragEnd}
-          />
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>当前预制标签</Text>
+          <Text style={styles.sectionSubtitle}>这组标签会出现在快速选择区域</Text>
         </View>
-
         <Text style={styles.hint}>
           {tags.length} / {MAX_TAGS} 个
         </Text>
+      </View>
 
-        <TagManagementResetCard onReset={onReset} />
-      </ScrollView>
+      <TagManagementTagList
+        tags={tags}
+        onDelete={onDelete}
+        onDragEnd={onDragEnd}
+      />
 
       <View style={styles.addRow}>
         <TextInput
