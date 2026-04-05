@@ -125,12 +125,13 @@ jobs:
       - name: Tune Gradle for CI
         working-directory: app/android
         run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8/' gradle.properties
-          sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=false/' gradle.properties
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.parallel=.*/org.gradle.parallel=true/' gradle.properties
+          WORKERS=$(( $(nproc) > 2 ? $(nproc) - 2 : 1 ))
           if grep -q '^org\.gradle\.workers\.max=' gradle.properties; then
-            sed -i 's/^org\.gradle\.workers\.max=.*/org.gradle.workers.max=1/' gradle.properties
+            sed -i "s/^org\\.gradle\\.workers\\.max=.*/org.gradle.workers.max=$WORKERS/" gradle.properties
           else
-            echo 'org.gradle.workers.max=1' >> gradle.properties
+            echo "org.gradle.workers.max=$WORKERS" >> gradle.properties
           fi
           if grep -q '^org\.gradle\.caching=' gradle.properties; then
             sed -i 's/^org\.gradle\.caching=.*/org.gradle.caching=true/' gradle.properties
