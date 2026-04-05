@@ -4,6 +4,7 @@ import DraggableFlatList, {
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
 import { TagManagementTagRow } from './TagManagementTagRow';
+import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
 
 interface TagManagementTagListProps {
   tags: string[];
@@ -32,7 +33,7 @@ export function TagManagementTagList({
   return (
     <DraggableFlatList
       testID="tag-management-tags-container"
-      style={{ flex: 1 }}
+      style={styles.tagList}
       data={tags}
       keyExtractor={(item) => item}
       renderItem={renderItem}

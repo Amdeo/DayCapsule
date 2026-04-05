@@ -10,6 +10,11 @@ export const tagManagementPageStyles = {
     backgroundColor: '#F2F2F7',
   },
 
+  // 标签列表容器
+  tagList: {
+    flex: 1,
+  },
+
   // 标签行
   tagRow: {
     flex: 1,
