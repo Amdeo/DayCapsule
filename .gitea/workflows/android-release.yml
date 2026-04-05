@@ -103,7 +103,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: app/android/app/.cxx
-          key: native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-${{ hashFiles('app/pnpm-lock.yaml') }}
+          key: native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-${{ hashFiles('app/android/app/build.gradle', 'app/package.json') }}
           restore-keys: |
             native-cxx-${{ runner.os }}-${{ steps.arch.outputs.arch }}-ndk${{ env.NDK_VERSION }}-
 
