@@ -77,8 +77,7 @@ export const tagManagementPageStyles = {
     color: '#6C6C70',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 6,
-    textTransform: 'uppercase',
+    paddingBottom: 8,
   },
 
   // iOS 分组卡片：白色圆角容器
@@ -87,16 +86,16 @@ export const tagManagementPageStyles = {
     alignItems: 'center',
     marginHorizontal: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingLeft: 14,
-    paddingRight: 8,
-    height: 44,
+    borderRadius: 12,
+    paddingLeft: 16,
+    paddingRight: 12,
+    height: 52,
   },
   addInput: {
     flex: 1,
     fontSize: 17,
     color: '#1C1C1E',
-    height: 44,
+    height: 52,
     paddingVertical: 0,
   },
   addInputDisabled: {
@@ -106,8 +105,8 @@ export const tagManagementPageStyles = {
     fontSize: 17,
     color: '#007AFF',
     fontWeight: '600',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   addButtonTextDisabled: {
     color: '#C7C7CC',
@@ -132,6 +131,7 @@ export const tagManagementPageStyles = {
 
   // 列表底部容器（含安全区域间距）
   footer: {
-    paddingBottom: 34,
+    paddingBottom: 40,
+    backgroundColor: '#F2F2F7',
   },
 } satisfies Record<string, ViewStyle | TextStyle>;
