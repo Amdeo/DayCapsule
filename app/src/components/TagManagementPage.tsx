@@ -2,6 +2,7 @@ import React from 'react';
 import { DetailPageShell } from './DetailPageShell';
 import { TagManagementPageContent } from './tag-management-page/TagManagementPageContent';
 import { useTagManagementController } from './tag-management-page/useTagManagementController';
+import { tagManagementPageStyles as styles } from './tag-management-page/TagManagementPage.styles';
 
 interface TagManagementPageProps {
   visible: boolean;
@@ -26,6 +27,7 @@ export function TagManagementPage({ visible, onClose }: TagManagementPageProps) 
       title="预制标签管理"
       onClose={onClose}
       scrollEnabled={false}
+      contentContainerStyle={styles.shellContentOverride}
     >
       <TagManagementPageContent
         tags={tags}

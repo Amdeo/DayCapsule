@@ -134,4 +134,10 @@ export const tagManagementPageStyles = {
     paddingBottom: 40,
     backgroundColor: '#F2F2F7',
   },
+
+  // 覆盖 DetailPageShell staticContent 的默认 padding
+  shellContentOverride: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+  },
 } satisfies Record<string, ViewStyle | TextStyle>;
