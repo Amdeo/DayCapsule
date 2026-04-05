@@ -46,7 +46,7 @@ export function TagArea({
   const hiddenInput = (
     <TextInput
       testID="text-editor-tags-input"
-      style={{ height: 0 }}
+      style={styles.hiddenInput}
       value={tagsInput}
       onChangeText={onChangeTagsInput}
     />
@@ -114,7 +114,7 @@ export function TagArea({
       {hiddenInput}
       {/* Panel header with collapse button */}
       <View style={styles.tagPanelHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={styles.tagPanelHeaderLeft}>
           <Ionicons name="pricetag-outline" size={14} color="#A491D3" />
           <Text style={styles.tagPanelHeaderTitle}>标签</Text>
         </View>

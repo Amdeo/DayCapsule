@@ -1,6 +1,9 @@
-import { StyleSheet } from 'react-native';
+import {
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
-export const textEditorStyles = StyleSheet.create({
+export const textEditorStyles = {
   container: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -88,6 +91,9 @@ export const textEditorStyles = StyleSheet.create({
     minHeight: 200,
     lineHeight: 26,
   },
+  hiddenInput: {
+    height: 0,
+  },
   // Tag toolbar (collapsed)
   tagToolbarRow: {
     flexDirection: 'row',
@@ -174,6 +180,11 @@ export const textEditorStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  tagPanelHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   tagPanelHeaderTitle: {
     fontSize: 13,
@@ -333,4 +344,4 @@ export const textEditorStyles = StyleSheet.create({
   saveButtonTextDisabled: {
     color: '#A3A3A3',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

@@ -1,11 +1,18 @@
-import { StyleSheet } from 'react-native';
+import {
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
-export const detailPageShellStyles = StyleSheet.create({
+export const detailPageShellStyles = {
   container: {
     flex: 1,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   page: {
@@ -58,4 +65,4 @@ export const detailPageShellStyles = StyleSheet.create({
   staticContent: {
     paddingHorizontal: 20,
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

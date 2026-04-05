@@ -29,7 +29,7 @@ export function DetailPageShellFrame({
   footerContent,
 }: DetailPageShellFrameProps) {
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <View testID="detail-page-header" style={[styles.header, { paddingTop: headerTopPadding }]}>
         {headerLeft ? (
           <View style={styles.backButton}>{headerLeft}</View>

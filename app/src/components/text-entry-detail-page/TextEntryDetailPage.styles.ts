@@ -1,6 +1,9 @@
-import { StyleSheet } from 'react-native';
+import {
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
-export const textEntryDetailPageStyles = StyleSheet.create({
+export const textEntryDetailPageStyles = {
   contentContainer: {
     paddingTop: 20,
     gap: 16,
@@ -144,4 +147,4 @@ export const textEntryDetailPageStyles = StyleSheet.create({
   headerSaveTextDisabled: {
     color: '#C0B8B0',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;
