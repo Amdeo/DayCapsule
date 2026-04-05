@@ -37,7 +37,7 @@ export function TagManagementTagList({
       keyExtractor={(item) => item}
       renderItem={renderItem}
       onDragEnd={onDragEnd}
-      style={styles.tagList}
+      containerStyle={styles.tagList}
       contentContainerStyle={styles.tagListContent}
       keyboardShouldPersistTaps="handled"
       scrollEnabled
