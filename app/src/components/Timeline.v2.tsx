@@ -217,7 +217,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
       />
 
       {/* FAB 浮动操作按钮（搜索界面时隐藏）- 花瓣展开动画 */}
-      {!showSearchOverlay && displayMode === 'list' && (
+      {!showSearchOverlay && displayMode === 'timeline' && (
         <FABMenu
           onSelect={onQuickAdd ?? (() => {})}
           shouldHide={fabShouldHide}
