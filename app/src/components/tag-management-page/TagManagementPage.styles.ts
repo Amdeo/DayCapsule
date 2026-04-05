@@ -118,7 +118,7 @@ export const tagManagementPageStyles = {
     gap: 8,
     paddingVertical: 13,
     paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 24,
     borderTopWidth: 0.5,
     borderTopColor: '#E5E5EA',
     backgroundColor: '#FFFFFF',
