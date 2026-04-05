@@ -29,7 +29,7 @@ export function TagManagementTagRow({
             onLongPress={drag}
             hitSlop={8}
           >
-            <Ionicons name="reorder-three-outline" size={18} color="#9AA4B2" />
+            <Ionicons name="reorder-three-outline" size={20} color="#C7C7CC" />
           </Pressable>
           <Text style={styles.tagName}>#{tag}</Text>
         </View>
@@ -38,7 +38,9 @@ export function TagManagementTagRow({
           onPress={() => onDelete(tag)}
           hitSlop={8}
         >
-          <Ionicons name="close-circle" size={20} color="#E57373" />
+          <View style={styles.deleteButton}>
+            <Text style={styles.deleteButtonText}>−</Text>
+          </View>
         </Pressable>
       </View>
     </ScaleDecorator>
