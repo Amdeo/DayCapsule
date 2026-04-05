@@ -32,6 +32,7 @@ export function TagManagementTagList({
   return (
     <DraggableFlatList
       testID="tag-management-tags-container"
+      style={{ flex: 1 }}
       data={tags}
       keyExtractor={(item) => item}
       renderItem={renderItem}
