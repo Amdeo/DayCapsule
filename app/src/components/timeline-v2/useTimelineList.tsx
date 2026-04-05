@@ -85,8 +85,8 @@ export function useTimelineList({
   );
 
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
-    return <TimelineSectionHeader title={section.title} />;
-  }, []);
+    return <TimelineSectionHeader title={section.title} showTimelineDecorations={displayMode !== 'card'} />;
+  }, [displayMode]);
 
   return {
     sections,

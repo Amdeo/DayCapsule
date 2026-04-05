@@ -3,12 +3,32 @@ import { Text, View } from 'react-native';
 
 interface TimelineSectionHeaderProps {
   title: string;
+  showTimelineDecorations?: boolean;
 }
 
 export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
   title,
+  showTimelineDecorations = true,
 }: TimelineSectionHeaderProps) {
   const timelineLeft = 40;
+
+  if (!showTimelineDecorations) {
+    return (
+      <View
+        style={{
+          paddingLeft: 16,
+          paddingRight: 24,
+          paddingTop: 16,
+          paddingBottom: 4,
+          backgroundColor: '#FAF8F5',
+        }}
+      >
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#8B7355', letterSpacing: 0.5 }}>
+          {title}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View
