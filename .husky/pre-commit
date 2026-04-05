@@ -1,0 +1,4 @@
+echo "husky(pre-commit): running app lint + typecheck before commit"
+cd app || exit 1
+pnpm run lint
+pnpm run typecheck
