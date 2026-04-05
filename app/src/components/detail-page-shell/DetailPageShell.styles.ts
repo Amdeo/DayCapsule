@@ -32,7 +32,7 @@ export const detailPageShellStyles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
   },

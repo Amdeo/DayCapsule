@@ -70,7 +70,7 @@ export function DetailPageShell({
               onClose={onClose}
               headerLeft={headerLeft}
               headerRight={headerRight}
-              headerTopPadding={insets.top + 20}
+              headerTopPadding={insets.top + 12}
               scrollEnabled={scrollEnabled}
               contentContainerStyle={contentContainerStyle}
               contentBottomPadding={40 + insets.bottom}
