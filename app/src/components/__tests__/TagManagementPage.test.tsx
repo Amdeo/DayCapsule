@@ -130,8 +130,7 @@ describe('TagManagementPage preset tags', () => {
     expect(screen.getByTestId('tag-management-root')).toBeTruthy();
     expect(screen.getByTestId('tag-management-tags-container')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
-    expect(screen.getByText('当前预制标签')).toBeTruthy();
-    expect(screen.getByText('这组标签会出现在快速选择区域')).toBeTruthy();
+    expect(screen.getByText('当前预制标签 · 长按拖拽可排序')).toBeTruthy();
     expect(screen.getByText('恢复初始预制标签')).toBeTruthy();
     expect(screen.getByText('#工作')).toBeTruthy();
   });
@@ -141,7 +140,7 @@ describe('TagManagementPage preset tags', () => {
 
     expect(capturedFlatListProps).toEqual(expect.objectContaining({
       testID: 'tag-management-tags-container',
-      scrollEnabled: true,
+      scrollEnabled: false,
     }));
     expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
     expect(screen.getByTestId('tag-management-add-button')).toBeTruthy();
