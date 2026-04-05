@@ -4,18 +4,19 @@ import DraggableFlatList, {
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
 import { TagManagementTagRow } from './TagManagementTagRow';
-import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
 
 interface TagManagementTagListProps {
   tags: string[];
   onDelete: (tag: string) => void;
   onDragEnd: (params: DragEndParams<string>) => void;
+  ListFooterComponent?: React.ReactElement;
 }
 
 export function TagManagementTagList({
   tags,
   onDelete,
   onDragEnd,
+  ListFooterComponent,
 }: TagManagementTagListProps) {
   const renderItem = useCallback(
     ({ item, getIndex, drag, isActive }: RenderItemParams<string>) => (
@@ -33,7 +34,6 @@ export function TagManagementTagList({
   return (
     <DraggableFlatList
       testID="tag-management-tags-container"
-      style={styles.tagList}
       data={tags}
       keyExtractor={(item) => item}
       renderItem={renderItem}
@@ -41,6 +41,7 @@ export function TagManagementTagList({
       keyboardShouldPersistTaps="handled"
       scrollEnabled
       showsVerticalScrollIndicator={false}
+      ListFooterComponent={ListFooterComponent}
     />
   );
 }

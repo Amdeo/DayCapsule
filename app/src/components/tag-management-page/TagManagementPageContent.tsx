@@ -33,44 +33,47 @@ export function TagManagementPageContent({
         tags={tags}
         onDelete={onDelete}
         onDragEnd={onDragEnd}
+        ListFooterComponent={
+          <>
+            <Text style={styles.hint}>
+              {tags.length} / {MAX_TAGS} 个
+            </Text>
+
+            <Pressable
+              testID="tag-management-reset-button"
+              style={styles.resetRow}
+              onPress={onReset}
+            >
+              <Ionicons name="refresh" size={18} color="#007AFF" />
+              <Text style={styles.resetText}>恢复初始预制标签</Text>
+            </Pressable>
+
+            <Text style={styles.addSectionLabel}>添加新标签</Text>
+
+            <View style={styles.addRow}>
+              <TextInput
+                testID="tag-management-add-input"
+                style={[styles.addInput, atLimit && styles.addInputDisabled]}
+                value={inputValue}
+                onChangeText={onInputChange}
+                placeholder={atLimit ? `最多 ${MAX_TAGS} 个预制标签` : '输入新预制标签'}
+                placeholderTextColor="#A3A3A3"
+                editable={!atLimit}
+                returnKeyType="done"
+                onSubmitEditing={onAdd}
+              />
+              <Pressable
+                testID="tag-management-add-button"
+                style={[styles.addButton, atLimit && styles.addButtonDisabled]}
+                onPress={onAdd}
+                disabled={atLimit}
+              >
+                <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
+              </Pressable>
+            </View>
+          </>
+        }
       />
-
-      <Text style={styles.hint}>
-        {tags.length} / {MAX_TAGS} 个
-      </Text>
-
-      <Pressable
-        testID="tag-management-reset-button"
-        style={styles.resetRow}
-        onPress={onReset}
-      >
-        <Ionicons name="refresh" size={18} color="#007AFF" />
-        <Text style={styles.resetText}>恢复初始预制标签</Text>
-      </Pressable>
-
-      <Text style={styles.addSectionLabel}>添加新标签</Text>
-
-      <View style={styles.addRow}>
-        <TextInput
-          testID="tag-management-add-input"
-          style={[styles.addInput, atLimit && styles.addInputDisabled]}
-          value={inputValue}
-          onChangeText={onInputChange}
-          placeholder={atLimit ? `最多 ${MAX_TAGS} 个预制标签` : '输入新预制标签'}
-          placeholderTextColor="#A3A3A3"
-          editable={!atLimit}
-          returnKeyType="done"
-          onSubmitEditing={onAdd}
-        />
-        <Pressable
-          testID="tag-management-add-button"
-          style={[styles.addButton, atLimit && styles.addButtonDisabled]}
-          onPress={onAdd}
-          disabled={atLimit}
-        >
-          <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
