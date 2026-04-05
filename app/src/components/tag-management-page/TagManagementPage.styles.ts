@@ -7,9 +7,6 @@ export const tagManagementPageStyles = {
   page: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 8,
-  },
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -43,10 +40,10 @@ export const tagManagementPageStyles = {
     marginBottom: 8,
   },
   tagList: {
-    minHeight: 1,
+    flex: 1,
   },
   tagListContent: {
-    paddingBottom: 0,
+    paddingBottom: 8,
   },
   tagRow: {
     flex: 1,

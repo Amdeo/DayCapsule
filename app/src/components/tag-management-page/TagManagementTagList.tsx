@@ -1,6 +1,5 @@
-import React, { useCallback } from 'react';
-import {
-  NestableDraggableFlatList,
+import React, { useCallback, type ReactElement } from 'react';
+import DraggableFlatList, {
   type RenderItemParams,
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
@@ -11,12 +10,16 @@ interface TagManagementTagListProps {
   tags: string[];
   onDelete: (tag: string) => void;
   onDragEnd: (params: DragEndParams<string>) => void;
+  headerContent?: ReactElement | null;
+  footerContent?: ReactElement | null;
 }
 
 export function TagManagementTagList({
   tags,
   onDelete,
   onDragEnd,
+  headerContent = null,
+  footerContent = null,
 }: TagManagementTagListProps) {
   const renderItem = useCallback(
     ({ item, getIndex, drag, isActive }: RenderItemParams<string>) => (
@@ -32,15 +35,19 @@ export function TagManagementTagList({
   );
 
   return (
-    <NestableDraggableFlatList
+    <DraggableFlatList
       testID="tag-management-tags-container"
       data={tags}
       keyExtractor={(item) => item}
       renderItem={renderItem}
       onDragEnd={onDragEnd}
+      ListHeaderComponent={headerContent}
+      ListFooterComponent={footerContent}
       style={styles.tagList}
       contentContainerStyle={styles.tagListContent}
-      scrollEnabled={false}
+      keyboardShouldPersistTaps="handled"
+      scrollEnabled
+      showsVerticalScrollIndicator={false}
     />
   );
 }

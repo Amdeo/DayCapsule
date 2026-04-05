@@ -84,16 +84,21 @@ jest.mock('react-native-draggable-flatlist', () => {
     data,
     renderItem,
     onDragEnd,
+    ListHeaderComponent,
+    ListFooterComponent,
     ...rest
   }: {
     data: string[];
     renderItem: (params: { item: string; getIndex: () => number; drag: () => void; isActive: boolean }) => React.ReactNode;
     onDragEnd: (params: { data: string[]; from: number; to: number }) => void;
+    ListHeaderComponent?: React.ReactNode;
+    ListFooterComponent?: React.ReactNode;
   }) => {
     capturedOnDragEnd = onDragEnd;
     capturedFlatListProps = rest;
     return (
       <View testID={typeof rest.testID === 'string' ? rest.testID : undefined}>
+        {ListHeaderComponent}
         {data.map((item: string, index: number) =>
           (
             <React.Fragment key={item}>
@@ -101,6 +106,7 @@ jest.mock('react-native-draggable-flatlist', () => {
             </React.Fragment>
           ),
         )}
+        {ListFooterComponent}
       </View>
     );
   };
@@ -108,8 +114,6 @@ jest.mock('react-native-draggable-flatlist', () => {
   return {
     __esModule: true,
     default: MockDraggableFlatList,
-    NestableDraggableFlatList: MockDraggableFlatList,
-    NestableScrollContainer: ({ children, testID }: { children: React.ReactNode; testID?: string }) => <View testID={testID}>{children}</View>,
     ScaleDecorator: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
   };
 });
@@ -137,7 +141,7 @@ describe('TagManagementPage preset tags', () => {
 
     expect(capturedFlatListProps).toEqual(expect.objectContaining({
       testID: 'tag-management-tags-container',
-      scrollEnabled: false,
+      scrollEnabled: true,
     }));
     expect(screen.getByTestId('tag-management-add-input')).toBeTruthy();
     expect(screen.getByTestId('tag-management-add-button')).toBeTruthy();

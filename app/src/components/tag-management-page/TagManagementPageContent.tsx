@@ -1,7 +1,6 @@
 import React from 'react';
 import { Text, TextInput, Pressable, View } from 'react-native';
 import type { DragEndParams } from 'react-native-draggable-flatlist';
-import { NestableScrollContainer } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
 import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
 import { MAX_TAGS } from './tagManagementConfig';
@@ -28,14 +27,8 @@ export function TagManagementPageContent({
   onReset,
   onDragEnd,
 }: TagManagementPageContentProps) {
-  return (
-    <NestableScrollContainer
-      testID="tag-management-root"
-      style={styles.page}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
+  const headerContent = (
+    <>
       <Pressable
         testID="tag-management-reset-button"
         style={styles.resetRow}
@@ -52,36 +45,42 @@ export function TagManagementPageContent({
       <Text style={styles.hint}>
         {tags.length} / {MAX_TAGS} 个
       </Text>
+    </>
+  );
 
-      <View style={styles.tagList}>
-        <TagManagementTagList
-          tags={tags}
-          onDelete={onDelete}
-          onDragEnd={onDragEnd}
-        />
-      </View>
+  const footerContent = (
+    <View style={styles.addRow}>
+      <TextInput
+        testID="tag-management-add-input"
+        style={[styles.addInput, atLimit && styles.addInputDisabled]}
+        value={inputValue}
+        onChangeText={onInputChange}
+        placeholder={atLimit ? `最多 ${MAX_TAGS} 个预制标签` : '输入新预制标签'}
+        placeholderTextColor="#A3A3A3"
+        editable={!atLimit}
+        returnKeyType="done"
+        onSubmitEditing={onAdd}
+      />
+      <Pressable
+        testID="tag-management-add-button"
+        style={[styles.addButton, atLimit && styles.addButtonDisabled]}
+        onPress={onAdd}
+        disabled={atLimit}
+      >
+        <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
+      </Pressable>
+    </View>
+  );
 
-      <View style={styles.addRow}>
-        <TextInput
-          testID="tag-management-add-input"
-          style={[styles.addInput, atLimit && styles.addInputDisabled]}
-          value={inputValue}
-          onChangeText={onInputChange}
-          placeholder={atLimit ? `最多 ${MAX_TAGS} 个预制标签` : '输入新预制标签'}
-          placeholderTextColor="#A3A3A3"
-          editable={!atLimit}
-          returnKeyType="done"
-          onSubmitEditing={onAdd}
-        />
-        <Pressable
-          testID="tag-management-add-button"
-          style={[styles.addButton, atLimit && styles.addButtonDisabled]}
-          onPress={onAdd}
-          disabled={atLimit}
-        >
-          <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
-        </Pressable>
-      </View>
-    </NestableScrollContainer>
+  return (
+    <View testID="tag-management-root" style={styles.page}>
+      <TagManagementTagList
+        tags={tags}
+        onDelete={onDelete}
+        onDragEnd={onDragEnd}
+        headerContent={headerContent}
+        footerContent={footerContent}
+      />
+    </View>
   );
 }
