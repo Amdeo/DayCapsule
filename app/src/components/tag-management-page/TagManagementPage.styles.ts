@@ -7,6 +7,9 @@ export const tagManagementPageStyles = {
   page: {
     flex: 1,
   },
+  pageHeader: {
+    flexShrink: 0,
+  },
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -83,6 +86,7 @@ export const tagManagementPageStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexShrink: 0,
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
