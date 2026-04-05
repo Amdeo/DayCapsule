@@ -10,35 +10,6 @@ export const tagManagementPageStyles = {
     backgroundColor: '#F2F2F7',
   },
 
-  // 页头区域容器
-  pageHeader: {
-    flexShrink: 0,
-  },
-
-  // 分区标题区域
-  sectionHeader: {
-    marginBottom: 6,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 2,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#6C6C70',
-  },
-
-  // 列表容器
-  tagList: {
-    flex: 1,
-  },
-  tagListContent: {
-    paddingBottom: 8,
-  },
-
   // 标签行
   tagRow: {
     flex: 1,
@@ -91,23 +62,25 @@ export const tagManagementPageStyles = {
     includeFontPadding: false,
   },
 
-  // 计数提示（右对齐）
+  // 计数提示（右对齐，列表下方）
   hint: {
     fontSize: 13,
     color: '#8E8E93',
     textAlign: 'right',
-    marginTop: 6,
-    paddingRight: 16,
-    paddingBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
   },
 
-  // 重置行
+  // 恢复按钮行
   resetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 13,
     paddingHorizontal: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
   },
   resetText: {
     fontSize: 17,

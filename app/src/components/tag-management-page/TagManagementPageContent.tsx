@@ -29,30 +29,24 @@ export function TagManagementPageContent({
 }: TagManagementPageContentProps) {
   return (
     <View testID="tag-management-root" style={styles.page}>
-      <View style={styles.pageHeader}>
-        <Pressable
-          testID="tag-management-reset-button"
-          style={styles.resetRow}
-          onPress={onReset}
-        >
-          <Ionicons name="refresh" size={18} color="#6A89CC" />
-          <Text style={styles.resetText}>恢复初始预制标签</Text>
-        </Pressable>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>当前预制标签</Text>
-          <Text style={styles.sectionSubtitle}>这组标签会出现在快速选择区域</Text>
-        </View>
-        <Text style={styles.hint}>
-          {tags.length} / {MAX_TAGS} 个
-        </Text>
-      </View>
-
       <TagManagementTagList
         tags={tags}
         onDelete={onDelete}
         onDragEnd={onDragEnd}
       />
+
+      <Text style={styles.hint}>
+        {tags.length} / {MAX_TAGS} 个
+      </Text>
+
+      <Pressable
+        testID="tag-management-reset-button"
+        style={styles.resetRow}
+        onPress={onReset}
+      >
+        <Ionicons name="refresh" size={18} color="#007AFF" />
+        <Text style={styles.resetText}>恢复初始预制标签</Text>
+      </Pressable>
 
       <View style={styles.addRow}>
         <TextInput
