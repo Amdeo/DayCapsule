@@ -4,63 +4,76 @@ import {
 } from 'react-native';
 
 export const tagManagementPageStyles = {
+  // 页面容器
   page: {
     flex: 1,
+    backgroundColor: '#F2F2F7',
   },
+
+  // 滚动区域内边距容器
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+
+  // 分区说明小字（卡片顶部上方）
+  sectionLabel: {
+    fontSize: 13,
+    color: '#6C6C70',
+    marginBottom: 6,
+    paddingLeft: 4,
+  },
+
+  // 白色圆角卡片
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  // 页头区域容器（兼容旧引用）
   pageHeader: {
     flexShrink: 0,
   },
-  resetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    marginBottom: 12,
-  },
-  resetText: {
-    fontSize: 15,
-    color: '#6A89CC',
-    fontWeight: '500',
-  },
+
+  // 分区标题区域（兼容旧引用）
   sectionHeader: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2F3A4A',
-    marginBottom: 4,
+    color: '#1C1C1E',
+    marginBottom: 2,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: '#7A8797',
+    color: '#6C6C70',
   },
-  hint: {
-    fontSize: 12,
-    color: '#A3A3A3',
-    marginBottom: 8,
-  },
+
+  // 列表容器（兼容旧引用）
   tagList: {
     flex: 1,
   },
   tagListContent: {
     paddingBottom: 8,
   },
+
+  // 标签行
   tagRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E5EA',
     backgroundColor: '#FFFFFF',
   },
   tagRowActive: {
     backgroundColor: '#F7F9FC',
-    borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -70,7 +83,7 @@ export const tagManagementPageStyles = {
   tagLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   dragHandle: {
     width: 44,
@@ -79,29 +92,76 @@ export const tagManagementPageStyles = {
     justifyContent: 'center',
   },
   tagName: {
-    fontSize: 15,
-    color: '#4A4A4A',
+    fontSize: 17,
+    color: '#1C1C1E',
   },
+
+  // 删除按钮：红色实心圆
+  deleteButton: {
+    width: 22,
+    height: 22,
+    backgroundColor: '#FF3B30',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 20,
+    includeFontPadding: false,
+  },
+
+  // 计数提示（列表卡片下方，右对齐）
+  hint: {
+    fontSize: 13,
+    color: '#8E8E93',
+    textAlign: 'right',
+    marginTop: 6,
+    paddingRight: 4,
+  },
+
+  // 重置卡片
+  resetCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 24,
+  },
+  resetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  resetText: {
+    fontSize: 17,
+    color: '#007AFF',
+  },
+
+  // 底部固定输入栏
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flexShrink: 0,
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#C6C6C8',
+    backgroundColor: '#F2F2F7',
   },
   addInput: {
     flex: 1,
     height: 44,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderWidth: 0.5,
+    borderColor: '#E5E5EA',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    backgroundColor: '#FAFAFA',
-    color: '#4A4A4A',
+    paddingHorizontal: 14,
+    fontSize: 17,
+    backgroundColor: '#FFFFFF',
+    color: '#1C1C1E',
   },
   addInputDisabled: {
     backgroundColor: '#F5F5F5',
@@ -110,7 +170,7 @@ export const tagManagementPageStyles = {
   addButton: {
     height: 44,
     paddingHorizontal: 18,
-    backgroundColor: '#6A89CC',
+    backgroundColor: '#007AFF',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -119,7 +179,7 @@ export const tagManagementPageStyles = {
     backgroundColor: '#E5E5E5',
   },
   addButtonText: {
-    fontSize: 15,
+    fontSize: 17,
     color: '#FFFFFF',
     fontWeight: '600',
   },
