@@ -18,6 +18,37 @@ interface TimelineEntryMarkerProps {
   enterDelay?: number;
 }
 
+const timelineLeft = 40;
+
+const dotStyle = {
+  position: 'absolute' as const,
+  left: timelineLeft - 7,
+  top: 2,
+  width: 16,
+  height: 16,
+  borderRadius: 8,
+  borderWidth: 2,
+  borderColor: '#FFFFFF',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 2,
+  elevation: 2,
+  zIndex: 2,
+};
+
+const timeRowStyle = {
+  marginBottom: 8,
+  height: 20,
+  justifyContent: 'center' as const,
+};
+
+const timeTextStyle = {
+  fontSize: 12,
+  fontWeight: '500' as const,
+  lineHeight: 16,
+};
+
 export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
   entry,
   onDeleteEntry,
@@ -30,7 +61,6 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
   cardSpacing,
   enterDelay = 0,
 }: TimelineEntryMarkerProps) {
-  const timelineLeft = 40;
   const accentColor = getTimelineEntryAccentColor(entry.type);
 
   return (
@@ -42,28 +72,10 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
         position: 'relative',
       }}
     >
-      <View
-        style={{
-          position: 'absolute',
-          left: timelineLeft - 7,
-          top: 1,
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: accentColor,
-          borderWidth: 2,
-          borderColor: '#FFFFFF',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
-          elevation: 2,
-          zIndex: 2,
-        }}
-      />
+      <View style={[dotStyle, { backgroundColor: accentColor }]} />
 
-      <View style={{ marginBottom: 8 }}>
-        <Text style={{ fontSize: 12, color: accentColor, fontWeight: '500' }}>
+      <View style={timeRowStyle}>
+        <Text style={[timeTextStyle, { color: accentColor }]}>
           {formatHHMM(entry.timestamp)}
         </Text>
       </View>

@@ -1,13 +1,11 @@
-import { StyleSheet } from 'react-native';
-
-export const backupPageStyles = StyleSheet.create({
+export const backupPageStyles = {
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: '#A3A3A3',
     marginTop: 24,
     marginBottom: 12,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
   infoCard: {
@@ -16,9 +14,9 @@ export const backupPageStyles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#EBEBEB',
@@ -32,7 +30,7 @@ export const backupPageStyles = StyleSheet.create({
   },
   rowValue: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#4A4A4A',
   },
   historyMeta: {
@@ -42,8 +40,8 @@ export const backupPageStyles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     gap: 12,
   },
   actionIcon: {
@@ -51,15 +49,15 @@ export const backupPageStyles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   actionContent: {
     flex: 1,
   },
   actionTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#4A4A4A',
     marginBottom: 4,
   },
@@ -79,7 +77,7 @@ export const backupPageStyles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#FFFFFF',
   },
-});
+};
