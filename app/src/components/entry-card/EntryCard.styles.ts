@@ -34,13 +34,13 @@ export const entryCardStyles = {
     fontWeight: '600',
   },
   cardShadow: {
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(139, 115, 85, 0.15)',
     elevation: 0,
   },
   calendarCardShadow: {
-    borderRadius: 10,
+    borderRadius: 8,
     borderColor: 'rgba(139, 115, 85, 0.06)',
     shadowColor: '#5A4330',
     shadowOffset: { width: 0, height: 4 },
@@ -49,14 +49,14 @@ export const entryCardStyles = {
     elevation: 1,
   },
   cardContainer: {
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
   },
   calendarCardShell: {
-    borderRadius: 10,
+    borderRadius: 8,
   },
   calendarCardContainer: {
-    borderRadius: 10,
+    borderRadius: 8,
   },
   content: {
     padding: 20,
@@ -121,8 +121,8 @@ export const entryCardStyles = {
     paddingVertical: 14,
   },
   calendarTextContent: {
-    fontSize: 17,
-    lineHeight: 29,
+    fontSize: 16,
+    lineHeight: 24,
     color: '#3F374B',
     fontWeight: '500',
     letterSpacing: 0.1,
