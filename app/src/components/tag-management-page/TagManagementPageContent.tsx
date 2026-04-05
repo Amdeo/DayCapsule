@@ -17,6 +17,25 @@ interface TagManagementPageContentProps {
   onDragEnd: (params: DragEndParams<string>) => void;
 }
 
+interface TagManagementResetCardProps {
+  onReset: () => void;
+}
+
+function TagManagementResetCard({ onReset }: TagManagementResetCardProps) {
+  return (
+    <View style={styles.resetCard}>
+      <Pressable
+        testID="tag-management-reset-button"
+        style={styles.resetRow}
+        onPress={onReset}
+      >
+        <Ionicons name="refresh" size={17} color="#007AFF" />
+        <Text style={styles.resetText}>恢复初始预制标签</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export function TagManagementPageContent({
   tags,
   inputValue,
@@ -54,16 +73,7 @@ export function TagManagementPageContent({
         </Text>
 
         {/* 重置卡片 */}
-        <View style={styles.resetCard}>
-          <Pressable
-            testID="tag-management-reset-button"
-            style={styles.resetRow}
-            onPress={onReset}
-          >
-            <Ionicons name="refresh" size={17} color="#007AFF" />
-            <Text style={styles.resetText}>恢复初始预制标签</Text>
-          </Pressable>
-        </View>
+        <TagManagementResetCard onReset={onReset} />
       </ScrollView>
 
       {/* 底部固定输入栏 */}

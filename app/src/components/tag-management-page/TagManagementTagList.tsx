@@ -38,7 +38,8 @@ export function TagManagementTagList({
       onDragEnd={onDragEnd}
       contentContainerStyle={{ paddingBottom: 0 }}
       keyboardShouldPersistTaps="handled"
-      scrollEnabled
+      scrollEnabled={false}
+      nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     />
   );
