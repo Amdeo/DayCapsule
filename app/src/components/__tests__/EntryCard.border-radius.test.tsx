@@ -101,18 +101,18 @@ const textEntry: Entry = {
 };
 
 describe('EntryCard border radius', () => {
-  it('uses 10px radius for both the outer shell and inner card container', () => {
+  it('uses 8px radius for both the outer shell and inner card container', () => {
     const { getByTestId } = render(
       <EntryCard entry={textEntry} onDelete={jest.fn()} />
     );
 
-    expect(getByTestId('entry-card-container')).toHaveStyle({ borderRadius: 10 });
-    expect(getByTestId('entry-card')).toHaveStyle({ borderRadius: 10 });
+    expect(getByTestId('entry-card-container')).toHaveStyle({ borderRadius: 8 });
+    expect(getByTestId('entry-card')).toHaveStyle({ borderRadius: 8 });
 
     const outerStyle = StyleSheet.flatten(getByTestId('entry-card-container').props.style);
     const innerStyle = StyleSheet.flatten(getByTestId('entry-card').props.style);
 
-    expect(outerStyle.borderRadius).toBe(10);
-    expect(innerStyle.borderRadius).toBe(10);
+    expect(outerStyle.borderRadius).toBe(8);
+    expect(innerStyle.borderRadius).toBe(8);
   });
 });
