@@ -127,6 +127,9 @@ export const entryCardStyles = {
     fontWeight: '500',
     letterSpacing: 0.1,
   },
+  calendarTextParagraph: {
+    marginTop: 6,
+  },
   calendarPhotoCard: {
     padding: 0,
   },

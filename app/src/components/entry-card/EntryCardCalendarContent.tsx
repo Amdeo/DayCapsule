@@ -44,11 +44,17 @@ export function EntryCardCalendarContent({
   onRunStopRecording,
 }: EntryCardCalendarContentProps) {
   if (entry.type === 'text') {
+    const paragraphs = entry.content.split('\n').filter((line) => line.trim() !== '');
     return (
       <View style={styles.calendarTextCard}>
-        <Text style={styles.calendarTextContent}>
-          {entry.content}
-        </Text>
+        {paragraphs.map((line, i) => (
+          <Text
+            key={i}
+            style={[styles.calendarTextContent, i > 0 && styles.calendarTextParagraph]}
+          >
+            {line}
+          </Text>
+        ))}
         <EntryCardCalendarTags entry={entry} isExpanded={isExpanded} />
         <EntryCardCalendarTranscription
           text={entry.transcription?.text}
