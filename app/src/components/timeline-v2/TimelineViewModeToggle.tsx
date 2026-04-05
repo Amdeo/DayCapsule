@@ -8,7 +8,8 @@ import { viewModeToggleStyles as styles } from './Timeline.v2.styles';
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 const VIEW_MODES: { mode: ViewMode; icon: IoniconName; label: string }[] = [
-  { mode: 'list', icon: 'list', label: '列表' },
+  { mode: 'timeline', icon: 'list', label: '时间线' },
+  { mode: 'card', icon: 'grid-outline', label: '卡片' },
   { mode: 'calendar', icon: 'calendar', label: '日历' },
 ];
 
