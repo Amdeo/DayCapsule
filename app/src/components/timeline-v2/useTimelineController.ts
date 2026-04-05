@@ -26,8 +26,8 @@ export function useTimelineController({
   } = useTimelineEntryDetailState();
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [displayMode, setDisplayMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
+  const [displayMode, setDisplayMode] = useState<ViewMode>('timeline');
   const skipTransitionRef = useRef(false);
   const isInitialMountRef = useRef(true);
   const [showViewToggle, setShowViewToggle] = useState(false);
@@ -74,10 +74,10 @@ export function useTimelineController({
   }, []);
 
   const handleToggleViewMode = useCallback(() => {
-    if (showViewToggle && viewMode !== 'list') {
+    if (showViewToggle && viewMode !== 'timeline') {
       skipTransitionRef.current = true;
-      setViewMode('list');
-      setDisplayMode('list');
+      setViewMode('timeline');
+      setDisplayMode('timeline');
     }
 
     setShowViewToggle((value) => !value);
