@@ -130,5 +130,6 @@ export const tagManagementPageStyles = {
   // 列表底部容器（含安全区域间距）
   footer: {
     paddingBottom: 34,
+    backgroundColor: '#FFFFFF',
   },
 } satisfies Record<string, ViewStyle | TextStyle>;
