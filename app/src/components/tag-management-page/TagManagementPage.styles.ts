@@ -32,37 +32,8 @@ export const tagManagementPageStyles = {
     overflow: 'hidden',
   },
 
-  // 页头区域容器（兼容旧引用）
-  pageHeader: {
-    flexShrink: 0,
-  },
-
-  // 分区标题区域（兼容旧引用）
-  sectionHeader: {
-    marginBottom: 6,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 2,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#6C6C70',
-  },
-
-  // 列表容器（兼容旧引用）
-  tagList: {
-    flex: 1,
-  },
-  tagListContent: {
-    paddingBottom: 8,
-  },
-
   // 标签行
   tagRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
