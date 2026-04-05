@@ -10,11 +10,6 @@ export const tagManagementPageStyles = {
     backgroundColor: '#F2F2F7',
   },
 
-  // 标签列表容器
-  tagList: {
-    flex: 1,
-  },
-
   // 标签行
   tagRow: {
     flex: 1,
@@ -76,22 +71,6 @@ export const tagManagementPageStyles = {
     paddingHorizontal: 16,
   },
 
-  // 恢复按钮行
-  resetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderTopWidth: 0.5,
-    borderTopColor: '#E5E5EA',
-    backgroundColor: '#FFFFFF',
-  },
-  resetText: {
-    fontSize: 17,
-    color: '#007AFF',
-  },
-
   // "添加新标签"小标题
   addSectionLabel: {
     fontSize: 13,
@@ -101,23 +80,17 @@ export const tagManagementPageStyles = {
     paddingBottom: 4,
   },
 
-  // 底部固定输入栏
+  // 添加输入栏
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-    paddingVertical: 10,
+    gap: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderTopWidth: 0.5,
-    borderTopColor: '#C6C6C8',
-    backgroundColor: '#F2F2F7',
   },
   addInput: {
     flex: 1,
     height: 44,
-    borderWidth: 0.5,
-    borderColor: '#E5E5EA',
     borderRadius: 10,
     paddingHorizontal: 14,
     fontSize: 17,
@@ -128,23 +101,34 @@ export const tagManagementPageStyles = {
     backgroundColor: '#F5F5F5',
     color: '#C0C0C0',
   },
-  addButton: {
-    height: 44,
-    paddingHorizontal: 18,
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonDisabled: {
-    backgroundColor: '#E5E5E5',
-  },
   addButtonText: {
     fontSize: 17,
-    color: '#FFFFFF',
+    color: '#007AFF',
     fontWeight: '600',
   },
   addButtonTextDisabled: {
-    color: '#A3A3A3',
+    color: '#C7C7CC',
+  },
+
+  // 恢复按钮行
+  resetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
+  },
+  resetText: {
+    fontSize: 17,
+    color: '#007AFF',
+  },
+
+  // 列表底部容器（含安全区域间距）
+  footer: {
+    paddingBottom: 34,
   },
 } satisfies Record<string, ViewStyle | TextStyle>;

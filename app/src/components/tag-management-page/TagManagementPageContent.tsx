@@ -34,19 +34,10 @@ export function TagManagementPageContent({
         onDelete={onDelete}
         onDragEnd={onDragEnd}
         ListFooterComponent={
-          <>
+          <View style={styles.footer}>
             <Text style={styles.hint}>
               {tags.length} / {MAX_TAGS} 个
             </Text>
-
-            <Pressable
-              testID="tag-management-reset-button"
-              style={styles.resetRow}
-              onPress={onReset}
-            >
-              <Ionicons name="refresh" size={18} color="#007AFF" />
-              <Text style={styles.resetText}>恢复初始预制标签</Text>
-            </Pressable>
 
             <Text style={styles.addSectionLabel}>添加新标签</Text>
 
@@ -64,14 +55,22 @@ export function TagManagementPageContent({
               />
               <Pressable
                 testID="tag-management-add-button"
-                style={[styles.addButton, atLimit && styles.addButtonDisabled]}
                 onPress={onAdd}
                 disabled={atLimit}
               >
                 <Text style={[styles.addButtonText, atLimit && styles.addButtonTextDisabled]}>添加</Text>
               </Pressable>
             </View>
-          </>
+
+            <Pressable
+              testID="tag-management-reset-button"
+              style={styles.resetRow}
+              onPress={onReset}
+            >
+              <Ionicons name="refresh" size={18} color="#007AFF" />
+              <Text style={styles.resetText}>恢复初始预制标签</Text>
+            </Pressable>
+          </View>
         }
       />
     </View>
