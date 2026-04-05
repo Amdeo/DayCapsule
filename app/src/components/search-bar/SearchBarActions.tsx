@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { searchBarStyles as styles } from './SearchBar.styles';
@@ -54,11 +54,7 @@ export function SearchBarActions({
         </Pressable>
       ) : null}
 
-      {rightActions ? (
-        <View style={styles.rightActions} testID="searchbar-right-actions">
-          {rightActions}
-        </View>
-      ) : null}
+      {rightActions}
     </>
   );
 }
