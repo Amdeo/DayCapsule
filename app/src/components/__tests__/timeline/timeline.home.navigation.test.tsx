@@ -207,7 +207,9 @@ describe('Timeline home navigation', () => {
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
+    });
 
     expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
       content: '已更新内容',
@@ -228,7 +230,9 @@ describe('Timeline home navigation', () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
+    });
 
     expect(mockUpdateEntry).toHaveBeenCalledWith('entry-text-1', {
       content: '已更新内容',
