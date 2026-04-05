@@ -71,40 +71,43 @@ export const tagManagementPageStyles = {
     paddingHorizontal: 16,
   },
 
-  // "添加新标签"小标题
+  // "添加新标签"分区标题（iOS grouped style）
   addSectionLabel: {
     fontSize: 13,
     color: '#6C6C70',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
+    textTransform: 'uppercase',
   },
 
-  // 添加输入栏
-  addRow: {
+  // iOS 分组卡片：白色圆角容器
+  addCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingLeft: 14,
+    paddingRight: 8,
+    height: 44,
   },
   addInput: {
     flex: 1,
-    height: 44,
-    borderRadius: 10,
-    paddingHorizontal: 14,
     fontSize: 17,
-    backgroundColor: '#FFFFFF',
     color: '#1C1C1E',
+    height: 44,
+    paddingVertical: 0,
   },
   addInputDisabled: {
-    backgroundColor: '#F5F5F5',
     color: '#C0C0C0',
   },
   addButtonText: {
     fontSize: 17,
     color: '#007AFF',
     fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   addButtonTextDisabled: {
     color: '#C7C7CC',
@@ -130,6 +133,5 @@ export const tagManagementPageStyles = {
   // 列表底部容器（含安全区域间距）
   footer: {
     paddingBottom: 34,
-    backgroundColor: '#FFFFFF',
   },
 } satisfies Record<string, ViewStyle | TextStyle>;

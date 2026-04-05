@@ -41,7 +41,7 @@ export function TagManagementPageContent({
 
             <Text style={styles.addSectionLabel}>添加新标签</Text>
 
-            <View style={styles.addRow}>
+            <View style={styles.addCard}>
               <TextInput
                 testID="tag-management-add-input"
                 style={[styles.addInput, atLimit && styles.addInputDisabled]}
