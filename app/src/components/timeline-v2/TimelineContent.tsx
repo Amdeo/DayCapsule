@@ -82,17 +82,19 @@ export function TimelineContent({
 
   return (
     <View style={{ flex: 1, position: 'relative' }}>
-      <View
-        style={{
-          position: 'absolute',
-          left: 40,
-          top: 0,
-          bottom: 0,
-          width: 2,
-          backgroundColor: '#E5E5E5',
-          zIndex: 0,
-        }}
-      />
+      {displayMode === 'timeline' && (
+        <View
+          style={{
+            position: 'absolute',
+            left: 40,
+            top: 0,
+            bottom: 0,
+            width: 2,
+            backgroundColor: '#E5E5E5',
+            zIndex: 0,
+          }}
+        />
+      )}
       <SectionList<Entry, TimeSection>
         ref={sectionListRef}
         sections={sections}
