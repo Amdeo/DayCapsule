@@ -84,7 +84,6 @@ export const tagManagementPageStyles = {
   addCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingLeft: 16,
