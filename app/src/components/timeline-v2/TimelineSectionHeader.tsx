@@ -1,10 +1,25 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 interface TimelineSectionHeaderProps {
   title: string;
   showTimelineDecorations?: boolean;
 }
+
+const cardContainerStyle = {
+  paddingLeft: 16,
+  paddingRight: 24,
+  paddingTop: 16,
+  paddingBottom: 4,
+  backgroundColor: '#FAF8F5',
+} as const;
+
+const cardTitleStyle = {
+  fontSize: 14,
+  fontWeight: '600' as const,
+  color: '#8B7355',
+  letterSpacing: 0.5,
+} as const;
 
 export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
   title,
@@ -14,8 +29,8 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
 
   if (!showTimelineDecorations) {
     return (
-      <View style={styles.cardContainer}>
-        <Text style={styles.cardTitle}>{title}</Text>
+      <View style={cardContainerStyle}>
+        <Text style={cardTitleStyle}>{title}</Text>
       </View>
     );
   }
@@ -74,20 +89,4 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       </Text>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  cardContainer: {
-    paddingLeft: 16,
-    paddingRight: 24,
-    paddingTop: 16,
-    paddingBottom: 4,
-    backgroundColor: '#FAF8F5',
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8B7355',
-    letterSpacing: 0.5,
-  },
 });
