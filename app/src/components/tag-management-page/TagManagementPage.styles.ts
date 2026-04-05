@@ -4,13 +4,11 @@ import {
 } from 'react-native';
 
 export const tagManagementPageStyles = {
-  // 页面容器
   page: {
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
 
-  // 滚动区域内边距容器
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -25,14 +23,12 @@ export const tagManagementPageStyles = {
     paddingLeft: 4,
   },
 
-  // 白色圆角卡片
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     overflow: 'hidden',
   },
 
-  // 标签行
   tagRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -92,7 +88,6 @@ export const tagManagementPageStyles = {
     paddingRight: 4,
   },
 
-  // 重置卡片
   resetCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 10,

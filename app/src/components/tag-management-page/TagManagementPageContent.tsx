@@ -23,16 +23,14 @@ interface TagManagementResetCardProps {
 
 function TagManagementResetCard({ onReset }: TagManagementResetCardProps) {
   return (
-    <View style={styles.resetCard}>
-      <Pressable
-        testID="tag-management-reset-button"
-        style={styles.resetRow}
-        onPress={onReset}
-      >
-        <Ionicons name="refresh" size={17} color="#007AFF" />
-        <Text style={styles.resetText}>恢复初始预制标签</Text>
-      </Pressable>
-    </View>
+    <Pressable
+      testID="tag-management-reset-button"
+      style={[styles.resetCard, styles.resetRow]}
+      onPress={onReset}
+    >
+      <Ionicons name="refresh" size={17} color="#007AFF" />
+      <Text style={styles.resetText}>恢复初始预制标签</Text>
+    </Pressable>
   );
 }
 
@@ -53,12 +51,10 @@ export function TagManagementPageContent({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* 分区说明 */}
         <Text style={styles.sectionLabel}>
           当前预制标签 · 长按拖拽可排序
         </Text>
 
-        {/* 标签列表卡片 */}
         <View style={styles.card}>
           <TagManagementTagList
             tags={tags}
@@ -67,16 +63,13 @@ export function TagManagementPageContent({
           />
         </View>
 
-        {/* 计数 */}
         <Text style={styles.hint}>
           {tags.length} / {MAX_TAGS} 个
         </Text>
 
-        {/* 重置卡片 */}
         <TagManagementResetCard onReset={onReset} />
       </ScrollView>
 
-      {/* 底部固定输入栏 */}
       <View style={styles.addRow}>
         <TextInput
           testID="tag-management-add-input"
