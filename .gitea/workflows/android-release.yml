@@ -20,7 +20,6 @@ jobs:
       BUILD_TOOLS_VERSION: "36.0.0"
       NDK_VERSION: "27.1.12297006"
       CMAKE_VERSION: "3.22.1"
-      GRADLE_OPTS: -Dorg.gradle.daemon=false
       SENTRY_DISABLE_AUTO_UPLOAD: "true"
     defaults:
       run:
