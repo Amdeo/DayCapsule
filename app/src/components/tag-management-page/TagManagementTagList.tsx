@@ -4,7 +4,6 @@ import DraggableFlatList, {
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
 import { TagManagementTagRow } from './TagManagementTagRow';
-import { tagManagementPageStyles as styles } from './TagManagementPage.styles';
 
 interface TagManagementTagListProps {
   tags: string[];
@@ -37,8 +36,7 @@ export function TagManagementTagList({
       keyExtractor={(item) => item}
       renderItem={renderItem}
       onDragEnd={onDragEnd}
-      containerStyle={styles.tagList}
-      contentContainerStyle={styles.tagListContent}
+      contentContainerStyle={{ paddingBottom: 0 }}
       keyboardShouldPersistTaps="handled"
       scrollEnabled
       showsVerticalScrollIndicator={false}
