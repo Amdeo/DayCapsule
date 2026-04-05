@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface TimelineSectionHeaderProps {
   title: string;
@@ -14,18 +14,8 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
 
   if (!showTimelineDecorations) {
     return (
-      <View
-        style={{
-          paddingLeft: 16,
-          paddingRight: 24,
-          paddingTop: 16,
-          paddingBottom: 4,
-          backgroundColor: '#FAF8F5',
-        }}
-      >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#8B7355', letterSpacing: 0.5 }}>
-          {title}
-        </Text>
+      <View style={styles.cardContainer}>
+        <Text style={styles.cardTitle}>{title}</Text>
       </View>
     );
   }
@@ -84,4 +74,20 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       </Text>
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  cardContainer: {
+    paddingLeft: 16,
+    paddingRight: 24,
+    paddingTop: 16,
+    paddingBottom: 4,
+    backgroundColor: '#FAF8F5',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B7355',
+    letterSpacing: 0.5,
+  },
 });
