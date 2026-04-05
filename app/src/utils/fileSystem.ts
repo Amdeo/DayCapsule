@@ -55,6 +55,22 @@ const getAvailableDiskSpace = async (): Promise<number> => {
 
 const joinDir = (baseDir: string, relativePath: string): string => `${baseDir}${relativePath}`;
 
+const ensureDirectoryExists = async (dir: string) => {
+  const dirInfo = await FileSystem.getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  }
+};
+
+const EMPTY_STORAGE_STATS = {
+  photoSize: 0,
+  voiceSize: 0,
+  databaseSize: 0,
+  cacheSize: 0,
+  totalSize: 0,
+  available: 0,
+};
+
 /**
  * 媒体存储路径配置
  */
@@ -82,14 +98,7 @@ export const MEDIA_PATHS = getMediaPaths();
  */
 export async function ensureDirectories(): Promise<void> {
   const directories = Object.values(getMediaPaths());
-  await Promise.all(
-    directories.map(async (dir) => {
-      const dirInfo = await FileSystem.getInfoAsync(dir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      }
-    })
-  );
+  await Promise.all(directories.map((dir) => ensureDirectoryExists(dir)));
 }
 
 /**
@@ -121,11 +130,7 @@ export async function copyFile(
   try {
     const targetUri = `${targetDir}${filename}`;
 
-    // 确保目标目录存在
-    const dirInfo = await FileSystem.getInfoAsync(targetDir);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(targetDir, { intermediates: true });
-    }
+    await ensureDirectoryExists(targetDir);
 
     await FileSystem.copyAsync({
       from: sourceUri,
@@ -244,14 +249,7 @@ export async function getStorageStats(): Promise<{
     };
   } catch (error) {
     logger.error('Failed to get storage stats:', error);
-    return {
-      photoSize: 0,
-      voiceSize: 0,
-      databaseSize: 0,
-      cacheSize: 0,
-      totalSize: 0,
-      available: 0,
-    };
+    return EMPTY_STORAGE_STATS;
   }
 }
 

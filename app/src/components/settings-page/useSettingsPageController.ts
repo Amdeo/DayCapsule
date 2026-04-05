@@ -95,6 +95,17 @@ export function useSettingsPageController({
     });
   }, []);
 
+  const saveSetting = useCallback(
+    async <T,>(save: (value: T) => void | Promise<void>, value: T) => {
+      try {
+        await save(value);
+      } catch (error) {
+        showSettingsSaveFailedFeedback(error);
+      }
+    },
+    [showSettingsSaveFailedFeedback],
+  );
+
   const handleNotifications = useCallback(
     async (value: boolean) => {
       if (value) {
@@ -114,47 +125,23 @@ export function useSettingsPageController({
   );
 
   const handleHighQualityPhotos = useCallback(
-    async (value: boolean) => {
-      try {
-        await saveHighQualityPhotos(value);
-      } catch (error) {
-        showSettingsSaveFailedFeedback(error);
-      }
-    },
-    [saveHighQualityPhotos, showSettingsSaveFailedFeedback],
+    async (value: boolean) => saveSetting(saveHighQualityPhotos, value),
+    [saveHighQualityPhotos, saveSetting],
   );
 
   const handleCardSpacing = useCallback(
-    async (spacing: CardSpacing) => {
-      try {
-        await saveCardSpacing(spacing);
-      } catch (error) {
-        showSettingsSaveFailedFeedback(error);
-      }
-    },
-    [saveCardSpacing, showSettingsSaveFailedFeedback],
+    async (spacing: CardSpacing) => saveSetting(saveCardSpacing, spacing),
+    [saveCardSpacing, saveSetting],
   );
 
   const handlePhotoHeight = useCallback(
-    async (preset: PhotoHeightPreset) => {
-      try {
-        await savePhotoHeight(preset);
-      } catch (error) {
-        showSettingsSaveFailedFeedback(error);
-      }
-    },
-    [savePhotoHeight, showSettingsSaveFailedFeedback],
+    async (preset: PhotoHeightPreset) => saveSetting(savePhotoHeight, preset),
+    [savePhotoHeight, saveSetting],
   );
 
   const handleCalendarDensity = useCallback(
-    async (density: CalendarDensity) => {
-      try {
-        await saveCalendarDensity(density);
-      } catch (error) {
-        showSettingsSaveFailedFeedback(error);
-      }
-    },
-    [saveCalendarDensity, showSettingsSaveFailedFeedback],
+    async (density: CalendarDensity) => saveSetting(saveCalendarDensity, density),
+    [saveCalendarDensity, saveSetting],
   );
 
   const { photoCount, voiceCount } = useMemo(

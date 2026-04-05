@@ -76,6 +76,45 @@ export function useFABMenuController({
     }
   }, []);
 
+  const showPhotoActionError = useCallback(
+    (title: string, fallbackMessage: string, error: unknown) => {
+      showErrorFeedback({
+        title,
+        message: error instanceof Error ? error.message : fallbackMessage,
+        actions: [{ label: '知道了', role: 'primary' }],
+      });
+    },
+    [],
+  );
+
+  const runPhotoAction = useCallback(
+    async <T,>({
+      action,
+      cancelledMessage,
+      title,
+      fallbackMessage,
+      onSuccess,
+    }: {
+      action: () => Promise<T>;
+      cancelledMessage: string;
+      title: string;
+      fallbackMessage: string;
+      onSuccess: (result: T) => void;
+    }) => {
+      try {
+        const result = await action();
+        onSuccess(result);
+      } catch (error) {
+        if (error instanceof Error && error.message === cancelledMessage) {
+          return;
+        }
+
+        showPhotoActionError(title, fallbackMessage, error);
+      }
+    },
+    [showPhotoActionError],
+  );
+
   const triggerOption = useCallback(async (type: LastAddType) => {
     try {
       await setLastAddTypeRef.current(type);
@@ -84,43 +123,37 @@ export function useFABMenuController({
     }
 
     if (type === 'camera') {
-      try {
-        const photo = await PhotoService.takePhoto();
-        if (photo) onSelectRef.current('photo', [photo]);
-      } catch (error) {
-        if (error instanceof Error && error.message === 'User cancelled camera') {
-          return;
-        }
-
-        showErrorFeedback({
-          title: '拍照失败',
-          message: error instanceof Error ? error.message : '拍照失败，请重试',
-          actions: [{ label: '知道了', role: 'primary' }],
-        });
-      }
+      await runPhotoAction({
+        action: () => PhotoService.takePhoto(),
+        cancelledMessage: 'User cancelled camera',
+        title: '拍照失败',
+        fallbackMessage: '拍照失败，请重试',
+        onSuccess: (photo) => {
+          if (photo) {
+            onSelectRef.current('photo', [photo]);
+          }
+        },
+      });
       return;
     }
 
     if (type === 'photo') {
-      try {
-        const result = await PhotoService.pickPhotoFromLibrary();
-        if (result.length > 0) onSelectRef.current('photo', result);
-      } catch (error) {
-        if (error instanceof Error && error.message === 'User cancelled photo library') {
-          return;
-        }
-
-        showErrorFeedback({
-          title: '选取失败',
-          message: error instanceof Error ? error.message : '选取图片失败，请重试',
-          actions: [{ label: '知道了', role: 'primary' }],
-        });
-      }
+      await runPhotoAction({
+        action: () => PhotoService.pickPhotoFromLibrary(),
+        cancelledMessage: 'User cancelled photo library',
+        title: '选取失败',
+        fallbackMessage: '选取图片失败，请重试',
+        onSuccess: (result) => {
+          if (result.length > 0) {
+            onSelectRef.current('photo', result);
+          }
+        },
+      });
       return;
     }
 
     onSelectRef.current(type as 'text' | 'voice');
-  }, []);
+  }, [runPhotoAction]);
 
   const closeFan = useCallback(() => {
     fanProgress.value = Reanimated.withTiming(0, { duration: 200 });

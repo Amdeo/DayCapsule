@@ -23,6 +23,28 @@ export interface PhotoSelectDeps {
   initialSyncStatus?: Entry['syncStatus'];
 }
 
+async function cleanupCreatedFiles(
+  createdFiles: string[],
+  deleteLocalFile?: (uri: string) => Promise<void>
+): Promise<void> {
+  if (!deleteLocalFile) {
+    return;
+  }
+
+  await Promise.all(
+    createdFiles.map((uri) => deleteLocalFile(uri).catch(() => undefined))
+  );
+}
+
+async function cleanupFailedPhotoEntry(
+  entryId: string,
+  deleteEntry: (entryId: string) => Promise<void>
+): Promise<void> {
+  await deleteEntry(entryId).catch((deleteError) => {
+    logger.error('[HomeScreen] Failed to clean up failed photo entry:', deleteError);
+  });
+}
+
 export async function handlePhotoSelectForTest(
   results: PhotoResult[],
   deps: PhotoSelectDeps
@@ -81,15 +103,8 @@ export async function handlePhotoSelectForTest(
     const createdFiles = preparedCreatedFiles.length > 0
       ? preparedCreatedFiles
       : (error as PhotoEntryPreparationError).createdFiles ?? [];
-    if (deps.deleteLocalFile) {
-      const deleteLocalFile = deps.deleteLocalFile;
-      await Promise.all(
-        createdFiles.map((uri) => deleteLocalFile(uri).catch(() => undefined))
-      );
-    }
-    await deps.deleteEntry(createdEntry.id).catch((deleteError) => {
-      logger.error('[HomeScreen] Failed to clean up failed photo entry:', deleteError);
-    });
+    await cleanupCreatedFiles(createdFiles, deps.deleteLocalFile);
+    await cleanupFailedPhotoEntry(createdEntry.id, deps.deleteEntry);
     throw error;
   }
 }

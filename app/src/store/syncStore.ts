@@ -134,24 +134,48 @@ const parseMediaValidationSummary = (raw: string | null): MediaSyncValidationSum
 const serializeMediaValidationSummary = (summary: MediaSyncValidationSummary): string =>
   JSON.stringify(summary);
 
+const getScopedSyncKeys = async () =>
+  Promise.all([
+    getScopedSyncKey(SYNC_STORAGE_KEYS.cursor),
+    getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
+    getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
+    getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
+    getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
+  ]).then(
+    ([
+      cursorKey,
+      lastSyncAtKey,
+      lastSyncErrorKey,
+      initialSyncStateKey,
+      lastMediaValidationSummaryKey,
+    ]) => ({
+      cursorKey,
+      lastSyncAtKey,
+      lastSyncErrorKey,
+      initialSyncStateKey,
+      lastMediaValidationSummaryKey,
+    })
+  );
+
+const persistMediaValidationSummary = async (summary: MediaSyncValidationSummary) => {
+  await Storage.setString(
+    await getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
+    serializeMediaValidationSummary(summary)
+  );
+};
+
 export const useSyncStore = create<SyncStoreState>((set) => ({
   ...DEFAULT_SYNC_STATE,
 
   load: async () => {
     try {
-      const [
+      const {
         cursorKey,
         lastSyncAtKey,
         lastSyncErrorKey,
         initialSyncStateKey,
         lastMediaValidationSummaryKey,
-      ] = await Promise.all([
-        getScopedSyncKey(SYNC_STORAGE_KEYS.cursor),
-        getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
-        getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
-        getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
-        getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
-      ]);
+      } = await getScopedSyncKeys();
       const [cursorRaw, lastSyncAtRaw, lastSyncError, initialSyncStateRaw, mediaValidationRaw] =
         await Promise.all([
           Storage.getString(cursorKey),
@@ -215,10 +239,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
   },
 
   setMediaValidationSummary: async (summary) => {
-    await Storage.setString(
-      await getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
-      serializeMediaValidationSummary(summary)
-    );
+    await persistMediaValidationSummary(summary);
     set({ lastMediaValidationSummary: summary });
   },
 
@@ -234,27 +255,18 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
       lastError: null,
       lastValidatedAt: null,
     };
-    await Storage.setString(
-      await getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
-      serializeMediaValidationSummary(summary)
-    );
+    await persistMediaValidationSummary(summary);
     set({ lastMediaValidationSummary: summary });
   },
 
   reset: async () => {
-    const [
+    const {
       cursorKey,
       lastSyncAtKey,
       lastSyncErrorKey,
       initialSyncStateKey,
       lastMediaValidationSummaryKey,
-    ] = await Promise.all([
-      getScopedSyncKey(SYNC_STORAGE_KEYS.cursor),
-      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
-      getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
-      getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
-      getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
-    ]);
+    } = await getScopedSyncKeys();
     await Promise.all([
       Storage.delete(cursorKey),
       Storage.delete(lastSyncAtKey),

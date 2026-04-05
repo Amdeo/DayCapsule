@@ -36,6 +36,11 @@ export function SidebarPages({
   const [closingPage, setClosingPage] = useState<SidebarPageKey | null>(null);
   const lastActivePageRef = useRef<SidebarPageKey | null>(null);
 
+  const createCloseHandler = (setPageVisible: (value: boolean) => void) => () => {
+    setPageVisible(false);
+    onClose();
+  };
+
   useEffect(() => {
     if (activePage) {
       lastActivePageRef.current = activePage;
@@ -68,20 +73,26 @@ export function SidebarPages({
 
   switch (renderedPage) {
     case 'settings':
-      return <SettingsPage visible={activePage === 'settings'} onClose={() => {
-        setShowSettings(false);
-        onClose();
-      }} />;
+      return (
+        <SettingsPage
+          visible={activePage === 'settings'}
+          onClose={createCloseHandler(setShowSettings)}
+        />
+      );
     case 'stats':
-      return <StatsPage visible={activePage === 'stats'} onClose={() => {
-        setShowStats(false);
-        onClose();
-      }} />;
+      return (
+        <StatsPage
+          visible={activePage === 'stats'}
+          onClose={createCloseHandler(setShowStats)}
+        />
+      );
     case 'backup':
-      return <BackupPage visible={activePage === 'backup'} onClose={() => {
-        setShowBackup(false);
-        onClose();
-      }} />;
+      return (
+        <BackupPage
+          visible={activePage === 'backup'}
+          onClose={createCloseHandler(setShowBackup)}
+        />
+      );
     default:
       return null;
   }

@@ -72,6 +72,26 @@ export function useHomeScreenController() {
     []
   );
 
+  const showHomeErrorFeedback = useCallback((title: string, message: string) => {
+    showErrorFeedback({
+      title,
+      message,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
+
+  const clearCurrentRecordingEntry = useCallback((entryId: string | null) => {
+    if (entryId && currentRecordingIdRef.current === entryId) {
+      currentRecordingIdRef.current = null;
+    }
+  }, []);
+
+  const preloadAudioSafely = useCallback((uri: string) => {
+    VoiceService.preloadAudio(uri).catch((err) => {
+      logger.warn('[HomeScreen] Failed to preload audio:', err);
+    });
+  }, []);
+
   // 初始化：并行加载设置、标签、条目数据，并预热音频系统
   useEffect(() => {
     void Promise.allSettled([
@@ -82,11 +102,7 @@ export function useHomeScreenController() {
       const entryLoadResult = results[2];
       if (entryLoadResult?.status === 'rejected') {
         logger.error('[HomeScreen] Failed to initialize home timeline:', entryLoadResult.reason);
-        showErrorFeedback({
-          title: '加载失败',
-          message: '首页记录加载失败，请稍后重试',
-          actions: [{ label: '知道了', role: 'primary' }],
-        });
+        showHomeErrorFeedback('加载失败', '首页记录加载失败，请稍后重试');
       }
     }).finally(() => {
       refreshCloudSyncIndicator();
@@ -101,9 +117,7 @@ export function useHomeScreenController() {
           .filter((e) => e.type === 'voice' && e.media?.[0]?.uri)
           .slice(0, 3);
         for (const entry of voiceEntries) {
-          await VoiceService.preloadAudio(entry.media![0].uri).catch((err) => {
-            logger.warn('[HomeScreen] Failed to preload audio:', entry.id, err);
-          });
+          preloadAudioSafely(entry.media![0].uri);
         }
       } catch (error) {
         logger.error('[HomeScreen] Failed to preload voice entries:', error);
@@ -111,7 +125,7 @@ export function useHomeScreenController() {
     };
 
     preloadRecentVoiceEntries();
-  }, [loadEntries, refreshCloudSyncIndicator]);
+  }, [loadEntries, preloadAudioSafely, refreshCloudSyncIndicator]);
 
   // 配置上传队列回调
   useEffect(() => {
@@ -143,6 +157,11 @@ export function useHomeScreenController() {
     }, RECORDING_DURATION_POLL_MS);
   }, [updateRecordingDuration]);
 
+  const activateRecordingEntry = useCallback((entryId: string) => {
+    currentRecordingIdRef.current = entryId;
+    startRecordingTimer(entryId);
+  }, [startRecordingTimer]);
+
   const handlePhotoSelectArr = useCallback(async (results: PhotoResult[]) => {
     try {
       const photoCreationPolicy = uploadSyncOrchestration.current.getPhotoCreationPolicy(
@@ -165,13 +184,9 @@ export function useHomeScreenController() {
       });
     } catch (error) {
       logger.error('[HomeScreen] Failed to save photo entry:', error);
-      showErrorFeedback({
-        title: '保存失败',
-        message: '照片保存失败，请重试',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showHomeErrorFeedback('保存失败', '照片保存失败，请重试');
     }
-  }, [addLocalEntry, deleteEntry, isAccountSyncEnabled, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [addLocalEntry, deleteEntry, isAccountSyncEnabled, showHomeErrorFeedback, updateLocalEntry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMediaSelect = useCallback(async (type: 'text' | 'photo' | 'voice', photos?: PhotoResult[]) => {
     switch (type) {
@@ -195,8 +210,7 @@ export function useHomeScreenController() {
               createLocalEntry: addLocalEntry,
             });
             createdEntryId = tempEntry.id;
-            currentRecordingIdRef.current = tempEntry.id;
-            startRecordingTimer(tempEntry.id);
+            activateRecordingEntry(tempEntry.id);
           } else {
             await addEntry({
               type: 'voice',
@@ -212,35 +226,26 @@ export function useHomeScreenController() {
 
             if (newEntry) {
               createdEntryId = newEntry.id;
-              currentRecordingIdRef.current = newEntry.id;
               await VoiceService.startRecording();
-              startRecordingTimer(newEntry.id);
+              activateRecordingEntry(newEntry.id);
             }
           }
         } catch (error) {
           const handled = await handleVoiceRecordingStartErrorForTest(error, createdEntryId, deleteEntry);
 
           if (handled) {
-            if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
-              currentRecordingIdRef.current = null;
-            }
+            clearCurrentRecordingEntry(createdEntryId);
             return;
           }
 
           logger.error('[HomeScreen] Failed to start recording:', error);
-          showErrorFeedback({
-            title: '录音失败',
-            message: '开始录音失败，请重试',
-            actions: [{ label: '知道了', role: 'primary' }],
-          });
-          if (createdEntryId && currentRecordingIdRef.current === createdEntryId) {
-            currentRecordingIdRef.current = null;
-          }
+          showHomeErrorFeedback('录音失败', '开始录音失败，请重试');
+          clearCurrentRecordingEntry(createdEntryId);
         }
         break;
       }
     }
-  }, [addEntry, addLocalEntry, deleteEntry, handlePhotoSelectArr, isAccountSyncEnabled, startRecordingTimer]);
+  }, [activateRecordingEntry, addEntry, addLocalEntry, clearCurrentRecordingEntry, deleteEntry, handlePhotoSelectArr, isAccountSyncEnabled, showHomeErrorFeedback]);
 
   const handleStopRecording = useCallback(async (id: string) => {
     clearRecordingTimerForTest(recordingTimerRef);
@@ -266,21 +271,15 @@ export function useHomeScreenController() {
         const persistentUri = await VoiceService.saveVoiceToStorage(audioFile.uri, id);
         await completeRecording(id, persistentUri, audioFile.duration * 1000);
 
-        VoiceService.preloadAudio(persistentUri).catch((err) => {
-          logger.warn('[HomeScreen] Failed to preload audio:', err);
-        });
+        preloadAudioSafely(persistentUri);
       }
     } catch (error) {
       logger.error('[HomeScreen] Failed to stop recording:', error);
-      showErrorFeedback({
-        title: '录音保存失败',
-        message: '录音文件保存失败，请重试。',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showHomeErrorFeedback('录音保存失败', '录音文件保存失败，请重试。');
     } finally {
       currentRecordingIdRef.current = null;
     }
-  }, [completeRecording, deleteEntry, isAccountSyncEnabled, updateLocalEntry]);
+  }, [completeRecording, deleteEntry, isAccountSyncEnabled, preloadAudioSafely, showHomeErrorFeedback, updateLocalEntry]);
 
   const handleTextSave = useCallback(async (content: string, tags: string[]) => {
     try {

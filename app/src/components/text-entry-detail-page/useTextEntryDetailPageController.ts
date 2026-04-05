@@ -1,4 +1,3 @@
-// src/components/text-entry-detail-page/useTextEntryDetailPageController.ts
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Entry } from '@/src/types/entry';
 import { suggestTags } from '@/src/services/tagSuggestionService';
@@ -10,6 +9,17 @@ import { formatEntryDateTime } from './textEntryDetailHelpers';
 interface UseTextEntryDetailPageControllerOptions {
   entry: Entry | null;
   onSave: (id: string, content: string, tags: string[]) => void | Promise<void>;
+}
+
+function parseTagsInput(value: string) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function formatTagsInput(tags?: string[]) {
+  return tags?.join(', ') ?? '';
 }
 
 export function useTextEntryDetailPageController({
@@ -44,10 +54,7 @@ export function useTextEntryDetailPageController({
   useEffect(() => {
     if (!isEditing) return;
     const timer = setTimeout(() => {
-      const existing = editTagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
+      const existing = parseTagsInput(editTagsInput);
       setEditSuggestions(suggestTags(editContent, existing));
     }, 300);
     return () => clearTimeout(timer);
@@ -56,7 +63,7 @@ export function useTextEntryDetailPageController({
   const handleStartEdit = useCallback(() => {
     if (!entry) return;
     setEditContent(entry.content);
-    setEditTagsInput(entry.tags?.join(', ') ?? '');
+    setEditTagsInput(formatTagsInput(entry.tags));
     setEditSuggestions([]);
     setTagPanelExpanded(false);
     setIsEditing(true);
@@ -72,7 +79,7 @@ export function useTextEntryDetailPageController({
       exitEditing();
       return;
     }
-    const initialTagsInput = entry.tags?.join(', ') ?? '';
+    const initialTagsInput = formatTagsInput(entry.tags);
     const isDirty = editContent !== entry.content || editTagsInput !== initialTagsInput;
     if (!isDirty) {
       exitEditing();
@@ -90,10 +97,7 @@ export function useTextEntryDetailPageController({
 
   const handleSaveEdit = useCallback(async () => {
     if (!entry || isSaving) return;
-    const tags = editTagsInput
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tags = parseTagsInput(editTagsInput);
     setIsSaving(true);
     try {
       await onSave(entry.id, editContent, tags);
@@ -111,7 +115,7 @@ export function useTextEntryDetailPageController({
 
   const handleAddTag = useCallback((tag: string) => {
     setEditTagsInput((value) => {
-      const parts = value.split(',').map((t) => t.trim()).filter(Boolean);
+      const parts = parseTagsInput(value);
       if (parts.includes(tag)) return value;
       return parts.length > 0 ? `${parts.join(', ')}, ${tag}` : tag;
     });
@@ -119,11 +123,8 @@ export function useTextEntryDetailPageController({
 
   const handleRemoveTag = useCallback((tag: string) => {
     setEditTagsInput((value) =>
-      value
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .filter((t) => t !== tag)
+      parseTagsInput(value)
+        .filter((currentTag) => currentTag !== tag)
         .join(', '),
     );
   }, []);
@@ -131,11 +132,11 @@ export function useTextEntryDetailPageController({
   const toggleTagPanel = useCallback(() => setTagPanelExpanded((v) => !v), []);
 
   const editCurrentTagsList = useMemo(
-    () => editTagsInput.split(',').map((t) => t.trim()).filter(Boolean),
+    () => parseTagsInput(editTagsInput),
     [editTagsInput],
   );
 
-  const initialTagsInput = useMemo(() => entry?.tags?.join(', ') ?? '', [entry]);
+  const initialTagsInput = useMemo(() => formatTagsInput(entry?.tags), [entry]);
 
   const canSave = useMemo(() => {
     if (!isEditing || !entry || isSaving) return false;

@@ -23,6 +23,27 @@ export function useVoiceRecorderController({
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isCurrentSession = useCallback(
+    (sessionId: number) => activeSessionIdRef.current === sessionId,
+    [],
+  );
+
+  const resetRecorderState = useCallback(() => {
+    setIsRecording(false);
+    setIsPaused(false);
+    setDuration(0);
+    setRecordingUri(null);
+    setIsLoading(false);
+  }, []);
+
+  const showRecorderError = useCallback((title: string, message: string) => {
+    showErrorFeedback({
+      title,
+      message,
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  }, []);
+
   useEffect(() => {
     if (!isRecording || isPaused) {
       return;
@@ -61,18 +82,14 @@ export function useVoiceRecorderController({
       } catch (error) {
         logger.error('Failed to cancel recording on modal close:', error);
       } finally {
-        if (activeSessionIdRef.current !== closingSessionId + 1) {
+        if (!isCurrentSession(closingSessionId + 1)) {
           return;
         }
 
-        setIsRecording(false);
-        setIsPaused(false);
-        setDuration(0);
-        setRecordingUri(null);
-        setIsLoading(false);
+        resetRecorderState();
       }
     })();
-  }, [isRecording, visible]);
+  }, [isCurrentSession, isRecording, resetRecorderState, visible]);
 
   const handleStart = useCallback(async () => {
     const startSessionId = activeSessionIdRef.current;
@@ -85,7 +102,7 @@ export function useVoiceRecorderController({
 
       pendingStartSessionIdRef.current = null;
 
-      if (activeSessionIdRef.current !== startSessionId) {
+      if (!isCurrentSession(startSessionId)) {
         if (cancelledSessionIdRef.current !== startSessionId) {
           cancelledSessionIdRef.current = startSessionId;
           await VoiceService.cancelRecording();
@@ -103,24 +120,20 @@ export function useVoiceRecorderController({
         pendingStartSessionIdRef.current = null;
       }
 
-      if (activeSessionIdRef.current !== startSessionId) {
+      if (!isCurrentSession(startSessionId)) {
         return;
       }
 
       logger.error('Failed to start recording:', error);
-      showErrorFeedback({
-        title: '录音失败',
-        message: '无法启动录音，请检查麦克风权限',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showRecorderError('录音失败', '无法启动录音，请检查麦克风权限');
     } finally {
-      if (activeSessionIdRef.current !== activeStartSessionId) {
+      if (!isCurrentSession(activeStartSessionId)) {
         return;
       }
 
       setIsLoading(false);
     }
-  }, []);
+  }, [isCurrentSession, showRecorderError]);
 
   const handlePause = useCallback(async () => {
     const pauseSessionId = activeSessionIdRef.current;
@@ -128,24 +141,20 @@ export function useVoiceRecorderController({
     try {
       await VoiceService.pauseRecording();
 
-      if (activeSessionIdRef.current !== pauseSessionId) {
+      if (!isCurrentSession(pauseSessionId)) {
         return;
       }
 
       setIsPaused(true);
     } catch (error) {
-      if (activeSessionIdRef.current !== pauseSessionId) {
+      if (!isCurrentSession(pauseSessionId)) {
         return;
       }
 
       logger.error('Failed to pause recording:', error);
-      showErrorFeedback({
-        title: '暂停失败',
-        message: '暂停录音失败，请重试',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showRecorderError('暂停失败', '暂停录音失败，请重试');
     }
-  }, []);
+  }, [isCurrentSession, showRecorderError]);
 
   const handleResume = useCallback(async () => {
     const resumeSessionId = activeSessionIdRef.current;
@@ -153,24 +162,20 @@ export function useVoiceRecorderController({
     try {
       await VoiceService.resumeRecording();
 
-      if (activeSessionIdRef.current !== resumeSessionId) {
+      if (!isCurrentSession(resumeSessionId)) {
         return;
       }
 
       setIsPaused(false);
     } catch (error) {
-      if (activeSessionIdRef.current !== resumeSessionId) {
+      if (!isCurrentSession(resumeSessionId)) {
         return;
       }
 
       logger.error('Failed to resume recording:', error);
-      showErrorFeedback({
-        title: '继续失败',
-        message: '继续录音失败，请重试',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showRecorderError('继续失败', '继续录音失败，请重试');
     }
-  }, []);
+  }, [isCurrentSession, showRecorderError]);
 
   const handleStop = useCallback(async () => {
     const stopSessionId = activeSessionIdRef.current;
@@ -179,7 +184,7 @@ export function useVoiceRecorderController({
       setIsLoading(true);
       const audioFile = await VoiceService.stopRecording();
 
-      if (activeSessionIdRef.current !== stopSessionId) {
+      if (!isCurrentSession(stopSessionId)) {
         return;
       }
 
@@ -187,24 +192,20 @@ export function useVoiceRecorderController({
       setIsRecording(false);
       setIsPaused(false);
     } catch (error) {
-      if (activeSessionIdRef.current !== stopSessionId) {
+      if (!isCurrentSession(stopSessionId)) {
         return;
       }
 
       logger.error('Failed to stop recording:', error);
-      showErrorFeedback({
-        title: '保存失败',
-        message: '保存录音失败，请重试',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showRecorderError('保存失败', '保存录音失败，请重试');
     } finally {
-      if (activeSessionIdRef.current !== stopSessionId) {
+      if (!isCurrentSession(stopSessionId)) {
         return;
       }
 
       setIsLoading(false);
     }
-  }, []);
+  }, [isCurrentSession, showRecorderError]);
 
   const handleCancel = useCallback(async () => {
     try {
@@ -225,15 +226,11 @@ export function useVoiceRecorderController({
       }
     } catch (error) {
       logger.error('Failed to cancel recording:', error);
-      showErrorFeedback({
-        title: '取消失败',
-        message: '取消录音失败，请重试',
-        actions: [{ label: '知道了', role: 'primary' }],
-      });
+      showRecorderError('取消失败', '取消录音失败，请重试');
     }
 
     onCancel();
-  }, [isRecording, onCancel]);
+  }, [isRecording, onCancel, showRecorderError]);
 
   const handleSave = useCallback(() => {
     if (!recordingUri) {

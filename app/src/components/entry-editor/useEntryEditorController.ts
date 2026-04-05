@@ -13,6 +13,17 @@ interface UseEntryEditorControllerOptions {
   onClose: () => void;
 }
 
+function parseTagsInput(value: string) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function formatTagsInput(tags?: string[]) {
+  return tags?.join(', ') ?? '';
+}
+
 export function useEntryEditorController({
   visible,
   entry,
@@ -34,7 +45,7 @@ export function useEntryEditorController({
   useEffect(() => {
     if (visible && entry) {
       setContent(entry.content);
-      setTagsInput(entry.tags?.join(', ') || '');
+      setTagsInput(formatTagsInput(entry.tags));
       setSuggestions([]);
       setIsSaving(false);
     }
@@ -42,10 +53,7 @@ export function useEntryEditorController({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const existing = tagsInput
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean);
+      const existing = parseTagsInput(tagsInput);
       setSuggestions(suggestTags(content, existing));
     }, 300);
 
@@ -54,10 +62,7 @@ export function useEntryEditorController({
 
   const handleAddSuggestion = useCallback((tag: string) => {
     setTagsInput((value) => {
-      const parts = value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
+      const parts = parseTagsInput(value);
 
       if (parts.includes(tag)) {
         return value;
@@ -69,26 +74,19 @@ export function useEntryEditorController({
 
   const handleRemoveTag = useCallback((tag: string) => {
     setTagsInput((value) => {
-      const parts = value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
+      const parts = parseTagsInput(value);
 
       return parts.filter((item) => item !== tag).join(', ');
     });
   }, []);
 
   const currentTagsList = useMemo(
-    () =>
-      tagsInput
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+    () => parseTagsInput(tagsInput),
     [tagsInput],
   );
 
   const initialTagsInput = useMemo(
-    () => entry?.tags?.join(', ') || '',
+    () => formatTagsInput(entry?.tags),
     [entry],
   );
 
@@ -110,10 +108,7 @@ export function useEntryEditorController({
     }
 
     setIsSaving(true);
-    const tags = tagsInput
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
+    const tags = parseTagsInput(tagsInput);
 
     try {
       await onSave(entry.id, content, tags);

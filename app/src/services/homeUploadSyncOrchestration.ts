@@ -52,6 +52,27 @@ function incrementMonitorMediaProgress(): void {
   );
 }
 
+function createStatusCallback(
+  syncStatus: Entry['syncStatus'],
+  monitorStatus: 'running' | 'failed' | 'completed',
+  deps: Required<HomeUploadSyncOrchestrationDeps>
+) {
+  return (id: string) => {
+    updateEntryState(id, (entry) => ({ ...entry, syncStatus }), deps);
+    updateMonitorQueueStatus(id, monitorStatus);
+  };
+}
+
+function createPendingSyncCallback(
+  deps: Required<HomeUploadSyncOrchestrationDeps>
+) {
+  return (id: string, media: Entry['media']) => {
+    updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending', media }), deps);
+    updateMonitorQueueStatus(id, 'completed');
+    incrementMonitorMediaProgress();
+  };
+}
+
 export interface HomeUploadSyncOrchestration {
   shouldEnqueueVoiceUpload: (isCloudModeEnabled: boolean) => boolean;
   getPhotoCreationPolicy: (isCloudModeEnabled: boolean) => {
@@ -70,6 +91,10 @@ export function createHomeUploadSyncOrchestration(
     refreshCloudSyncIndicator: deps.refreshCloudSyncIndicator ?? useCloudSyncIndicatorStore.getState().refresh,
   };
 
+  const handleUploading = createStatusCallback('uploading', 'running', resolvedDeps);
+  const handlePendingUpload = createStatusCallback('pending_upload', 'failed', resolvedDeps);
+  const handlePendingSync = createPendingSyncCallback(resolvedDeps);
+
   return {
     shouldEnqueueVoiceUpload: (isCloudModeEnabled) => isCloudModeEnabled,
     getPhotoCreationPolicy: (isCloudModeEnabled) => ({
@@ -77,34 +102,14 @@ export function createHomeUploadSyncOrchestration(
       initialSyncStatus: isCloudModeEnabled ? 'pending_upload' : 'synced',
     }),
     voiceCallbacks: {
-      onEntryUploading: (id) => {
-        updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'uploading' }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'running');
-      },
-      onEntryPending: (id) => {
-        updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending_upload' }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'failed');
-      },
-      onEntryPendingSync: (id, entry) => {
-        updateEntryState(id, (item) => ({ ...item, syncStatus: 'pending', media: entry.media }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'completed');
-        incrementMonitorMediaProgress();
-      },
+      onEntryUploading: handleUploading,
+      onEntryPending: handlePendingUpload,
+      onEntryPendingSync: (id, entry) => handlePendingSync(id, entry.media),
     },
     photoCallbacks: {
-      onEntryUploading: (id) => {
-        updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'uploading' }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'running');
-      },
-      onEntryPendingUpload: (id) => {
-        updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending_upload' }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'failed');
-      },
-      onEntryPendingSync: (id, media: MediaInfo[]) => {
-        updateEntryState(id, (entry) => ({ ...entry, syncStatus: 'pending', media }), resolvedDeps);
-        updateMonitorQueueStatus(id, 'completed');
-        incrementMonitorMediaProgress();
-      },
+      onEntryUploading: handleUploading,
+      onEntryPendingUpload: handlePendingUpload,
+      onEntryPendingSync: (id, media: MediaInfo[]) => handlePendingSync(id, media),
     },
   };
 }

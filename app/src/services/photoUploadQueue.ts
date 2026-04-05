@@ -29,6 +29,15 @@ export interface PhotoUploadQueue {
 
 const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
 
+function consumeCanceledEntry(canceled: Set<string>, entryId: string): boolean {
+  if (!canceled.has(entryId)) {
+    return false;
+  }
+
+  canceled.delete(entryId);
+  return true;
+}
+
 function isUploadablePhotoEntry(entry: Entry | null): entry is Entry & { media: MediaInfo[] } {
   return (
     !!entry &&
@@ -48,8 +57,7 @@ async function uploadPhotoMedia(
   const uploaded: MediaInfo[] = [];
 
   for (const item of media) {
-    if (canceled.has(entryId)) {
-      canceled.delete(entryId);
+    if (consumeCanceledEntry(canceled, entryId)) {
       return null;
     }
 
@@ -59,8 +67,7 @@ async function uploadPhotoMedia(
       metadata: uploadMetadata,
     });
 
-    if (canceled.has(entryId)) {
-      canceled.delete(entryId);
+    if (consumeCanceledEntry(canceled, entryId)) {
       return null;
     }
 
@@ -108,8 +115,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
     for (const entryId of Array.from(queued)) {
       queued.delete(entryId);
 
-      if (canceled.has(entryId)) {
-        canceled.delete(entryId);
+      if (consumeCanceledEntry(canceled, entryId)) {
         continue;
       }
 
@@ -118,8 +124,7 @@ export function createPhotoUploadQueue(deps: PhotoUploadQueueDeps): PhotoUploadQ
         continue;
       }
 
-      if (canceled.has(entryId)) {
-        canceled.delete(entryId);
+      if (consumeCanceledEntry(canceled, entryId)) {
         continue;
       }
 

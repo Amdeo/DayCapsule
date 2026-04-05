@@ -7,6 +7,17 @@ export interface BackendConnectionResult {
 
 const DEFAULT_TIMEOUT_MS = 5000;
 
+const buildFailureResult = (message: string): BackendConnectionResult => ({
+  success: false,
+  message,
+});
+
+const createTimeoutController = (timeoutMs: number) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return { controller, timeoutId };
+};
+
 export const testBackendConnection = async (
   url: string,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
@@ -16,14 +27,10 @@ export const testBackendConnection = async (
   try {
     normalizedUrl = normalizeServerUrl(url);
   } catch (error) {
-    return {
-      success: false,
-      message: (error as Error).message,
-    };
+    return buildFailureResult((error as Error).message);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const { controller, timeoutId } = createTimeoutController(timeoutMs);
 
   try {
     const response = await fetch(`${normalizedUrl}/health`, {
@@ -35,22 +42,13 @@ export const testBackendConnection = async (
       return { success: true };
     }
 
-    return {
-      success: false,
-      message: `服务返回 ${response.status}`,
-    };
+    return buildFailureResult(`服务返回 ${response.status}`);
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      return {
-        success: false,
-        message: '请求超时',
-      };
+      return buildFailureResult('请求超时');
     }
 
-    return {
-      success: false,
-      message: (error as Error).message || '连接失败',
-    };
+    return buildFailureResult((error as Error).message || '连接失败');
   } finally {
     clearTimeout(timeoutId);
   }

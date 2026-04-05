@@ -24,6 +24,15 @@ export interface VoiceUploadQueue {
 
 const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
 
+function consumeCanceledEntry(canceled: Set<string>, entryId: string): boolean {
+  if (!canceled.has(entryId)) {
+    return false;
+  }
+
+  canceled.delete(entryId);
+  return true;
+}
+
 function buildPendingSyncEntry(localEntry: Entry, upload: { id: string; url: string }): Entry {
   const localMedia = localEntry.media?.[0];
   const mergedMedia: MediaInfo[] | undefined = localMedia ? [{
@@ -76,8 +85,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
     for (const entryId of Array.from(queued)) {
       queued.delete(entryId);
 
-      if (canceled.has(entryId)) {
-        canceled.delete(entryId);
+      if (consumeCanceledEntry(canceled, entryId)) {
         continue;
       }
 
@@ -86,8 +94,7 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
         continue;
       }
 
-      if (canceled.has(entryId)) {
-        canceled.delete(entryId);
+      if (consumeCanceledEntry(canceled, entryId)) {
         continue;
       }
 
@@ -95,20 +102,17 @@ export function createVoiceUploadQueue(deps: VoiceUploadQueueDeps): VoiceUploadQ
         await deps.markUploading(entryId);
         deps.onEntryUploading?.(entryId);
 
-        if (canceled.has(entryId)) {
-          canceled.delete(entryId);
+        if (consumeCanceledEntry(canceled, entryId)) {
           continue;
         }
 
         const upload = await deps.uploadMedia(entry.media[0].uri);
-        if (canceled.has(entryId)) {
-          canceled.delete(entryId);
+        if (consumeCanceledEntry(canceled, entryId)) {
           continue;
         }
 
         const pendingSyncEntry = buildPendingSyncEntry(entry, upload);
-        if (canceled.has(entryId)) {
-          canceled.delete(entryId);
+        if (consumeCanceledEntry(canceled, entryId)) {
           continue;
         }
 

@@ -4,6 +4,19 @@
 
 import { Entry } from '@/src/types/entry';
 
+const pad2 = (value: number) => String(value).padStart(2, '0');
+
+const isSameCalendarDate = (left: Date, right: Date) =>
+  left.getDate() === right.getDate() &&
+  left.getMonth() === right.getMonth() &&
+  left.getFullYear() === right.getFullYear();
+
+const formatMonthDay = (date: Date, pad = true) => {
+  const month = pad ? pad2(date.getMonth() + 1) : String(date.getMonth() + 1);
+  const day = pad ? pad2(date.getDate()) : String(date.getDate());
+  return { month, day };
+};
+
 /**
  * 时间分组类型
  */
@@ -38,11 +51,7 @@ export function isToday(timestamp: number): boolean {
   const today = new Date();
   const date = new Date(timestamp);
 
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
+  return isSameCalendarDate(date, today);
 }
 
 /**
@@ -53,11 +62,7 @@ export function isYesterday(timestamp: number): boolean {
   yesterday.setDate(yesterday.getDate() - 1);
   const date = new Date(timestamp);
 
-  return (
-    date.getDate() === yesterday.getDate() &&
-    date.getMonth() === yesterday.getMonth() &&
-    date.getFullYear() === yesterday.getFullYear()
-  );
+  return isSameCalendarDate(date, yesterday);
 }
 
 /**
@@ -164,8 +169,7 @@ export function formatRelativeTime(timestamp: number): string {
   // 超过7天，显示具体日期
   const date = new Date(timestamp);
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const { month, day } = formatMonthDay(date);
 
   const currentYear = new Date().getFullYear();
   if (year === currentYear) {
@@ -181,11 +185,10 @@ export function formatRelativeTime(timestamp: number): string {
 export function formatDetailedTime(timestamp: number): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const { month, day } = formatMonthDay(date);
+  const hours = pad2(date.getHours());
+  const minutes = pad2(date.getMinutes());
+  const seconds = pad2(date.getSeconds());
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
@@ -196,8 +199,7 @@ export function formatDetailedTime(timestamp: number): string {
 export function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const { month, day } = formatMonthDay(date);
 
   return `${year}-${month}-${day}`;
 }
@@ -255,11 +257,7 @@ export function isSameDay(timestamp1: number, timestamp2: number): boolean {
   const date1 = new Date(timestamp1);
   const date2 = new Date(timestamp2);
 
-  return (
-    date1.getDate() === date2.getDate() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getFullYear() === date2.getFullYear()
-  );
+  return isSameCalendarDate(date1, date2);
 }
 
 /**
@@ -281,8 +279,7 @@ export function formatDateLabel(timestamp: number): string {
   }
 
   const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+  const { month, day } = formatMonthDay(date, false);
   const currentYear = today.getFullYear();
 
   // 今年
@@ -300,8 +297,7 @@ export function formatDateLabel(timestamp: number): string {
  */
 export function formatShortDate(timestamp: number): string {
   const date = new Date(timestamp);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+  const { month, day } = formatMonthDay(date, false);
   return `${month}/${day}`;
 }
 
@@ -337,7 +333,7 @@ export function formatMMSS(totalSeconds: number): string {
 /** 将时间戳格式化为 HH:mm 字符串（如 "09:05"） */
 export function formatHHMM(timestamp: number): string {
   const date = new Date(timestamp);
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const hours = pad2(date.getHours());
+  const minutes = pad2(date.getMinutes());
   return `${hours}:${minutes}`;
 }

@@ -35,6 +35,14 @@ export interface SaveBackupResult {
 }
 
 export class BackupService {
+  private static buildFallbackMediaExport(mediaItem: NonNullable<Entry['media']>[number]) {
+    if (mediaItem.remoteUri) {
+      return { ...mediaItem };
+    }
+
+    return { mimeType: mediaItem.mimeType, size: mediaItem.size };
+  }
+
   private static splitFileName(fileName: string): { baseName: string; extension: string } {
     const dotIndex = fileName.lastIndexOf('.');
     if (dotIndex <= 0) {
@@ -60,6 +68,14 @@ export class BackupService {
     }
     const message = error.message.toLowerCase();
     return message.includes('exists') || message.includes('already');
+  }
+
+  private static async deleteBackupItems(items: string[]): Promise<void> {
+    await Promise.all(
+      items.map((fileName) =>
+        FileSystem.deleteAsync(`${BACKUP_DIR}${fileName}`, { idempotent: true })
+      )
+    );
   }
 
   /** 确保备份根目录存在 */
@@ -112,18 +128,11 @@ export class BackupService {
                 ...mediaItem,
                 relativeUri: `media/${fname}`,
               });
-            } else if (mediaItem.remoteUri) {
-              // 本地文件不存在（云端恢复的 entry），保留完整 mediaItem 含 remoteUri
-              mediaExports.push({ ...mediaItem });
             } else {
-              mediaExports.push({ mimeType: mediaItem.mimeType, size: mediaItem.size });
+              mediaExports.push(this.buildFallbackMediaExport(mediaItem));
             }
           } catch {
-            if (mediaItem.remoteUri) {
-              mediaExports.push({ ...mediaItem });
-            } else {
-              mediaExports.push({ mimeType: mediaItem.mimeType, size: mediaItem.size });
-            }
+            mediaExports.push(this.buildFallbackMediaExport(mediaItem));
           }
         }
 
@@ -258,17 +267,13 @@ export class BackupService {
 
       // 新格式：.zip 文件
       const zips = items.filter((f) => f.startsWith('backup_') && f.endsWith('.zip')).sort().reverse();
-      for (const f of zips.slice(keep)) {
-        await FileSystem.deleteAsync(`${BACKUP_DIR}${f}`, { idempotent: true });
-      }
+      await this.deleteBackupItems(zips.slice(keep));
 
       // 旧格式：文件夹 / .json 文件（一并清理）
       const legacy = items.filter(
         (f) => f.startsWith('backup_') && !f.endsWith('.zip')
       );
-      for (const f of legacy) {
-        await FileSystem.deleteAsync(`${BACKUP_DIR}${f}`, { idempotent: true });
-      }
+      await this.deleteBackupItems(legacy);
     } catch {
       // 静默失败
     }

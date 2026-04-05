@@ -127,6 +127,35 @@ export function createApiClient(baseURL: string): ApiClient {
     return { Authorization: `Bearer ${token}` };
   };
 
+  const getJsonHeaders = async (): Promise<Record<string, string>> => ({
+    'Content-Type': 'application/json',
+    ...(await getAuthHeaders()),
+  });
+
+  const createTimeoutController = (timeoutMs: number) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    return { controller, timeoutId };
+  };
+
+  const throwRequestTransportError = (
+    error: unknown,
+    timeoutMessage: string,
+    networkFallbackMessage: string,
+  ): never => {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    if ((error as Error).name === 'AbortError') {
+      throw new ApiError('TIMEOUT', timeoutMessage, 0);
+    }
+    throw new ApiError(
+      'NETWORK_ERROR',
+      getNetworkErrorMessage(error, networkFallbackMessage),
+      0,
+    );
+  };
+
   const buildResponsePreview = (rawText: string): string => {
     const normalized = rawText.replace(/\s+/g, ' ').trim();
     return normalized.length > 160 ? `${normalized.slice(0, 160)}...` : normalized;
@@ -207,14 +236,8 @@ export function createApiClient(baseURL: string): ApiClient {
     body?: unknown,
     isRetry = false,
   ): Promise<T> => {
-    const authHeaders = await getAuthHeaders();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const headers = await getJsonHeaders();
+    const { controller, timeoutId } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
     try {
       const url = buildUrl(path);
@@ -244,11 +267,7 @@ export function createApiClient(baseURL: string): ApiClient {
         res.status,
       );
     } catch (e) {
-      if (e instanceof ApiError) throw e;
-      if ((e as Error).name === 'AbortError') {
-        throw new ApiError('TIMEOUT', 'Request timed out', 0);
-      }
-      throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
+      return throwRequestTransportError(e, 'Request timed out', 'Network request failed');
     } finally {
       clearTimeout(timeoutId);
     }
@@ -260,15 +279,10 @@ export function createApiClient(baseURL: string): ApiClient {
     params?: Record<string, string>,
     isRetry = false,
   ): Promise<T> => {
-    const authHeaders = await getAuthHeaders();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    };
+    const headers = await getJsonHeaders();
 
     const url = buildUrl(path, params);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const { controller, timeoutId } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
     try {
       const res = await fetch(url, { method, headers, signal: controller.signal });
@@ -287,9 +301,7 @@ export function createApiClient(baseURL: string): ApiClient {
         res.status,
       );
     } catch (e) {
-      if (e instanceof ApiError) throw e;
-      if ((e as Error).name === 'AbortError') throw new ApiError('TIMEOUT', 'Request timed out', 0);
-      throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
+      return throwRequestTransportError(e, 'Request timed out', 'Network request failed');
     } finally {
       clearTimeout(timeoutId);
     }
@@ -325,8 +337,7 @@ export function createApiClient(baseURL: string): ApiClient {
         });
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+      const { controller, timeoutId } = createTimeoutController(60_000);
 
       try {
         const uploadUrl = `${baseURL}${path}`;
@@ -346,11 +357,7 @@ export function createApiClient(baseURL: string): ApiClient {
           res.status,
         );
       } catch (e) {
-        if (e instanceof ApiError) throw e;
-        if ((e as Error).name === 'AbortError') {
-          throw new ApiError('TIMEOUT', 'Upload timed out', 0);
-        }
-        throw new ApiError('NETWORK_ERROR', getNetworkErrorMessage(e, 'Network request failed'), 0);
+        return throwRequestTransportError(e, 'Upload timed out', 'Network request failed');
       } finally {
         clearTimeout(timeoutId);
       }

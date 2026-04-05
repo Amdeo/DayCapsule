@@ -29,6 +29,29 @@ export interface VoiceCloudFinalizeDeps {
   preloadAudio: (uri: string) => Promise<void>;
 }
 
+async function cleanupVoiceEntry(
+  entryId: string,
+  deleteEntry: (entryId: string) => Promise<void>
+): Promise<void> {
+  await deleteEntry(entryId).catch(() => {});
+}
+
+async function cleanupVoiceFiles(
+  uris: string[],
+  deleteLocalFile: (uri: string) => Promise<void>
+): Promise<void> {
+  await Promise.all(uris.map((uri) => deleteLocalFile(uri)));
+}
+
+function preloadAudioSafely(
+  uri: string,
+  preloadAudio: (uri: string) => Promise<void>
+): void {
+  preloadAudio(uri).catch((err) => {
+    logger.warn('[HomeScreen] Failed to preload audio:', err);
+  });
+}
+
 function getErrorCode(error: unknown): string | undefined {
   if (!error || typeof error !== 'object' || !('code' in error)) {
     return undefined;
@@ -165,7 +188,7 @@ export async function finalizeCloudVoiceRecordingForTest(
   try {
     audioFile = await deps.stopRecording();
   } catch (error) {
-    await deps.deleteEntry(entryId).catch(() => {});
+    await cleanupVoiceEntry(entryId, deps.deleteEntry);
     throw error;
   }
 
@@ -177,8 +200,8 @@ export async function finalizeCloudVoiceRecordingForTest(
     preparedMedia = prepared.media;
   } catch (error) {
     const createdFiles = (error as VoiceEntryPreparationError).createdFiles ?? [];
-    await Promise.all(createdFiles.map((uri) => deps.deleteLocalFile(uri)));
-    await deps.deleteEntry(entryId).catch(() => {});
+    await cleanupVoiceFiles(createdFiles, deps.deleteLocalFile);
+    await cleanupVoiceEntry(entryId, deps.deleteEntry);
     throw error;
   }
 
@@ -191,14 +214,12 @@ export async function finalizeCloudVoiceRecordingForTest(
       media: preparedMedia,
     });
   } catch (error) {
-    await Promise.all(preparedCreatedFiles.map((uri) => deps.deleteLocalFile(uri)));
-    await deps.deleteEntry(entryId).catch(() => {});
+    await cleanupVoiceFiles(preparedCreatedFiles, deps.deleteLocalFile);
+    await cleanupVoiceEntry(entryId, deps.deleteEntry);
     throw error;
   }
 
-  deps.preloadAudio(preparedMedia[0]?.uri ?? '').catch((err) => {
-    logger.warn('[HomeScreen] Failed to preload audio:', err);
-  });
+  preloadAudioSafely(preparedMedia[0]?.uri ?? '', deps.preloadAudio);
 
   try {
     deps.enqueueUpload(entryId);
