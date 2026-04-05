@@ -85,7 +85,7 @@ export const tagManagementPageStyles = {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 0,
     paddingLeft: 16,
     paddingRight: 12,
     height: 52,
