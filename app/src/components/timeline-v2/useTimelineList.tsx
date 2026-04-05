@@ -67,6 +67,7 @@ export function useTimelineList({
           isLast={isLast}
           cardSpacing={cardSpacing}
           enterDelay={enterDelay}
+          showTimelineDecorations={displayMode !== 'card'}
         />
       );
     },
@@ -74,6 +75,7 @@ export function useTimelineList({
       activeActionSheetId,
       cardSpacing,
       deleteEntry,
+      displayMode,
       globalIndexMap,
       onActionSheetOpen,
       onEditEntry,
