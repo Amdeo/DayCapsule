@@ -56,7 +56,6 @@ jest.mock('@/src/services/backupService', () => ({
 
 jest.mock('../../services/syncService', () => ({
   SyncService: {
-    isICloudAvailable: jest.fn(() => false),
     pickAndParseBackup: jest.fn(),
     normalizeBackupEntries: jest.fn(),
     getMediaInfoArray: jest.fn((media: unknown) =>
@@ -86,19 +85,16 @@ describe('BackupPage', () => {
     mockUpdateEntry.mockResolvedValue(undefined);
   });
 
-  it('renders backup history and bottom iCloud section when backups exist', async () => {
+  it('renders backup history section when backups exist', async () => {
     const { getByTestId, getByText } = render(<BackupPage visible onClose={jest.fn()} />);
 
     await waitFor(() => {
       expect(getByText('备份历史')).toBeTruthy();
-      expect(getByText('iCloud 同步')).toBeTruthy();
       expect(getByText('2024-03-10 00:00:00')).toBeTruthy();
-      expect(getByText(/并开启 DayCapsule/)).toBeTruthy();
     });
 
     expect(getByTestId('backup-page-root')).toBeTruthy();
     expect(getByTestId('backup-page-storage-card')).toBeTruthy();
-    expect(getByTestId('backup-page-icloud-card')).toBeTruthy();
   });
 
   it('does not render the backup history section when no local backups exist', async () => {
@@ -129,15 +125,6 @@ describe('BackupPage', () => {
     expect(queryByText('2026-03-16 12:00')).toBeTruthy();
     expect(queryByText('2026-03-16 13:00')).toBeNull();
     expect(queryByTestId('backup-history-share-file:///d.zip')).toBeNull();
-  });
-
-  it('renders the available iCloud copy when iCloud Drive is accessible', async () => {
-    (SyncService.isICloudAvailable as jest.Mock).mockReturnValue(true);
-
-    const { findByText, queryByText } = render(<BackupPage visible onClose={jest.fn()} />);
-
-    expect(await findByText('iCloud Drive 可用')).toBeTruthy();
-    expect(queryByText('仅限 iOS 设备')).toBeNull();
   });
 
   it('creates a backup and opens the save-only export sheet', async () => {

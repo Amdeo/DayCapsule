@@ -40,10 +40,6 @@ interface BackupHistorySectionProps {
   onOpenExportSheet: (target: { name: string; uri: string }) => void;
 }
 
-interface BackupICloudSectionProps {
-  available: boolean;
-}
-
 export function BackupPageSectionTitle({
   children,
 }: BackupPageSectionTitleProps) {
@@ -119,35 +115,6 @@ export function BackupHistorySection({
           />
         );
       })}
-    </View>
-  );
-}
-
-export function BackupICloudSection({
-  available,
-}: BackupICloudSectionProps) {
-  return (
-    <View testID="backup-page-icloud-card" style={styles.iCloudCard}>
-      <View style={styles.iCloudHeader}>
-        <Ionicons
-          name="cloud-done-outline"
-          size={24}
-          color={available ? '#6A89CC' : '#D1D1D1'}
-        />
-        <Text
-          style={[
-            styles.iCloudTitle,
-            !available && styles.iCloudTitleDisabled,
-          ]}
-        >
-          {available ? 'iCloud Drive 可用' : '仅限 iOS 设备'}
-        </Text>
-      </View>
-      <Text style={styles.iCloudText}>
-        备份文件保存在应用的 Documents 目录。在 iOS 上，前往{' '}
-        <Text style={styles.iCloudHighlight}>设置 → Apple ID → iCloud → iCloud Drive</Text>
-        {' '}并开启 DayCapsule，即可自动同步备份到 iCloud，实现跨设备访问。
-      </Text>
     </View>
   );
 }

@@ -235,19 +235,4 @@ export class SyncService {
       })
     );
   }
-
-  /**
-   * iCloud 备份目录路径（iOS 专用）
-   */
-  static getICloudBackupPath(): string | null {
-    if (Platform.OS !== 'ios') return null;
-    return FileSystem.documentDirectory ?? null;
-  }
-
-  /**
-   * 检查 iCloud 是否可用
-   */
-  static isICloudAvailable(): boolean {
-    return Platform.OS === 'ios' && !!FileSystem.documentDirectory;
-  }
 }

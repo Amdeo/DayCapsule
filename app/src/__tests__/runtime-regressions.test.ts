@@ -8,7 +8,6 @@ const mockRunAppBootstrap = jest.fn(async () => undefined);
 const mockShowErrorFeedback = jest.fn();
 const mockShouldBackup = jest.fn(async () => false);
 const mockCreateBackup = jest.fn(async () => undefined);
-const mockIsICloudAvailable = jest.fn(() => true);
 const mockUpdateRecordingDuration = jest.fn();
 
 jest.mock('@sentry/react-native', () => ({
@@ -164,7 +163,6 @@ jest.mock('@/src/services/backupService', () => ({
 
 jest.mock('@/src/services/syncService', () => ({
   SyncService: {
-    isICloudAvailable: (...args: unknown[]) => mockIsICloudAvailable(...args),
     pickAndParseBackup: jest.fn(),
     extractMediaFromZip: jest.fn(),
   },
@@ -354,7 +352,6 @@ describe('runtime regression guards', () => {
     jest.clearAllMocks();
     mockShouldBackup.mockResolvedValue(false);
     mockCreateBackup.mockResolvedValue(undefined);
-    mockIsICloudAvailable.mockReturnValue(true);
   });
 
   it('renders the global overlay hosts from the root layout', async () => {
@@ -368,14 +365,6 @@ describe('runtime regression guards', () => {
     expect(mockFeedbackHost).toHaveBeenCalled();
     expect(mockCloudSyncMonitorHost).toHaveBeenCalled();
     expect(mockConfirmDialogHost).toHaveBeenCalled();
-  });
-
-  it('consumes SyncService through the backup page runtime path', async () => {
-    render(React.createElement(BackupPage, { visible: true, onClose: jest.fn() }));
-
-    await waitFor(() => {
-      expect(mockIsICloudAvailable).toHaveBeenCalledTimes(1);
-    });
   });
 
   it('only checks backup throttling on background transitions', async () => {

@@ -82,32 +82,4 @@ export const backupPageStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  iCloudCard: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-    gap: 10,
-  },
-  iCloudHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iCloudTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6A89CC',
-  },
-  iCloudTitleDisabled: {
-    color: '#D1D1D1',
-  },
-  iCloudText: {
-    fontSize: 13,
-    color: '#737373',
-    lineHeight: 20,
-  },
-  iCloudHighlight: {
-    fontWeight: '600',
-    color: '#4A4A4A',
-  },
 });

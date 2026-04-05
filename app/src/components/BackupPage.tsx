@@ -1,17 +1,11 @@
-/**
- * 备份与同步页面
- */
-
 import React from 'react';
 import { View } from 'react-native';
 import { useEntryStore } from '@/src/store/entryStore';
-import { SyncService } from '@/src/services/syncService';
 import { DetailPageShell } from './DetailPageShell';
 import { BackupExportSheet } from './BackupExportSheet';
 import {
   BackupActionSection,
   BackupHistorySection,
-  BackupICloudSection,
   BackupPageSectionTitle,
   BackupStorageSection,
 } from './backup-page/BackupPageSections';
@@ -44,7 +38,6 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
     restoreEntries,
     updateEntry,
   });
-  const iCloudAvailable = SyncService.isICloudAvailable();
 
   return (
     <DetailPageShell visible={visible} title="备份与同步" onClose={onClose}>
@@ -89,9 +82,6 @@ export function BackupPage({ visible, onClose }: BackupPageProps) {
           disabled={isImporting}
           onPress={handleImport}
         />
-
-        <BackupPageSectionTitle>iCloud 同步</BackupPageSectionTitle>
-        <BackupICloudSection available={iCloudAvailable} />
       </View>
 
       <BackupExportSheet
