@@ -16,6 +16,7 @@ interface TimelineEntryMarkerProps {
   isLast: boolean;
   cardSpacing: number;
   enterDelay?: number;
+  showTimelineDecorations?: boolean;
 }
 
 const timelineLeft = 40;
@@ -60,25 +61,30 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
   isLast,
   cardSpacing,
   enterDelay = 0,
+  showTimelineDecorations = true,
 }: TimelineEntryMarkerProps) {
   const accentColor = getTimelineEntryAccentColor(entry.type);
 
   return (
     <View
       style={{
-        paddingLeft: 64,
+        paddingLeft: showTimelineDecorations ? 64 : 16,
         paddingRight: 24,
         paddingBottom: isLast ? 0 : cardSpacing,
         position: 'relative',
       }}
     >
-      <View style={[dotStyle, { backgroundColor: accentColor }]} />
+      {showTimelineDecorations && (
+        <View style={[dotStyle, { backgroundColor: accentColor }]} />
+      )}
 
-      <View style={timeRowStyle}>
-        <Text style={[timeTextStyle, { color: accentColor }]}>
-          {formatHHMM(entry.timestamp)}
-        </Text>
-      </View>
+      {showTimelineDecorations && (
+        <View style={timeRowStyle}>
+          <Text style={[timeTextStyle, { color: accentColor }]}>
+            {formatHHMM(entry.timestamp)}
+          </Text>
+        </View>
+      )}
 
       <EntryCard
         entry={entry}
