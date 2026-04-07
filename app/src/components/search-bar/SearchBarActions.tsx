@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, Text } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { searchBarStyles as styles } from './SearchBar.styles';
+import { searchBarStyles as styles, TOPBAR_TOGGLE_INACTIVE } from './SearchBar.styles';
 
 interface SearchBarActionsProps {
   menuButtonAnimatedStyle: AnimatedStyle<any>;
@@ -34,7 +34,7 @@ export function SearchBarActions({
         onPressIn={onMenuPressIn}
         onPressOut={onMenuPressOut}
       >
-        <Animated.View testID="searchbar-menu-button" style={[styles.circularButton, menuButtonAnimatedStyle]}>
+        <Animated.View testID="searchbar-menu-button" style={[styles.toolButton, menuButtonAnimatedStyle]}>
           <Ionicons name="menu" size={24} color="#4A4A4A" />
         </Animated.View>
       </Pressable>
@@ -45,11 +45,11 @@ export function SearchBarActions({
       </Pressable>
 
       {onViewModePress ? (
-        <Pressable testID="searchbar-view-mode-toggle" onPress={onViewModePress} style={styles.circularButton}>
+        <Pressable testID="searchbar-view-mode-toggle" onPress={onViewModePress} style={styles.toolButton}>
           <Ionicons
             name={showViewModeActive ? 'layers' : 'layers-outline'}
             size={22}
-            color={showViewModeActive ? '#6A89CC' : '#A3A3A3'}
+            color={showViewModeActive ? '#6A89CC' : TOPBAR_TOGGLE_INACTIVE}
           />
         </Pressable>
       ) : null}

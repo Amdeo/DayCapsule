@@ -76,7 +76,7 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['5a7ea7e047d8'],
     },
     'src/components/search-bar/SearchBar.styles.ts': {
-      'style-guard/no-new-stylesheet-create': ['ca4c0e688773'],
+      'style-guard/no-new-stylesheet-create': ['afdebbeb141e'],
     },
     'src/components/search-overlay/SearchOverlay.styles.ts': {
       'style-guard/no-new-stylesheet-create': ['6df0f1019f33'],
