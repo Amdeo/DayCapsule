@@ -17,6 +17,15 @@ jobs:
     name: Build Backend Image And Bundle
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      HTTP_PROXY: "http://127.0.0.1:7890"
+      HTTPS_PROXY: "http://127.0.0.1:7890"
+      ALL_PROXY: "socks5://127.0.0.1:7890"
+      http_proxy: "http://127.0.0.1:7890"
+      https_proxy: "http://127.0.0.1:7890"
+      all_proxy: "socks5://127.0.0.1:7890"
+      NO_PROXY: "127.0.0.1,localhost,::1"
+      no_proxy: "127.0.0.1,localhost,::1"
     defaults:
       run:
         shell: bash
