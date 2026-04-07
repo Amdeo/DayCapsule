@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { CloudSyncStatusButton } from '../CloudSyncStatusButton';
 
@@ -12,15 +13,30 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
-describe('CloudSyncStatusButton', () => {
-  it('keeps the button shell at the expected floating size', () => {
-    const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
+function expectNoFloatingShadow(style: unknown) {
+  const flatStyle = StyleSheet.flatten(style as any) ?? {};
 
-    expect(screen.getByTestId('cloud-sync-button')).toHaveStyle({
+  expect(flatStyle.elevation ?? 0).toBe(0);
+  expect(flatStyle.shadowOpacity ?? 0).toBe(0);
+  expect(flatStyle.shadowRadius ?? 0).toBe(0);
+  expect(flatStyle.shadowOffset ?? { width: 0, height: 0 }).toEqual({ width: 0, height: 0 });
+  expect(flatStyle.shadowColor ?? 'transparent').toBe('transparent');
+}
+
+describe('CloudSyncStatusButton', () => {
+  it('locks the flat shell baseline for the cloud sync button', () => {
+    const screen = render(<CloudSyncStatusButton uiState="synced" onPress={jest.fn()} />);
+    const button = screen.getByTestId('cloud-sync-button');
+
+    expect(button).toHaveStyle({
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#E8DED1',
+      backgroundColor: '#F3EEE7',
     });
+    expectNoFloatingShadow(button.props.style);
   });
 
   it('renders synced icon state without spinner', () => {

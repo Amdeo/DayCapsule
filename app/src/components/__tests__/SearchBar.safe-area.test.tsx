@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 
 // Mock useSafeAreaInsets，模拟 Android 状态栏高度 28dp
@@ -18,6 +18,16 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 const { SearchBar } = require('../SearchBar');
+
+function expectNoFloatingShadow(style: unknown) {
+  const flatStyle = StyleSheet.flatten(style as any) ?? {};
+
+  expect(flatStyle.elevation ?? 0).toBe(0);
+  expect(flatStyle.shadowOpacity ?? 0).toBe(0);
+  expect(flatStyle.shadowRadius ?? 0).toBe(0);
+  expect(flatStyle.shadowOffset ?? { width: 0, height: 0 }).toEqual({ width: 0, height: 0 });
+  expect(flatStyle.shadowColor ?? 'transparent').toBe('transparent');
+}
 
 describe('SearchBar 安全区适配', () => {
   beforeAll(() => {
@@ -54,21 +64,32 @@ describe('SearchBar 安全区适配', () => {
     expect(JSON.stringify(json)).toContain('sync');
   });
 
-  it('keeps the menu button and search shell dimensions after nativewind migration', () => {
+  it('locks the flat shell baseline for the menu button and search box', () => {
     const { getByTestId } = render(<SearchBar />);
+    const menuButton = getByTestId('searchbar-menu-button');
+    const searchBox = getByTestId('searchbar-search-box');
 
     expect(getByTestId('searchbar-menu-button-pressable')).toBeTruthy();
-    expect(getByTestId('searchbar-menu-button')).toHaveStyle({
+    expect(menuButton).toHaveStyle({
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#E8DED1',
+      backgroundColor: '#F3EEE7',
     });
-    expect(getByTestId('searchbar-search-box')).toHaveStyle({
+    expectNoFloatingShadow(menuButton.props.style);
+    expect(searchBox).toHaveStyle({
       height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#ECE3D8',
+      backgroundColor: '#F8F5F0',
     });
+    expectNoFloatingShadow(searchBox.props.style);
   });
 
-  it('renders stable search entry and view mode toggle anchors when actions are enabled', () => {
+  it('locks the flat shell baseline for the view-mode toggle when enabled', () => {
     const onSearchFocus = jest.fn();
     const onViewModePress = jest.fn();
     const { getByTestId } = render(
@@ -80,7 +101,17 @@ describe('SearchBar 安全区适配', () => {
     );
 
     expect(getByTestId('searchbar-search-box')).toBeTruthy();
-    expect(getByTestId('searchbar-view-mode-toggle')).toBeTruthy();
+    const viewModeToggle = getByTestId('searchbar-view-mode-toggle');
+
+    expect(viewModeToggle).toHaveStyle({
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#E8DED1',
+      backgroundColor: '#F3EEE7',
+    });
+    expectNoFloatingShadow(viewModeToggle.props.style);
   });
 
   it('fires menu, search and view-mode callbacks from the stable anchors', () => {
