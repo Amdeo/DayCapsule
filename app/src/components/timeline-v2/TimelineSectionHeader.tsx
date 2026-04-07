@@ -9,6 +9,7 @@ import {
 interface TimelineSectionHeaderProps {
   title: string;
   showTimelineDecorations?: boolean;
+  isFirstSection?: boolean;
 }
 
 const cardContainerStyle = {
@@ -29,6 +30,7 @@ const cardTitleStyle = {
 export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
   title,
   showTimelineDecorations = true,
+  isFirstSection = false,
 }: TimelineSectionHeaderProps) {
   if (!showTimelineDecorations) {
     return (
@@ -48,17 +50,19 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
         backgroundColor: '#FAF8F5',
       }}
     >
-      <View
-        style={{
-          position: 'absolute',
-          left: TIMELINE_LEFT,
-          top: 0,
-          width: 2,
-          height: 24,
-          backgroundColor: '#E5E5E5',
-          zIndex: 1,
-        }}
-      />
+      {!isFirstSection ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: TIMELINE_LEFT,
+            top: 0,
+            width: 2,
+            height: 24,
+            backgroundColor: '#E5E5E5',
+            zIndex: 1,
+          }}
+        />
+      ) : null}
       <View
         style={{
           position: 'absolute',

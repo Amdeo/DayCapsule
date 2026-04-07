@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import {
   TIMELINE_CONTENT_PADDING_LEFT,
   TIMELINE_DOT_LEFT,
+  TIMELINE_LEFT,
 } from '@/src/components/timelineGeometry';
 
 export const calendarTimelineItemStyles = StyleSheet.create({
@@ -12,6 +13,24 @@ export const calendarTimelineItemStyles = StyleSheet.create({
     paddingLeft: TIMELINE_CONTENT_PADDING_LEFT,
     paddingRight: 24,
     position: 'relative',
+  },
+  connectorBottom: {
+    position: 'absolute',
+    left: TIMELINE_LEFT,
+    top: 18,
+    bottom: 0,
+    width: 2,
+    backgroundColor: '#E7DED3',
+    zIndex: 1,
+  },
+  connectorTop: {
+    position: 'absolute',
+    left: TIMELINE_LEFT,
+    top: 0,
+    height: 10,
+    width: 2,
+    backgroundColor: '#E7DED3',
+    zIndex: 1,
   },
   dot: {
     borderRadius: 5,

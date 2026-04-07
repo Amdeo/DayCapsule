@@ -50,8 +50,9 @@ export function useTimelineList({
 
   const renderItem = useCallback(
     ({ item, index, section }: { item: Entry; index: number; section: TimeSection }) => {
-      const isLast = index === section.data.length - 1;
+      const isFirst = index === 0;
       const globalIndex = globalIndexMap.get(item.id) ?? 0;
+      const isLast = globalIndex === entries.length - 1;
       const staggerIndex = Math.min(globalIndex, 8);
       const enterDelay = staggerIndex * 90;
 
@@ -64,6 +65,7 @@ export function useTimelineList({
           onStopRecording={onStopRecording}
           isActionSheetActive={activeActionSheetId === item.id}
           onActionSheetOpen={onActionSheetOpen}
+          isFirst={isFirst}
           isLast={isLast}
           cardSpacing={cardSpacing}
           enterDelay={enterDelay}
@@ -85,8 +87,17 @@ export function useTimelineList({
   );
 
   const renderSectionHeader = useCallback(({ section }: { section: TimeSection }) => {
-    return <TimelineSectionHeader title={section.title} showTimelineDecorations={displayMode !== 'card'} />;
-  }, [displayMode]);
+    const firstSectionEntryId = sections[0]?.data[0]?.id;
+    const isFirstSection = section.data[0]?.id === firstSectionEntryId;
+
+    return (
+      <TimelineSectionHeader
+        title={section.title}
+        showTimelineDecorations={displayMode !== 'card'}
+        isFirstSection={isFirstSection}
+      />
+    );
+  }, [displayMode, sections]);
 
   return {
     sections,

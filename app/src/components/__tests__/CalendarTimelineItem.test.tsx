@@ -43,6 +43,8 @@ describe('CalendarTimelineItem', () => {
     expect(screen.getByTestId('calendar-timeline-item-dot')).toHaveStyle({ left: 21 });
     expect(screen.getByTestId('calendar-timeline-item-time')).toBeTruthy();
     expect(screen.getByText('日历条目')).toBeTruthy();
+    expect(screen.getByTestId('calendar-timeline-item-connector-top')).toBeTruthy();
+    expect(screen.getByTestId('calendar-timeline-item-connector-bottom')).toBeTruthy();
   });
 
   it('forwards the calendar variant and density to EntryCard', () => {
@@ -67,5 +69,14 @@ describe('CalendarTimelineItem', () => {
     expect(screen.getByTestId('calendar-timeline-item-root')).toHaveStyle({ paddingBottom: 10 });
     expect(latestEntryCardProps?.isActionSheetActive).toBe(true);
     expect(latestEntryCardProps?.onActionSheetOpen).toBe(onActionSheetOpen);
+  });
+
+  it('hides the leading and trailing connectors when the item is both first and last', () => {
+    const screen = render(
+      <CalendarTimelineItem entry={entry} density="default" isFirst isLast />
+    );
+
+    expect(screen.queryByTestId('calendar-timeline-item-connector-top')).toBeNull();
+    expect(screen.queryByTestId('calendar-timeline-item-connector-bottom')).toBeNull();
   });
 });

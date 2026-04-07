@@ -29,6 +29,7 @@ describe('TimelineEntryMarker', () => {
         onDeleteEntry={jest.fn()}
         isActionSheetActive={false}
         onActionSheetOpen={jest.fn()}
+        isFirst={false}
         isLast={false}
         cardSpacing={12}
       />
@@ -36,5 +37,24 @@ describe('TimelineEntryMarker', () => {
 
     expect(screen.getByTestId('timeline-entry-marker-timeline-entry-1')).toHaveStyle({ paddingLeft: 52 });
     expect(screen.getByTestId('timeline-entry-marker-dot-timeline-entry-1')).toHaveStyle({ left: 21 });
+    expect(screen.getByTestId('timeline-entry-marker-connector-top-timeline-entry-1')).toBeTruthy();
+    expect(screen.getByTestId('timeline-entry-marker-connector-bottom-timeline-entry-1')).toBeTruthy();
+  });
+
+  it('keeps the top connector but omits the bottom connector when the marker is the global last node', () => {
+    const screen = render(
+      <TimelineEntryMarker
+        entry={entry}
+        onDeleteEntry={jest.fn()}
+        isActionSheetActive={false}
+        onActionSheetOpen={jest.fn()}
+        isFirst
+        isLast
+        cardSpacing={12}
+      />
+    );
+
+    expect(screen.getByTestId('timeline-entry-marker-connector-top-timeline-entry-1')).toBeTruthy();
+    expect(screen.queryByTestId('timeline-entry-marker-connector-bottom-timeline-entry-1')).toBeNull();
   });
 });

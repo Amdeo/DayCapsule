@@ -6,6 +6,7 @@ import { EntryCard } from '@/src/components/EntryCard';
 import {
   TIMELINE_CONTENT_PADDING_LEFT,
   TIMELINE_DOT_LEFT,
+  TIMELINE_LEFT,
 } from '@/src/components/timelineGeometry';
 import { getTimelineEntryAccentColor } from './timelineAppearance';
 
@@ -17,6 +18,7 @@ interface TimelineEntryMarkerProps {
   onStopRecording?: (id: string) => void;
   isActionSheetActive: boolean;
   onActionSheetOpen: (id: string) => void;
+  isFirst: boolean;
   isLast: boolean;
   cardSpacing: number;
   enterDelay?: number;
@@ -52,6 +54,24 @@ const timeTextStyle = {
   lineHeight: 16,
 };
 
+const connectorStyle = {
+  position: 'absolute' as const,
+  left: TIMELINE_LEFT,
+  width: 2,
+  backgroundColor: '#E5E5E5',
+  zIndex: 1,
+};
+
+const connectorTopStyle = {
+  top: 0,
+  height: 10,
+} as const;
+
+const connectorBottomStyle = {
+  top: 18,
+  bottom: 0,
+} as const;
+
 export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
   entry,
   onDeleteEntry,
@@ -60,6 +80,7 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
   onStopRecording,
   isActionSheetActive,
   onActionSheetOpen,
+  isFirst,
   isLast,
   cardSpacing,
   enterDelay = 0,
@@ -77,6 +98,13 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
         position: 'relative',
       }}
     >
+      {showTimelineDecorations ? (
+        <View
+          testID={`timeline-entry-marker-connector-top-${entry.id}`}
+          style={[connectorStyle, connectorTopStyle]}
+        />
+      ) : null}
+
       {showTimelineDecorations && (
         <View
           testID={`timeline-entry-marker-dot-${entry.id}`}
@@ -91,6 +119,13 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
           </Text>
         </View>
       )}
+
+      {showTimelineDecorations && !isLast ? (
+        <View
+          testID={`timeline-entry-marker-connector-bottom-${entry.id}`}
+          style={[connectorStyle, connectorBottomStyle]}
+        />
+      ) : null}
 
       <EntryCard
         entry={entry}

@@ -36,12 +36,13 @@ function CalendarTimelineGroup({
 }) {
   return (
     <View style={styles.timelineGroup}>
-      <View style={styles.timelineLine} />
-      {entries.map((entry) => (
+      {entries.map((entry, index) => (
         <CalendarTimelineItem
           key={entry.id}
           entry={entry}
           density={calendarDensity}
+          isFirst={index === 0}
+          isLast={index === entries.length - 1}
           onDeleteEntry={onDeleteEntry}
           onViewEntry={onViewEntry}
           onEditEntry={onEditEntry}

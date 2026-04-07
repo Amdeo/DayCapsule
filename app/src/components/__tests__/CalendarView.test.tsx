@@ -1,9 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import { CalendarView } from '../CalendarView';
 import { Entry } from '@/src/types/entry';
-import { calendarViewStyles } from '../calendar-view/CalendarView.styles';
 
 const FIXED_NOW = new Date('2026-03-19T12:00:00+08:00');
 const OriginalDate = Date;
@@ -170,10 +168,6 @@ describe('CalendarView full-card behavior', () => {
     expect(screen.getByTestId('calendar-content-header')).toBeTruthy();
   });
 
-  it('uses the tightened shared left baseline for the calendar timeline line', () => {
-    expect(StyleSheet.flatten(calendarViewStyles.timelineLine)?.left).toBe(28);
-  });
-
   it('默认状态下显示当月记录且保留媒体卡片信息', () => {
     const { getByText, queryByText, getByTestId } = render(
       <CalendarView {...calendarProps} />
@@ -190,6 +184,18 @@ describe('CalendarView full-card behavior', () => {
     expect(latestCalendarTimelineItemProps?.onPauseRecording).toBeUndefined();
     expect(latestCalendarTimelineItemProps?.onResumeRecording).toBeUndefined();
     expect(latestCalendarTimelineItemProps?.onStopRecording).toBe(noop);
+  });
+
+  it('passes first/last item flags so calendar connectors stop at the visible node range', () => {
+    render(<CalendarView {...calendarProps} />);
+
+    expect(mockCalendarTimelineItemPropsByEntryId.t1?.isFirst).toBe(true);
+    expect(mockCalendarTimelineItemPropsByEntryId.t1?.isLast).toBe(true);
+    expect(mockCalendarTimelineItemPropsByEntryId.v2?.isFirst).toBe(true);
+    expect(mockCalendarTimelineItemPropsByEntryId.v2?.isLast).toBe(false);
+    expect(mockCalendarTimelineItemPropsByEntryId.p2?.isFirst).toBe(false);
+    expect(mockCalendarTimelineItemPropsByEntryId.p2?.isLast).toBe(false);
+    expect(mockCalendarTimelineItemPropsByEntryId.p1?.isLast).toBe(true);
   });
 
   it('默认状态下不显示取消按钮', () => {

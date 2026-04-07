@@ -31,7 +31,7 @@ const sections: TimeSection[] = [
 ];
 
 describe('TimelineContent', () => {
-  it('uses the tightened shared position for the timeline vertical line', () => {
+  it('does not render a container-spanning timeline line behind the list', () => {
     const screen = render(
       <TimelineContent
         isTransitioning={false}
@@ -56,6 +56,6 @@ describe('TimelineContent', () => {
       />
     );
 
-    expect(screen.getByTestId('timeline-vertical-line')).toHaveStyle({ left: 28 });
+    expect(screen.queryByTestId('timeline-vertical-line')).toBeNull();
   });
 });

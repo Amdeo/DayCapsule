@@ -1,6 +1,4 @@
 import { StyleSheet } from 'react-native';
-import { TIMELINE_LEFT } from '@/src/components/timelineGeometry';
-
 export const calendarViewStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -134,13 +132,5 @@ export const calendarViewStyles = StyleSheet.create({
     position: 'relative',
     paddingTop: 4,
     paddingBottom: 2,
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: TIMELINE_LEFT,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: '#E7DED3',
   },
 });

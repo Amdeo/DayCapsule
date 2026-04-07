@@ -22,10 +22,10 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['a38d9a0970b6'],
     },
     'src/components/calendar-timeline-item/CalendarTimelineItem.styles.ts': {
-      'style-guard/no-new-stylesheet-create': ['3f77d7f7a7e0'],
+      'style-guard/no-new-stylesheet-create': ['e7ef4c576046'],
     },
     'src/components/calendar-view/CalendarView.styles.ts': {
-      'style-guard/no-new-stylesheet-create': ['247a23a52dc6'],
+      'style-guard/no-new-stylesheet-create': ['2327fc67c3ee'],
     },
     'src/components/calendar-view/CalendarViewGrid.tsx': {
       'style-guard/no-static-inline-styles': ['81b147e72abd'],

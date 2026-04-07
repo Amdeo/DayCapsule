@@ -203,10 +203,17 @@ describe('Timeline view mode switching', () => {
     expect(screen.getByText('entry-2:90')).toBeTruthy();
   });
 
-  it('uses the tightened shared left baseline for the main timeline line', () => {
+  it('does not render a container-spanning main timeline line', () => {
     const screen = render(<Timeline />);
 
-    expect(screen.getByTestId('timeline-vertical-line')).toHaveStyle({ left: 28 });
+    expect(screen.queryByTestId('timeline-vertical-line')).toBeNull();
+  });
+
+  it('keeps the timeline connected across section boundaries until the global last node', () => {
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('timeline-entry-marker-connector-bottom-entry-1')).toBeTruthy();
+    expect(screen.queryByTestId('timeline-entry-marker-connector-bottom-entry-2')).toBeNull();
   });
 
   it('uses calendar variant for entry cards in list mode', () => {

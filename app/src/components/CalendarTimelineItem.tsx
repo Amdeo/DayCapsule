@@ -14,6 +14,8 @@ import { calendarTimelineItemStyles as styles } from './calendar-timeline-item/C
 interface CalendarTimelineItemProps {
   entry: Entry;
   density: CalendarDensity;
+  isFirst?: boolean;
+  isLast?: boolean;
   onDeleteEntry?: (id: string) => void;
   onViewEntry?: (entry: Entry) => void;
   onEditEntry?: (entry: Entry) => void;
@@ -25,6 +27,8 @@ interface CalendarTimelineItemProps {
 export function CalendarTimelineItem({
   entry,
   density,
+  isFirst = false,
+  isLast = false,
   onDeleteEntry,
   onViewEntry,
   onEditEntry,
@@ -37,6 +41,7 @@ export function CalendarTimelineItem({
 
   return (
     <View testID="calendar-timeline-item-root" style={[styles.container, { paddingBottom: spacing }]}>
+      {!isFirst ? <View testID="calendar-timeline-item-connector-top" style={styles.connectorTop} /> : null}
       <CalendarTimelineItemMarker color={dotColor} testID="calendar-timeline-item-dot" />
       <View style={styles.timeWrap}>
         <Text testID="calendar-timeline-item-time" style={[styles.timeText, { color: dotColor }]}>
@@ -57,6 +62,7 @@ export function CalendarTimelineItem({
           cardSpacing={0}
         />
       </View>
+      {!isLast ? <View testID="calendar-timeline-item-connector-bottom" style={styles.connectorBottom} /> : null}
     </View>
   );
 }
