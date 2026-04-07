@@ -1,4 +1,4 @@
-name: Android Release APK
+name: Android APK Artifact
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-android-release:
-    name: Build Unsigned Android Release APK
+    name: Build Unsigned Android APK Artifact
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -217,13 +217,9 @@ jobs:
       - name: Show APK output
         run: ls -lah app/android/app/build/outputs/apk/release
 
-      - name: Create GitHub Release with APK
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          APK=$(find app/android/app/build/outputs/apk/release -name "*.apk" | head -1)
-          VERSION=$(date +%Y%m%d)-${{ github.run_number }}
-          gh release create "v${VERSION}" \
-            --title "DayCapsule v${VERSION}" \
-            --notes "Unsigned Android release APK (build #${{ github.run_number }})" \
-            "${APK}#app-release.apk"
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daycapsule-unsigned-release-apk-${{ github.run_number }}
+          path: app/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
