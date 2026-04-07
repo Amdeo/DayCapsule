@@ -8,6 +8,6 @@ describe('TimelineSectionHeader', () => {
     const title = getByText('今天');
 
     expect(title).toBeTruthy();
-    expect(toJSON()).toHaveStyle({ height: 48, paddingLeft: 64 });
+    expect(toJSON()).toHaveStyle({ height: 48, paddingLeft: 52 });
   });
 });

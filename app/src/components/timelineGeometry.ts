@@ -1,0 +1,3 @@
+export const TIMELINE_LEFT = 28;
+export const TIMELINE_DOT_LEFT = TIMELINE_LEFT - 7;
+export const TIMELINE_CONTENT_PADDING_LEFT = 52;

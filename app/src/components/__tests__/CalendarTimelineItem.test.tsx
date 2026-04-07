@@ -39,7 +39,8 @@ describe('CalendarTimelineItem', () => {
     );
 
     expect(screen.getByTestId('calendar-timeline-item-root')).toBeTruthy();
-    expect(screen.getByTestId('calendar-timeline-item-dot')).toBeTruthy();
+    expect(screen.getByTestId('calendar-timeline-item-root')).toHaveStyle({ paddingLeft: 52 });
+    expect(screen.getByTestId('calendar-timeline-item-dot')).toHaveStyle({ left: 21 });
     expect(screen.getByTestId('calendar-timeline-item-time')).toBeTruthy();
     expect(screen.getByText('日历条目')).toBeTruthy();
   });

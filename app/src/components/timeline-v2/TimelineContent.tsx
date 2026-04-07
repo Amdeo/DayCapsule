@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import { CalendarView } from '@/src/components/CalendarView';
+import { TIMELINE_LEFT } from '@/src/components/timelineGeometry';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { TimelineTransitionLoader } from './TimelineTransitionLoader';
 import type { TimeSection, ViewMode } from './timelineTypes';
@@ -84,9 +85,10 @@ export function TimelineContent({
     <View style={{ flex: 1, position: 'relative' }}>
       {displayMode === 'timeline' && (
         <View
+          testID="timeline-vertical-line"
           style={{
             position: 'absolute',
-            left: 40,
+            left: TIMELINE_LEFT,
             top: 0,
             bottom: 0,
             width: 2,

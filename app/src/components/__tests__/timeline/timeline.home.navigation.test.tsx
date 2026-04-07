@@ -196,6 +196,7 @@ describe('Timeline home navigation', () => {
   it('opens the text detail page when a timeline card is pressed', () => {
     const screen = render(<Timeline />);
 
+    expect(screen.getByTestId('timeline-vertical-line')).toHaveStyle({ left: 28 });
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
 
     expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();

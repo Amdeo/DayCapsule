@@ -1,11 +1,15 @@
 import { StyleSheet } from 'react-native';
+import {
+  TIMELINE_CONTENT_PADDING_LEFT,
+  TIMELINE_DOT_LEFT,
+} from '@/src/components/timelineGeometry';
 
 export const calendarTimelineItemStyles = StyleSheet.create({
   cardWrap: {
     flex: 1,
   },
   container: {
-    paddingLeft: 64,
+    paddingLeft: TIMELINE_CONTENT_PADDING_LEFT,
     paddingRight: 24,
     position: 'relative',
   },
@@ -23,7 +27,7 @@ export const calendarTimelineItemStyles = StyleSheet.create({
     elevation: 2,
     height: 16,
     justifyContent: 'center',
-    left: 33,
+    left: TIMELINE_DOT_LEFT,
     position: 'absolute',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

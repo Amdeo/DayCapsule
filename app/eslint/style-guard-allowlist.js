@@ -22,10 +22,10 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['a38d9a0970b6'],
     },
     'src/components/calendar-timeline-item/CalendarTimelineItem.styles.ts': {
-      'style-guard/no-new-stylesheet-create': ['6349135bd022'],
+      'style-guard/no-new-stylesheet-create': ['3f77d7f7a7e0'],
     },
     'src/components/calendar-view/CalendarView.styles.ts': {
-      'style-guard/no-new-stylesheet-create': ['25d59118cfe4'],
+      'style-guard/no-new-stylesheet-create': ['247a23a52dc6'],
     },
     'src/components/calendar-view/CalendarViewGrid.tsx': {
       'style-guard/no-static-inline-styles': ['81b147e72abd'],
@@ -106,7 +106,7 @@ module.exports = {
       'style-guard/no-new-stylesheet-create': ['414acdfdc4c3', '3ac1de749885'],
     },
     'src/components/timeline-v2/TimelineContent.tsx': {
-      'style-guard/no-static-inline-styles': ['b2eaa5039970', '83d7c67f3a1f', 'c5a4d1f46e2f'],
+      'style-guard/no-static-inline-styles': ['b2eaa5039970', '2a1c162a9caa', 'c5a4d1f46e2f'],
     },
     'src/components/timeline-v2/TimelineEmptyState.tsx': {
       'style-guard/no-static-inline-styles': ['6b47cdc8f88c', 'dec87172e45e', 'f78fff9edc2c', '5637d2d9c6b4'],

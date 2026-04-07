@@ -1,5 +1,10 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import {
+  TIMELINE_CONTENT_PADDING_LEFT,
+  TIMELINE_DOT_LEFT,
+  TIMELINE_LEFT,
+} from '@/src/components/timelineGeometry';
 
 interface TimelineSectionHeaderProps {
   title: string;
@@ -25,8 +30,6 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
   title,
   showTimelineDecorations = true,
 }: TimelineSectionHeaderProps) {
-  const timelineLeft = 40;
-
   if (!showTimelineDecorations) {
     return (
       <View style={cardContainerStyle}>
@@ -40,7 +43,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingLeft: 64,
+        paddingLeft: TIMELINE_CONTENT_PADDING_LEFT,
         height: 48,
         backgroundColor: '#FAF8F5',
       }}
@@ -48,7 +51,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       <View
         style={{
           position: 'absolute',
-          left: timelineLeft,
+          left: TIMELINE_LEFT,
           top: 0,
           width: 2,
           height: 24,
@@ -59,7 +62,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       <View
         style={{
           position: 'absolute',
-          left: timelineLeft - 7,
+          left: TIMELINE_DOT_LEFT,
           top: 16,
           width: 16,
           height: 16,
@@ -76,7 +79,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
       <View
         style={{
           position: 'absolute',
-          left: timelineLeft,
+          left: TIMELINE_LEFT,
           top: 24,
           width: 2,
           height: 24,

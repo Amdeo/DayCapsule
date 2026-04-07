@@ -203,6 +203,12 @@ describe('Timeline view mode switching', () => {
     expect(screen.getByText('entry-2:90')).toBeTruthy();
   });
 
+  it('uses the tightened shared left baseline for the main timeline line', () => {
+    const screen = render(<Timeline />);
+
+    expect(screen.getByTestId('timeline-vertical-line')).toHaveStyle({ left: 28 });
+  });
+
   it('uses calendar variant for entry cards in list mode', () => {
     render(<Timeline />);
 

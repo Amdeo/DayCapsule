@@ -3,6 +3,10 @@ import { Text, View } from 'react-native';
 import type { Entry } from '@/src/types/entry';
 import { formatHHMM } from '@/src/utils/timeUtils';
 import { EntryCard } from '@/src/components/EntryCard';
+import {
+  TIMELINE_CONTENT_PADDING_LEFT,
+  TIMELINE_DOT_LEFT,
+} from '@/src/components/timelineGeometry';
 import { getTimelineEntryAccentColor } from './timelineAppearance';
 
 interface TimelineEntryMarkerProps {
@@ -19,11 +23,9 @@ interface TimelineEntryMarkerProps {
   showTimelineDecorations?: boolean;
 }
 
-const timelineLeft = 40;
-
 const dotStyle = {
   position: 'absolute' as const,
-  left: timelineLeft - 7,
+  left: TIMELINE_DOT_LEFT,
   top: 2,
   width: 16,
   height: 16,
@@ -67,15 +69,19 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
 
   return (
     <View
+      testID={`timeline-entry-marker-${entry.id}`}
       style={{
-        paddingLeft: showTimelineDecorations ? 64 : 16,
+        paddingLeft: showTimelineDecorations ? TIMELINE_CONTENT_PADDING_LEFT : 16,
         paddingRight: 24,
         paddingBottom: isLast ? 0 : cardSpacing,
         position: 'relative',
       }}
     >
       {showTimelineDecorations && (
-        <View style={[dotStyle, { backgroundColor: accentColor }]} />
+        <View
+          testID={`timeline-entry-marker-dot-${entry.id}`}
+          style={[dotStyle, { backgroundColor: accentColor }]}
+        />
       )}
 
       {showTimelineDecorations && (
