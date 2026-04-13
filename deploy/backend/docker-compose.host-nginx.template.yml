@@ -1,0 +1,17 @@
+services:
+  api:
+    image: __BACKEND_IMAGE__
+    container_name: daycapsule-api
+    restart: unless-stopped
+    environment:
+      DATABASE_PATH: ${DATABASE_PATH:-/app/data/daycapsule.db}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ENV: production
+      PORT: 3000
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/data/uploads}
+      BASE_URL: ${BASE_URL:-__BASE_URL__}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    ports:
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT:-3000}:3000"

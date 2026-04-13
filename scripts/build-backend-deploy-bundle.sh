@@ -18,10 +18,15 @@ mkdir -p "$OUTPUT_DIR/deploy/backend"
 
 sed \
   -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
-  -e "s|__BASE_URL__|http://localhost:8080|g" \
-  -e "s|__PORT__|8080|g" \
-  "$ROOT_DIR/deploy/backend/docker-compose.template.yml" \
+  -e "s|__BASE_URL__|https://api.example.com|g" \
+  "$ROOT_DIR/deploy/backend/docker-compose.host-nginx.template.yml" \
   > "$OUTPUT_DIR/docker-compose.yml"
+
+sed \
+  -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
+  -e "s|__BASE_URL__|https://api.example.com|g" \
+  "$ROOT_DIR/deploy/backend/docker-compose.template.yml" \
+  > "$OUTPUT_DIR/docker-compose.shared-nginx.yml"
 
 sed \
   -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
@@ -31,6 +36,7 @@ sed \
   > "$OUTPUT_DIR/README.md"
 
 cp "$ROOT_DIR/deploy/backend/.env.example" "$OUTPUT_DIR/.env.example"
-cp "$ROOT_DIR/deploy/backend/nginx.conf" "$OUTPUT_DIR/deploy/backend/nginx.conf"
+cp "$ROOT_DIR/deploy/backend/daycapsule.conf" "$OUTPUT_DIR/deploy/backend/daycapsule.conf"
+cp "$ROOT_DIR/deploy/backend/daycapsule.host-nginx.conf" "$OUTPUT_DIR/deploy/backend/daycapsule.host-nginx.conf"
 
 echo "Deploy bundle generated at $OUTPUT_DIR"

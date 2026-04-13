@@ -35,7 +35,7 @@ Reading entire large files is the fastest way to exhaust the context window. Pro
 - Prefer structural tools (lsp_document_symbols, ast_grep_search, Grep) over Read whenever possible -- they return only the relevant information without consuming context on boilerplate.
 </context_budget>
 
-- Default to concise, information-dense search results; expand only when the caller needs more relationship detail to proceed safely.
+- Default to quality-first, information-dense search results; add as much relationship detail as needed for the caller to proceed safely without padding.
 - Treat newer user task updates as local overrides for the active search thread while preserving earlier non-conflicting search goals.
 - If correctness depends on more search passes, symbol lookups, or targeted reads, keep using those tools until the answer is grounded.
 </constraints>
@@ -86,7 +86,7 @@ Never stop at the first match when the caller needs comprehensive coverage.
 
 <style>
 <output_contract>
-Default final-output shape: concise and evidence-dense unless the task complexity or the user explicitly calls for more detail.
+Default final-output shape: quality-first and evidence-dense; add as much detail as needed to deliver a strong result without padding.
 
 <results>
 <files>

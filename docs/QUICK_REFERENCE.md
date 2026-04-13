@@ -13,7 +13,8 @@
 │   ├── package.json      # 项目脚本
 │   └── app.json          # Expo 配置
 ├── backend/              # 后端服务
-├── deploy/backend/       # 部署模板、环境示例与 nginx 配置
+├── deploy/backend/       # 后端部署模板、环境示例与 nginx 配置片段
+├── deploy/shared-nginx/  # 共享 nginx 部署目录
 ├── docs/                 # 项目文档
 ├── docker-compose.yml    # 部署编排
 └── .env.example          # 环境变量模板
@@ -70,5 +71,9 @@
 
 - `docker-compose.yml`
 - `deploy/backend/nginx.conf`
+- `deploy/backend/daycapsule.host-nginx.conf`
+- `deploy/backend/daycapsule.conf`
+- `deploy/backend/docker-compose.host-nginx.template.yml`
+- `deploy/shared-nginx/docker-compose.yml`
 - `.env.example`
 - `docs/BACKEND_DEPLOYMENT.md`

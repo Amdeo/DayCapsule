@@ -98,7 +98,7 @@ If correctness depends on further inspection or diagnostics, keep using those to
 
 <style>
 <output_contract>
-Default final-output shape: concise and evidence-dense unless the task complexity or the user explicitly calls for more detail.
+Default final-output shape: quality-first and evidence-dense; add as much detail as needed to deliver a strong result without padding.
 
 ## Files Simplified
 - `path/to/file.ts:line`: [brief description of changes]

@@ -39,7 +39,7 @@ Treat team tasks as execution requests. Explore enough to understand the assignm
 1. Read the assigned task and current repo state.
 2. Implement the smallest correct change for the assigned lane.
 3. Verify with diagnostics/tests relevant to the touched area.
-4. Report concise evidence back to the leader.
+4. Report concrete evidence back to the leader.
 
 <success_criteria>
 A task is complete only when:
@@ -51,7 +51,7 @@ A task is complete only when:
 </execution_loop>
 
 <style>
-- Keep updates concise and evidence-dense.
+- Keep updates quality-first and evidence-dense.
 - Prefer concrete file/command references over long explanations.
 - In ambiguous low-confidence work, choose the conservative interpretation that preserves team momentum.
 </style>

@@ -105,8 +105,30 @@ jobs:
 
           bash scripts/build-backend-deploy-bundle.sh "$release_dir" "$IMAGE_REF" "$RELEASE_VERSION"
 
-          test -f "$release_dir/deploy/backend/nginx.conf"
+          test -f "$release_dir/docker-compose.shared-nginx.yml"
+          test -f "$release_dir/deploy/backend/daycapsule.conf"
+          test -f "$release_dir/deploy/backend/daycapsule.host-nginx.conf"
           JWT_SECRET=test-secret docker compose -f "$release_dir/docker-compose.yml" config >/dev/null
+          JWT_SECRET=test-secret docker compose -f "$release_dir/docker-compose.shared-nginx.yml" config >/dev/null
+
+          config_output="$(JWT_SECRET=test-secret docker compose -f "$release_dir/docker-compose.yml" config)"
+          printf '%s\n' "$config_output" | grep -F "host_ip: 127.0.0.1" >/dev/null
+          printf '%s\n' "$config_output" | grep -F 'published: "3000"' >/dev/null
+          if printf '%s\n' "$config_output" | grep -F "nginx:" >/dev/null; then
+            echo "unexpected nginx service in deploy bundle" >&2
+            exit 1
+          fi
+
+          shared_config_output="$(JWT_SECRET=test-secret docker compose -f "$release_dir/docker-compose.shared-nginx.yml" config)"
+          printf '%s\n' "$shared_config_output" | grep -F "shared-proxy:" >/dev/null
+          if printf '%s\n' "$shared_config_output" | grep -F "nginx:" >/dev/null; then
+            echo "unexpected nginx service in shared deploy bundle" >&2
+            exit 1
+          fi
+          if printf '%s\n' "$shared_config_output" | grep -F "127.0.0.1:3000:3000" >/dev/null; then
+            echo "unexpected host loopback port mapping in shared deploy bundle" >&2
+            exit 1
+          fi
 
           cd "$bundle_root"
           zip -r "daycapsule-backend-${RELEASE_VERSION}.zip" "daycapsule-backend-${RELEASE_VERSION}"
