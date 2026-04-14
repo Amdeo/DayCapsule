@@ -18,13 +18,13 @@ mkdir -p "$OUTPUT_DIR/deploy/backend"
 
 sed \
   -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
-  -e "s|__BASE_URL__|https://api.example.com|g" \
+  -e "s|__BASE_URL__|http://api.example.com:18080|g" \
   "$ROOT_DIR/deploy/backend/docker-compose.host-nginx.template.yml" \
   > "$OUTPUT_DIR/docker-compose.yml"
 
 sed \
   -e "s|__BACKEND_IMAGE__|$IMAGE_REF|g" \
-  -e "s|__BASE_URL__|https://api.example.com|g" \
+  -e "s|__BASE_URL__|http://api.example.com:18080|g" \
   "$ROOT_DIR/deploy/backend/docker-compose.template.yml" \
   > "$OUTPUT_DIR/docker-compose.shared-nginx.yml"
 

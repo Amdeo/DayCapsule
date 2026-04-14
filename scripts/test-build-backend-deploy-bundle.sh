@@ -23,6 +23,7 @@ grep -F '${HOST_BIND:-127.0.0.1}:${HOST_PORT:-3000}:3000' "$OUTPUT_DIR/docker-co
 grep -F "shared-proxy" "$OUTPUT_DIR/docker-compose.shared-nginx.yml" >/dev/null
 grep -F "daycapsule-api:3000" "$OUTPUT_DIR/deploy/backend/daycapsule.conf" >/dev/null
 grep -F "127.0.0.1:3000" "$OUTPUT_DIR/deploy/backend/daycapsule.host-nginx.conf" >/dev/null
+grep -F "listen 18080;" "$OUTPUT_DIR/deploy/backend/daycapsule.host-nginx.conf" >/dev/null
 grep -F "$RELEASE_VERSION" "$OUTPUT_DIR/README.md" >/dev/null
 
 config_output="$(JWT_SECRET=test-secret docker compose -f "$OUTPUT_DIR/docker-compose.yml" config)"

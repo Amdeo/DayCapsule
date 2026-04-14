@@ -30,7 +30,7 @@ cp .env.example .env
 
 ```env
 JWT_SECRET=replace-with-a-long-random-string-at-least-32-chars
-BASE_URL=https://api.example.com
+BASE_URL=http://api.example.com:18080
 ```
 
 4. Create persistent directories and start the backend container:
@@ -42,6 +42,7 @@ docker compose up -d
 
 5. Copy `deploy/backend/daycapsule.host-nginx.conf` into your server nginx site config directory, then edit:
 
+- `listen` if you do not want to use the default `18080`
 - `server_name` to your real domain
 - `proxy_pass` target only if you changed `HOST_PORT`
 
@@ -67,6 +68,7 @@ docker network create shared-proxy
 3. Copy `deploy/backend/daycapsule.conf` into the shared nginx `conf.d/` directory, then edit:
 
 - `server_name` to your real domain
+- external port mapping in shared nginx if you do not want to use the default `18080/18443`
 - `proxy_pass` target only if you changed the `daycapsule-api` alias or internal port
 
 4. Start the backend with:

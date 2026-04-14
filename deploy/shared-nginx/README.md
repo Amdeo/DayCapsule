@@ -45,6 +45,11 @@ cp /path/to/daycapsule-backend/deploy/backend/daycapsule.conf ./conf.d/daycapsul
 docker compose up -d
 ```
 
+默认会把宿主机端口映射为：
+
+- `18080 -> 80`
+- `18443 -> 443`
+
 6. 每次修改 `conf.d/*.conf` 后执行：
 
 ```bash
