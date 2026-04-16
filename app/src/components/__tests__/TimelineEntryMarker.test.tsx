@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import type { Entry } from '@/src/types/entry';
 import { TimelineEntryMarker } from '../timeline-v2/TimelineEntryMarker';
+import { formatHHMM } from '@/src/utils/timeUtils';
 
 jest.mock('../EntryCard', () => ({
   EntryCard: () => {
@@ -72,7 +73,7 @@ describe('TimelineEntryMarker', () => {
       />
     );
 
-    expect(screen.getByText('09:30')).toBeTruthy();
+    expect(screen.getByText(formatHHMM(entry.timestamp))).toBeTruthy();
     expect(screen.queryByTestId('timeline-entry-marker-dot-timeline-entry-1')).toBeNull();
     expect(screen.queryByTestId('timeline-entry-marker-connector-top-timeline-entry-1')).toBeNull();
     expect(screen.queryByTestId('timeline-entry-marker-connector-bottom-timeline-entry-1')).toBeNull();
