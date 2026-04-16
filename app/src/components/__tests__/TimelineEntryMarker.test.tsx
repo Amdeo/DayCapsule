@@ -57,4 +57,24 @@ describe('TimelineEntryMarker', () => {
     expect(screen.getByTestId('timeline-entry-marker-connector-top-timeline-entry-1')).toBeTruthy();
     expect(screen.queryByTestId('timeline-entry-marker-connector-bottom-timeline-entry-1')).toBeNull();
   });
+
+  it('keeps the timestamp visible in card mode while hiding timeline decorations', () => {
+    const screen = render(
+      <TimelineEntryMarker
+        entry={entry}
+        onDeleteEntry={jest.fn()}
+        isActionSheetActive={false}
+        onActionSheetOpen={jest.fn()}
+        isFirst={false}
+        isLast={false}
+        cardSpacing={12}
+        showTimelineDecorations={false}
+      />
+    );
+
+    expect(screen.getByText('09:30')).toBeTruthy();
+    expect(screen.queryByTestId('timeline-entry-marker-dot-timeline-entry-1')).toBeNull();
+    expect(screen.queryByTestId('timeline-entry-marker-connector-top-timeline-entry-1')).toBeNull();
+    expect(screen.queryByTestId('timeline-entry-marker-connector-bottom-timeline-entry-1')).toBeNull();
+  });
 });

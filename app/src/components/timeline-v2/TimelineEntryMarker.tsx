@@ -112,13 +112,11 @@ export const TimelineEntryMarker = React.memo(function TimelineEntryMarker({
         />
       )}
 
-      {showTimelineDecorations && (
-        <View style={timeRowStyle}>
-          <Text style={[timeTextStyle, { color: accentColor }]}>
-            {formatHHMM(entry.timestamp)}
-          </Text>
-        </View>
-      )}
+      <View style={timeRowStyle}>
+        <Text style={[timeTextStyle, { color: accentColor }]}>
+          {formatHHMM(entry.timestamp)}
+        </Text>
+      </View>
 
       {showTimelineDecorations && !isLast ? (
         <View
