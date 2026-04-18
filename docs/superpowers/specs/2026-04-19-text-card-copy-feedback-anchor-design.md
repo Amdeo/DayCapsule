@@ -1,10 +1,11 @@
 # 文本卡片复制提示锚定设计
 
-**状态：** 已批准
+**状态：** 已实现
 
 **评审记录：**
 
 - 2026-04-19：用户确认“已复制”提示不再固定全局位置，而是优先显示在被长按文本卡片上方；上方空间不足时自动翻到卡片下方
+- 2026-04-19：实现已完成（Task 1 commits：`fe82c75`、`59c44ab`；Task 2 commit：`ee88449476ce40a4ffe7eade4c1fa4979d483e72`），并已运行 `cd app && rtk pnpm test --runInBand --runTestsByPath src/components/__tests__/TransientFeedbackHost.test.tsx src/components/__tests__/EntryCard.test.tsx`（2 个测试套件、79 个用例全部通过）、`cd app && rtk pnpm run lint`（通过）、`cd app && rtk pnpm run typecheck`（通过）
 
 ## Context
 
