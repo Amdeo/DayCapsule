@@ -1,11 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
+import { type GestureResponderEvent, UIManager } from 'react-native';
+import type { TransientFeedbackAnchorRect } from '@/src/store/transientFeedbackStore';
 import type { Entry } from '@/src/types/entry';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
 import { showTransientFeedback } from '@/src/services/showTransientFeedback';
 import { logger } from '@/src/utils/logger';
 import { isEntryMediaPendingHydration } from '@/src/utils/mediaAvailability';
 import { useEntryCardActionSheetState } from './useEntryCardActionSheetState';
+
+const COPY_FEEDBACK_MEASURE_TIMEOUT_MS = 150;
+
+async function measureAnchorRectFromPressEvent(
+  event?: GestureResponderEvent,
+): Promise<TransientFeedbackAnchorRect | null> {
+  const nativeTarget = event?.nativeEvent?.target;
+  const target = typeof nativeTarget === 'number' ? nativeTarget : Number(nativeTarget);
+
+  if (!Number.isFinite(target) || target <= 0 || typeof UIManager.measureInWindow !== 'function') {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (anchorRect: TransientFeedbackAnchorRect | null) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeoutId);
+      resolve(anchorRect);
+    };
+
+    const timeoutId = setTimeout(() => {
+      finish(null);
+    }, COPY_FEEDBACK_MEASURE_TIMEOUT_MS);
+
+    try {
+      UIManager.measureInWindow(target, (x, y, width, height) => {
+        if (width <= 0 || height <= 0) {
+          finish(null);
+          return;
+        }
+
+        finish({ x, y, width, height });
+      });
+    } catch (error) {
+      logger.warn('测量文本卡片位置失败，回退为默认复制提示', error);
+      finish(null);
+    }
+  });
+}
 
 interface UseEntryCardControllerOptions {
   entry: Entry;
@@ -63,11 +109,17 @@ export function useEntryCardController({
     };
   }, []);
 
-  const handleLongPress = useCallback(async () => {
+  const handleLongPress = useCallback(async (event?: GestureResponderEvent) => {
     if (entry.type === 'text') {
       try {
         await Clipboard.setStringAsync(entry.content);
-        showTransientFeedback('已复制');
+        const anchorRect = await measureAnchorRectFromPressEvent(event);
+
+        if (anchorRect) {
+          showTransientFeedback('已复制', { anchorRect });
+        } else {
+          showTransientFeedback('已复制');
+        }
       } catch (error) {
         logger.error('Failed to copy entry content:', error);
         showErrorFeedback({

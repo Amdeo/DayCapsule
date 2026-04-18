@@ -194,7 +194,7 @@ jest.mock('react-native-gesture-handler', () => {
 
 import React from 'react';
 import { render, fireEvent, act, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, UIManager } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { logger } from '@/src/utils/logger';
@@ -755,18 +755,55 @@ describe('EntryCard long press behavior', () => {
     (showErrorFeedback as jest.Mock).mockClear();
   });
 
-  it('copies text entry content and shows transient feedback on long press', async () => {
+  it('copies text entry content and sends anchored transient feedback when measurement succeeds', async () => {
+    const measureInWindowSpy = jest.fn((target, callback) => {
+        expect(target).toBe(101);
+        callback(24, 80, 220, 96);
+      });
+    Object.defineProperty(UIManager, 'measureInWindow', {
+      configurable: true,
+      value: measureInWindowSpy,
+    });
     const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={jest.fn()} />
     );
 
     await act(async () => {
-      fireEvent(getByTestId('entry-card'), 'longPress');
+      fireEvent(getByTestId('entry-card'), 'longPress', {
+        nativeEvent: { target: 101 },
+      });
+    });
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(mockEntry.content);
+    expect(showTransientFeedback).toHaveBeenCalledWith('已复制', {
+      anchorRect: { x: 24, y: 80, width: 220, height: 96 },
+    });
+    expect(showErrorFeedback).not.toHaveBeenCalled();
+    Reflect.deleteProperty(UIManager, 'measureInWindow');
+  });
+
+  it('falls back to message-only transient feedback when measurement fails', async () => {
+    Object.defineProperty(UIManager, 'measureInWindow', {
+      configurable: true,
+      value: jest.fn(() => {
+        throw new Error('measure failed');
+      }),
+    });
+
+    const { getByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent(getByTestId('entry-card'), 'longPress', {
+        nativeEvent: { target: 202 },
+      });
     });
 
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith(mockEntry.content);
     expect(showTransientFeedback).toHaveBeenCalledWith('已复制');
     expect(showErrorFeedback).not.toHaveBeenCalled();
+    Reflect.deleteProperty(UIManager, 'measureInWindow');
   });
 
   it('shows error feedback when copying text entry fails', async () => {
