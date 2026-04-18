@@ -7,6 +7,7 @@ let lastAppStateRemove: jest.Mock | null = null;
 let lastNetworkRemove: jest.Mock | null = null;
 
 const mockFeedbackHost = jest.fn(() => null);
+const mockTransientFeedbackHost = jest.fn(() => null);
 const mockCloudSyncMonitorHost = jest.fn(() => null);
 const mockShowErrorFeedback = jest.fn();
 const mockRunAppBootstrap = jest.fn(async () => undefined);
@@ -98,6 +99,10 @@ jest.mock('@/src/components/ErrorBoundary', () => ({
 
 jest.mock('@/src/components/FeedbackHost', () => ({
   FeedbackHost: () => mockFeedbackHost(),
+}));
+
+jest.mock('@/src/components/TransientFeedbackHost', () => ({
+  TransientFeedbackHost: () => mockTransientFeedbackHost(),
 }));
 
 jest.mock('@/src/components/cloud-sync-monitor/CloudSyncMonitorHost', () => ({
@@ -241,6 +246,7 @@ describe('RootLayout bootstrap delegation', () => {
     });
 
     expect(mockFeedbackHost).toHaveBeenCalled();
+    expect(mockTransientFeedbackHost).toHaveBeenCalled();
     expect(mockCloudSyncMonitorHost).toHaveBeenCalled();
     expect(screen.getByTestId('root-layout-shell')).toBeTruthy();
     expect(mockRunAppBootstrap).toHaveBeenCalledWith(
