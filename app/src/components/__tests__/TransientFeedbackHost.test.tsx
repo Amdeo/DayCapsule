@@ -1,22 +1,21 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { AccessibilityInfo, Dimensions } from 'react-native';
 import { useTransientFeedbackStore } from '@/src/store/transientFeedbackStore';
 import { showTransientFeedback } from '@/src/services/showTransientFeedback';
 import { TransientFeedbackHost } from '../TransientFeedbackHost';
 
 const mockAnnounceForAccessibility = jest.fn();
-
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
-}));
-
-jest.spyOn(Dimensions, 'get').mockReturnValue({
+const mockWindow = {
   width: 320,
   height: 640,
   scale: 2,
   fontScale: 1,
-});
+};
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 
 function getHostStyle(screen: ReturnType<typeof render>) {
   const host = screen.getByTestId('transient-feedback-host');
@@ -25,10 +24,26 @@ function getHostStyle(screen: ReturnType<typeof render>) {
     : host.props.style;
 }
 
+function applyToastLayout(
+  screen: ReturnType<typeof render>,
+  layout: { width: number; height: number },
+) {
+  fireEvent(screen.getByTestId('transient-feedback-bubble'), 'layout', {
+    nativeEvent: {
+      layout: {
+        x: 0,
+        y: 0,
+        ...layout,
+      },
+    },
+  });
+}
+
 describe('TransientFeedbackHost', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockAnnounceForAccessibility.mockClear();
+    jest.spyOn(Dimensions, 'get').mockReturnValue(mockWindow);
     jest
       .spyOn(AccessibilityInfo, 'announceForAccessibility')
       .mockImplementation((message: string) => mockAnnounceForAccessibility(message));
@@ -158,11 +173,15 @@ describe('TransientFeedbackHost', () => {
       });
     });
 
+    act(() => {
+      applyToastLayout(screen, { width: 150, height: 56 });
+    });
+
     const style = getHostStyle(screen);
 
-    expect(style.top).toBe(224);
+    expect(style.top).toBe(212);
     expect(style.bottom).toBeUndefined();
-    expect(style.left).toBe(70);
+    expect(style.left).toBe(55);
   });
 
   it('falls below the card when the card is too close to the top edge', () => {
@@ -172,6 +191,10 @@ describe('TransientFeedbackHost', () => {
       showTransientFeedback('已复制', {
         anchorRect: { x: 32, y: 18, width: 180, height: 72 },
       });
+    });
+
+    act(() => {
+      applyToastLayout(screen, { width: 150, height: 56 });
     });
 
     const style = getHostStyle(screen);
@@ -189,9 +212,31 @@ describe('TransientFeedbackHost', () => {
       });
     });
 
+    act(() => {
+      applyToastLayout(screen, { width: 150, height: 56 });
+    });
+
     const style = getHostStyle(screen);
 
     expect(style.left).toBe(16);
+  });
+
+  it('clamps anchored feedback against the right edge of the viewport', () => {
+    const screen = render(<TransientFeedbackHost />);
+
+    act(() => {
+      showTransientFeedback('已复制', {
+        anchorRect: { x: 248, y: 260, width: 80, height: 72 },
+      });
+    });
+
+    act(() => {
+      applyToastLayout(screen, { width: 150, height: 56 });
+    });
+
+    const style = getHostStyle(screen);
+
+    expect(style.left).toBe(154);
   });
 
   it('keeps the default bottom placement when no anchor rect is provided', () => {
