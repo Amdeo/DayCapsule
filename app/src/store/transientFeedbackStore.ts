@@ -4,10 +4,10 @@ type TransientFeedbackState = {
   currentMessage: string | null;
   sequence: number;
   show: (message: string) => void;
-  dismiss: () => void;
+  dismiss: (expectedSequence?: number) => void;
 };
 
-export const useTransientFeedbackStore = create<TransientFeedbackState>((set) => ({
+export const useTransientFeedbackStore = create<TransientFeedbackState>((set, get) => ({
   currentMessage: null,
   sequence: 0,
   show: (message) =>
@@ -15,8 +15,13 @@ export const useTransientFeedbackStore = create<TransientFeedbackState>((set) =>
       currentMessage: message,
       sequence: state.sequence + 1,
     })),
-  dismiss: () =>
+  dismiss: (expectedSequence) => {
+    if (expectedSequence != null && get().sequence !== expectedSequence) {
+      return;
+    }
+
     set({
       currentMessage: null,
-    }),
+    });
+  },
 }));

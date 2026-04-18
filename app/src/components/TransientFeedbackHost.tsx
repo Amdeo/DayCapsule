@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { AccessibilityInfo, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransientFeedbackStore } from '@/src/store/transientFeedbackStore';
 
@@ -16,8 +16,10 @@ export function TransientFeedbackHost() {
       return;
     }
 
+    AccessibilityInfo.announceForAccessibility(currentMessage);
+
     const timeout = setTimeout(() => {
-      dismiss();
+      dismiss(sequence);
     }, HIDE_DELAY_MS);
 
     return () => {
