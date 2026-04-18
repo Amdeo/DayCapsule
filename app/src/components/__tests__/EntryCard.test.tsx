@@ -66,6 +66,14 @@ jest.mock('@/src/services/showErrorFeedback', () => ({
   showErrorFeedback: jest.fn(),
 }));
 
+jest.mock('@/src/services/showTransientFeedback', () => ({
+  showTransientFeedback: jest.fn(),
+}));
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('../WaveformAnimation', () => 'WaveformAnimation');
 jest.mock('../ImageViewer', () => {
   const { View, Text } = require('react-native');
@@ -188,8 +196,10 @@ import React from 'react';
 import { render, fireEvent, act, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import * as ReanimatedModule from 'react-native-reanimated';
+import * as Clipboard from 'expo-clipboard';
 import { logger } from '@/src/utils/logger';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { showTransientFeedback } from '@/src/services/showTransientFeedback';
 import { VoiceService } from '@/src/services/voiceService';
 import { EntryCard } from '../EntryCard';
 import { ENTRY_ACTION_SHEET_EXIT_DURATION } from '../entry-action-sheet/entryActionSheetConfig';
@@ -322,6 +332,10 @@ describe('EntryCard swipe actions', () => {
     mockPlaybackStoreState.currentPlayingId = null;
     (ReanimatedModule as any).__mockFadeInRight.duration.mockClear();
     (ReanimatedModule as any).__mockFadeInRight.delay.mockClear();
+    (Clipboard.setStringAsync as jest.Mock).mockClear();
+    (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
+    (showTransientFeedback as jest.Mock).mockClear();
+    (showErrorFeedback as jest.Mock).mockClear();
   });
 
   afterEach(() => {
@@ -734,30 +748,88 @@ describe('EntryCard swipe actions', () => {
 });
 
 describe('EntryCard long press behavior', () => {
-  it('expands card on long press instead of showing action sheet', () => {
-    const { getByTestId, getByText, queryByText } = render(
-      <EntryCard entry={longTextEntry} onDelete={jest.fn()} />
-    );
-
-    // 验证初始状态显示 "点击展开更多"
-    expect(getByText('点击展开更多')).toBeTruthy();
-
-    // 长按卡片
-    fireEvent(getByTestId('entry-card'), 'longPress');
-
-    // 验证卡片已展开（"点击展开更多" 消失）
-    expect(queryByText('点击展开更多')).toBeNull();
+  beforeEach(() => {
+    (Clipboard.setStringAsync as jest.Mock).mockClear();
+    (Clipboard.setStringAsync as jest.Mock).mockResolvedValue(undefined);
+    (showTransientFeedback as jest.Mock).mockClear();
+    (showErrorFeedback as jest.Mock).mockClear();
   });
 
-  it('does not show action sheet options on long press', () => {
-    const { getByTestId, queryByText } = render(
+  it('copies text entry content and shows transient feedback on long press', async () => {
+    const { getByTestId } = render(
       <EntryCard entry={mockEntry} onDelete={jest.fn()} />
     );
 
-    // 长按卡片
-    fireEvent(getByTestId('entry-card'), 'longPress');
+    await act(async () => {
+      fireEvent(getByTestId('entry-card'), 'longPress');
+    });
 
-    // 长按后不应该出现 ActionSheet 特有的选项文本（如 "取消"）
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith(mockEntry.content);
+    expect(showTransientFeedback).toHaveBeenCalledWith('已复制');
+    expect(showErrorFeedback).not.toHaveBeenCalled();
+  });
+
+  it('shows error feedback when copying text entry fails', async () => {
+    (Clipboard.setStringAsync as jest.Mock).mockRejectedValueOnce(new Error('copy failed'));
+
+    const { getByTestId } = render(
+      <EntryCard entry={mockEntry} onDelete={jest.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent(getByTestId('entry-card'), 'longPress');
+    });
+
+    expect(showTransientFeedback).not.toHaveBeenCalled();
+    expect(showErrorFeedback).toHaveBeenCalledWith({
+      title: '复制失败',
+      message: '复制文本失败，请重试',
+      actions: [{ label: '知道了', role: 'primary' }],
+    });
+  });
+
+  it('does not render the legacy expand hint for long text cards', () => {
+    const { queryByText } = render(
+      <EntryCard entry={longTextEntry} onDelete={jest.fn()} />
+    );
+
+    expect(queryByText('点击展开更多')).toBeNull();
+  });
+
+  it('does not copy when long pressing a photo card', async () => {
+    const photoEntry: Entry = {
+      id: 'photo-long-press-1',
+      type: 'photo',
+      content: '',
+      timestamp: 1700000000000,
+      syncStatus: 'synced',
+      media: [{ uri: 'file://photo-open.jpg', mimeType: 'image/jpeg', size: 1024 }],
+    };
+
+    const { getByTestId, queryByText } = render(
+      <EntryCard entry={photoEntry} onDelete={jest.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent(getByTestId('entry-card'), 'longPress');
+    });
+
+    expect(Clipboard.setStringAsync).not.toHaveBeenCalled();
+    expect(showTransientFeedback).not.toHaveBeenCalled();
+    expect(queryByText('取消')).toBeNull();
+  });
+
+  it('does not copy when long pressing a voice card', async () => {
+    const { getByTestId, queryByText } = render(
+      <EntryCard entry={playableVoiceEntry} onDelete={jest.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent(getByTestId('entry-card'), 'longPress');
+    });
+
+    expect(Clipboard.setStringAsync).not.toHaveBeenCalled();
+    expect(showTransientFeedback).not.toHaveBeenCalled();
     expect(queryByText('取消')).toBeNull();
   });
 });

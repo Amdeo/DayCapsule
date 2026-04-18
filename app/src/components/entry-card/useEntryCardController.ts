@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import type { Entry } from '@/src/types/entry';
 import { showErrorFeedback } from '@/src/services/showErrorFeedback';
+import { showTransientFeedback } from '@/src/services/showTransientFeedback';
 import { logger } from '@/src/utils/logger';
 import { isEntryMediaPendingHydration } from '@/src/utils/mediaAvailability';
 import { useEntryCardActionSheetState } from './useEntryCardActionSheetState';
@@ -61,9 +63,24 @@ export function useEntryCardController({
     };
   }, []);
 
-  const handleLongPress = useCallback(() => {
+  const handleLongPress = useCallback(async () => {
+    if (entry.type === 'text') {
+      try {
+        await Clipboard.setStringAsync(entry.content);
+        showTransientFeedback('已复制');
+      } catch (error) {
+        logger.error('Failed to copy entry content:', error);
+        showErrorFeedback({
+          title: '复制失败',
+          message: '复制文本失败，请重试',
+          actions: [{ label: '知道了', role: 'primary' }],
+        });
+      }
+      return;
+    }
+
     setIsExpanded(true);
-  }, []);
+  }, [entry]);
 
   const handleImagePress = useCallback((index: number) => {
     logger.log('图片被点击，打开图片查看器，index:', index);

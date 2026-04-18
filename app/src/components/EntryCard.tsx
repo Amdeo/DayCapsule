@@ -206,7 +206,7 @@ function EntryCard({
                   )}
                 </View>
 
-                {needsExpansion && !isExpanded && variant !== 'calendar' ? (
+                {needsExpansion && !isExpanded && variant !== 'calendar' && entry.type !== 'text' ? (
                   <Text style={styles.expandHint}>点击展开更多</Text>
                 ) : null}
               </View>
