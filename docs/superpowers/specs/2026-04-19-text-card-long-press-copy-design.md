@@ -1,5 +1,12 @@
 # 文本卡片长按复制设计
 
+**状态：** 已实现
+
+**评审记录：**
+
+- 2026-04-19：用户确认交互范围为“所有文本卡片长按复制 `entry.content`，成功显示轻提示”
+- 2026-04-19：实现完成，已运行 `cd app && rtk pnpm test --runInBand --runTestsByPath src/components/__tests__/TransientFeedbackHost.test.tsx src/components/__tests__/EntryCard.test.tsx app/__tests__/_layout.photo-upload.test.tsx`，结果为 3 个测试套件、79 个用例全部通过；`cd app && rtk pnpm run lint` 与 `cd app && rtk pnpm run typecheck` 均退出 0
+
 ## Context
 
 当前文本记录卡片复用 [`EntryCard.tsx`](/Users/cooper/Documents/code/MemoryCapsule/app/src/components/EntryCard.tsx) 组件，核心交互收敛在 [`useEntryCardController.ts`](/Users/cooper/Documents/code/MemoryCapsule/app/src/components/entry-card/useEntryCardController.ts)。现有代码里，`onLongPress` 会触发 `handleLongPress()`，其效果是把文本卡片切到展开态；对应测试也已经覆盖这条行为链路。
