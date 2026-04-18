@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Dimensions } from 'react-native';
 import { useTransientFeedbackStore } from '@/src/store/transientFeedbackStore';
 import { showTransientFeedback } from '@/src/services/showTransientFeedback';
 import { TransientFeedbackHost } from '../TransientFeedbackHost';
@@ -11,6 +11,20 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.spyOn(Dimensions, 'get').mockReturnValue({
+  width: 320,
+  height: 640,
+  scale: 2,
+  fontScale: 1,
+});
+
+function getHostStyle(screen: ReturnType<typeof render>) {
+  const host = screen.getByTestId('transient-feedback-host');
+  return Array.isArray(host.props.style)
+    ? Object.assign({}, ...host.props.style)
+    : host.props.style;
+}
+
 describe('TransientFeedbackHost', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -20,6 +34,7 @@ describe('TransientFeedbackHost', () => {
       .mockImplementation((message: string) => mockAnnounceForAccessibility(message));
     useTransientFeedbackStore.setState({
       currentMessage: null,
+      anchorRect: null,
       sequence: 0,
     });
   });
@@ -132,5 +147,63 @@ describe('TransientFeedbackHost', () => {
     });
 
     expect(mockAnnounceForAccessibility).toHaveBeenCalledWith('已复制');
+  });
+
+  it('positions anchored feedback above the card when top space is available', () => {
+    const screen = render(<TransientFeedbackHost />);
+
+    act(() => {
+      showTransientFeedback('已复制', {
+        anchorRect: { x: 40, y: 280, width: 180, height: 72 },
+      });
+    });
+
+    const style = getHostStyle(screen);
+
+    expect(style.top).toBe(224);
+    expect(style.bottom).toBeUndefined();
+    expect(style.left).toBe(70);
+  });
+
+  it('falls below the card when the card is too close to the top edge', () => {
+    const screen = render(<TransientFeedbackHost />);
+
+    act(() => {
+      showTransientFeedback('已复制', {
+        anchorRect: { x: 32, y: 18, width: 180, height: 72 },
+      });
+    });
+
+    const style = getHostStyle(screen);
+
+    expect(style.top).toBe(102);
+    expect(style.bottom).toBeUndefined();
+  });
+
+  it('clamps anchored feedback horizontally inside the viewport', () => {
+    const screen = render(<TransientFeedbackHost />);
+
+    act(() => {
+      showTransientFeedback('已复制', {
+        anchorRect: { x: -12, y: 260, width: 80, height: 72 },
+      });
+    });
+
+    const style = getHostStyle(screen);
+
+    expect(style.left).toBe(16);
+  });
+
+  it('keeps the default bottom placement when no anchor rect is provided', () => {
+    const screen = render(<TransientFeedbackHost />);
+
+    act(() => {
+      showTransientFeedback('已复制');
+    });
+
+    const style = getHostStyle(screen);
+
+    expect(style.bottom).toBe(36);
+    expect(style.top).toBeUndefined();
   });
 });

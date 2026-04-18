@@ -1,5 +1,15 @@
-import { useTransientFeedbackStore } from '@/src/store/transientFeedbackStore';
+import {
+  type TransientFeedbackAnchorRect,
+  useTransientFeedbackStore,
+} from '@/src/store/transientFeedbackStore';
 
-export function showTransientFeedback(message: string): void {
-  useTransientFeedbackStore.getState().show(message);
+type ShowTransientFeedbackOptions = {
+  anchorRect?: TransientFeedbackAnchorRect | null;
+};
+
+export function showTransientFeedback(
+  message: string,
+  options?: ShowTransientFeedbackOptions,
+): void {
+  useTransientFeedbackStore.getState().show(message, options?.anchorRect ?? null);
 }
