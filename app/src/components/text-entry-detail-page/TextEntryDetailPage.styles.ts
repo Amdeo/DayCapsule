@@ -8,6 +8,11 @@ export const textEntryDetailPageStyles = {
     paddingTop: 20,
     gap: 16,
   },
+  topMetaSection: {
+    gap: 4,
+    paddingHorizontal: 2,
+    marginBottom: 8,
+  },
   // Read mode — content card
   heroBlock: {
     backgroundColor: '#FFFCF7',
@@ -22,6 +27,11 @@ export const textEntryDetailPageStyles = {
     lineHeight: 30,
     color: '#2F241E',
     letterSpacing: 0.2,
+  },
+  selectableContentInput: {
+    padding: 0,
+    margin: 0,
+    backgroundColor: 'transparent',
   },
   // Edit mode — content card (matches TextEditor's contentCard)
   editContentCard: {

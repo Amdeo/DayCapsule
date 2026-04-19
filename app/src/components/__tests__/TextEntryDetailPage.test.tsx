@@ -3,6 +3,8 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import type { Entry } from '@/src/types/entry';
 import { TextEntryDetailPage } from '../TextEntryDetailPage';
 
+let latestSelectableTextBodyProps: Record<string, unknown> | undefined;
+
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
@@ -30,6 +32,25 @@ jest.mock('@/src/store/commonTagsStore', () => ({
     loadCommonTags: jest.fn(),
   }),
 }));
+
+jest.mock('../text-entry-detail-page/SelectableTextBody', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+
+  return {
+    SelectableTextBody: (props: Record<string, unknown>) => {
+      latestSelectableTextBodyProps = props;
+      return (
+        <Text
+          selectable
+          testID={typeof props.testID === 'string' ? props.testID : 'text-entry-detail-content'}
+        >
+          {typeof props.content === 'string' ? props.content : ''}
+        </Text>
+      );
+    },
+  };
+});
 
 jest.mock('../DetailPageShell', () => {
   const React = require('react');
@@ -78,6 +99,7 @@ describe('TextEntryDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    latestSelectableTextBodyProps = undefined;
   });
 
   afterEach(() => {
@@ -100,13 +122,42 @@ describe('TextEntryDetailPage', () => {
     const screen = render(
       <TextEntryDetailPage visible entry={entry} onClose={jest.fn()} onSave={jest.fn()} />
     );
-    expect(screen.getByTestId('text-entry-detail-root')).toBeTruthy();
+    const root = screen.getByTestId('text-entry-detail-root');
+    const childTestIds = root.children
+      .map((child: any) => child?.props?.testID)
+      .filter(Boolean);
+
+    expect(childTestIds).toEqual([
+      'text-entry-detail-top-meta',
+      'text-entry-detail-hero',
+      'text-entry-detail-tags',
+      'text-entry-detail-meta',
+    ]);
     expect(screen.getByTestId('text-entry-detail-hero')).toBeTruthy();
+    expect(screen.getByTestId('text-entry-detail-top-meta')).toBeTruthy();
+    expect(screen.getByTestId('text-entry-detail-created-at')).toBeTruthy();
     expect(screen.getByText(entry.content)).toBeTruthy();
+    expect(latestSelectableTextBodyProps).toMatchObject({
+      content: entry.content,
+      testID: 'text-entry-detail-content',
+    });
+    expect(screen.getByTestId('text-entry-detail-content').props.selectable).toBe(true);
     expect(screen.getByTestId('text-entry-detail-tags')).toBeTruthy();
     expect(screen.getByText('#旅行')).toBeTruthy();
     expect(screen.getByText('#春天')).toBeTruthy();
+    expect(screen.getByTestId('text-entry-detail-meta')).toBeTruthy();
+    expect(screen.getByText(/最近编辑：/)).toBeTruthy();
     expect(screen.getByText('文字记录')).toBeTruthy();
+  });
+
+  it('routes selectable behavior only through the read-mode body boundary', () => {
+    const screen = render(
+      <TextEntryDetailPage visible entry={entry} onClose={jest.fn()} onSave={jest.fn()} />
+    );
+
+    expect(latestSelectableTextBodyProps).toBeTruthy();
+    expect(screen.getByTestId('text-entry-detail-created-at').props.selectable).toBeUndefined();
+    expect(screen.getByText('#旅行').props.selectable).toBeUndefined();
   });
 
   it('hides tags section when entry has no tags', () => {
@@ -121,6 +172,32 @@ describe('TextEntryDetailPage', () => {
     expect(screen.queryByTestId('text-entry-detail-tags')).toBeNull();
   });
 
+  it('keeps editedAt in the lower meta section when it exists', () => {
+    const screen = render(
+      <TextEntryDetailPage visible entry={entry} onClose={jest.fn()} onSave={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('text-entry-detail-top-meta').findByProps({
+      testID: 'text-entry-detail-created-at',
+    })).toBeTruthy();
+    expect(screen.getByTestId('text-entry-detail-meta')).toBeTruthy();
+    expect(screen.getByText(/最近编辑：/)).toBeTruthy();
+  });
+
+  it('hides the lower meta section when editedAt is absent', () => {
+    const screen = render(
+      <TextEntryDetailPage
+        visible
+        entry={{ ...entry, editedAt: undefined }}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('text-entry-detail-top-meta')).toBeTruthy();
+    expect(screen.queryByTestId('text-entry-detail-meta')).toBeNull();
+  });
+
   it('pressing edit button enters editing mode', () => {
     const screen = render(
       <TextEntryDetailPage visible entry={entry} onClose={jest.fn()} onSave={jest.fn()} />
@@ -130,6 +207,8 @@ describe('TextEntryDetailPage', () => {
     expect(screen.getByTestId('text-entry-detail-edit-input').props.value).toBe(entry.content);
     expect(screen.getByText('编辑')).toBeTruthy();
     expect(screen.getByTestId('text-entry-detail-save-button')).toBeTruthy();
+    expect(screen.queryByTestId('mock-header-left')).toBeNull();
+    expect(screen.queryByTestId('mock-header-right')).toBeNull();
   });
 
   it('cancel without changes exits editing without confirmation', () => {

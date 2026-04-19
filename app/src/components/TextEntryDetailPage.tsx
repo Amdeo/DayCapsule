@@ -24,37 +24,11 @@ export function TextEntryDetailPage({
 
   if (!visible || !detail) return null;
 
-  const headerLeft = detail.isEditing ? (
-    <Pressable
-      testID="text-entry-detail-cancel-button"
-      onPress={detail.handleCancelEdit}
-      disabled={detail.isSaving}
-    >
-      <Text style={styles.headerCancelText}>取消</Text>
-    </Pressable>
-  ) : undefined;
-
-  const headerRight = detail.isEditing ? (
-    <Pressable
-      testID="text-entry-detail-save-header-button"
-      onPress={detail.handleSaveEdit}
-      disabled={!detail.canSave || detail.isSaving}
-    >
-      <Text
-        style={[
-          styles.headerSaveText,
-          (!detail.canSave || detail.isSaving) && styles.headerSaveTextDisabled,
-        ]}
-      >
-        保存
-      </Text>
-    </Pressable>
-  ) : undefined;
-
   const footerContent = detail.isEditing ? (
     <View style={styles.bottomBar}>
       <View style={styles.editBarRow}>
         <Pressable
+          testID="text-entry-detail-cancel-button"
           style={styles.cancelButton}
           onPress={detail.handleCancelEdit}
           disabled={detail.isSaving}
@@ -96,8 +70,6 @@ export function TextEntryDetailPage({
       visible={visible}
       title={detail.isEditing ? '编辑' : '文字记录'}
       onClose={detail.isEditing ? detail.handleCancelEdit : onClose}
-      headerLeft={headerLeft}
-      headerRight={headerRight}
       contentContainerStyle={styles.contentContainer}
       footerContent={footerContent}
     >

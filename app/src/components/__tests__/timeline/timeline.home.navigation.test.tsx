@@ -206,7 +206,9 @@ describe('Timeline home navigation', () => {
     const screen = render(<Timeline />);
 
     fireEvent.press(screen.getByTestId('timeline-entry-card-entry-text-1'));
-    expect(screen.getByTestId('timeline-text-detail')).toBeTruthy();
+    const detail = screen.getByTestId('timeline-text-detail');
+    expect(detail).toBeTruthy();
+    expect(detail.findByProps({ children: '可以查看详情的文本' })).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('timeline-text-detail-save'));
@@ -216,6 +218,9 @@ describe('Timeline home navigation', () => {
       content: '已更新内容',
       tags: ['已更新标签'],
     });
+    expect(screen.getByTestId('timeline-text-detail').findByProps({
+      children: '已更新内容',
+    })).toBeTruthy();
   });
 
   it('does not open the text detail page for non-text entries', () => {

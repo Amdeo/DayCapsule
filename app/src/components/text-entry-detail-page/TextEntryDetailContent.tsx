@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { textEntryDetailPageStyles as styles } from './TextEntryDetailPage.styles';
 import { TagArea } from '@/src/components/text-editor/TagArea';
+import { SelectableTextBody } from './SelectableTextBody';
 
 interface TextEntryDetailContentProps {
   isEditing: boolean;
@@ -78,8 +79,18 @@ export function TextEntryDetailContent({
 
   return (
     <View testID="text-entry-detail-root">
+      <View testID="text-entry-detail-top-meta" style={styles.topMetaSection}>
+        <Text testID="text-entry-detail-created-at" style={styles.metaText}>
+          {createdAt} 创建
+        </Text>
+      </View>
+
       <View testID="text-entry-detail-hero" style={styles.heroBlock}>
-        <Text style={styles.contentText}>{content}</Text>
+        <SelectableTextBody
+          content={content}
+          testID="text-entry-detail-content"
+          style={styles.contentText}
+        />
       </View>
 
       {tags.length > 0 && (
@@ -94,10 +105,11 @@ export function TextEntryDetailContent({
         </View>
       )}
 
-      <View style={styles.metaSection}>
-        <Text style={styles.metaText}>{createdAt} 创建</Text>
-        {editedAt ? <Text style={styles.metaText}>最近编辑：{editedAt}</Text> : null}
-      </View>
+      {editedAt ? (
+        <View testID="text-entry-detail-meta" style={styles.metaSection}>
+          <Text style={styles.metaText}>最近编辑：{editedAt}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

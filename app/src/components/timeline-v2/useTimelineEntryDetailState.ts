@@ -22,6 +22,19 @@ export function useTimelineEntryDetailState() {
     setEditingEntry(null);
   }, []);
 
+  const syncViewingEntry = useCallback((id: string, updates: Partial<Entry>) => {
+    setViewingEntry((current) => {
+      if (!current || current.id !== id) {
+        return current;
+      }
+
+      return {
+        ...current,
+        ...updates,
+      };
+    });
+  }, []);
+
   return {
     viewingEntry,
     editingEntry,
@@ -29,5 +42,6 @@ export function useTimelineEntryDetailState() {
     handleEditEntry,
     closeViewingEntry,
     closeEditingEntry,
+    syncViewingEntry,
   };
 }

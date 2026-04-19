@@ -23,6 +23,7 @@ export function useTimelineController({
     handleEditEntry,
     closeViewingEntry,
     closeEditingEntry,
+    syncViewingEntry,
   } = useTimelineEntryDetailState();
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -60,9 +61,10 @@ export function useTimelineController({
   const handleSaveEdit = useCallback(
     async (id: string, content: string, tags: string[]) => {
       await updateEntry(id, { content, tags });
+      syncViewingEntry(id, { content, tags });
       closeEditingEntry();
     },
-    [closeEditingEntry, updateEntry],
+    [closeEditingEntry, syncViewingEntry, updateEntry],
   );
 
   const handleSearchFocus = useCallback(() => {

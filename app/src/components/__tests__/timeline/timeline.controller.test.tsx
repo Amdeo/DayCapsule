@@ -199,6 +199,11 @@ describe('useTimelineController', () => {
       content: '新内容',
       tags: ['已更新'],
     });
+    expect(result.current.viewingEntry).toMatchObject({
+      id: 'entry-1',
+      content: '新内容',
+      tags: ['已更新'],
+    });
   });
 
 });
