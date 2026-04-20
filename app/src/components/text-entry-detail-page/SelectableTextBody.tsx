@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  TextInput,
+  Text,
   type StyleProp,
   type TextStyle,
 } from 'react-native';
@@ -18,17 +18,15 @@ export function SelectableTextBody({
   testID = 'text-entry-detail-content',
 }: SelectableTextBodyProps) {
   return (
-    <TextInput
-      contextMenuHidden={false}
-      editable={false}
-      multiline
-      scrollEnabled={false}
+    <Text
+      selectable
       testID={testID}
       style={[
         styles.selectableContentInput,
         style,
       ]}
-      value={content}
-    />
+    >
+      {content}
+    </Text>
   );
 }
