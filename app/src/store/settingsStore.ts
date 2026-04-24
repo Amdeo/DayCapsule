@@ -29,6 +29,8 @@ export type CalendarDensity = 'comfortable' | 'default' | 'compact';
 
 export type LastAddType = 'text' | 'camera' | 'photo' | 'voice';
 
+export type ViewMode = 'timeline' | 'card' | 'calendar';
+
 interface SettingsState {
   // 设置值
   notifications: boolean;
@@ -37,6 +39,7 @@ interface SettingsState {
   photoHeight: PhotoHeightPreset;
   calendarDensity: CalendarDensity;
   lastAddType: LastAddType | null;
+  viewMode: ViewMode;
 
   // 加载状态
   isLoaded: boolean;
@@ -51,6 +54,7 @@ interface SettingsState {
   setPhotoHeight: (value: PhotoHeightPreset) => Promise<void>;
   setCalendarDensity: (value: CalendarDensity) => Promise<void>;
   setLastAddType: (value: LastAddType) => Promise<void>;
+  setViewMode: (value: ViewMode) => Promise<void>;
 
   // 重置设置
   resetSettings: () => Promise<void>;
@@ -63,6 +67,7 @@ const SETTINGS_KEYS = {
   photoHeight:       'settings:photoHeight',
   calendarDensity:   'settings:calendarDensity',
   lastAddType:       'settings:lastAddType',
+  viewMode:          'settings:viewMode',
 };
 
 const DEFAULT_SETTINGS = {
@@ -72,6 +77,7 @@ const DEFAULT_SETTINGS = {
   photoHeight: 'default' as PhotoHeightPreset,
   calendarDensity: 'default' as CalendarDensity,
   lastAddType: null as LastAddType | null,
+  viewMode: 'timeline' as ViewMode,
 };
 
 const getScopedSettingsKey = async (key: string): Promise<string> => {
@@ -92,15 +98,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
         getScopedSettingsKey(SETTINGS_KEYS.calendarDensity),
         getScopedSettingsKey(SETTINGS_KEYS.lastAddType),
+        getScopedSettingsKey(SETTINGS_KEYS.viewMode),
       ]);
 
-      const [notif, hq, spacing, ph, density, lat] = await Promise.all([
+      const [notif, hq, spacing, ph, density, lat, vm] = await Promise.all([
         Storage.getString(scopedKeys[0]),
         Storage.getString(scopedKeys[1]),
         Storage.getString(scopedKeys[2]),
         Storage.getString(scopedKeys[3]),
         Storage.getString(scopedKeys[4]),
         Storage.getString(scopedKeys[5]),
+        Storage.getString(scopedKeys[6]),
       ]);
 
       const validSpacing = (value: string | null): CardSpacing => {
@@ -123,6 +131,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         return null;
       };
 
+      const validViewMode = (value: string | null): ViewMode => {
+        if (value === 'card' || value === 'calendar') return value;
+        return 'timeline';
+      };
+
       set({
         notifications: notif === null ? DEFAULT_SETTINGS.notifications : notif === 'true',
         highQualityPhotos: hq === null ? DEFAULT_SETTINGS.highQualityPhotos : hq === 'true',
@@ -130,6 +143,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         photoHeight: ph === null ? DEFAULT_SETTINGS.photoHeight : validPhotoHeight(ph),
         calendarDensity: density === null ? DEFAULT_SETTINGS.calendarDensity : validCalendarDensity(density),
         lastAddType: validLastAddType(lat),
+        viewMode: vm === null ? DEFAULT_SETTINGS.viewMode : validViewMode(vm),
         isLoaded: true,
       });
     } catch (error) {
@@ -173,6 +187,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ lastAddType: value });
   },
 
+  setViewMode: async (value) => {
+    await Storage.setString(await getScopedSettingsKey(SETTINGS_KEYS.viewMode), value);
+    set({ viewMode: value });
+  },
+
   resetSettings: async () => {
     const scopedKeys = await Promise.all([
       getScopedSettingsKey(SETTINGS_KEYS.notifications),
@@ -181,6 +200,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       getScopedSettingsKey(SETTINGS_KEYS.photoHeight),
       getScopedSettingsKey(SETTINGS_KEYS.calendarDensity),
       getScopedSettingsKey(SETTINGS_KEYS.lastAddType),
+      getScopedSettingsKey(SETTINGS_KEYS.viewMode),
     ]);
     await Promise.all([
       Storage.delete(scopedKeys[0]),
@@ -189,6 +209,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       Storage.delete(scopedKeys[3]),
       Storage.delete(scopedKeys[4]),
       Storage.delete(scopedKeys[5]),
+      Storage.delete(scopedKeys[6]),
     ]);
     set({ ...DEFAULT_SETTINGS });
   },

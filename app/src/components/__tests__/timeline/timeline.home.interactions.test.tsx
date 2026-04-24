@@ -176,7 +176,10 @@ describe('HomeScreen timeline interactions', () => {
       expect(spies.showErrorFeedback).toHaveBeenCalledWith({
         title: '加载失败',
         message: '首页记录加载失败，请稍后重试',
-        actions: [{ label: '知道了', role: 'primary' }],
+        actions: [
+          { label: '重试', role: 'primary', onPress: expect.any(Function) },
+          { label: '忽略', role: 'secondary' },
+        ],
       });
     });
   });

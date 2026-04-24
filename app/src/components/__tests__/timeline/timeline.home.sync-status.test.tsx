@@ -34,8 +34,17 @@ jest.mock('@/src/store/entryFilterUIStore', () => ({
     selector(mockFilterUiState),
 }));
 
+const mockHomeSyncSettingsState = {
+  cardSpacing: 'default',
+  viewMode: 'timeline',
+  setViewMode: jest.fn(),
+};
+
 jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: () => ({ cardSpacing: 'default' }),
+  useSettingsStore: Object.assign(
+    (selector?: (state: any) => any) => (selector ? selector(mockHomeSyncSettingsState) : mockHomeSyncSettingsState),
+    { getState: () => mockHomeSyncSettingsState }
+  ),
   SPACING_VALUES: { compact: 8, default: 12, loose: 16 },
 }));
 

@@ -95,8 +95,20 @@ jest.mock('@/src/store/entryFilterUIStore', () => ({
   useEntryFilterUIStore: (selector: (state: any) => any) => selector(mockFilterUiState()),
 }));
 
+const mockSettingsState = {
+  cardSpacing: 'default',
+  calendarDensity: 'default',
+  viewMode: 'timeline',
+  setViewMode: jest.fn((mode: string) => {
+    mockSettingsState.viewMode = mode;
+  }),
+};
+
 jest.mock('@/src/store/settingsStore', () => ({
-  useSettingsStore: () => ({ cardSpacing: 'default', calendarDensity: 'default' }),
+  useSettingsStore: Object.assign(
+    (selector?: (state: any) => any) => (selector ? selector(mockSettingsState) : mockSettingsState),
+    { getState: () => mockSettingsState }
+  ),
   SPACING_VALUES: { compact: 8, default: 12, loose: 16 },
 }));
 
@@ -183,6 +195,7 @@ describe('Timeline view mode switching', () => {
     mockFilterType = 'all';
     mockFilterDateRange = 'all';
     jest.clearAllMocks();
+    mockSettingsState.viewMode = 'timeline';
     mockEntryEditor.mockImplementation(() => null);
     mockTextEntryDetailPage.mockImplementation(() => null);
     mockEntryCard.mockClear();

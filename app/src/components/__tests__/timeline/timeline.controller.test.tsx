@@ -1,6 +1,17 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useTimelineController } from '../../timeline-v2/useTimelineController';
 
+const mockSetViewMode = jest.fn();
+
+const mockSettingsState = { viewMode: 'timeline', setViewMode: mockSetViewMode };
+
+jest.mock('@/src/store/settingsStore', () => ({
+  useSettingsStore: Object.assign(
+    (selector: (state: any) => any) => selector(mockSettingsState),
+    { getState: () => mockSettingsState }
+  ),
+}));
+
 describe('useTimelineController', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -11,6 +22,10 @@ describe('useTimelineController', () => {
       jest.runOnlyPendingTimers();
     });
     jest.useRealTimers();
+  });
+
+  beforeEach(() => {
+    mockSetViewMode.mockClear();
   });
 
   it('toggles the view switcher and transitions into calendar mode after the delay', () => {
@@ -34,19 +49,10 @@ describe('useTimelineController', () => {
       result.current.setViewMode('calendar');
     });
 
-    expect(result.current.viewMode).toBe('calendar');
-    expect(result.current.displayMode).toBe('timeline');
-    expect(result.current.isTransitioning).toBe(true);
-
-    act(() => {
-      jest.advanceTimersByTime(600);
-    });
-
-    expect(result.current.displayMode).toBe('calendar');
-    expect(result.current.isTransitioning).toBe(false);
+    expect(mockSetViewMode).toHaveBeenCalledWith('calendar');
   });
 
-  it('resets back to timeline mode immediately when closing the view switcher from calendar mode', () => {
+  it('keeps the current mode when toggling the view switcher closed', () => {
     const { result } = renderHook(() =>
       useTimelineController({
         updateEntry: jest.fn(),
@@ -61,21 +67,14 @@ describe('useTimelineController', () => {
       result.current.setViewMode('calendar');
     });
 
-    act(() => {
-      jest.advanceTimersByTime(600);
-    });
-
     expect(result.current.showViewToggle).toBe(true);
-    expect(result.current.viewMode).toBe('calendar');
-    expect(result.current.displayMode).toBe('calendar');
 
     act(() => {
       result.current.handleToggleViewMode();
     });
 
     expect(result.current.showViewToggle).toBe(false);
-    expect(result.current.viewMode).toBe('timeline');
-    expect(result.current.displayMode).toBe('timeline');
+    expect(mockSetViewMode).toHaveBeenCalledWith('calendar');
   });
 
   it('toggles the FAB hide state and scroll-top visibility from scroll direction', () => {

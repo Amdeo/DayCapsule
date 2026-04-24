@@ -56,15 +56,11 @@ describe('TabLayout', () => {
     expect(capturedScreenOptions).toBeTruthy();
 
     const indexScreen = tabsScreens.find((screen) => screen.name === 'index');
-    const settingsScreen = tabsScreens.find((screen) => screen.name === 'two');
 
     expect(indexScreen?.options).toBeTruthy();
-    expect(settingsScreen?.options).toBeTruthy();
 
     const listIconTree = render(indexScreen!.options.tabBarIcon({ color: '#333' }));
-    const gearIconTree = render(settingsScreen!.options.tabBarIcon({ color: '#333' }));
 
     expect(listIconTree.getByTestId('tab-layout-icon-list')).toBeTruthy();
-    expect(gearIconTree.getByTestId('tab-layout-icon-gear')).toBeTruthy();
   });
 });

@@ -40,6 +40,7 @@ const resetStore = () =>
     photoHeight: 'default',
     calendarDensity: 'default',
     lastAddType: null,
+    viewMode: 'timeline',
     isLoaded: false,
   });
 
@@ -208,5 +209,69 @@ describe('resetSettings — lastAddType', () => {
 
     expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'settings:lastAddType'));
     expect(useSettingsStore.getState().lastAddType).toBeNull();
+  });
+});
+
+describe('loadSettings — viewMode', () => {
+  it('defaults to "timeline" when key is missing', async () => {
+    Storage.getString.mockResolvedValue(null);
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().viewMode).toBe('timeline');
+  });
+
+  it('loads "card" from storage', async () => {
+    Storage.getString.mockImplementation((key: string) =>
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:viewMode') ? 'card' : null)
+    );
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().viewMode).toBe('card');
+  });
+
+  it('loads "calendar" from storage', async () => {
+    Storage.getString.mockImplementation((key: string) =>
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:viewMode') ? 'calendar' : null)
+    );
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().viewMode).toBe('calendar');
+  });
+
+  it('falls back to "timeline" for invalid stored value', async () => {
+    Storage.getString.mockImplementation((key: string) =>
+      Promise.resolve(key === scopedKey(SERVER_A_SCOPE, 'settings:viewMode') ? 'invalid' : null)
+    );
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().viewMode).toBe('timeline');
+  });
+});
+
+describe('setViewMode', () => {
+  it('saves value to storage and updates state', async () => {
+    Storage.setString.mockResolvedValue(undefined);
+    await useSettingsStore.getState().setViewMode('calendar');
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'settings:viewMode'),
+      'calendar'
+    );
+    expect(useSettingsStore.getState().viewMode).toBe('calendar');
+  });
+
+  it('can set all valid modes', async () => {
+    Storage.setString.mockResolvedValue(undefined);
+    for (const mode of ['timeline', 'card', 'calendar'] as const) {
+      await useSettingsStore.getState().setViewMode(mode);
+      expect(useSettingsStore.getState().viewMode).toBe(mode);
+    }
+  });
+});
+
+describe('resetSettings — viewMode', () => {
+  it('deletes viewMode key and resets to timeline', async () => {
+    Storage.delete.mockResolvedValue(undefined);
+    useSettingsStore.setState({ viewMode: 'calendar' });
+
+    await useSettingsStore.getState().resetSettings();
+
+    expect(Storage.delete).toHaveBeenCalledWith(scopedKey(SERVER_A_SCOPE, 'settings:viewMode'));
+    expect(useSettingsStore.getState().viewMode).toBe('timeline');
   });
 });

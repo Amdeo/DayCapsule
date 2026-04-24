@@ -579,6 +579,8 @@ const mockUseEntryFilterUiStore = Object.assign(
 const mockSettingsState = {
   loadSettings: mockLoadSettings,
   cardSpacing: 'default' as const,
+  viewMode: 'timeline' as const,
+  setViewMode: jest.fn(),
 };
 let mockIsAuthenticated = false;
 let mockSessionState = {
@@ -590,7 +592,8 @@ let mockSessionState = {
 };
 
 const mockUseSettingsStore = Object.assign(
-  () => mockSettingsState,
+  <T,>(selector?: (state: typeof mockSettingsState) => T) =>
+    selector ? selector(mockSettingsState) : (mockSettingsState as T),
   {
     getState: () => mockSettingsState,
   }

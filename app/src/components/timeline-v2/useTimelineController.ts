@@ -8,6 +8,7 @@ import type {
 import type { Entry } from '@/src/types/entry';
 import type { TimeSection, ViewMode } from './timelineTypes';
 import { useTimelineEntryDetailState } from './useTimelineEntryDetailState';
+import { useSettingsStore } from '@/src/store/settingsStore';
 
 interface UseTimelineControllerOptions {
   updateEntry: (id: string, updates: Partial<Entry>) => void | Promise<void>;
@@ -27,9 +28,10 @@ export function useTimelineController({
   } = useTimelineEntryDetailState();
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
-  const [displayMode, setDisplayMode] = useState<ViewMode>('timeline');
-  const skipTransitionRef = useRef(false);
+  const persistedViewMode = useSettingsStore((s) => s.viewMode);
+  const setPersistedViewMode = useSettingsStore((s) => s.setViewMode);
+  const [viewMode, setViewModeState] = useState<ViewMode>(persistedViewMode);
+  const [displayMode, setDisplayMode] = useState<ViewMode>(persistedViewMode);
   const isInitialMountRef = useRef(true);
   const [showViewToggle, setShowViewToggle] = useState(false);
   const [activeActionSheetId, setActiveActionSheetId] = useState<string | null>(null);
@@ -41,13 +43,18 @@ export function useTimelineController({
   const isTransitioning = viewMode !== displayMode;
 
   useEffect(() => {
+    const validModes: ViewMode[] = ['timeline', 'card', 'calendar'];
+    if (
+      validModes.includes(persistedViewMode) &&
+      persistedViewMode !== viewMode
+    ) {
+      setViewModeState(persistedViewMode);
+    }
+  }, [persistedViewMode]);
+
+  useEffect(() => {
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
-      return;
-    }
-
-    if (skipTransitionRef.current) {
-      skipTransitionRef.current = false;
       return;
     }
 
@@ -75,15 +82,14 @@ export function useTimelineController({
     setShowSearchOverlay(false);
   }, []);
 
-  const handleToggleViewMode = useCallback(() => {
-    if (showViewToggle && viewMode !== 'timeline') {
-      skipTransitionRef.current = true;
-      setViewMode('timeline');
-      setDisplayMode('timeline');
-    }
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeState(mode);
+    void setPersistedViewMode(mode);
+  }, [setPersistedViewMode]);
 
+  const handleToggleViewMode = useCallback(() => {
     setShowViewToggle((value) => !value);
-  }, [showViewToggle, viewMode]);
+  }, []);
 
   const handleActionSheetOpen = useCallback((id: string) => {
     setActiveActionSheetId(id);

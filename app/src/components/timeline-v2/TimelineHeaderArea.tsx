@@ -63,6 +63,7 @@ export function TimelineHeaderArea({
         onSearchFocus={onSearchFocus}
         onViewModePress={onToggleViewMode}
         showViewModeActive={showViewToggle}
+        viewMode={viewMode}
         rightActions={rightActions}
       />
 
