@@ -2,41 +2,15 @@ package repository
 
 import (
 	"database/sql"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/daycapsule/backend/internal/config"
 	"github.com/daycapsule/backend/internal/models"
+	"github.com/daycapsule/backend/internal/testutil"
 )
 
 func setupEntryRepoTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	dbPath := filepath.Join(t.TempDir(), "entry-repo-test.db")
-	db, err := config.NewDB(dbPath)
-	if err != nil {
-		t.Fatalf("open sqlite db: %v", err)
-	}
-
-	for _, migration := range []string{
-		"001_initial_schema.up.sql",
-		"002_entries_media.up.sql",
-		"003_entry_changes.up.sql",
-		"004_media_integrity.up.sql",
-	} {
-		path := filepath.Join("..", "..", "migrations", migration)
-		sqlBytes, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read migration %s: %v", migration, err)
-		}
-		if _, err := db.Exec(string(sqlBytes)); err != nil {
-			t.Fatalf("apply migration %s: %v", migration, err)
-		}
-	}
-
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 func seedEntryRepoUser(t *testing.T, db *sql.DB) string {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/daycapsule/backend/internal/models"
@@ -28,7 +29,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, accessToken, refreshToken, err := h.authService.Register(req.Email, req.Password)
 	if err != nil {
-		if err.Error() == "email already registered" {
+		if errors.Is(err, service.ErrEmailAlreadyRegistered) {
 			c.JSON(http.StatusConflict, gin.H{
 				"success": false,
 				"error": gin.H{"code": "EMAIL_EXISTS", "message": "email already registered"},
@@ -118,6 +119,20 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 			"expiresIn":    604800,
 		},
 	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID := c.GetString("userID")
+
+	if err := h.authService.Logout(userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{"code": "INTERNAL_ERROR", "message": "failed to logout"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *AuthHandler) Me(c *gin.Context) {

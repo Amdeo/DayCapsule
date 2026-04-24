@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/daycapsule/backend/internal/models"
 	"github.com/google/uuid"
 )
+
+var ErrEntryNotFound = errors.New("entry not found")
 
 type EntryRepository struct {
 	db *sql.DB
@@ -81,6 +82,11 @@ func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) 
 	if err != nil {
 		return nil, err
 	}
+
+	if err := r.replaceTags(r.db, entry.ID, userID, req.Tags); err != nil {
+		return nil, err
+	}
+
 	return entry, nil
 }
 
@@ -115,19 +121,14 @@ func (r *EntryRepository) GetPage(userID string, limit int, cursor *int64, entry
 
 	if len(tags) > 0 {
 		for _, tag := range tags {
-			conditions = append(conditions, "tags LIKE ?")
-			args = append(args, fmt.Sprintf("%%\"%s\"%%", tag))
+			conditions = append(conditions, "EXISTS (SELECT 1 FROM entry_tags et WHERE et.entry_id = entries.id AND et.tag = ?)")
+			args = append(args, tag)
 		}
 	}
 
 	where := strings.Join(conditions, " AND ")
-	query := fmt.Sprintf(`
-		SELECT id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at
-		FROM entries
-		WHERE %s
-		ORDER BY created_at DESC
-		LIMIT ?
-	`, where)
+	const selectColumns = "id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at"
+	query := "SELECT " + selectColumns + " FROM entries WHERE " + where + " ORDER BY created_at DESC LIMIT ?"
 	args = append(args, limit)
 
 	rows, err := r.db.Query(query, args...)
@@ -209,15 +210,22 @@ func (r *EntryRepository) Update(userID, entryID string, req *models.UpdateEntry
 	args = append(args, time.Now().UTC())
 	args = append(args, entryID, userID)
 
-	query := fmt.Sprintf("UPDATE entries SET %s WHERE id = ? AND user_id = ?", strings.Join(sets, ", "))
+	query := "UPDATE entries SET " + strings.Join(sets, ", ") + " WHERE id = ? AND user_id = ?"
 	result, err := r.db.Exec(query, args...)
 	if err != nil {
 		return err
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return errors.New("entry not found")
+		return ErrEntryNotFound
 	}
+
+	if req.Tags != nil {
+		if err := r.replaceTags(r.db, entryID, userID, req.Tags); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -247,30 +255,19 @@ func (r *EntryRepository) DeleteAll(userID string) error {
 }
 
 func (r *EntryRepository) GetAllTags(userID string) ([]string, error) {
-	rows, err := r.db.Query("SELECT tags FROM entries WHERE user_id = ?", userID)
+	rows, err := r.db.Query("SELECT DISTINCT tag FROM entry_tags WHERE user_id = ? ORDER BY tag", userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	tagSet := make(map[string]bool)
+	var result []string
 	for rows.Next() {
-		var tagsJSON string
-		if err := rows.Scan(&tagsJSON); err != nil {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
 			return nil, err
 		}
-		var tags []string
-		if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
-			continue
-		}
-		for _, t := range tags {
-			tagSet[t] = true
-		}
-	}
-
-	var result []string
-	for t := range tagSet {
-		result = append(result, t)
+		result = append(result, tag)
 	}
 	return result, rows.Err()
 }
@@ -442,6 +439,21 @@ func (r *EntryRepository) updateFromSyncIfVersionMatches(
 
 type scannable interface {
 	Scan(dest ...interface{}) error
+}
+
+func (r *EntryRepository) replaceTags(execer entryExecer, entryID, userID string, tags []string) error {
+	if _, err := execer.Exec("DELETE FROM entry_tags WHERE entry_id = ?", entryID); err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		if tag == "" {
+			continue
+		}
+		if _, err := execer.Exec("INSERT INTO entry_tags (entry_id, tag, user_id) VALUES (?, ?, ?)", entryID, tag, userID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func scanEntry(s scannable) (*models.Entry, error) {

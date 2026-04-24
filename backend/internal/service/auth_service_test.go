@@ -4,26 +4,16 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/daycapsule/backend/internal/config"
 	"github.com/daycapsule/backend/internal/repository"
+	"github.com/daycapsule/backend/internal/testutil"
 	"github.com/daycapsule/backend/pkg/utils"
 )
 
 func setupAuthTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	dbPath := filepath.Join(t.TempDir(), "auth-test.db")
-	db, err := config.NewDB(dbPath)
-	if err != nil {
-		t.Fatalf("open sqlite db: %v", err)
-	}
-	if err := applySchema(t, db); err != nil {
-		t.Fatalf("apply schema: %v", err)
-	}
-
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 func TestAuthServiceRegisterAndLoginWithSQLite(t *testing.T) {
@@ -77,12 +67,26 @@ func generateTokenForTest(userID, email, secret, tokenType string) (string, erro
 func applySchema(t *testing.T, db *sql.DB) error {
 	t.Helper()
 
-	schemaPath := filepath.Join("..", "..", "migrations", "001_initial_schema.up.sql")
-	schema, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return err
+	migrations := []string{
+		"001_initial_schema.up.sql",
+		"002_entries_media.up.sql",
+		"003_entry_changes.up.sql",
+		"004_media_integrity.up.sql",
+		"005_refresh_token.up.sql",
+		"006_entry_tags.up.sql",
 	}
 
-	_, err = db.Exec(string(schema))
-	return err
+	for _, m := range migrations {
+		schemaPath := filepath.Join("..", "..", "migrations", m)
+		schema, err := os.ReadFile(schemaPath)
+		if err != nil {
+			return err
+		}
+		if _, err := db.Exec(string(schema)); err != nil {
+			if !strings.Contains(err.Error(), "duplicate column name") {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -51,19 +51,19 @@ export function TextEditor({ visible, onSave, onCancel }: TextEditorProps) {
       onRequestClose={handleCancel}
     >
       <KeyboardAvoidingView
-        style={styles.container}
+        className="flex-1 justify-end"
         behavior={process.env.EXPO_OS === 'ios' ? 'padding' : 'height'}
       >
-        <Pressable style={styles.backdrop} onPress={handleCancel} />
+        <Pressable className="absolute top-0 left-0 right-0 bottom-0 bg-black/50" onPress={handleCancel} />
 
         <View testID="text-editor-sheet" style={styles.editor}>
-          <View style={styles.dragHandleContainer}>
-            <View style={styles.dragHandle} />
+          <View className="items-center pt-3 pb-1">
+            <View className="w-9 h-1 bg-[#D1D1D1] rounded-sm" />
           </View>
 
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>新记录</Text>
-            <Pressable onPress={handleCancel} style={styles.closeButton}>
+          <View className="flex-row items-center justify-between px-5 pt-1 pb-2.5">
+            <Text className="text-[15px] font-semibold text-[#3F332A]">新记录</Text>
+            <Pressable onPress={handleCancel} className="w-[30px] h-[30px] items-center justify-center rounded-[15px] bg-[#F0EDEA]">
               <Ionicons name="close" size={16} color="#6F6257" />
             </Pressable>
           </View>

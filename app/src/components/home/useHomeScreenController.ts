@@ -72,11 +72,18 @@ export function useHomeScreenController() {
     []
   );
 
-  const showHomeErrorFeedback = useCallback((title: string, message: string) => {
+  const showHomeErrorFeedback = useCallback((title: string, message: string, onRetry?: () => void) => {
+    const actions: { label: string; role: 'primary' | 'secondary'; onPress?: () => void }[] = [];
+    if (onRetry) {
+      actions.push({ label: '重试', role: 'primary', onPress: onRetry });
+      actions.push({ label: '忽略', role: 'secondary' });
+    } else {
+      actions.push({ label: '知道了', role: 'primary' });
+    }
     showErrorFeedback({
       title,
       message,
-      actions: [{ label: '知道了', role: 'primary' }],
+      actions,
     });
   }, []);
 
@@ -102,7 +109,9 @@ export function useHomeScreenController() {
       const entryLoadResult = results[2];
       if (entryLoadResult?.status === 'rejected') {
         logger.error('[HomeScreen] Failed to initialize home timeline:', entryLoadResult.reason);
-        showHomeErrorFeedback('加载失败', '首页记录加载失败，请稍后重试');
+        showHomeErrorFeedback('加载失败', '首页记录加载失败，请稍后重试', () => {
+          void loadEntries();
+        });
       }
     }).finally(() => {
       refreshCloudSyncIndicator();

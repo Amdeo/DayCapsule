@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -60,16 +59,6 @@ func setupSyncV2TestDB(t *testing.T) *sql.DB {
 	}
 	if err := applySchema(t, db); err != nil {
 		t.Fatalf("apply schema: %v", err)
-	}
-	for _, migration := range []string{"002_entries_media.up.sql", "003_entry_changes.up.sql", "004_media_integrity.up.sql"} {
-		path := filepath.Join("..", "..", "migrations", migration)
-		sqlBytes, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read migration %s: %v", migration, err)
-		}
-		if _, err := db.Exec(string(sqlBytes)); err != nil {
-			t.Fatalf("apply migration %s: %v", migration, err)
-		}
 	}
 
 	return db

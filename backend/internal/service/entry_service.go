@@ -8,6 +8,8 @@ import (
 	"github.com/daycapsule/backend/internal/repository"
 )
 
+var ErrEntryNotFound = repository.ErrEntryNotFound
+
 type EntryService struct {
 	entryRepo     *repository.EntryRepository
 	mediaRepo     *repository.MediaRepository

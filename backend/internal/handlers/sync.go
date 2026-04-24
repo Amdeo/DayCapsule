@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -71,7 +72,7 @@ func (h *SyncHandler) Download(c *gin.Context) {
 
 	data, hash, updatedAt, err := h.syncService.Download(userID)
 	if err != nil {
-		if err.Error() == "backup not found" {
+		if errors.Is(err, service.ErrBackupNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "BACKUP_NOT_FOUND", "message": "backup not found"},

@@ -3,11 +3,13 @@ package models
 import "time"
 
 type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID                     string     `json:"id"`
+	Email                  string     `json:"email"`
+	PasswordHash           string     `json:"-"`
+	RefreshTokenJTI        *string    `json:"-"`
+	RefreshTokenExpiresAt  *time.Time `json:"-"`
+	CreatedAt              time.Time  `json:"createdAt"`
+	UpdatedAt              time.Time  `json:"updatedAt"`
 }
 
 type UserRegisterRequest struct {

@@ -14,6 +14,8 @@ func EnsureSchema(db *sql.DB) error {
 		"002_entries_media.up.sql",
 		"003_entry_changes.up.sql",
 		"004_media_integrity.up.sql",
+		"005_refresh_token.up.sql",
+		"006_entry_tags.up.sql",
 	}
 
 	for _, m := range migrations {

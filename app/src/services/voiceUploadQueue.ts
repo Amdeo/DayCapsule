@@ -1,5 +1,6 @@
 import type { Entry, MediaInfo } from '@/src/types/entry';
 import { logger } from '@/src/utils/logger';
+import { RETRY_BACKOFF_MS, consumeCanceledEntry } from './uploadQueueShared';
 
 export interface VoiceUploadQueueDeps {
   getPendingEntries: () => Promise<Entry[]>;
@@ -22,16 +23,7 @@ export interface VoiceUploadQueue {
   waitForIdle: () => Promise<void>;
 }
 
-const RETRY_BACKOFF_MS = [15_000, 30_000, 60_000, 120_000] as const;
 
-function consumeCanceledEntry(canceled: Set<string>, entryId: string): boolean {
-  if (!canceled.has(entryId)) {
-    return false;
-  }
-
-  canceled.delete(entryId);
-  return true;
-}
 
 function buildPendingSyncEntry(localEntry: Entry, upload: { id: string; url: string }): Entry {
   const localMedia = localEntry.media?.[0];

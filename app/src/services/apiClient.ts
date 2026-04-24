@@ -365,8 +365,8 @@ export function createApiClient(baseURL: string): ApiClient {
   };
 }
 
-/** Singleton instance — initialized lazily from env var */
-let _client: ApiClient | null = null;
+/** URL-keyed client cache — auto-creates new instance when server URL changes */
+const _clients = new Map<string, ApiClient>();
 
 const toApiBaseURL = (serverUrl: string): string => `${serverUrl.replace(/\/+$/, '')}/api`;
 
@@ -386,14 +386,16 @@ const resolveApiBaseURL = (): string => {
 };
 
 export function getApiClient(): ApiClient {
-  if (!_client) {
-    const baseURL = resolveApiBaseURL();
+  const baseURL = resolveApiBaseURL();
+  let client = _clients.get(baseURL);
+  if (!client) {
     logger.info('[apiClient] Using base URL:', baseURL);
-    _client = createApiClient(baseURL);
+    client = createApiClient(baseURL);
+    _clients.set(baseURL, client);
   }
-  return _client;
+  return client;
 }
 
 export function resetApiClient(): void {
-  _client = null;
+  _clients.clear();
 }

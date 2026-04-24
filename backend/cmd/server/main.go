@@ -81,6 +81,7 @@ func main() {
 		authorized := api.Group("/")
 		authorized.Use(middleware.Auth(cfg.JWTSecret))
 		{
+			authorized.POST("/auth/logout", authHandler.Logout)
 			authorized.GET("/auth/me", authHandler.Me)
 			authorized.GET("/sync/status", syncHandler.Status)
 			authorized.GET("/sync/overview", syncHandler.Overview)

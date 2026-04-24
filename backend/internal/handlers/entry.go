@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -102,7 +103,7 @@ func (h *EntryHandler) Update(c *gin.Context) {
 	}
 
 	if err := h.entryService.Update(userID, entryID, &req); err != nil {
-		if err.Error() == "entry not found" {
+		if errors.Is(err, service.ErrEntryNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "NOT_FOUND", "message": "entry not found"},
@@ -124,7 +125,7 @@ func (h *EntryHandler) Delete(c *gin.Context) {
 	entryID := c.Param("id")
 
 	if err := h.entryService.Delete(userID, entryID); err != nil {
-		if err.Error() == "entry not found" {
+		if errors.Is(err, service.ErrEntryNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "NOT_FOUND", "message": "entry not found"},

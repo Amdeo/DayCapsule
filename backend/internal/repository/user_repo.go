@@ -40,19 +40,29 @@ func (r *UserRepository) Create(email, passwordHash string) (*models.User, error
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	user := &models.User{}
 	query := `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, password_hash, refresh_token_jti, refresh_token_expires_at, created_at, updated_at
 		FROM users
 		WHERE email = ?
 	`
 	var createdAt, updatedAt string
+	var refreshJTI, refreshExpiresAt sql.NullString
 	err := r.db.QueryRow(query, email).Scan(
-		&user.ID, &user.Email, &user.PasswordHash, &createdAt, &updatedAt,
+		&user.ID, &user.Email, &user.PasswordHash, &refreshJTI, &refreshExpiresAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	if refreshJTI.Valid {
+		user.RefreshTokenJTI = &refreshJTI.String
+	}
+	if refreshExpiresAt.Valid {
+		parsed, err := parseSQLiteTime(refreshExpiresAt.String)
+		if err == nil {
+			user.RefreshTokenExpiresAt = &parsed
+		}
 	}
 	user.CreatedAt, err = parseSQLiteTime(createdAt)
 	if err != nil {
@@ -68,19 +78,29 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	user := &models.User{}
 	query := `
-		SELECT id, email, created_at, updated_at
+		SELECT id, email, refresh_token_jti, refresh_token_expires_at, created_at, updated_at
 		FROM users
 		WHERE id = ?
 	`
-	var createdAt, updatedAt string
+	var createdAt, updatedAt, refreshExpiresAt string
+	var refreshJTI sql.NullString
 	err := r.db.QueryRow(query, id).Scan(
-		&user.ID, &user.Email, &createdAt, &updatedAt,
+		&user.ID, &user.Email, &refreshJTI, &refreshExpiresAt, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	if refreshJTI.Valid {
+		user.RefreshTokenJTI = &refreshJTI.String
+	}
+	if refreshExpiresAt != "" {
+		parsed, err := parseSQLiteTime(refreshExpiresAt)
+		if err == nil {
+			user.RefreshTokenExpiresAt = &parsed
+		}
 	}
 	user.CreatedAt, err = parseSQLiteTime(createdAt)
 	if err != nil {
@@ -91,4 +111,16 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (r *UserRepository) UpdateRefreshToken(userID, jti string, expiresAt time.Time) error {
+	query := `UPDATE users SET refresh_token_jti = ?, refresh_token_expires_at = ?, updated_at = ? WHERE id = ?`
+	_, err := r.db.Exec(query, jti, expiresAt.Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339), userID)
+	return err
+}
+
+func (r *UserRepository) ClearRefreshToken(userID string) error {
+	query := `UPDATE users SET refresh_token_jti = NULL, refresh_token_expires_at = NULL, updated_at = ? WHERE id = ?`
+	_, err := r.db.Exec(query, time.Now().UTC().Format(time.RFC3339), userID)
+	return err
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"database/sql"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -22,17 +21,6 @@ func setupSyncOverviewTestDB(t *testing.T) *sql.DB {
 	if err := applySchema(t, db); err != nil {
 		t.Fatalf("apply schema: %v", err)
 	}
-	for _, migration := range []string{"002_entries_media.up.sql", "004_media_integrity.up.sql"} {
-		migPath := filepath.Join("..", "..", "migrations", migration)
-		migSQL, err := os.ReadFile(migPath)
-		if err != nil {
-			t.Fatalf("read migration %s: %v", migration, err)
-		}
-		if _, err := db.Exec(string(migSQL)); err != nil {
-			t.Fatalf("apply migration %s: %v", migration, err)
-		}
-	}
-
 	return db
 }
 

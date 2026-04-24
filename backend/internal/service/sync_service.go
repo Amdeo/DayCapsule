@@ -9,6 +9,8 @@ import (
 	"github.com/daycapsule/backend/internal/repository"
 )
 
+var ErrBackupNotFound = errors.New("backup not found")
+
 type SyncService struct {
 	backupRepo *repository.BackupRepository
 }
@@ -66,7 +68,7 @@ func (s *SyncService) Download(userID string) (*models.BackupData, string, time.
 	}
 
 	if backup == nil {
-		return nil, "", time.Time{}, errors.New("backup not found")
+		return nil, "", time.Time{}, ErrBackupNotFound
 	}
 
 	var data models.BackupData

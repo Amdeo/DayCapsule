@@ -3,10 +3,18 @@ package service
 import (
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/daycapsule/backend/internal/models"
 	"github.com/daycapsule/backend/internal/repository"
 	"github.com/daycapsule/backend/pkg/utils"
+)
+
+var (
+	passwordUpperRe           = regexp.MustCompile(`[A-Z]`)
+	passwordLowerRe           = regexp.MustCompile(`[a-z]`)
+	passwordDigitRe           = regexp.MustCompile(`[0-9]`)
+	ErrEmailAlreadyRegistered = errors.New("email already registered")
 )
 
 type AuthService struct {
@@ -30,9 +38,9 @@ func (s *AuthService) validatePassword(password string) error {
 		return errors.New("password must be between 8 and 64 characters")
 	}
 
-	hasUpper := regexp.MustCompile(`[A-Z]`).MatchString(password)
-	hasLower := regexp.MustCompile(`[a-z]`).MatchString(password)
-	hasDigit := regexp.MustCompile(`[0-9]`).MatchString(password)
+	hasUpper := passwordUpperRe.MatchString(password)
+	hasLower := passwordLowerRe.MatchString(password)
+	hasDigit := passwordDigitRe.MatchString(password)
 
 	if !hasUpper || !hasLower || !hasDigit {
 		return errors.New("password must contain at least one uppercase letter, one lowercase letter, and one digit")
@@ -51,7 +59,7 @@ func (s *AuthService) Register(email, password string) (*models.User, string, st
 		return nil, "", "", err
 	}
 	if existingUser != nil {
-		return nil, "", "", errors.New("email already registered")
+		return nil, "", "", ErrEmailAlreadyRegistered
 	}
 
 	hash, err := utils.HashPassword(password)
@@ -71,6 +79,15 @@ func (s *AuthService) Register(email, password string) (*models.User, string, st
 
 	refreshToken, err := utils.GenerateToken(user.ID, user.Email, s.refreshExpiry, s.jwtSecret, "refresh")
 	if err != nil {
+		return nil, "", "", err
+	}
+
+	refreshClaims, err := utils.ParseToken(refreshToken, s.jwtSecret)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	if err := s.userRepo.UpdateRefreshToken(user.ID, refreshClaims.ID, refreshClaims.ExpiresAt.Time); err != nil {
 		return nil, "", "", err
 	}
 
@@ -100,6 +117,15 @@ func (s *AuthService) Login(email, password string) (*models.User, string, strin
 		return nil, "", "", err
 	}
 
+	refreshClaims, err := utils.ParseToken(refreshToken, s.jwtSecret)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	if err := s.userRepo.UpdateRefreshToken(user.ID, refreshClaims.ID, refreshClaims.ExpiresAt.Time); err != nil {
+		return nil, "", "", err
+	}
+
 	return user, accessToken, refreshToken, nil
 }
 
@@ -113,6 +139,26 @@ func (s *AuthService) RefreshToken(refreshToken string) (string, string, error) 
 		return "", "", errors.New("invalid token type")
 	}
 
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
+		return "", "", errors.New("refresh token expired")
+	}
+
+	user, err := s.userRepo.GetByID(claims.UserID)
+	if err != nil {
+		return "", "", err
+	}
+	if user == nil {
+		return "", "", errors.New("user not found")
+	}
+
+	if user.RefreshTokenJTI == nil || *user.RefreshTokenJTI != claims.ID {
+		return "", "", errors.New("refresh token revoked")
+	}
+
+	if user.RefreshTokenExpiresAt != nil && user.RefreshTokenExpiresAt.Before(time.Now()) {
+		return "", "", errors.New("refresh token expired")
+	}
+
 	newAccessToken, err := utils.GenerateToken(claims.UserID, claims.Email, s.jwtExpiry, s.jwtSecret, "access")
 	if err != nil {
 		return "", "", err
@@ -123,7 +169,20 @@ func (s *AuthService) RefreshToken(refreshToken string) (string, string, error) 
 		return "", "", err
 	}
 
+	newRefreshClaims, err := utils.ParseToken(newRefreshToken, s.jwtSecret)
+	if err != nil {
+		return "", "", err
+	}
+
+	if err := s.userRepo.UpdateRefreshToken(claims.UserID, newRefreshClaims.ID, newRefreshClaims.ExpiresAt.Time); err != nil {
+		return "", "", err
+	}
+
 	return newAccessToken, newRefreshToken, nil
+}
+
+func (s *AuthService) Logout(userID string) error {
+	return s.userRepo.ClearRefreshToken(userID)
 }
 
 func (s *AuthService) GetUser(userID string) (*models.User, error) {

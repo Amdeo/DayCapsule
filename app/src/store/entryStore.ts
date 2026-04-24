@@ -133,21 +133,8 @@ export const useEntryStore = create<EntryStore>((set, get) => ({
     }
   },
 
-  updateLocalEntry: async (id, updates) => {
-    try {
-      const nextUpdates = buildPendingUpdate(
-        updates,
-        canRunCloudSync(useAuthStore.getState().isAuthenticated)
-      );
-      await DB.updateEntry(id, nextUpdates);
-      set((s) => ({ entries: s.entries.map((e) => (e.id === id ? { ...e, ...nextUpdates } : e)) }));
-      refreshCloudSyncIndicator();
-      logger.log('✅ 本地更新记录:', id);
-    } catch (error) {
-      logger.error('Failed to update local entry:', error);
-      throw error;
-    }
-  },
+  /** updateLocalEntry 是 updateEntry 的别名，用于本地流程的语义清晰度 */
+  updateLocalEntry: async (id, updates) => get().updateEntry(id, updates),
 
   replaceEntry: (oldId, entry) => {
     set((s) => ({

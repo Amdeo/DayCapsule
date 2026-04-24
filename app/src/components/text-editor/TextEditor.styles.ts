@@ -4,18 +4,6 @@ import {
 } from 'react-native';
 
 export const textEditorStyles = {
-  container: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
   editor: {
     backgroundColor: '#FAF8F5',
     borderTopLeftRadius: 24,
@@ -28,40 +16,6 @@ export const textEditorStyles = {
     shadowRadius: 8,
     elevation: 8,
     flexDirection: 'column',
-  },
-  // Drag handle
-  dragHandleContainer: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  dragHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#D1D1D1',
-    borderRadius: 2,
-  },
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 10,
-  },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3F332A',
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 15,
-    backgroundColor: '#F0EDEA',
   },
   // Body scroll
   scrollView: {
