@@ -8,7 +8,7 @@
 
 | 编号 | 优化项 | 修改文件 | 验证 |
 |:---:|------|---------|:---|
-| **A3** | Nginx 添加安全响应头 | `deploy/backend/daycapsule.conf`, `daycapsule.host-nginx.conf`, `nginx.conf` | 已部署配置 |
+| **A3** | Nginx 添加安全响应头 | `deploy/backend/daycapsule.conf`, `daycapsule.host-nginx.conf`, `nginx.conf` | 配置文件已更新 |
 | **A4** | Refresh Token 服务端存储 + 撤销机制 | `migrations/005_refresh_token.up.sql`, `models/user.go`, `repository/user_repo.go`, `service/auth_service.go`, `handlers/auth.go`, `cmd/server/main.go`, `pkg/utils/jwt.go` | `go test ./...` 通过 |
 
 ### B. 性能类
@@ -25,7 +25,7 @@
 | **C1** | 定义哨兵错误，替换字符串比较 | `backend/internal/repository/entry_repo.go`, `service/auth_service.go`, `sync_service.go`, `entry_service.go`, `handlers/auth.go`, `entry.go`, `sync.go` | `go test ./...` 通过 |
 | **C2** | EntryStore CRUD 去重 | `app/src/store/entryStore.ts` | `tsc --noEmit` 通过 |
 | **C3** | 上传队列共享提取 | `app/src/services/uploadQueueShared.ts`, `photoUploadQueue.ts`, `voiceUploadQueue.ts` | `tsc --noEmit` 通过 |
-| **C5** | 提取 `testutil` 包 | `backend/internal/testutil/db.go`, `repository/entry_repo_test.go`, `service/auth_service_test.go` | `go test ./...` 通过 |
+| **C5** | 提取 `testutil` 包并清理部分重复 schema setup | `backend/internal/testutil/db.go`, `repository/entry_repo_test.go`, `service/auth_service_test.go`, `service/entry_service_test.go`, `service/sync_overview_service_test.go`, `service/sync_v2_service_test.go` | `go test ./...` 通过 |
 | **C6** | Query 拼接改善 | `backend/internal/repository/entry_repo.go` | `go test ./...` 通过 |
 
 ### E. App 前端
@@ -44,7 +44,7 @@
 | 编号 | 说明 |
 |:---:|------|
 | **C3** | 仅提取了共享常量和辅助函数（`RETRY_BACKOFF_MS`, `consumeCanceledEntry`）。完整的泛化工厂函数（`createMediaUploadQueue`）因涉及 ~200 行重构且需保持类型安全，建议后续专项处理。 |
-| **C5** | `testutil` 包已创建，仅迁移了 `repository/entry_repo_test.go` 和 `service/auth_service_test.go`。其他测试文件（`entry_service_test.go`, `sync_v2_service_test.go` 等）的 `setup*TestDB` 函数可逐步迁移。 |
+| **C5** | `testutil` 包已创建，并已用于 `repository/entry_repo_test.go` 和 `service/auth_service_test.go`；同时清理了部分 service 测试中的重复 migration 代码。其他测试文件里的 `setup*TestDB` 仍可后续继续收口到统一 helper。 |
 | **E2** | 仅改善了 `TextEditor.tsx` 组件（7 处样式改为 Tailwind className，`TextEditor.styles.ts` 减少 ~60 行）。其他大样式文件（`EntryCard.styles.ts` 593行、`SettingsPage.styles.ts` 339行等）建议后续专项处理。 |
 
 ---

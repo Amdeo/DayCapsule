@@ -43,6 +43,19 @@ func (r *EntryRepository) BeginTx(ctx context.Context) (*sql.Tx, error) {
 }
 
 func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) (*models.Entry, error) {
+	var entry *models.Entry
+	err := r.runInWriteTx(func(tx *sql.Tx) error {
+		var err error
+		entry, err = r.create(tx, userID, req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return entry, nil
+}
+
+func (r *EntryRepository) create(execer entryExecer, userID string, req *models.CreateEntryRequest) (*models.Entry, error) {
 	now := time.Now().UTC()
 	id := uuid.NewString()
 
@@ -74,7 +87,7 @@ func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) 
 		INSERT INTO entries (id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.Exec(query,
+	_, err := execer.Exec(query,
 		entry.ID, entry.UserID, entry.Type, entry.Content, entry.Tags, entry.Media,
 		entry.RecordingStatus, entry.RecordingDuration, entry.SyncStatus,
 		entry.CreatedAt, entry.UpdatedAt,
@@ -83,7 +96,7 @@ func (r *EntryRepository) Create(userID string, req *models.CreateEntryRequest) 
 		return nil, err
 	}
 
-	if err := r.replaceTags(r.db, entry.ID, userID, req.Tags); err != nil {
+	if err := r.replaceTags(execer, entry.ID, userID, req.Tags); err != nil {
 		return nil, err
 	}
 
@@ -181,6 +194,12 @@ func (r *EntryRepository) getByID(queryer entryQueryRower, userID, entryID strin
 }
 
 func (r *EntryRepository) Update(userID, entryID string, req *models.UpdateEntryRequest) error {
+	return r.runInWriteTx(func(tx *sql.Tx) error {
+		return r.update(tx, userID, entryID, req)
+	})
+}
+
+func (r *EntryRepository) update(execer entryExecer, userID, entryID string, req *models.UpdateEntryRequest) error {
 	var sets []string
 	var args []interface{}
 
@@ -211,7 +230,7 @@ func (r *EntryRepository) Update(userID, entryID string, req *models.UpdateEntry
 	args = append(args, entryID, userID)
 
 	query := "UPDATE entries SET " + strings.Join(sets, ", ") + " WHERE id = ? AND user_id = ?"
-	result, err := r.db.Exec(query, args...)
+	result, err := execer.Exec(query, args...)
 	if err != nil {
 		return err
 	}
@@ -221,7 +240,7 @@ func (r *EntryRepository) Update(userID, entryID string, req *models.UpdateEntry
 	}
 
 	if req.Tags != nil {
-		if err := r.replaceTags(r.db, entryID, userID, req.Tags); err != nil {
+		if err := r.replaceTags(execer, entryID, userID, req.Tags); err != nil {
 			return err
 		}
 	}
@@ -309,7 +328,16 @@ func (r *EntryRepository) GetAll(userID string) ([]*models.Entry, error) {
 }
 
 func (r *EntryRepository) InsertFromSync(userID string, entry *models.Entry) (*models.Entry, error) {
-	return r.insertFromSync(r.db, userID, entry)
+	var saved *models.Entry
+	err := r.runInWriteTx(func(tx *sql.Tx) error {
+		var err error
+		saved, err = r.insertFromSync(tx, userID, entry)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return saved, nil
 }
 
 func (r *EntryRepository) InsertFromSyncTx(tx *sql.Tx, userID string, entry *models.Entry) (*models.Entry, error) {
@@ -320,6 +348,10 @@ func (r *EntryRepository) insertFromSync(execer entryExecer, userID string, entr
 	// 使用客户端提供的 ID；若为空则生成一个新的
 	if entry.ID == "" {
 		entry.ID = uuid.NewString()
+	}
+	tags, err := parseEntryTagsJSON(entry.Tags)
+	if err != nil {
+		return nil, err
 	}
 
 	if entry.CreatedAt.IsZero() {
@@ -333,7 +365,7 @@ func (r *EntryRepository) insertFromSync(execer entryExecer, userID string, entr
 		INSERT INTO entries (id, user_id, type, content, tags, media, recording_status, recording_duration, sync_status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := execer.Exec(query,
+	_, err = execer.Exec(query,
 		entry.ID,
 		userID,
 		entry.Type,
@@ -349,6 +381,9 @@ func (r *EntryRepository) insertFromSync(execer entryExecer, userID string, entr
 	if err != nil {
 		return nil, err
 	}
+	if err := r.replaceTags(execer, entry.ID, userID, tags); err != nil {
+		return nil, err
+	}
 
 	entry.UserID = userID
 	entry.SyncStatus = "synced"
@@ -356,13 +391,23 @@ func (r *EntryRepository) insertFromSync(execer entryExecer, userID string, entr
 }
 
 func (r *EntryRepository) UpdateFromSync(userID string, entry *models.Entry) error {
+	return r.runInWriteTx(func(tx *sql.Tx) error {
+		return r.updateFromSync(tx, userID, entry)
+	})
+}
+
+func (r *EntryRepository) updateFromSync(execer entryExecer, userID string, entry *models.Entry) error {
+	tags, err := parseEntryTagsJSON(entry.Tags)
+	if err != nil {
+		return err
+	}
 	if entry.UpdatedAt.IsZero() {
 		entry.UpdatedAt = time.Now().UTC()
 	}
 
 	query := `UPDATE entries SET content = ?, tags = ?, media = ?, recording_status = ?, recording_duration = ?, sync_status = ?, updated_at = ?
 	          WHERE id = ? AND user_id = ?`
-	_, err := r.db.Exec(query,
+	_, err = execer.Exec(query,
 		entry.Content,
 		entry.Tags,
 		entry.Media,
@@ -373,13 +418,25 @@ func (r *EntryRepository) UpdateFromSync(userID string, entry *models.Entry) err
 		entry.ID,
 		userID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.replaceTags(execer, entry.ID, userID, tags)
 }
 
 func (r *EntryRepository) UpdateFromSyncIfVersionMatches(userID string, entry *models.Entry, baseUpdatedAt time.Time) (UpdateFromSyncMatchResult, error) {
-	return r.updateFromSyncIfVersionMatches(r.db, func(entryID string) (*models.Entry, error) {
-		return r.GetByID(userID, entryID)
-	}, userID, entry, baseUpdatedAt)
+	var result UpdateFromSyncMatchResult
+	err := r.runInWriteTx(func(tx *sql.Tx) error {
+		var err error
+		result, err = r.updateFromSyncIfVersionMatches(tx, func(entryID string) (*models.Entry, error) {
+			return r.GetByIDTx(tx, userID, entryID)
+		}, userID, entry, baseUpdatedAt)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return result, nil
 }
 
 func (r *EntryRepository) UpdateFromSyncIfVersionMatchesTx(tx *sql.Tx, userID string, entry *models.Entry, baseUpdatedAt time.Time) (UpdateFromSyncMatchResult, error) {
@@ -395,6 +452,10 @@ func (r *EntryRepository) updateFromSyncIfVersionMatches(
 	entry *models.Entry,
 	baseUpdatedAt time.Time,
 ) (UpdateFromSyncMatchResult, error) {
+	tags, err := parseEntryTagsJSON(entry.Tags)
+	if err != nil {
+		return "", err
+	}
 	if entry.UpdatedAt.IsZero() {
 		entry.UpdatedAt = time.Now().UTC()
 	}
@@ -423,6 +484,9 @@ func (r *EntryRepository) updateFromSyncIfVersionMatches(
 		return "", err
 	}
 	if rows == 1 {
+		if err := r.replaceTags(execer, entry.ID, userID, tags); err != nil {
+			return "", err
+		}
 		return UpdateFromSyncUpdated, nil
 	}
 
@@ -437,6 +501,29 @@ func (r *EntryRepository) updateFromSyncIfVersionMatches(
 	return UpdateFromSyncVersionMismatch, nil
 }
 
+func (r *EntryRepository) runInWriteTx(fn func(tx *sql.Tx) error) error {
+	tx, err := r.BeginTx(context.Background())
+	if err != nil {
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
 type scannable interface {
 	Scan(dest ...interface{}) error
 }
@@ -445,15 +532,32 @@ func (r *EntryRepository) replaceTags(execer entryExecer, entryID, userID string
 	if _, err := execer.Exec("DELETE FROM entry_tags WHERE entry_id = ?", entryID); err != nil {
 		return err
 	}
+	seen := make(map[string]struct{}, len(tags))
 	for _, tag := range tags {
 		if tag == "" {
 			continue
 		}
+		if _, exists := seen[tag]; exists {
+			continue
+		}
+		seen[tag] = struct{}{}
 		if _, err := execer.Exec("INSERT INTO entry_tags (entry_id, tag, user_id) VALUES (?, ?, ?)", entryID, tag, userID); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func parseEntryTagsJSON(tagsJSON string) ([]string, error) {
+	if tagsJSON == "" {
+		return []string{}, nil
+	}
+
+	var tags []string
+	if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+		return nil, err
+	}
+	return tags, nil
 }
 
 func scanEntry(s scannable) (*models.Entry, error) {

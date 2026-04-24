@@ -82,8 +82,8 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 		FROM users
 		WHERE id = ?
 	`
-	var createdAt, updatedAt, refreshExpiresAt string
-	var refreshJTI sql.NullString
+	var createdAt, updatedAt string
+	var refreshJTI, refreshExpiresAt sql.NullString
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID, &user.Email, &refreshJTI, &refreshExpiresAt, &createdAt, &updatedAt,
 	)
@@ -96,8 +96,8 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	if refreshJTI.Valid {
 		user.RefreshTokenJTI = &refreshJTI.String
 	}
-	if refreshExpiresAt != "" {
-		parsed, err := parseSQLiteTime(refreshExpiresAt)
+	if refreshExpiresAt.Valid {
+		parsed, err := parseSQLiteTime(refreshExpiresAt.String)
 		if err == nil {
 			user.RefreshTokenExpiresAt = &parsed
 		}

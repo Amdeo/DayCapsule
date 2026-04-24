@@ -60,6 +60,38 @@ func TestAuthServiceRefreshRejectsAccessToken(t *testing.T) {
 	}
 }
 
+func TestAuthServiceLogoutKeepsUserReadableWhenRefreshTokenCleared(t *testing.T) {
+	db := setupAuthTestDB(t)
+
+	authService := NewAuthService(repository.NewUserRepository(db), "test-secret", 24, 48)
+
+	user, _, _, err := authService.Register("logout-user@example.com", "SecurePass123")
+	if err != nil {
+		t.Fatalf("register user: %v", err)
+	}
+
+	if err := authService.Logout(user.ID); err != nil {
+		t.Fatalf("logout user: %v", err)
+	}
+
+	reloadedUser, err := authService.GetUser(user.ID)
+	if err != nil {
+		t.Fatalf("get user after logout: %v", err)
+	}
+	if reloadedUser == nil {
+		t.Fatal("expected user to remain readable after logout")
+	}
+	if reloadedUser.ID != user.ID {
+		t.Fatalf("expected user id %q, got %#v", user.ID, reloadedUser)
+	}
+	if reloadedUser.RefreshTokenJTI != nil {
+		t.Fatalf("expected refresh token jti to be cleared, got %q", *reloadedUser.RefreshTokenJTI)
+	}
+	if reloadedUser.RefreshTokenExpiresAt != nil {
+		t.Fatalf("expected refresh token expiry to be cleared, got %v", *reloadedUser.RefreshTokenExpiresAt)
+	}
+}
+
 func generateTokenForTest(userID, email, secret, tokenType string) (string, error) {
 	return utils.GenerateToken(userID, email, 24, secret, tokenType)
 }
