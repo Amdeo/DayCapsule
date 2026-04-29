@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   ScrollView,
   Text,
@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { Entry } from '@/src/types/entry';
 import type { EntryTypeMeta } from './entryEditorAppearance';
+import { useKeyboardHeight } from '@/src/hooks/useKeyboardHeight';
 import { entryEditorStyles as styles } from './EntryEditor.styles';
 
 interface EntryEditorContentProps {
@@ -23,12 +24,19 @@ export function EntryEditorContent({
   content,
   onChangeContent,
 }: EntryEditorContentProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const keyboardHeight = useKeyboardHeight();
+
   return (
     <View style={styles.main}>
       <ScrollView
+        ref={scrollViewRef}
         testID="entry-editor-scroll"
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 220 + keyboardHeight },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
@@ -61,6 +69,9 @@ export function EntryEditorContent({
             multiline
             textAlignVertical="top"
             autoFocus
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: false })
+            }
           />
         </View>
 

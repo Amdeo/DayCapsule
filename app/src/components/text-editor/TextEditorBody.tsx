@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
+import { useKeyboardHeight } from '@/src/hooks/useKeyboardHeight';
 import { textEditorStyles as styles } from './TextEditor.styles';
 import { TagArea } from './TagArea';
 
@@ -30,9 +31,14 @@ export function TextEditorBody({
   onRemoveTag,
   onToggleTagPanel,
 }: TextEditorBodyProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const keyboardHeight = useKeyboardHeight();
+
   return (
     <ScrollView
+      ref={scrollViewRef}
       style={styles.scrollView}
+      contentContainerStyle={{ paddingBottom: keyboardHeight + 40 }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
@@ -48,6 +54,9 @@ export function TextEditorBody({
             multiline
             textAlignVertical="top"
             autoFocus
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: false })
+            }
           />
         </View>
       </View>

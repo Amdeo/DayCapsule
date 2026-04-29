@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Entry } from '@/src/types/entry';
+import { useKeyboardHeight } from '@/src/hooks/useKeyboardHeight';
 import { DetailPageShell } from './DetailPageShell';
 import { TextEntryDetailContent } from './text-entry-detail-page/TextEntryDetailContent';
 import { textEntryDetailPageStyles as styles } from './text-entry-detail-page/TextEntryDetailPage.styles';
@@ -21,6 +22,7 @@ export function TextEntryDetailPage({
   onSave,
 }: TextEntryDetailPageProps) {
   const detail = useTextEntryDetailPageController({ entry, onSave });
+  const keyboardHeight = useKeyboardHeight();
 
   if (!visible || !detail) return null;
 
@@ -70,7 +72,10 @@ export function TextEntryDetailPage({
       visible={visible}
       title={detail.isEditing ? '编辑' : '文字记录'}
       onClose={detail.isEditing ? detail.handleCancelEdit : onClose}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingBottom: keyboardHeight + 40 },
+      ]}
       footerContent={footerContent}
     >
       <TextEntryDetailContent
