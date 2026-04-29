@@ -1,7 +1,7 @@
 export const visualLanguage = {
   surface: {
-    page: '#FAF6EF',
-    card: '#FFF9F2',
+    page: '#FFFFFF',
+    card: '#FFFFFF',
     modal: '#FFF8F0',
     backdrop: 'rgba(34, 26, 20, 0.42)',
   },

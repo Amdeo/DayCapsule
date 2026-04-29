@@ -11,7 +11,7 @@ export const entryEditorStyles = StyleSheet.create({
   },
   editorPage: {
     flex: 1,
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
   },
   headerBar: {
     flexDirection: 'row',
@@ -20,7 +20,7 @@ export const entryEditorStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 56,
     paddingBottom: 16,
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(139, 115, 85, 0.08)',
   },
@@ -122,7 +122,7 @@ export const entryEditorStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 28,
-    backgroundColor: 'rgba(250, 248, 245, 0.98)',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(139, 115, 85, 0.10)',
     gap: 12,

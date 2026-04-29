@@ -17,7 +17,7 @@ const cardContainerStyle = {
   paddingRight: 24,
   paddingTop: 16,
   paddingBottom: 4,
-  backgroundColor: '#FAF8F5',
+  backgroundColor: '#FFFFFF',
 } as const;
 
 const cardTitleStyle = {
@@ -47,7 +47,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
         alignItems: 'center',
         paddingLeft: TIMELINE_CONTENT_PADDING_LEFT,
         height: 48,
-        backgroundColor: '#FAF8F5',
+        backgroundColor: '#FFFFFF',
       }}
     >
       {!isFirstSection ? (

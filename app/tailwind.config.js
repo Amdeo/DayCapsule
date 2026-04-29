@@ -61,7 +61,7 @@ module.exports = {
 
         // 背景色
         background: {
-          DEFAULT: '#FAF8F5',  // 米白色主背景
+          DEFAULT: '#FFFFFF',  // 纯白主背景
           elevated: '#FFFFFF', // 纯白
           card: '#FFFFFF',     // 卡片背景
         },
@@ -79,7 +79,7 @@ module.exports = {
         'brand-shell': '#ECE1D5',
         'brand-cream': '#FFFCF7',
         home: {
-          background: '#FAF8F5',
+          background: '#FFFFFF',
           surface: '#FFFFFF',
           mask: '#1A1A1A',
           filter: '#F0F4FF',
@@ -90,9 +90,9 @@ module.exports = {
         },
         editor: {
           backdrop: 'rgba(24, 19, 14, 0.24)',
-          canvas: '#FAF8F5',
+          canvas: '#FFFFFF',
           surface: '#FFFDF9',
-          dock: 'rgba(250, 248, 245, 0.98)',
+          dock: 'rgba(255, 255, 255, 0.98)',
           title: '#3D342E',
           body: '#2F241E',
           meta: '#6B5B4D',

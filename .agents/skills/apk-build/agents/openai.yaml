@@ -1,0 +1,4 @@
+interface:
+  display_name: "APK Build"
+  short_description: "触发、跟踪并下载当前仓库 GitHub APK 远程构建产物"
+  default_prompt: "Use $apk-build to trigger this repo's GitHub APK build, watch the run, and download the artifact when it finishes."

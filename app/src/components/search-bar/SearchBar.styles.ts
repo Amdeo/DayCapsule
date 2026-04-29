@@ -15,7 +15,7 @@ export const searchBarStyles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
   },
   searchBox: {
     flex: 1,

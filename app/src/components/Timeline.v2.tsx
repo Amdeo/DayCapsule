@@ -151,7 +151,7 @@ export function Timeline({ onQuickAdd, onMenuPress, onStopRecording }: TimelineP
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAF8F5' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <TimelineHeaderArea
         showSearchOverlay={showSearchOverlay}
         onCloseSearch={handleCloseSearch}

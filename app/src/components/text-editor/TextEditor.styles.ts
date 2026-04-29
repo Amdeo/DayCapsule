@@ -5,7 +5,7 @@ import {
 
 export const textEditorStyles = {
   editor: {
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '90%',

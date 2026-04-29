@@ -91,7 +91,7 @@ export const textEntryDetailPageStyles = {
     paddingBottom: 28,
     borderTopWidth: 1,
     borderTopColor: 'rgba(139, 115, 85, 0.08)',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
   },
   editButton: {
     backgroundColor: '#6A89CC',

@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 export const calendarViewStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     paddingBottom: 24,

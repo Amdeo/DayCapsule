@@ -19,7 +19,7 @@ export function getEntryCardBackgroundColor(
   variant: EntryCardVariant,
 ): string {
   if (variant === 'calendar') {
-    return '#FFFDF9';
+    return '#FAF8F5';
   }
 
   switch (type) {
@@ -39,7 +39,7 @@ export function getEntryCardPressedBackgroundColor(
   variant: EntryCardVariant,
 ): string {
   if (variant === 'calendar') {
-    return '#FBF6EF';
+    return '#F0EBE3';
   }
 
   switch (type) {

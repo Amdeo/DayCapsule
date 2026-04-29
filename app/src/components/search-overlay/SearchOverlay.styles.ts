@@ -7,7 +7,7 @@ export const searchOverlayStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
     zIndex: 100,
   },
   keyboardAvoidingView: {
@@ -160,7 +160,7 @@ export const searchOverlayStyles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: '#EFEFEF',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
   },
   cancelButton: {
     flex: 1,
