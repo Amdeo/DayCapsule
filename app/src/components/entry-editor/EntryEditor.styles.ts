@@ -1,12 +1,16 @@
-import { StyleSheet } from 'react-native';
+import { type ViewStyle, type TextStyle } from 'react-native';
 
-export const entryEditorStyles = StyleSheet.create({
+export const entryEditorStyles = {
   container: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.18)',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: 'rgba(24, 19, 14, 0.24)',
   },
   editorPage: {
@@ -214,4 +218,4 @@ export const entryEditorStyles = StyleSheet.create({
     fontWeight: '500',
     color: '#8F7AC8',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { type ViewStyle, type TextStyle } from 'react-native';
 
 export const TOPBAR_BUTTON_SIZE = 48;
 export const TOPBAR_RADIUS = 14;
@@ -8,7 +8,7 @@ export const TOPBAR_SEARCH_BG = '#F8F5F0';
 export const TOPBAR_SEARCH_BORDER = '#ECE3D8';
 export const TOPBAR_TOGGLE_INACTIVE = '#8F8477';
 
-export const searchBarStyles = StyleSheet.create({
+export const searchBarStyles = {
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -49,4 +49,4 @@ export const searchBarStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

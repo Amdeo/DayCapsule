@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-export const calendarViewStyles = StyleSheet.create({
+import { type ViewStyle, type TextStyle } from 'react-native';
+export const calendarViewStyles = {
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -133,4 +133,4 @@ export const calendarViewStyles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 2,
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;

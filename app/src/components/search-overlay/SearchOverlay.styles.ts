@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { type ViewStyle, type TextStyle } from 'react-native';
 
-export const searchOverlayStyles = StyleSheet.create({
+export const searchOverlayStyles = {
   overlay: {
     position: 'absolute',
     top: 0,
@@ -190,4 +190,4 @@ export const searchOverlayStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-});
+} satisfies Record<string, ViewStyle | TextStyle>;
