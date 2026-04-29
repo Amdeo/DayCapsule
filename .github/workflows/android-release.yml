@@ -224,3 +224,74 @@ jobs:
           name: daycapsule-unsigned-release-apk-${{ github.run_number }}
           path: app/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Notify Feishu
+        if: always()
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_RECEIVER_EMAIL: ${{ secrets.FEISHU_RECEIVER_EMAIL }}
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'workflow_dispatch' }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+
+          # Skip if no Feishu credentials configured
+          if [ -n "${FEISHU_WEBHOOK_URL:-}" ]; then
+            # Webhook bot mode
+            status_emoji="✅"
+            if [ "${JOB_STATUS}" != "success" ]; then
+              status_emoji="❌"
+            fi
+            run_url="${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID}"
+            text="${status_emoji} DayCapsule Android Build ${JOB_STATUS}\nRepo: ${REPOSITORY}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nSHA: ${SHA:0:7}\nActor: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${run_url}"
+            payload="$(python3 -c 'import json, os; print(json.dumps({"msg_type": "text", "content": {"text": os.environ["text"]}}))')"
+            curl --silent --show-error --fail-with-body \
+              --request POST \
+              --header 'Content-Type: application/json; charset=utf-8' \
+              --data "$payload" \
+              "$FEISHU_WEBHOOK_URL"
+            echo "Feishu webhook notification sent"
+            exit 0
+          fi
+
+          if [ -z "${FEISHU_APP_ID:-}" ] || [ -z "${FEISHU_APP_SECRET:-}" ] || [ -z "${FEISHU_RECEIVER_EMAIL:-}" ]; then
+            echo "Feishu secrets not fully configured (need FEISHU_APP_ID + FEISHU_APP_SECRET + FEISHU_RECEIVER_EMAIL, or FEISHU_WEBHOOK_URL), skipping notification"
+            exit 0
+          fi
+
+          # Custom app mode (email receiver)
+          token_response="$(curl --silent --show-error --fail-with-body \
+            --request POST \
+            --header 'Content-Type: application/json; charset=utf-8' \
+            --data "{\"app_id\":\"${FEISHU_APP_ID}\",\"app_secret\":\"${FEISHU_APP_SECRET}\"}" \
+            https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal)"
+
+          tenant_access_token="$(TOKEN_RESPONSE="$token_response" python3 -c 'import json, os, sys; data = json.loads(os.environ["TOKEN_RESPONSE"]); code = data.get("code"); 0 if code == 0 else (print(data, file=sys.stderr), (_ for _ in ()).throw(SystemExit("Failed to get Feishu tenant_access_token"))); print(data["tenant_access_token"])')"
+
+          status_emoji="✅"
+          if [ "${JOB_STATUS}" != "success" ]; then
+            status_emoji="❌"
+          fi
+          run_url="${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID}"
+          text="${status_emoji} DayCapsule Android Build ${JOB_STATUS}\nRepo: ${REPOSITORY}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nSHA: ${SHA:0:7}\nActor: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${run_url}"
+
+          message_payload="$(python3 -c 'import json, os; text = os.environ["text"]; email = os.environ["FEISHU_RECEIVER_EMAIL"]; print(json.dumps({"receive_id": email, "msg_type": "text", "content": json.dumps({"text": text}, ensure_ascii=False)}, ensure_ascii=False))')"
+
+          send_response="$(curl --silent --show-error --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer ${tenant_access_token}" \
+            --header 'Content-Type: application/json; charset=utf-8' \
+            --data "$message_payload" \
+            'https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=email')"
+
+          SEND_RESPONSE="$send_response" python3 -c 'import json, os, sys; data = json.loads(os.environ["SEND_RESPONSE"]); code = data.get("code"); 0 if code == 0 else (print(data, file=sys.stderr), (_ for _ in ()).throw(SystemExit("Failed to send Feishu notification")))'
+          echo "Feishu notification sent to ${FEISHU_RECEIVER_EMAIL}"
