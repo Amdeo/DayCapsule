@@ -15,7 +15,7 @@ interface TimelineSectionHeaderProps {
 const cardContainerStyle = {
   paddingLeft: 16,
   paddingRight: 24,
-  paddingTop: 16,
+  paddingTop: 8,
   paddingBottom: 4,
   backgroundColor: '#FFFFFF',
 } as const;
@@ -46,7 +46,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: TIMELINE_CONTENT_PADDING_LEFT,
-        height: 48,
+        height: 36,
         backgroundColor: '#FFFFFF',
       }}
     >
@@ -57,7 +57,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
             left: TIMELINE_LEFT,
             top: 0,
             width: 2,
-            height: 24,
+            height: 18,
             backgroundColor: '#E5E5E5',
             zIndex: 1,
           }}
@@ -67,7 +67,7 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
         style={{
           position: 'absolute',
           left: TIMELINE_DOT_LEFT,
-          top: 16,
+          top: 10,
           width: 16,
           height: 16,
           borderRadius: 8,
@@ -84,9 +84,9 @@ export const TimelineSectionHeader = React.memo(function TimelineSectionHeader({
         style={{
           position: 'absolute',
           left: TIMELINE_LEFT,
-          top: 24,
+          top: 18,
           width: 2,
-          height: 24,
+          height: 18,
           backgroundColor: '#E5E5E5',
           zIndex: 1,
         }}
