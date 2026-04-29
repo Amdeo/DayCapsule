@@ -253,7 +253,7 @@ jobs:
             fi
             run_url="${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID}"
             text="${status_emoji} DayCapsule Android Build ${JOB_STATUS}\nRepo: ${REPOSITORY}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nSHA: ${SHA:0:7}\nActor: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${run_url}"
-            payload="$(python3 -c 'import json, os; print(json.dumps({"msg_type": "text", "content": {"text": os.environ["text"]}}))')"
+            payload="$(TEXT="$text" python3 -c 'import json, os; print(json.dumps({"msg_type": "text", "content": {"text": os.environ["TEXT"]}}))')"
             curl --silent --show-error --fail-with-body \
               --request POST \
               --header 'Content-Type: application/json; charset=utf-8' \
@@ -284,7 +284,7 @@ jobs:
           run_url="${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID}"
           text="${status_emoji} DayCapsule Android Build ${JOB_STATUS}\nRepo: ${REPOSITORY}\nBranch: ${REF_NAME}\nRun: #${RUN_NUMBER}\nSHA: ${SHA:0:7}\nActor: ${ACTOR}\nCommit: ${COMMIT_MESSAGE}\n${run_url}"
 
-          message_payload="$(python3 -c 'import json, os; text = os.environ["text"]; email = os.environ["FEISHU_RECEIVER_EMAIL"]; print(json.dumps({"receive_id": email, "msg_type": "text", "content": json.dumps({"text": text}, ensure_ascii=False)}, ensure_ascii=False))')"
+          message_payload="$(TEXT="$text" python3 -c 'import json, os; text = os.environ["TEXT"]; email = os.environ["FEISHU_RECEIVER_EMAIL"]; print(json.dumps({"receive_id": email, "msg_type": "text", "content": json.dumps({"text": text}, ensure_ascii=False)}, ensure_ascii=False))')"
 
           send_response="$(curl --silent --show-error --fail-with-body \
             --request POST \
