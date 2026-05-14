@@ -28,6 +28,7 @@ export const SYNC_STORAGE_KEYS = {
   lastSyncAt: 'cloudSync:lastSyncAt',
   lastSyncError: 'cloudSync:lastSyncError',
   initialSyncState: 'cloudSync:initialSyncState',
+  cloudProtectionEnabled: 'cloudSync:cloudProtectionEnabled',
   lastMediaValidationSummary: 'cloudSync:lastMediaValidationSummary',
 } as const;
 
@@ -36,6 +37,7 @@ interface SyncStoreState {
   lastSyncAt: number | null;
   lastSyncError: string | null;
   initialSyncState: InitialSyncState;
+  isCloudProtectionEnabled: boolean;
   lastMediaValidationSummary: MediaSyncValidationSummary | null;
   isSyncing: boolean;
   isLoaded: boolean;
@@ -46,6 +48,7 @@ interface SyncStoreState {
   markSyncSuccess: (timestamp?: number) => Promise<void>;
   markSyncFailure: (message: string) => Promise<void>;
   setInitialSyncState: (state: InitialSyncState) => Promise<void>;
+  setCloudProtectionEnabled: (enabled: boolean) => Promise<void>;
   setMediaValidationSummary: (summary: MediaSyncValidationSummary) => Promise<void>;
   markMediaValidationRunning: (total: number) => Promise<void>;
   reset: () => Promise<void>;
@@ -56,6 +59,7 @@ const DEFAULT_SYNC_STATE = {
   lastSyncAt: null,
   lastSyncError: null,
   initialSyncState: 'idle' as InitialSyncState,
+  isCloudProtectionEnabled: false,
   lastMediaValidationSummary: null as MediaSyncValidationSummary | null,
   isSyncing: false,
   isLoaded: false,
@@ -84,6 +88,8 @@ const parseInitialSyncState = (raw: string | null): InitialSyncState => {
       return 'idle';
   }
 };
+
+const parseBoolean = (raw: string | null): boolean => raw === 'true';
 
 const isMediaSyncValidationStatus = (
   value: unknown
@@ -140,6 +146,7 @@ const getScopedSyncKeys = async () =>
     getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncAt),
     getScopedSyncKey(SYNC_STORAGE_KEYS.lastSyncError),
     getScopedSyncKey(SYNC_STORAGE_KEYS.initialSyncState),
+    getScopedSyncKey(SYNC_STORAGE_KEYS.cloudProtectionEnabled),
     getScopedSyncKey(SYNC_STORAGE_KEYS.lastMediaValidationSummary),
   ]).then(
     ([
@@ -147,12 +154,14 @@ const getScopedSyncKeys = async () =>
       lastSyncAtKey,
       lastSyncErrorKey,
       initialSyncStateKey,
+      cloudProtectionEnabledKey,
       lastMediaValidationSummaryKey,
     ]) => ({
       cursorKey,
       lastSyncAtKey,
       lastSyncErrorKey,
       initialSyncStateKey,
+      cloudProtectionEnabledKey,
       lastMediaValidationSummaryKey,
     })
   );
@@ -174,14 +183,23 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
         lastSyncAtKey,
         lastSyncErrorKey,
         initialSyncStateKey,
+        cloudProtectionEnabledKey,
         lastMediaValidationSummaryKey,
       } = await getScopedSyncKeys();
-      const [cursorRaw, lastSyncAtRaw, lastSyncError, initialSyncStateRaw, mediaValidationRaw] =
+      const [
+        cursorRaw,
+        lastSyncAtRaw,
+        lastSyncError,
+        initialSyncStateRaw,
+        cloudProtectionEnabledRaw,
+        mediaValidationRaw,
+      ] =
         await Promise.all([
           Storage.getString(cursorKey),
           Storage.getString(lastSyncAtKey),
           Storage.getString(lastSyncErrorKey),
           Storage.getString(initialSyncStateKey),
+          Storage.getString(cloudProtectionEnabledKey),
           Storage.getString(lastMediaValidationSummaryKey),
         ]);
 
@@ -190,6 +208,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
         lastSyncAt: parseNumber(lastSyncAtRaw),
         lastSyncError: lastSyncError ?? null,
         initialSyncState: parseInitialSyncState(initialSyncStateRaw),
+        isCloudProtectionEnabled: parseBoolean(cloudProtectionEnabledRaw),
         lastMediaValidationSummary: parseMediaValidationSummary(mediaValidationRaw),
         isSyncing: false,
         isLoaded: true,
@@ -238,6 +257,14 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
     set({ initialSyncState: state });
   },
 
+  setCloudProtectionEnabled: async (enabled) => {
+    await Storage.setString(
+      await getScopedSyncKey(SYNC_STORAGE_KEYS.cloudProtectionEnabled),
+      String(enabled)
+    );
+    set({ isCloudProtectionEnabled: enabled });
+  },
+
   setMediaValidationSummary: async (summary) => {
     await persistMediaValidationSummary(summary);
     set({ lastMediaValidationSummary: summary });
@@ -265,6 +292,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
       lastSyncAtKey,
       lastSyncErrorKey,
       initialSyncStateKey,
+      cloudProtectionEnabledKey,
       lastMediaValidationSummaryKey,
     } = await getScopedSyncKeys();
     await Promise.all([
@@ -272,6 +300,7 @@ export const useSyncStore = create<SyncStoreState>((set) => ({
       Storage.delete(lastSyncAtKey),
       Storage.delete(lastSyncErrorKey),
       Storage.delete(initialSyncStateKey),
+      Storage.delete(cloudProtectionEnabledKey),
       Storage.delete(lastMediaValidationSummaryKey),
     ]);
     set({ ...DEFAULT_SYNC_STATE, isLoaded: true });

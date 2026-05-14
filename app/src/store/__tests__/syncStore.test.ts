@@ -56,6 +56,7 @@ describe('syncStore', () => {
       lastSyncError: null,
       initialSyncState: 'idle',
       lastMediaValidationSummary: null,
+      isCloudProtectionEnabled: false,
       isSyncing: false,
       isLoaded: false,
     });
@@ -72,6 +73,8 @@ describe('syncStore', () => {
           return 'network timeout';
         case scopedKey(SERVER_A_SCOPE, 'cloudSync:initialSyncState'):
           return 'needs-decision';
+        case scopedKey(SERVER_A_SCOPE, 'cloudSync:cloudProtectionEnabled'):
+          return 'true';
         default:
           return null;
       }
@@ -84,6 +87,7 @@ describe('syncStore', () => {
       lastSyncAt: 1700000000000,
       lastSyncError: 'network timeout',
       initialSyncState: 'needs-decision',
+      isCloudProtectionEnabled: true,
       isLoaded: true,
     });
   });
@@ -98,6 +102,8 @@ describe('syncStore', () => {
           return '99';
         case scopedKey(SERVER_B_SCOPE, 'cloudSync:initialSyncState'):
           return 'ready';
+        case scopedKey(SERVER_B_SCOPE, 'cloudSync:cloudProtectionEnabled'):
+          return 'true';
         default:
           return null;
       }
@@ -108,8 +114,46 @@ describe('syncStore', () => {
     expect(useSyncStore.getState()).toMatchObject({
       syncCursor: 99,
       initialSyncState: 'ready',
+      isCloudProtectionEnabled: true,
       isLoaded: true,
     });
+  });
+
+  it('defaults cloud protection to disabled', () => {
+    expect(useSyncStore.getState().isCloudProtectionEnabled).toBe(false);
+  });
+
+  it('persists enabling and disabling cloud protection', async () => {
+    await useSyncStore.getState().setCloudProtectionEnabled(true);
+
+    expect(useSyncStore.getState().isCloudProtectionEnabled).toBe(true);
+    expect(Storage.setString).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'cloudSync:cloudProtectionEnabled'),
+      'true'
+    );
+
+    await useSyncStore.getState().setCloudProtectionEnabled(false);
+
+    expect(useSyncStore.getState().isCloudProtectionEnabled).toBe(false);
+    expect(Storage.setString).toHaveBeenLastCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'cloudSync:cloudProtectionEnabled'),
+      'false'
+    );
+  });
+
+  it('loads and resets persisted cloud protection state', async () => {
+    mockStorage.set(scopedKey(SERVER_A_SCOPE, 'cloudSync:cloudProtectionEnabled'), 'true');
+
+    await useSyncStore.getState().load();
+
+    expect(useSyncStore.getState().isCloudProtectionEnabled).toBe(true);
+
+    await useSyncStore.getState().reset();
+
+    expect(useSyncStore.getState().isCloudProtectionEnabled).toBe(false);
+    expect(Storage.delete).toHaveBeenCalledWith(
+      scopedKey(SERVER_A_SCOPE, 'cloudSync:cloudProtectionEnabled')
+    );
   });
 
   it('clears lastSyncError after a successful sync status update', async () => {
@@ -214,6 +258,7 @@ describe('syncStore', () => {
         lastError: 'missing file',
         lastValidatedAt: 1234,
       },
+      isCloudProtectionEnabled: true,
       isSyncing: true,
       isLoaded: false,
     });
@@ -227,6 +272,7 @@ describe('syncStore', () => {
       lastSyncError: null,
       initialSyncState: 'idle',
       lastMediaValidationSummary: null,
+      isCloudProtectionEnabled: false,
       isSyncing: false,
       isLoaded: true,
     });
