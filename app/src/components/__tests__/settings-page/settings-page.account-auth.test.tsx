@@ -6,6 +6,7 @@ import {
   getLatestLoginPageProps,
   triggerLatestLoginSuccess,
 } from '../helpers/renderSettingsPage';
+import { useSyncStore } from '@/src/store/syncStore';
 
 type LatestSettingsPageContentProps = null | {
   isAuthenticated: boolean;
@@ -18,6 +19,10 @@ type LatestSettingsPageContentProps = null | {
 };
 
 let latestSettingsPageContentProps: LatestSettingsPageContentProps = null;
+const mockPromptEnableCloudProtection = jest.fn();
+const mockSetCloudProtectionEnabled = jest.fn(async () => undefined);
+let mockIsCloudProtectionEnabled = false;
+let originalUseSyncStoreGetState: (() => Record<string, unknown>) | undefined;
 
 jest.mock('../../settings-page/SettingsPageContent', () => ({
   SettingsPageContent: (props: any) => {
@@ -44,10 +49,35 @@ jest.mock('../../settings-page/SettingsPageContent', () => ({
   },
 }));
 
+jest.mock('@/src/services/cloudProtectionPromptService', () => ({
+  promptEnableCloudProtection: (...args: unknown[]) => mockPromptEnableCloudProtection(...args),
+}));
+
 describe('SettingsPage account auth', () => {
   beforeEach(() => {
     latestSettingsPageContentProps = null;
     resetRenderSettingsPageMocks();
+    mockIsCloudProtectionEnabled = false;
+    mockPromptEnableCloudProtection.mockReset();
+    mockSetCloudProtectionEnabled.mockClear();
+    originalUseSyncStoreGetState = (useSyncStore as typeof useSyncStore & {
+      getState?: () => Record<string, unknown>;
+    }).getState;
+    (useSyncStore as typeof useSyncStore & {
+      getState?: () => Record<string, unknown>;
+    }).getState = () => ({
+      lastSyncError: null,
+      lastMediaValidationSummary: null,
+      isCloudProtectionEnabled: mockIsCloudProtectionEnabled,
+      setCloudProtectionEnabled: mockSetCloudProtectionEnabled,
+    });
+  });
+
+  afterEach(() => {
+    (useSyncStore as typeof useSyncStore & {
+      getState?: () => Record<string, unknown>;
+    }).getState = originalUseSyncStoreGetState;
+    originalUseSyncStoreGetState = undefined;
   });
 
   async function settleInitialEffects(screen: any) {
@@ -111,6 +141,56 @@ describe('SettingsPage account auth', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('settings-login-dialog')).toBeNull();
     });
+  });
+
+  it('prompts to enable cloud protection after login success when protection is disabled', async () => {
+    const { screen } = await renderSettingsPage({ authenticated: false });
+    await settleInitialEffects(screen);
+
+    fireEvent.press(screen.getByTestId('settings-open-login'));
+    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+
+    await act(async () => {
+      await triggerLatestLoginSuccess();
+    });
+
+    await waitFor(() => {
+      expect(mockPromptEnableCloudProtection).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockPromptEnableCloudProtection).toHaveBeenCalledWith({
+      onEnable: expect.any(Function),
+    });
+
+    const [{ onEnable }] = mockPromptEnableCloudProtection.mock.calls[0] as [
+      { onEnable: () => Promise<void> }
+    ];
+
+    await act(async () => {
+      await onEnable();
+    });
+
+    expect(mockSetCloudProtectionEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('does not prompt to enable cloud protection after login success when protection is already enabled', async () => {
+    mockIsCloudProtectionEnabled = true;
+
+    const { screen } = await renderSettingsPage({ authenticated: false });
+    await settleInitialEffects(screen);
+
+    fireEvent.press(screen.getByTestId('settings-open-login'));
+    expect(await screen.findByTestId('settings-login-dialog')).toBeTruthy();
+
+    await act(async () => {
+      await triggerLatestLoginSuccess();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('settings-login-dialog')).toBeNull();
+    });
+
+    expect(mockPromptEnableCloudProtection).not.toHaveBeenCalled();
   });
 
   it('does not render the legacy account mode switch', async () => {

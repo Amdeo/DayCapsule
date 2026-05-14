@@ -23,6 +23,8 @@ import { useAccountSwitcher } from './settings-page/useAccountSwitcher';
 import { useConfirmDialogStore } from '@/src/store/confirmDialogStore';
 import { useErrorFeedbackStore } from '@/src/store/errorFeedbackStore';
 import { buildWorkspaceSessionSnapshot } from '@/src/services/workspaceSessionState';
+import { promptEnableCloudProtection } from '@/src/services/cloudProtectionPromptService';
+import { useSyncStore } from '@/src/store/syncStore';
 
 interface SettingsPageProps {
   visible: boolean;
@@ -122,6 +124,12 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
   const handleLoginSuccess = React.useCallback(async () => {
     closeLogin();
     await refreshAccountSwitcher();
+    const { isCloudProtectionEnabled, setCloudProtectionEnabled } = useSyncStore.getState();
+    if (!isCloudProtectionEnabled) {
+      promptEnableCloudProtection({
+        onEnable: async () => setCloudProtectionEnabled(true),
+      });
+    }
   }, [closeLogin, refreshAccountSwitcher]);
 
   const openAccountSwitcher = React.useCallback(async () => {
