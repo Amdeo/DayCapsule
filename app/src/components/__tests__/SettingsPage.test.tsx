@@ -23,7 +23,7 @@ describe('SettingsPage assembly', () => {
     expect(screen.getByTestId('settings-open-login')).toBeTruthy();
     expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByText('登录 / 注册')).toBeTruthy();
-    expect(screen.getByText('登录后可同步账号数据')).toBeTruthy();
+    expect(screen.getByText('登录后即可开启云同步保护当前数据')).toBeTruthy();
     expect(screen.getByText('日历密度')).toBeTruthy();
     expect(screen.getByText('预制标签管理')).toBeTruthy();
   });
