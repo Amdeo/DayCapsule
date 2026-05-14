@@ -23,14 +23,29 @@ describe('SettingsPage sync status', () => {
     expect(mocks.showCloudSyncMonitor).not.toHaveBeenCalled();
   });
 
-  it('renders the sync status entry for authenticated users', async () => {
-    const { screen } = await renderSettingsPage({ authenticated: true });
+  it('does not render the sync status entry when authenticated without cloud protection', async () => {
+    const { screen } = await renderSettingsPage({
+      authenticated: true,
+      cloudProtectionEnabled: false,
+    });
+
+    expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+  });
+
+  it('renders the sync status entry for authenticated users with cloud protection enabled', async () => {
+    const { screen } = await renderSettingsPage({
+      authenticated: true,
+      cloudProtectionEnabled: true,
+    });
 
     expect(await screen.findByTestId('settings-show-sync-status')).toBeTruthy();
   });
 
-  it('opens sync status from the page action', async () => {
-    const { screen, mocks } = await renderSettingsPage({ authenticated: true });
+  it('opens sync status from the page action when cloud protection is enabled', async () => {
+    const { screen, mocks } = await renderSettingsPage({
+      authenticated: true,
+      cloudProtectionEnabled: true,
+    });
 
     fireEvent.press(await screen.findByTestId('settings-show-sync-status'));
 
