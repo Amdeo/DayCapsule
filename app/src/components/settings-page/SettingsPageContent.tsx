@@ -24,6 +24,7 @@ import {
 
 interface SettingsPageContentProps {
   isAuthenticated: boolean;
+  isCloudProtectionEnabled: boolean;
   userEmail?: string;
   isAccountScopeActive: boolean;
   isTransitioning: boolean;
@@ -70,6 +71,7 @@ interface SettingsPageContentProps {
 
 export function SettingsPageContent({
   isAuthenticated,
+  isCloudProtectionEnabled,
   userEmail,
   isAccountScopeActive,
   isTransitioning,
@@ -116,6 +118,7 @@ export function SettingsPageContent({
     <>
       <SettingsProfileCard
         isAuthenticated={isAuthenticated}
+        isCloudProtectionEnabled={isCloudProtectionEnabled}
         userEmail={userEmail}
         entryCount={entryCount}
         photoCount={photoCount}
@@ -125,6 +128,7 @@ export function SettingsPageContent({
 
       <SettingsAccountSyncSection
         isAuthenticated={isAuthenticated}
+        isCloudProtectionEnabled={isCloudProtectionEnabled}
         isAccountScopeActive={isAccountScopeActive}
         isTransitioning={isTransitioning}
         onShowSyncStatus={onShowSyncStatus}

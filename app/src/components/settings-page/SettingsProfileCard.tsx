@@ -5,6 +5,7 @@ import { settingsProfileCardStyles as styles } from './SettingsProfileCard.style
 
 interface SettingsProfileCardProps {
   isAuthenticated: boolean;
+  isCloudProtectionEnabled: boolean;
   userEmail?: string;
   entryCount: number;
   photoCount: number;
@@ -33,6 +34,7 @@ function StatCard({ value, label }: StatCardProps) {
 
 export function SettingsProfileCard({
   isAuthenticated,
+  isCloudProtectionEnabled,
   userEmail,
   entryCount,
   photoCount,
@@ -48,7 +50,7 @@ export function SettingsProfileCard({
           </View>
           <View style={styles.unauthText}>
             <Text style={styles.unauthTitle}>未登录</Text>
-            <Text style={styles.unauthSubtitle}>未登录时仅显示本地数据</Text>
+            <Text style={styles.unauthSubtitle}>本地优先，当前数据仅保存在本机</Text>
           </View>
           <Pressable style={styles.loginButton} onPress={onShowLogin}>
             <Text style={styles.loginButtonText}>登录</Text>
@@ -73,7 +75,9 @@ export function SettingsProfileCard({
           </Text>
           <View style={styles.syncRow}>
             <View style={styles.syncDotActive} />
-            <Text style={styles.syncLabel}>账号同步（本地优先）</Text>
+            <Text style={styles.syncLabel}>
+              {isCloudProtectionEnabled ? '云端已保护当前记忆' : '当前数据仍仅保存在本机'}
+            </Text>
           </View>
         </View>
       </View>

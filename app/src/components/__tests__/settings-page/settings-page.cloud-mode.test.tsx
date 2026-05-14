@@ -14,11 +14,11 @@ describe('SettingsPage account session copy', () => {
     const { screen } = await renderSettingsPage({ authenticated: false });
 
     const profileCard = await screen.findByTestId('settings-profile-card');
-    expect(within(profileCard).getByText('未登录时仅显示本地数据')).toBeTruthy();
-    expect(screen.getByText('登录后可同步账号数据')).toBeTruthy();
+    expect(within(profileCard).getByText('本地优先，当前数据仅保存在本机')).toBeTruthy();
+    expect(screen.getByText('登录 / 注册')).toBeTruthy();
   });
 
-  it('shows account-scope copy while authenticated', async () => {
+  it('shows local-device-only copy while authenticated without cloud protection', async () => {
     const { screen } = await renderSettingsPage({ authenticated: true });
 
     await waitFor(() => {
@@ -26,8 +26,23 @@ describe('SettingsPage account session copy', () => {
     });
 
     const profileCard = screen.getByTestId('settings-profile-card');
-    expect(within(profileCard).getByText('账号同步（本地优先）')).toBeTruthy();
-    expect(screen.getByText('账号同步')).toBeTruthy();
-    expect(screen.getByText('已启用，本地优先写入并在稍后同步')).toBeTruthy();
+    expect(within(profileCard).getByText('当前数据仍仅保存在本机')).toBeTruthy();
+    expect(screen.getByText('开启云同步')).toBeTruthy();
+    expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+  });
+
+  it('shows protected-cloud copy while cloud protection is enabled', async () => {
+    const { screen } = await renderSettingsPage({
+      authenticated: true,
+      cloudProtectionEnabled: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('tester@example.com').length).toBeGreaterThan(0);
+    });
+
+    const profileCard = screen.getByTestId('settings-profile-card');
+    expect(within(profileCard).getByText('云端已保护当前记忆')).toBeTruthy();
+    expect(screen.getByTestId('settings-show-sync-status')).toBeTruthy();
   });
 });

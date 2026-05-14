@@ -50,6 +50,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     calendarDensity,
     setCalendarDensity: saveCalendarDensity,
   } = useSettingsStore();
+  const isCloudProtectionEnabled = useSyncStore((state) => state.isCloudProtectionEnabled);
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const { isAccountScopeActive, isTransitioning } = buildWorkspaceSessionSnapshot(isAuthenticated);
@@ -146,6 +147,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
       <View testID="settings-page-root">
         <SettingsPageContent
           isAuthenticated={isAuthenticated}
+          isCloudProtectionEnabled={isCloudProtectionEnabled}
           userEmail={user?.email}
           isAccountScopeActive={isAccountScopeActive}
           isTransitioning={isTransitioning}

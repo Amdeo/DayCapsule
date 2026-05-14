@@ -118,6 +118,12 @@ const mockEntryStoreState = {
 };
 
 const mockCloudSyncSnapshot = { ...mockDefaultCloudSyncSnapshot };
+const mockSyncStoreState = {
+  lastSyncError: null as string | null,
+  lastMediaValidationSummary: null,
+  isCloudProtectionEnabled: false,
+  setCloudProtectionEnabled: jest.fn(async (_enabled: boolean) => undefined),
+};
 const mockCloudSyncService = {
   getStatus: jest.fn(async () => ({ ...mockCloudSyncSnapshot })),
   syncNow: jest.fn(async () => undefined),
@@ -162,6 +168,7 @@ export const mockInjectSuspectRepairable = jest.fn(async () => undefined);
 export const mockInjectRepairPending = jest.fn(async () => undefined);
 export const mockInjectTextDetailFixture = jest.fn(async () => undefined);
 export const mockClearSyncFixtures = jest.fn(async () => undefined);
+export const mockSyncStore = mockSyncStoreState;
 
 const mockUseEntryStore = Object.assign(
   () => ({
@@ -202,9 +209,15 @@ jest.mock('@/src/services/workspaceSessionState', () => ({
   getWorkspaceSessionStateSync: () => mockSessionSnapshot,
 }));
 
+const mockUseSyncStore = Object.assign(
+  <T,>(selector: (state: typeof mockSyncStoreState) => T) => selector(mockSyncStoreState),
+  {
+    getState: () => mockSyncStoreState,
+  }
+);
+
 jest.mock('@/src/store/syncStore', () => ({
-  useSyncStore: (selector: (state: { lastSyncError: string | null; lastMediaValidationSummary: null }) => unknown) =>
-    selector({ lastSyncError: null, lastMediaValidationSummary: null }),
+  useSyncStore: mockUseSyncStore,
 }));
 
 jest.mock('@/src/services/cloudSyncService', () => ({
@@ -377,6 +390,7 @@ jest.mock('../../LoginPage', () => ({
 export interface RenderSettingsPageOptions {
   visible?: boolean;
   authenticated?: boolean;
+  cloudProtectionEnabled?: boolean;
   entries?: Array<{ id: string; type: string; media?: Array<{ uri?: string }> }>;
   userEmail?: string | null;
   e2eSyncLab?: boolean;
@@ -426,6 +440,12 @@ export function resetRenderSettingsPageMocks() {
     loadEntries: jest.fn(async () => undefined),
   });
   Object.assign(mockCloudSyncSnapshot, mockDefaultCloudSyncSnapshot);
+  Object.assign(mockSyncStoreState, {
+    lastSyncError: null,
+    lastMediaValidationSummary: null,
+    isCloudProtectionEnabled: false,
+    setCloudProtectionEnabled: jest.fn(async (_enabled: boolean) => undefined),
+  });
   mockSyncBootstrapService.inspectInitialState.mockResolvedValue({ localCount: 0, cloudCount: 0 });
   mockSyncBootstrapService.buildInitialFlow.mockImplementation(
     () => ({ type: 'backing-up', localCount: 0, cloudCount: 0 })
@@ -482,6 +502,7 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
   const {
     visible = true,
     authenticated = false,
+    cloudProtectionEnabled = false,
     entries = [],
     userEmail = authenticated ? 'tester@example.com' : null,
     e2eSyncLab = false,
@@ -509,6 +530,12 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
   Object.assign(mockSettingsState, {
     ...mockPersistedSettings,
     isLoaded: true,
+  });
+  Object.assign(mockSyncStoreState, {
+    lastSyncError: null,
+    lastMediaValidationSummary: null,
+    isCloudProtectionEnabled: cloudProtectionEnabled,
+    setCloudProtectionEnabled: jest.fn(async (_enabled: boolean) => undefined),
   });
   mockSessionSnapshot = {
     currentScopeKey: sessionScopeKey ?? (authenticated ? 'account' : 'local'),

@@ -6,6 +6,7 @@ import { SettingsSection } from './SettingsSection';
 
 interface SettingsAccountSyncSectionProps {
   isAuthenticated: boolean;
+  isCloudProtectionEnabled: boolean;
   isAccountScopeActive: boolean;
   isTransitioning: boolean;
   onShowSyncStatus: () => void | Promise<void>;
@@ -27,6 +28,7 @@ interface SettingsAccountSyncSectionProps {
 
 export function SettingsAccountSyncSection({
   isAuthenticated,
+  isCloudProtectionEnabled,
   isAccountScopeActive,
   isTransitioning,
   onShowSyncStatus,
@@ -66,23 +68,25 @@ export function SettingsAccountSyncSection({
         {isAuthenticated ? (
           <>
             <SettingItem
-              icon="cloud-done"
-              title="账号同步"
-              subtitle="已启用，本地优先写入并在稍后同步"
+              icon={isCloudProtectionEnabled ? 'cloud-done' : 'cloud-upload-outline'}
+              title={isCloudProtectionEnabled ? '云同步已开启' : '开启云同步'}
+              subtitle={isCloudProtectionEnabled ? '云端已保护当前记忆' : '当前数据仍仅保存在本机'}
             />
-            <SettingButton
-              icon="cloud-done"
-              title="同步状态"
-              subtitle={
-                isTransitioning
-                  ? '账号作用域切换中…'
-                  : isAccountScopeActive
-                    ? '查看最近同步时间和待同步条数'
-                    : '当前不在账号同步作用域'
-              }
-              testID="settings-show-sync-status"
-              onPress={isTransitioning ? () => undefined : onShowSyncStatus}
-            />
+            {isCloudProtectionEnabled ? (
+              <SettingButton
+                icon="cloud-done"
+                title="同步状态"
+                subtitle={
+                  isTransitioning
+                    ? '账号作用域切换中…'
+                    : isAccountScopeActive
+                      ? '查看最近同步时间和待同步条数'
+                      : '当前不在账号同步作用域'
+                }
+                testID="settings-show-sync-status"
+                onPress={isTransitioning ? () => undefined : onShowSyncStatus}
+              />
+            ) : null}
             <SettingButton
               icon="people"
               title="切换账号"
@@ -101,7 +105,7 @@ export function SettingsAccountSyncSection({
           <SettingButton
             icon="person-add"
             title="登录 / 注册"
-            subtitle="登录后可同步账号数据"
+            subtitle="登录后即可开启云同步保护当前数据"
             testID="settings-open-login"
             onPress={onShowLogin}
           />

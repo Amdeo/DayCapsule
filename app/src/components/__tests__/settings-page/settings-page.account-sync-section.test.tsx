@@ -12,7 +12,67 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 describe('SettingsAccountSyncSection', () => {
-  it('renders authenticated account and sync controls with stable visible behavior', () => {
+  function buildProps(overrides: Partial<React.ComponentProps<typeof SettingsAccountSyncSection>> = {}) {
+    return {
+      isAuthenticated: true,
+      isCloudProtectionEnabled: false,
+      isAccountScopeActive: true,
+      isTransitioning: false,
+      onShowSyncStatus: jest.fn(),
+      onSwitchAccount: jest.fn(),
+      onLogout: jest.fn(),
+      onShowLogin: jest.fn(),
+      currentServerUrl: 'https://server-a.example.com',
+      backendDraftUrl: 'https://server-a.example.com',
+      recentServerUrls: [],
+      backendTestStatus: 'idle' as const,
+      backendTestErrorMessage: null,
+      isSavingBackendServer: false,
+      canSaveBackendServer: false,
+      onBackendDraftUrlChange: jest.fn(),
+      onTestBackendServer: jest.fn(),
+      onSaveBackendServer: jest.fn(),
+      onSelectRecentBackendServer: jest.fn(),
+      ...overrides,
+    };
+  }
+
+  it('renders unauthenticated login entry only', () => {
+    const onShowLogin = jest.fn();
+
+    const screen = render(
+      <SettingsAccountSyncSection
+        {...buildProps({
+          isAuthenticated: false,
+          onShowLogin,
+        })}
+      />
+    );
+
+    expect(screen.getByText('账户与同步')).toBeTruthy();
+    expect(screen.getByText('登录 / 注册')).toBeTruthy();
+    expect(screen.getByText('登录后即可开启云同步保护当前数据')).toBeTruthy();
+    expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('settings-open-login'));
+    expect(onShowLogin).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders authenticated but unprotected state without sync status entry', () => {
+    const screen = render(
+      <SettingsAccountSyncSection
+        {...buildProps({
+          isCloudProtectionEnabled: false,
+        })}
+      />
+    );
+
+    expect(screen.getByText('开启云同步')).toBeTruthy();
+    expect(screen.getByText('当前数据仍仅保存在本机')).toBeTruthy();
+    expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+  });
+
+  it('renders authenticated protected state with sync controls', () => {
     const onShowSyncStatus = jest.fn();
     const onSwitchAccount = jest.fn();
     const onLogout = jest.fn();
@@ -20,28 +80,19 @@ describe('SettingsAccountSyncSection', () => {
 
     const screen = render(
       <SettingsAccountSyncSection
-        isAuthenticated
-        onShowSyncStatus={onShowSyncStatus}
-        onSwitchAccount={onSwitchAccount}
-        onLogout={onLogout}
-        onShowLogin={onShowLogin}
-        currentServerUrl="https://server-a.example.com"
-        backendDraftUrl="https://server-a.example.com"
-        recentServerUrls={[]}
-        backendTestStatus="idle"
-        backendTestErrorMessage={null}
-        isSavingBackendServer={false}
-        canSaveBackendServer={false}
-        onBackendDraftUrlChange={jest.fn()}
-        onTestBackendServer={jest.fn()}
-        onSaveBackendServer={jest.fn()}
-        onSelectRecentBackendServer={jest.fn()}
+        {...buildProps({
+          isCloudProtectionEnabled: true,
+          onShowSyncStatus,
+          onSwitchAccount,
+          onLogout,
+          onShowLogin,
+        })}
       />
     );
 
     expect(screen.getByText('账户与同步')).toBeTruthy();
-    expect(screen.getByText('账号同步')).toBeTruthy();
-    expect(screen.getByText('已启用，本地优先写入并在稍后同步')).toBeTruthy();
+    expect(screen.getByText('云同步已开启')).toBeTruthy();
+    expect(screen.getByText('云端已保护当前记忆')).toBeTruthy();
     expect(screen.getByTestId('settings-show-sync-status')).toBeTruthy();
     expect(screen.getByText('切换账号')).toBeTruthy();
     expect(screen.getByText('退出登录')).toBeTruthy();
