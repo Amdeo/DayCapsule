@@ -34,14 +34,14 @@ describe('promptEnableCloudProtection', () => {
           onPress: expect.any(Function),
         }),
         expect.objectContaining({
-          label: '开启云同步',
+          label: '开启云同步与备份',
           role: 'primary',
           onPress: expect.any(Function),
         }),
       ])
     );
 
-    const primaryAction = actions.find((action) => action.label === '开启云同步');
+    const primaryAction = actions.find((action) => action.label === '开启云同步与备份');
     const secondaryAction = actions.find((action) => action.label === '暂不启用');
 
     expect(primaryAction).toBeDefined();

@@ -72,13 +72,13 @@ export function SettingsAccountSyncSection({
             {isCloudProtectionEnabled ? (
               <SettingItem
                 icon="cloud-done"
-                title="云同步已开启"
+                title="云同步与备份已开启"
                 subtitle="云端已保护当前记忆"
               />
             ) : (
               <SettingButton
                 icon="cloud-upload-outline"
-                title="开启云同步"
+                title="开启云同步与备份"
                 subtitle="当前数据仍仅保存在本机"
                 testID="settings-enable-cloud-protection"
                 onPress={onEnableCloudProtection ?? (() => undefined)}
@@ -87,7 +87,7 @@ export function SettingsAccountSyncSection({
             {isCloudProtectionEnabled ? (
               <SettingButton
                 icon="cloud-done"
-                title="同步状态"
+                title="查看同步状态"
                 subtitle={
                   isTransitioning
                     ? '账号作用域切换中…'
@@ -117,7 +117,7 @@ export function SettingsAccountSyncSection({
           <SettingButton
             icon="person-add"
             title="登录账号"
-            subtitle="登录后即可开启云同步保护当前数据"
+            subtitle="登录后即可开启云同步与备份"
             testID="settings-open-login"
             onPress={onShowLogin}
           />

@@ -21,7 +21,7 @@ export function promptEnableCloudProtection(
         },
       },
       {
-        label: '开启云同步',
+        label: '开启云同步与备份',
         role: 'primary',
         onPress: () => {
           options.onEnable();

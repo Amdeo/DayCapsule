@@ -27,7 +27,7 @@ describe('SettingsPage account session copy', () => {
 
     const profileCard = screen.getByTestId('settings-profile-card');
     expect(within(profileCard).getByText('当前数据仍仅保存在本机')).toBeTruthy();
-    expect(screen.getByText('开启云同步')).toBeTruthy();
+    expect(screen.getByText('开启云同步与备份')).toBeTruthy();
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
   });
 

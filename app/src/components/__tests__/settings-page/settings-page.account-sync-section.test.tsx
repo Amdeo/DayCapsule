@@ -51,7 +51,7 @@ describe('SettingsAccountSyncSection', () => {
 
     expect(screen.getByText('账户与同步')).toBeTruthy();
     expect(screen.getByText('登录账号')).toBeTruthy();
-    expect(screen.getByText('登录后即可开启云同步保护当前数据')).toBeTruthy();
+    expect(screen.getByText('登录后即可开启云同步与备份')).toBeTruthy();
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
 
     fireEvent.press(screen.getByTestId('settings-open-login'));
@@ -70,7 +70,7 @@ describe('SettingsAccountSyncSection', () => {
       />
     );
 
-    expect(screen.getByText('开启云同步')).toBeTruthy();
+    expect(screen.getByText('开启云同步与备份')).toBeTruthy();
     expect(screen.getByText('当前数据仍仅保存在本机')).toBeTruthy();
     expect(screen.getByTestId('settings-enable-cloud-protection')).toBeTruthy();
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
@@ -98,7 +98,7 @@ describe('SettingsAccountSyncSection', () => {
     );
 
     expect(screen.getByText('账户与同步')).toBeTruthy();
-    expect(screen.getByText('云同步已开启')).toBeTruthy();
+    expect(screen.getByText('云同步与备份已开启')).toBeTruthy();
     expect(screen.getByText('云端已保护当前记忆')).toBeTruthy();
     expect(screen.getByTestId('settings-show-sync-status')).toBeTruthy();
     expect(screen.getByText('切换账号')).toBeTruthy();
