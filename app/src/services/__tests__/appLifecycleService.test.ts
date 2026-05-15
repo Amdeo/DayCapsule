@@ -29,6 +29,7 @@ let mockSessionState = {
   isAuthenticated: false,
   isTransitioning: false,
   isAccountScopeActive: false,
+  isCloudProtectionEnabled: false,
   canRunCloudSync: false,
 };
 let mockEntries: Array<{ id: string }> = [];
@@ -111,6 +112,7 @@ describe('appLifecycleService', () => {
       isAuthenticated: false,
       isTransitioning: false,
       isAccountScopeActive: false,
+      isCloudProtectionEnabled: false,
       canRunCloudSync: false,
     };
     mockEntries = [];
@@ -143,6 +145,7 @@ describe('appLifecycleService', () => {
       isAuthenticated: true,
       isTransitioning: false,
       isAccountScopeActive: true,
+      isCloudProtectionEnabled: true,
       canRunCloudSync: true,
     };
 
@@ -206,6 +209,7 @@ describe('appLifecycleService', () => {
       isAuthenticated: true,
       isTransitioning: false,
       isAccountScopeActive: true,
+      isCloudProtectionEnabled: true,
       canRunCloudSync: true,
     };
 
@@ -232,6 +236,40 @@ describe('appLifecycleService', () => {
     await Promise.all([first, second]);
 
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips cloud sync when authenticated account scope has not enabled cloud protection', async () => {
+    mockIsAuthenticated = true;
+    mockSessionState = {
+      currentScopeKey: 'account:user-1',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      isCloudProtectionEnabled: false,
+      canRunCloudSync: false,
+    };
+
+    mockRunCloudRecoveryFlow.mockImplementationOnce(
+      async (deps: {
+        syncNow: () => Promise<void>;
+        refreshCloudSyncIndicator: () => Promise<void>;
+      }) => {
+        await deps.syncNow();
+        await deps.refreshCloudSyncIndicator();
+        return {
+          syncError: null,
+          queueRecovery: { voiceError: null, photoError: null },
+          refreshError: null,
+        };
+      }
+    );
+
+    const runRecovery = createCloudRecoveryRunner({ refreshCloudSyncIndicator });
+
+    await runRecovery('回到前台时');
+
+    expect(mockCloudSyncNow).not.toHaveBeenCalled();
+    expect(refreshCloudSyncIndicator).toHaveBeenCalledWith('回到前台时后');
   });
 
   it('creates an auto backup when entering background and backup is due', async () => {

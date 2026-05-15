@@ -15,7 +15,7 @@ describe('SettingsPage account session copy', () => {
 
     const profileCard = await screen.findByTestId('settings-profile-card');
     expect(within(profileCard).getByText('本地优先，当前数据仅保存在本机')).toBeTruthy();
-    expect(screen.getByText('登录 / 注册')).toBeTruthy();
+    expect(screen.getByText('登录账号')).toBeTruthy();
   });
 
   it('shows local-device-only copy while authenticated without cloud protection', async () => {

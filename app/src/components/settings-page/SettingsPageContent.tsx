@@ -45,6 +45,7 @@ interface SettingsPageContentProps {
   isSavingBackendServer: boolean;
   canSaveBackendServer: boolean;
   showE2ESyncLab?: boolean;
+  onEnableCloudProtection?: () => void | Promise<void>;
   onShowSyncStatus: () => void | Promise<void>;
   onSwitchAccount: () => void;
   onLogout: () => void;
@@ -91,6 +92,7 @@ export function SettingsPageContent({
   isSavingBackendServer,
   canSaveBackendServer,
   showE2ESyncLab,
+  onEnableCloudProtection,
   onShowSyncStatus,
   onSwitchAccount,
   onLogout,
@@ -131,6 +133,7 @@ export function SettingsPageContent({
         isCloudProtectionEnabled={isCloudProtectionEnabled}
         isAccountScopeActive={isAccountScopeActive}
         isTransitioning={isTransitioning}
+        onEnableCloudProtection={onEnableCloudProtection}
         onShowSyncStatus={onShowSyncStatus}
         onSwitchAccount={onSwitchAccount}
         onLogout={onLogout}

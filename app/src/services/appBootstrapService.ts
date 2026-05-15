@@ -125,6 +125,8 @@ export async function runAppBootstrap(
       } catch (syncError) {
         logger.warn('⚠️ 启动时云同步失败:', syncError);
       }
+    } else if (session.isAccountScopeActive) {
+      logger.log('✅ 账号作用域已恢复，但云同步保护尚未开启，跳过启动时云同步');
     }
 
     const recoveryResult = await createCloudRecoveryFlowService({

@@ -50,7 +50,7 @@ describe('SettingsAccountSyncSection', () => {
     );
 
     expect(screen.getByText('账户与同步')).toBeTruthy();
-    expect(screen.getByText('登录 / 注册')).toBeTruthy();
+    expect(screen.getByText('登录账号')).toBeTruthy();
     expect(screen.getByText('登录后即可开启云同步保护当前数据')).toBeTruthy();
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
 
@@ -59,17 +59,24 @@ describe('SettingsAccountSyncSection', () => {
   });
 
   it('renders authenticated but unprotected state without sync status entry', () => {
+    const onEnableCloudProtection = jest.fn();
+
     const screen = render(
       <SettingsAccountSyncSection
         {...buildProps({
           isCloudProtectionEnabled: false,
+          onEnableCloudProtection,
         })}
       />
     );
 
     expect(screen.getByText('开启云同步')).toBeTruthy();
     expect(screen.getByText('当前数据仍仅保存在本机')).toBeTruthy();
+    expect(screen.getByTestId('settings-enable-cloud-protection')).toBeTruthy();
     expect(screen.queryByTestId('settings-show-sync-status')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('settings-enable-cloud-protection'));
+    expect(onEnableCloudProtection).toHaveBeenCalledTimes(1);
   });
 
   it('renders authenticated protected state with sync controls', () => {

@@ -3,6 +3,7 @@ import {
   getCurrentDataScopeKey,
   getCurrentDataScopeKeySync,
 } from '@/src/services/workspaceService';
+import { useSyncStore } from '@/src/store/syncStore';
 
 export const LOCAL_SCOPE_KEY = 'local';
 
@@ -19,6 +20,7 @@ export interface WorkspaceSessionSnapshot {
   currentScopeKey: string;
   isTransitioning: boolean;
   isAccountScopeActive: boolean;
+  isCloudProtectionEnabled: boolean;
   canRunCloudSync: boolean;
 }
 
@@ -38,7 +40,8 @@ export const useWorkspaceSessionStore = create<WorkspaceSessionStoreState>((set)
 export function buildWorkspaceSessionSnapshot(
   isAuthenticated: boolean,
   currentScopeKey = useWorkspaceSessionStore.getState().currentScopeKey,
-  isTransitioning = useWorkspaceSessionStore.getState().isTransitioning
+  isTransitioning = useWorkspaceSessionStore.getState().isTransitioning,
+  isCloudProtectionEnabled = useSyncStore.getState().isCloudProtectionEnabled,
 ): WorkspaceSessionSnapshot {
   const isAccountScopeActive = isAuthenticated && currentScopeKey !== LOCAL_SCOPE_KEY;
 
@@ -46,7 +49,8 @@ export function buildWorkspaceSessionSnapshot(
     currentScopeKey,
     isTransitioning,
     isAccountScopeActive,
-    canRunCloudSync: isAccountScopeActive && !isTransitioning,
+    isCloudProtectionEnabled,
+    canRunCloudSync: isAccountScopeActive && isCloudProtectionEnabled && !isTransitioning,
   };
 }
 
@@ -60,11 +64,13 @@ export function isAccountScopeActive(
 export function canRunCloudSync(
   isAuthenticated: boolean,
   currentScopeKey = useWorkspaceSessionStore.getState().currentScopeKey,
-  isTransitioning = useWorkspaceSessionStore.getState().isTransitioning
+  isTransitioning = useWorkspaceSessionStore.getState().isTransitioning,
+  isCloudProtectionEnabled = useSyncStore.getState().isCloudProtectionEnabled,
 ): boolean {
   return buildWorkspaceSessionSnapshot(
     isAuthenticated,
     currentScopeKey,
-    isTransitioning
+    isTransitioning,
+    isCloudProtectionEnabled,
   ).canRunCloudSync;
 }

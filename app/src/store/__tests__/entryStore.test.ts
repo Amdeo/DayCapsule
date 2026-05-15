@@ -635,6 +635,28 @@ describe('entryStore', () => {
       expect(mockDataSource.addEntry).not.toHaveBeenCalled();
       expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
     });
+
+    it('已登录但未开启云保护时不应把新增记录标记为 pending', async () => {
+      mockCanRunCloudSync = false;
+      mockIsAuthenticated = true;
+      (DB.addEntry as jest.Mock).mockResolvedValueOnce({
+        id: 'local-entry-protection-off',
+        type: 'text',
+        content: '未开启保护本地写入',
+        timestamp: 1700000000003,
+        syncStatus: 'synced',
+        syncOp: 'update',
+      });
+
+      await useEntryStore.getState().addEntry({ type: 'text', content: '未开启保护本地写入' });
+
+      expect(DB.addEntry).toHaveBeenCalledWith(expect.objectContaining({
+        content: '未开启保护本地写入',
+        syncStatus: 'synced',
+        syncOp: 'update',
+      }));
+      expect(mockRefreshCloudSyncIndicator).toHaveBeenCalled();
+    });
   });
 
   // ─── updateEntry ───────────────────────────────────────────────────────────

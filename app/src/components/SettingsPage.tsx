@@ -133,6 +133,14 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
     }
   }, [closeLogin, refreshAccountSwitcher]);
 
+  const handleEnableCloudProtection = React.useCallback(() => {
+    promptEnableCloudProtection({
+      onEnable: async () => {
+        await useSyncStore.getState().setCloudProtectionEnabled(true);
+      },
+    });
+  }, []);
+
   const openAccountSwitcher = React.useCallback(async () => {
     await refreshAccountSwitcher();
     setShowAccountSwitcher(true);
@@ -168,6 +176,7 @@ export function SettingsPage({ visible, onClose }: SettingsPageProps) {
           isSavingBackendServer={isSavingBackendServer}
           canSaveBackendServer={canSaveBackendServer}
           showE2ESyncLab={showE2ESyncLab}
+          onEnableCloudProtection={handleEnableCloudProtection}
           onShowSyncStatus={() => {
             showCloudSyncMonitor();
           }}

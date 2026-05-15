@@ -63,6 +63,7 @@ let mockSessionSnapshot = {
   currentScopeKey: 'local',
   isTransitioning: false,
   isAccountScopeActive: false,
+  isCloudProtectionEnabled: false,
   canRunCloudSync: false,
 };
 const mockAccountSwitcherState = {
@@ -418,6 +419,7 @@ export function resetRenderSettingsPageMocks() {
     currentScopeKey: 'local',
     isTransitioning: false,
     isAccountScopeActive: false,
+    isCloudProtectionEnabled: false,
     canRunCloudSync: false,
   };
   Object.assign(mockAccountSwitcherState, {
@@ -541,7 +543,12 @@ export async function renderSettingsPage(options: RenderSettingsPageOptions = {}
     currentScopeKey: sessionScopeKey ?? (authenticated ? 'account' : 'local'),
     isTransitioning: sessionTransitioning,
     isAccountScopeActive: authenticated && (sessionScopeKey ?? 'account') !== 'local',
-    canRunCloudSync: authenticated && !sessionTransitioning && (sessionScopeKey ?? 'account') !== 'local',
+    isCloudProtectionEnabled: cloudProtectionEnabled,
+    canRunCloudSync:
+      authenticated
+      && cloudProtectionEnabled
+      && !sessionTransitioning
+      && (sessionScopeKey ?? 'account') !== 'local',
   };
 
   Object.assign(mockEntryStoreState, {

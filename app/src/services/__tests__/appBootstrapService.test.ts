@@ -40,6 +40,7 @@ let mockSessionState = {
   isAuthenticated: false,
   isTransitioning: false,
   isAccountScopeActive: false,
+  isCloudProtectionEnabled: false,
   canRunCloudSync: false,
 };
 
@@ -97,6 +98,7 @@ jest.mock('@/src/store/syncStore', () => ({
   useSyncStore: {
     getState: () => ({
       load: mockLoadSync,
+      isCloudProtectionEnabled: mockSessionState.isCloudProtectionEnabled,
     }),
   },
 }));
@@ -176,6 +178,7 @@ describe('runAppBootstrap', () => {
       isAuthenticated: false,
       isTransitioning: false,
       isAccountScopeActive: false,
+      isCloudProtectionEnabled: false,
       canRunCloudSync: false,
     };
     mockGetActiveAccountRef.mockResolvedValue(null);
@@ -236,12 +239,31 @@ describe('runAppBootstrap', () => {
       isAuthenticated: true,
       isTransitioning: false,
       isAccountScopeActive: true,
+      isCloudProtectionEnabled: true,
       canRunCloudSync: true,
     };
 
     await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
 
     expect(mockInspectInitialState).toHaveBeenCalledTimes(1);
+    expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips cloud bootstrap when cloud protection has not been enabled yet', async () => {
+    mockIsAuthenticated = true;
+    mockSessionState = {
+      currentScopeKey: 'account',
+      isAuthenticated: true,
+      isTransitioning: false,
+      isAccountScopeActive: true,
+      isCloudProtectionEnabled: false,
+      canRunCloudSync: false,
+    };
+
+    await runAppBootstrap({ refreshCloudSyncIndicator, onInitializationFailed });
+
+    expect(mockInspectInitialState).not.toHaveBeenCalled();
+    expect(mockCloudSyncNow).not.toHaveBeenCalled();
     expect(mockRunCloudRecoveryFlow).toHaveBeenCalledTimes(1);
   });
 
